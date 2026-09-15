@@ -27,6 +27,7 @@ interface Creator {
 }
 
 interface VideoItem {
+  viewCount: number;
   id: string | number;
   rank: number;
   title?: string;
@@ -129,7 +130,7 @@ const Leaderboard: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
-      
+
       {/* Top Navbar */}
       <Navbar onMenuPress={() => {}} points={0} />
 
@@ -169,7 +170,9 @@ const Leaderboard: React.FC = () => {
                 topCreators.map((creator) => (
                   <View key={creator.id} style={styles.row}>
                     {/* Rank */}
-                    <View style={[styles.rankBadge, getRankStyle(creator.rank)]}>
+                    <View
+                      style={[styles.rankBadge, getRankStyle(creator.rank)]}
+                    >
                       <Text style={styles.rankText}>{creator.rank}</Text>
                     </View>
 
@@ -289,7 +292,9 @@ const Leaderboard: React.FC = () => {
                       />
                     ) : (
                       <View style={styles.videoThumbnailPlaceholder}>
-                        <Text style={styles.thumbPlaceholderText}>No thumb</Text>
+                        <Text style={styles.thumbPlaceholderText}>
+                          No thumb
+                        </Text>
                       </View>
                     )}
 
@@ -306,7 +311,9 @@ const Leaderboard: React.FC = () => {
                     {/* Views */}
                     <View style={styles.viewsBox}>
                       <Text style={styles.viewsValue}>
-                        {Number(item.views || 0).toLocaleString()}
+                        {Number(
+                          item.views ?? item.viewCount ?? 0,
+                        ).toLocaleString()}
                       </Text>
                       <Text style={styles.statLabel}>views</Text>
                     </View>

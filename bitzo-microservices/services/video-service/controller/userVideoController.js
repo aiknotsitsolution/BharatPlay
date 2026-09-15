@@ -1301,12 +1301,13 @@ const addView = async (req, res) => {
     // Identity is server-authoritative: JWT only (optionalAuth).
     // req.body.userId is intentionally ignored (Phase 4 / F13).
     const normalizedUserId = req.user?.userId || req.user?.id;
+    const guestId =
+      typeof req.body?.guestId === "string"
+        ? req.body.guestId.trim().slice(0, 128)
+        : null;
     const percent = Math.min(100, Math.max(0, Number(watchedPercent) || 0));
     const watchedEnough = percent >= 80;
-    const isShortVideo = Array.isArray(video.videoType)
-      ? video.videoType.includes("short")
-      : video.videoType === "short";
-    const shouldRecordHistory = percent > 0;
+    const shouldRecordHistory = Boolean(normalizedUserId);
 
     let newlyCounted = false;
 
@@ -1339,26 +1340,56 @@ const addView = async (req, res) => {
         }
       }
 
+      // Updated history logic: move to front + limit to 100
       if (shouldRecordHistory) {
-        const targetId = video._id;
-        await User.updateOne(
-          { _id: normalizedUserId },
-          {
-            $pull: { viewedVideos: targetId },
-          },
-        );
-        await User.updateOne(
-          { _id: normalizedUserId },
-          {
-            $push: { viewedVideos: { $each: [targetId], $position: 0 } },
-          },
-        );
-        emitHistoryUpdated(normalizedUserId, targetId);
+        const user = await User.findById(normalizedUserId);
+        if (user) {
+          const targetId = video._id.toString();
+          const history = (user.viewedVideos || []).map((id) => id.toString());
+
+          user.viewedVideos = [
+            targetId,
+            ...history.filter((id) => id !== targetId),
+          ].slice(0, 100);
+
+          await user.save();
+        }
+      }
+    } else if (guestId) {
+      video.viewers = video.viewers || [];
+      const viewerEntry = video.viewers.find(
+        (viewer) => viewer.guestId === guestId,
+      );
+
+      if (viewerEntry) {
+        if (percent > (viewerEntry.watchedPercent || 0)) {
+          viewerEntry.watchedPercent = percent;
+        }
+        if (watchedEnough && !viewerEntry.counted) {
+          viewerEntry.counted = true;
+          viewerEntry.completedAt = new Date();
+          video.views = (video.views || 0) + 1;
+          newlyCounted = true;
+        }
+      } else {
+        video.viewers.push({
+          guestId,
+          watchedPercent: percent,
+          counted: watchedEnough,
+          completedAt: watchedEnough ? new Date() : undefined,
+        });
+        if (watchedEnough) {
+          video.views = (video.views || 0) + 1;
+          newlyCounted = true;
+        }
       }
     }
 
     await video.save();
-    if (newlyCounted) emitViewCountUpdated(video._id, video.views);
+
+    if (newlyCounted) {
+      emitViewCountUpdated(video._id, video.views);
+    }
 
     const watchUserId = req.user?.userId || req.user?.id || normalizedUserId;
     if (watchUserId) {
@@ -1371,7 +1402,7 @@ const addView = async (req, res) => {
       views: video.views,
       watchedPercent: percent,
       counted: newlyCounted,
-      historyRecorded: shouldRecordHistory,
+      historyRecorded: shouldRecordHistory && !!normalizedUserId,
     });
   } catch (error) {
     console.error("Error in addView:", error);

@@ -233,7 +233,7 @@ export default function SubscribedChannels() {
           video.videofile || video.videoUrl || video.video,
         ),
         description: video.description || "",
-        views: video.views || 0,
+        views: Number(video.views ?? video.viewCount ?? 0),
         likes: video.likesCount ?? video.likes ?? 0,
         dislikes: video.dislikesCount ?? video.dislikes ?? 0,
       },
@@ -313,7 +313,6 @@ export default function SubscribedChannels() {
                     <Text style={styles.channelRowName} numberOfLines={1}>
                       {name}
                     </Text>
-                    
                   </View>
                   <ChevronRight size={20} color="#aaaaaa" />
                 </TouchableOpacity>

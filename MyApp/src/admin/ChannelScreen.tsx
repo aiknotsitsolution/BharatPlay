@@ -509,7 +509,7 @@ export default function ChannelScreen({ navigation }) {
           {item.title || item.name}
         </Text>
         <Text style={styles.videoMeta}>
-          {item.views?.toLocaleString() || 0} views
+          {Number(item.views ?? item.viewCount ?? 0).toLocaleString()} views
         </Text>
       </TouchableOpacity>
     );

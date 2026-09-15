@@ -283,6 +283,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
       await AsyncStorage.setItem("token", String(token));
       await AsyncStorage.setItem("user", JSON.stringify(user));
       onAuthenticated?.();
+      navigation.replace("AdminPanel");
 
       Toast.show({
         type: "success",
@@ -291,10 +292,6 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
         position: "top",
         visibilityTime: 2500,
       });
-
-      if (!onAuthenticated) {
-        navigation.replace("AdminPanel");
-      }
     } catch (e) {
       console.error("Failed to save auth data", e);
       Toast.show({

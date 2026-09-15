@@ -221,6 +221,16 @@ const formatViews = (value: number) => {
   return `${formatCount(value)} views`;
 };
 
+const getGuestId = async () => {
+  const storageKey = "shorts_guest_id";
+  const existing = await AsyncStorage.getItem(storageKey);
+  if (existing) return existing;
+
+  const guestId = `guest-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  await AsyncStorage.setItem(storageKey, guestId);
+  return guestId;
+};
+
 /* =========================================================
    VIDEO COMPONENT
 ========================================================= */
@@ -239,6 +249,8 @@ function ShortVideo({
   const player = useVideoPlayer(item.videoUrl, (videoPlayer) => {
     videoPlayer.loop = true;
     videoPlayer.muted = muted;
+    // Critical: without this, timeUpdate never fires
+    videoPlayer.timeUpdateEventInterval = 0.5;
   });
 
   useEffect(() => {
@@ -275,10 +287,12 @@ function ShortVideo({
   useEffect(() => {
     const subscription = player.addListener("timeUpdate", (event: any) => {
       const currentTime = Number(event?.currentTime) || 0;
+      // duration comes from player, not from the timeUpdate event payload
+      const duration = Number(player.duration) || 0;
 
-      const duration = Number(event?.duration) || Number(player.duration) || 0;
-
-      onProgress(currentTime, duration);
+      if (duration > 0) {
+        onProgress(currentTime, duration);
+      }
     });
 
     return () => {
@@ -290,7 +304,6 @@ function ShortVideo({
     return (
       <View style={styles.videoError}>
         <Ionicons name="videocam-off-outline" size={50} color="#777" />
-
         <Text style={styles.videoErrorText}>Video unavailable</Text>
       </View>
     );
@@ -627,84 +640,77 @@ export default function ShortsScreen() {
   ======================================================= */
 
   const trackView = useCallback(
-    async (item: ShortItem, currentTime: number, duration: number) => {
-      if (!duration || duration <= 0) {
-        return;
-      }
+  async (item: ShortItem, currentTime: number, duration: number) => {
+    if (!duration || duration <= 0 || !item.id) {
+      return;
+    }
 
-      const percent = Math.min(100, Math.round((currentTime / duration) * 100));
+    const percent = Math.min(100, Math.round((currentTime / duration) * 100));
 
-      const previous = viewReportedRef.current[item.id] || 0;
+    const previous = viewReportedRef.current[item.id] || 0;
 
-      let checkpoint = 0;
+    let checkpoint = 0;
 
-      if (percent >= 80 && previous < 80) {
-        checkpoint = 80;
-      } else if (percent >= 25 && previous < 25) {
-        checkpoint = 25;
-      } else if (percent >= 1 && previous < 1) {
-        checkpoint = 1;
-      }
+    if (percent >= 80 && previous < 80) {
+      checkpoint = 80;
+    } else if (percent >= 25 && previous < 25) {
+      checkpoint = 25;
+    } else if (percent >= 1 && previous < 1) {
+      checkpoint = 1;
+    }
 
-      if (!checkpoint) {
-        return;
-      }
+    if (!checkpoint) {
+      return;
+    }
 
-      viewReportedRef.current[item.id] = checkpoint;
+    viewReportedRef.current[item.id] = checkpoint;
 
-      try {
-        const token = await AsyncStorage.getItem("token");
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const guestId = token ? null : await getGuestId();
 
-        const rawUser = await AsyncStorage.getItem("user");
+      const response = await fetch(`${API_USERVIDEO}/${item.id}/view`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {}),
+        },
+        body: JSON.stringify({
+          watchedPercent: checkpoint,
+          duration,
+          watchSeconds: currentTime,
+          guestId,
+        }),
+      });
 
-        let userId: string | null = null;
+      const data = await response.json();
 
-        try {
-          const user = rawUser ? JSON.parse(rawUser) : null;
-
-          userId = user?._id || user?.id || null;
-        } catch {}
-
-        const response = await fetch(`${API_USERVIDEO}/${item.id}/view`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-
-            ...(token
+      if (data.success && typeof data.views === "number") {
+        setShortsData((prev) =>
+          prev.map((short) =>
+            short.id === item.id
               ? {
-                  Authorization: `Bearer ${token}`,
+                  ...short,
+                  views: data.views,
                 }
-              : {}),
-          },
-
-          body: JSON.stringify({
-            watchedPercent: checkpoint,
-            duration,
-            watchSeconds: currentTime,
-            userId,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (data.success && typeof data.views === "number") {
-          setShortsData((prev) =>
-            prev.map((short) =>
-              short.id === item.id
-                ? {
-                    ...short,
-                    views: data.views,
-                  }
-                : short,
-            ),
-          );
-        }
-      } catch (error) {
-        console.warn("View tracking error:", error);
+              : short,
+          ),
+        );
+      } else {
+        // allow retry if backend rejected
+        viewReportedRef.current[item.id] = previous;
       }
-    },
-    [],
-  );
+    } catch (error) {
+      viewReportedRef.current[item.id] = previous;
+      console.warn("View tracking error:", error);
+    }
+  },
+  [],
+);
 
   /* =======================================================
      SHARE

@@ -68,28 +68,29 @@ const videoSchema = new mongoose.Schema(
       default: 0,
     },
 
-   viewers: [
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-    watchedPercent: {
-      type: Number,
-      default: 0,
-    },
-    counted: {
-      type: Boolean,
-      default: false,
-    },
-    completedAt: {
-      type: Date,
-    },
-  },
-],
-
-
-    
+    viewers: [
+      {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        guestId: {
+          type: String,
+          index: true,
+        },
+        watchedPercent: {
+          type: Number,
+          default: 0,
+        },
+        counted: {
+          type: Boolean,
+          default: false,
+        },
+        completedAt: {
+          type: Date,
+        },
+      },
+    ],
 
     // Moderation status
     status: {
@@ -100,11 +101,19 @@ const videoSchema = new mongoose.Schema(
     },
 
     disabledAt: { type: Date, default: null },
-    disabledBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", default: null },
+    disabledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      default: null,
+    },
     disableReason: { type: String, default: null },
 
     deletedAt: { type: Date, default: null },
-    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", default: null },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      default: null,
+    },
     deleteReason: { type: String, default: null },
 
     // ✅ ANONYMOUS COMMENTS

@@ -11,11 +11,10 @@ let socket: Socket | null = null;
 
 export async function getViewSocket() {
   const token = await AsyncStorage.getItem("token");
-  if (!token) return null;
 
   if (!socket) {
     socket = io(API_SOCKET_ORIGIN, {
-      auth: { token },
+      auth: token ? { token } : {},
       transports: ["websocket"],
       autoConnect: true,
     });

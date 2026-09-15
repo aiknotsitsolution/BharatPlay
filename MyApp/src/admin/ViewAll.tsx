@@ -1327,7 +1327,7 @@ const normalizeVideoListItem = (video = {}) => ({
       : `${BACKEND_URL}/${String(video.thumbnail).replace(/\\/g, "/")}`
     : "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400&h=225&fit=crop",
   description: video.description || "",
-  views: Number(video.views || 0),
+  views: Number(video.views ?? video.viewCount ?? 0),
   likesCount: Number(video.likesCount ?? video.likes ?? 0),
   videoUrl: video.videoUrl
     ? /^https?:\/\//i.test(video.videoUrl)
@@ -1347,7 +1347,7 @@ const normalizeShort = (video = {}) => ({
       ? video.thumbnail.replace(/\\/g, "/")
       : `${BACKEND_URL}/${String(video.thumbnail).replace(/\\/g, "/")}`
     : "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400&h=225&fit=crop",
-  views: Number(video.views || 0),
+  views: Number(video.views ?? video.viewCount ?? 0),
   likes: Number(video.likesCount ?? video.likes ?? 0),
   videoUrl: video.videoUrl
     ? /^https?:\/\//i.test(video.videoUrl)
@@ -1456,8 +1456,19 @@ function BottomTabBar({ navigation }) {
   const tabs = [
     { key: "Home", label: "Home", icon: Home, screen: "Home" },
     { key: "Shorts", label: "Shorts", icon: Play, screen: "Shorts" },
-    { key: "Create", label: "Create", icon: Plus, screen: "Create", isCenter: true },
-    { key: "Subscriptions", label: "Subscriptions", icon: Users, screen: "Subscriptions" },
+    {
+      key: "Create",
+      label: "Create",
+      icon: Plus,
+      screen: "Create",
+      isCenter: true,
+    },
+    {
+      key: "Subscriptions",
+      label: "Subscriptions",
+      icon: Users,
+      screen: "Subscriptions",
+    },
     { key: "You", label: "You", icon: User, screen: "You" },
   ];
 
@@ -1921,7 +1932,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-around",
     paddingBottom: Platform.OS === "ios" ? 35 : 75,
-    paddingTop: 46
+    paddingTop: 46,
   },
   tabItem: {
     flex: 1,

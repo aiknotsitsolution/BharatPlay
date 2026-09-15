@@ -85,6 +85,16 @@ const isShortVideo = (video) => {
   return types.some((type) => String(type).toLowerCase() === "short");
 };
 
+const getGuestId = async () => {
+  const storageKey = "video_guest_id";
+  const existing = await AsyncStorage.getItem(storageKey);
+  if (existing) return existing;
+
+  const guestId = `guest-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  await AsyncStorage.setItem(storageKey, guestId);
+  return guestId;
+};
+
 export default function VideoDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
@@ -170,7 +180,7 @@ export default function VideoDetailScreen() {
       currentSocket = socket;
       const handleViewCountUpdated = ({ videoId, views }) => {
         if (String(videoId) !== String(routeId)) return;
-        setVideoDetails((previous) => ({ ...previous, views }));
+        setVideoDetails((previous) => ({ ...previous, views: Number(views) }));
       };
       socket.on("view-count-updated", handleViewCountUpdated);
       viewHandler = handleViewCountUpdated;
@@ -194,22 +204,28 @@ export default function VideoDetailScreen() {
       ) {
         return;
       }
+
       const percent = Math.max(
         1,
         Math.min(100, Math.round((time / videoDuration) * 100)),
       );
 
+      // Only send meaningful progress
+      if (percent < 1) return;
+
       viewRequestInFlight.current = true;
       try {
         const token = await AsyncStorage.getItem("token");
-        const userStr = await AsyncStorage.getItem("user");
-        const user = userStr ? JSON.parse(userStr) : null;
+        const guestId = token ? null : await getGuestId();
+
+        // Save to history (only if logged in)
         if (token) {
           await fetch(`${API_BASE}/history/${routeId}`, {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` },
-          });
+          }).catch(() => {});
         }
+
         const res = await fetch(`${API_BASE}/${routeId}/view`, {
           method: "POST",
           headers: {
@@ -220,10 +236,19 @@ export default function VideoDetailScreen() {
             watchedPercent: percent,
             duration: videoDuration,
             watchSeconds: time,
-            userId: user?._id || user?.id || null,
+            guestId,
           }),
         });
-        if (!res.ok) console.warn("Watch progress save failed:", res.status);
+
+        if (!res.ok) {
+          console.warn("Watch progress save failed:", res.status);
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (typeof data.views === "number") {
+          setVideoDetails((previous) => ({ ...previous, views: data.views }));
+        }
       } catch (error) {
         console.warn("Watch progress save error:", error);
       } finally {
@@ -257,6 +282,7 @@ export default function VideoDetailScreen() {
   const player = useVideoPlayer(resolvedVideoUrl, (p) => {
     p.loop = false;
     p.muted = false;
+    p.timeUpdateEventInterval = 0.5; // ← MUST ADD THIS
     p.play();
   });
 
@@ -392,22 +418,21 @@ export default function VideoDetailScreen() {
   }, [cancelCountdown]);
 
   // ==================== PLAYER EVENTS ====================
-  useEvent(player, "playingChange", (payload: { isPlaying: any }) => {
-    setIsPlaying(Boolean(payload?.isPlaying));
+  const timeUpdate = useEvent(player, "timeUpdate", {
+    currentTime: 0,
+    bufferedPosition: 0,
+    currentLiveTimestamp: 0,
+    currentOffsetFromLive: 0,
   });
 
-  useEvent(
-    player,
-    "timeUpdate",
-    (payload: { currentTime: any; duration: any }) => {
-      const t = Number(payload?.currentTime || 0);
-      const d = Number(payload?.duration || 0);
-      setCurrentTime(t);
-      if (d > 0) setDuration(d);
-      latestTimeRef.current = t;
-      if (d > 0) latestDurationRef.current = d;
-    },
-  );
+  useEffect(() => {
+    const t = Number(timeUpdate?.currentTime || 0);
+    const d = Number(player.duration) || 0;
+    setCurrentTime(t);
+    if (d > 0) setDuration(d);
+    latestTimeRef.current = t;
+    if (d > 0) latestDurationRef.current = d;
+  }, [player, timeUpdate]);
 
   useEffect(() => {
     if (!player) return;
@@ -1127,7 +1152,8 @@ export default function VideoDetailScreen() {
             </Text>
 
             <Text style={styles.meta}>
-              {formatCount(videoDetails?.views || 0)} views
+              {formatCount(videoDetails?.views ?? videoDetails?.viewCount ?? 0)}{" "}
+              views
               {videoDetails?.createdAt
                 ? `  •  ${new Date(videoDetails.createdAt).toLocaleDateString()}`
                 : ""}

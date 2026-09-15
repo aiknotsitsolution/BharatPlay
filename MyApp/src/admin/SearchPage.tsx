@@ -51,7 +51,7 @@ const normalizeVideo = (video = {}) => ({
       ? video.thumbnail.replace(/\\/g, "/")
       : `${BACKEND_URL}/${String(video.thumbnail).replace(/\\/g, "/")}`
     : "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400&h=225&fit=crop",
-  views: Number(video.views || 0),
+  views: Number(video.views ?? video.viewCount ?? 0),
   videoUrl: video.videoUrl
     ? /^https?:\/\//i.test(video.videoUrl)
       ? video.videoUrl.replace(/\\/g, "/")
@@ -70,7 +70,7 @@ const normalizeShort = (video = {}) => ({
       ? video.thumbnail.replace(/\\/g, "/")
       : `${BACKEND_URL}/${String(video.thumbnail).replace(/\\/g, "/")}`
     : "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400&h=225&fit=crop",
-  views: Number(video.views || 0),
+  views: Number(video.views ?? video.viewCount ?? 0),
   videoUrl: video.videoUrl
     ? /^https?:\/\//i.test(video.videoUrl)
       ? video.videoUrl.replace(/\\/g, "/")
