@@ -81,6 +81,27 @@ const normalizeShort = (video = {}) => ({
   isShort: true,
 });
 
+const normalizeChannel = (channel = {}) => ({
+  id: channel._id || channel.id,
+  name: channel.name || "Channel",
+  avatar:
+    channel.channelImage || channel.avatar || channel.image
+      ? /^https?:\/\//i.test(
+          channel.channelImage || channel.avatar || channel.image,
+        )
+        ? (channel.channelImage || channel.avatar || channel.image).replace(
+            /\\/g,
+            "/",
+          )
+        : `${BACKEND_URL}/${String(
+            channel.channelImage || channel.avatar || channel.image,
+          ).replace(/\\/g, "/")}`
+      : "https://via.placeholder.com/120",
+  subscribersCount: Number(channel.subscribersCount || 0),
+  channelImage: channel.channelImage || channel.avatar || channel.image,
+  raw: channel,
+});
+
 // ────────────────────────────────────────────────
 // Cards
 // ────────────────────────────────────────────────
@@ -148,6 +169,7 @@ export default function SearchPage() {
 
   const [videoResults, setVideoResults] = useState([]);
   const [shortResults, setShortResults] = useState([]);
+  const [channelResults, setChannelResults] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -159,6 +181,7 @@ export default function SearchPage() {
     if (!query.trim()) {
       setVideoResults([]);
       setShortResults([]);
+      setChannelResults([]);
       setTotal(0);
       setError(null);
       return;
@@ -205,14 +228,24 @@ export default function SearchPage() {
               ? data.results.filter((v) => v.isShort || v.videoType === "short")
               : [];
 
+        const channels = Array.isArray(data.channels)
+          ? data.channels
+          : Array.isArray(data.data?.channels)
+            ? data.data.channels
+            : [];
+
         setVideoResults(videos.map(normalizeVideo));
         setShortResults(shorts.map(normalizeShort));
-        setTotal(Number(data.total) || videos.length + shorts.length);
+        setChannelResults(channels.map(normalizeChannel));
+        setTotal(
+          Number(data.total) || videos.length + shorts.length + channels.length,
+        );
       } catch (err) {
         if (active) {
           setError(err.message || "Search failed");
           setVideoResults([]);
           setShortResults([]);
+          setChannelResults([]);
         }
       } finally {
         if (active) setLoading(false);
@@ -230,6 +263,7 @@ export default function SearchPage() {
     const q = searchText.trim();
     if (!q) return;
     setQuery(q);
+    setSearchText("");
     setPage(1);
   };
 
@@ -242,6 +276,11 @@ export default function SearchPage() {
       screen: "Shorts",
       params: { video: item },
     });
+  };
+
+  const handleChannelClick = (channel) => {
+    if (!channel?.id) return;
+    navigation.navigate("SubscribedChannels", { id: channel.id });
   };
 
   const handleAddToWatchLater = async (item) => {
@@ -334,7 +373,7 @@ export default function SearchPage() {
           <Search size={18} color="#aaaaaa" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search videos, shorts..."
+            placeholder="Search videos, shorts & channels"
             placeholderTextColor="#666"
             value={searchText}
             onChangeText={setSearchText}
@@ -364,7 +403,9 @@ export default function SearchPage() {
         <View style={styles.center}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
-      ) : videoResults.length === 0 && shortResults.length === 0 ? (
+      ) : videoResults.length === 0 &&
+        shortResults.length === 0 &&
+        channelResults.length === 0 ? (
         <View style={styles.center}>
           <Text style={styles.emptyText}>No results found for "{query}".</Text>
         </View>
@@ -376,6 +417,38 @@ export default function SearchPage() {
           contentContainerStyle={{ paddingBottom: 30 }}
           ListHeaderComponent={
             <>
+              {/* Channels Section */}
+              {channelResults.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Channels</Text>
+                  <View style={styles.channelList}>
+                    {channelResults.map((channel) => (
+                      <TouchableOpacity
+                        key={channel.id}
+                        style={styles.channelRow}
+                        activeOpacity={0.8}
+                        onPress={() => handleChannelClick(channel)}
+                      >
+                        <Image
+                          source={{ uri: channel.avatar }}
+                          style={styles.channelAvatar}
+                        />
+                        <View style={styles.channelInfo}>
+                          <Text style={styles.channelName} numberOfLines={1}>
+                            {channel.name}
+                          </Text>
+                          <Text style={styles.channelMeta}>
+                            {channel.subscribersCount.toLocaleString()}{" "}
+                            subscribers
+                          </Text>
+                        </View>
+                        <ChevronRight size={18} color="#aaaaaa" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
               {/* Videos Section */}
               {videoResults.length > 0 && (
                 <View style={styles.section}>
@@ -547,6 +620,36 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 12,
+  },
+  channelList: {
+    gap: 10,
+  },
+  channelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#161616",
+    borderRadius: 12,
+    padding: 12,
+  },
+  channelAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#252525",
+  },
+  channelInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  channelName: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  channelMeta: {
+    color: "#aaaaaa",
+    fontSize: 12,
+    marginTop: 4,
   },
   videosGrid: {
     flexDirection: "row",

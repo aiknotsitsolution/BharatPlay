@@ -2401,12 +2401,32 @@ const searchVideos = async (req, res) => {
       uploadedBy: uploaderMap.get(String(v.uploadedBy)) || null,
     }));
 
+    const channelFilter = {
+      $or: tokensWithRegex.map(({ regex }) => ({
+        $or: [{ name: regex }, { channeldescription: regex }],
+      })),
+    };
+
+    const channels = await Channel.find(channelFilter)
+      .sort({ createdAt: -1 })
+      .select("_id name channelImage subscribedBy createdAt")
+      .limit(8)
+      .lean();
+
     res.status(200).json({
       success: true,
       videos: videosWithUploader,
+      channels: channels.map((channel) => ({
+        _id: channel._id,
+        id: channel._id,
+        name: channel.name,
+        channelImage: channel.channelImage,
+        subscribersCount: channel.subscribedBy?.length || 0,
+        createdAt: channel.createdAt,
+      })),
       page,
       limit,
-      total,
+      total: total + channels.length,
       query: q,
     });
   } catch (error) {
