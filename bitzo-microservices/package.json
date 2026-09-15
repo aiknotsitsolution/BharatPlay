@@ -1,0 +1,14 @@
+{
+  "name": "bitzo-microservices",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Root convenience scripts to run every Bitzo microservice together in dev",
+  "scripts": {
+    "install:all": "npm install --prefix gateway && npm install --prefix services/auth-service && npm install --prefix services/admin-service && npm install --prefix services/video-service && npm install --prefix services/category-service && npm install --prefix services/leaderboard-service && npm install --prefix services/notification-service && npm install --prefix services/player-ad-service && npm install --prefix services/copyright-service && npm install --prefix services/security-service",
+    "dev": "npm run dev:all",
+    "dev:all": "node scripts/dev-all.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

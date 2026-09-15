@@ -1,0 +1,196 @@
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# Bitzo microservices - local/dev orchestration
+# ---------------------------------------------------------------------------
+# One shared MongoDB *server* (container), but every microservice connects
+# to its OWN database on that server (bitzo_auth, bitzo_video, ...), and
+# only opens extra connections to another service's database when it
+# genuinely needs cross-service data (see each service's config/connections.js).
+#
+# Copy each services/*/.env.example to services/*/.env (and gateway/.env)
+# before running `docker compose up --build`, and fill in real secrets
+# (JWT_SECRET, IMAGEKIT_*, etc). The MONGO_URI / *_DB_URI values already
+# point at the `mongo` service below and normally don't need editing for
+# local docker-compose use.
+# ---------------------------------------------------------------------------
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: bitzo-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - bitzo_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build: ./gateway
+    container_name: bitzo-gateway
+    env_file: ./gateway/.env
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:4001
+      - ADMIN_SERVICE_URL=http://admin-service:4002
+      - VIDEO_SERVICE_URL=http://video-service:4003
+      - CATEGORY_SERVICE_URL=http://category-service:4004
+      - LEADERBOARD_SERVICE_URL=http://leaderboard-service:4005
+      - NOTIFICATION_SERVICE_URL=http://notification-service:4006
+      - PLAYER_AD_SERVICE_URL=http://player-ad-service:4007
+      - COPYRIGHT_SERVICE_URL=http://copyright-service:4008
+      - SECURITY_SERVICE_URL=http://security-service:4009
+    ports:
+      - "4000:4000"
+    depends_on:
+      - auth-service
+      - admin-service
+      - video-service
+      - category-service
+      - leaderboard-service
+      - notification-service
+      - player-ad-service
+      - copyright-service
+      - security-service
+
+  auth-service:
+    build: ./services/auth-service
+    container_name: bitzo-auth-service
+    env_file: ./services/auth-service/.env
+    environment:
+      - MONGO_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - ADMIN_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - NOTIFICATION_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - SECURITY_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - VIDEO_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+    ports:
+      - "4001:4001"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  admin-service:
+    build: ./services/admin-service
+    container_name: bitzo-admin-service
+    env_file: ./services/admin-service/.env
+    environment:
+      - MONGO_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - AUTH_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - NOTIFICATION_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - SECURITY_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - VIDEO_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - CATEGORY_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+    ports:
+      - "4002:4002"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  video-service:
+    build: ./services/video-service
+    container_name: bitzo-video-service
+    env_file: ./services/video-service/.env
+    environment:
+      - MONGO_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - ADMIN_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - NOTIFICATION_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - AUTH_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - SECURITY_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - CATEGORY_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+    ports:
+      - "4003:4003"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  category-service:
+    build: ./services/category-service
+    container_name: bitzo-category-service
+    env_file: ./services/category-service/.env
+    environment:
+      - MONGO_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - ADMIN_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+    ports:
+      - "4004:4004"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  leaderboard-service:
+    build: ./services/leaderboard-service
+    container_name: bitzo-leaderboard-service
+    env_file: ./services/leaderboard-service/.env
+    environment:
+      - MONGO_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - AUTH_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - VIDEO_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+    ports:
+      - "4005:4005"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  notification-service:
+    build: ./services/notification-service
+    container_name: bitzo-notification-service
+    env_file: ./services/notification-service/.env
+    environment:
+      - MONGO_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - AUTH_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - VIDEO_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+    ports:
+      - "4006:4006"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  player-ad-service:
+    build: ./services/player-ad-service
+    container_name: bitzo-player-ad-service
+    env_file: ./services/player-ad-service/.env
+    environment:
+      - MONGO_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - AUTH_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - SECURITY_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+    ports:
+      - "4007:4007"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  copyright-service:
+    build: ./services/copyright-service
+    container_name: bitzo-copyright-service
+    env_file: ./services/copyright-service/.env
+    environment:
+      - MONGO_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - ADMIN_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - NOTIFICATION_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - AUTH_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - VIDEO_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - SECURITY_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+    ports:
+      - "4008:4008"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  security-service:
+    build: ./services/security-service
+    container_name: bitzo-security-service
+    env_file: ./services/security-service/.env
+    environment:
+      - MONGO_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - AUTH_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - COPYRIGHT_DB_URI=mongodb+srv://atlaknotssolutions_db_user:C5KLZdHOAbaJYMWk@cluster0.i6rxbpw.mongodb.net/?Auth=Cluster0&compressors=zlib
+    ports:
+      - "4009:4009"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  bitzo_mongo_data:
