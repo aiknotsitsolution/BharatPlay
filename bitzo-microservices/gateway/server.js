@@ -64,13 +64,35 @@ const SERVICES = {
   security: process.env.SECURITY_SERVICE_URL || "http://localhost:4009",
 };
 
-function proxy(target, routePrefix) {
+function proxy(target, routePrefix = "/") {
   return createProxyMiddleware({
     target,
     changeOrigin: true,
     ws: true,
-    pathRewrite: (path) => `${routePrefix}${path}`,
+    xfwd: true,
     logger: console,
+    pathRewrite: (path) => {
+      const normalizedPath = path || "/";
+
+      if (!routePrefix || routePrefix === "/") return normalizedPath;
+
+      if (normalizedPath.startsWith(routePrefix)) {
+        return normalizedPath;
+      }
+
+      return `${routePrefix}${normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`}`;
+    },
+    onError: (err, req, res) => {
+      console.error(`[gateway] proxy error to ${target}:`, err.message);
+
+      if (res && !res.headersSent) {
+        res.status(502).json({
+          success: false,
+          message: "Backend service unavailable",
+          target,
+        });
+      }
+    },
   });
 }
 
