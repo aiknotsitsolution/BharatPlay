@@ -73,23 +73,21 @@ export default function AppRoutes() {
           <Route path="profile" element={<Profile />} />
           <Route path="subscribechannel/:id" element={<SubscribedChannels />} />
 
-          <Route path="/history" element={<WatchHistoryTab />} />
-          <Route path="/liked-videos" element={<LikedVideosTab />} />
-          <Route path="/watch-later" element={<WatchLaterTab />} />
-          <Route path="/your-videos" element={<YourVideosTab />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/withdraw" element={<WithdrawPage />} />
-          <Route path="/channel/:id" element={<ChannelPage />} />
-          <Route path="/channel/customize" element={<ChannelCustomization />} />
-          <Route path="/copyright" element={<CopyrightPage />} />
-          <Route path="/copyright/claim" element={<CopyrightClaimPage />} />
-          <Route path="/copyright/my-claims" element={<MyClaimsPage />} />
-          <Route path="/faq" element={<FAQPage />} />
-          <Route path="/feedback" element={<FeedbackPage />} />
-          <Route path="/customer-support" element={<SupportPage />} />
-          <Route path="/terms-and-conditions" element={<TermsPage />} />
-          <Route path="/studio" element={<BharatPlayStudio />} />
-         
+          <Route path="history" element={<WatchHistoryTab />} />
+          <Route path="liked-videos" element={<LikedVideosTab />} />
+          <Route path="watch-later" element={<WatchLaterTab />} />
+          <Route path="your-videos" element={<YourVideosTab />} />
+          <Route path="leaderboard" element={<Leaderboard />} />
+          <Route path="channel/:id" element={<ChannelPage />} />
+          <Route path="channel/customize" element={<ChannelCustomization />} />
+          <Route path="copyright" element={<CopyrightPage />} />
+          <Route path="copyright/claim" element={<CopyrightClaimPage />} />
+          <Route path="copyright/my-claims" element={<MyClaimsPage />} />
+          <Route path="faq" element={<FAQPage />} />
+          <Route path="feedback" element={<FeedbackPage />} />
+          <Route path="customer-support" element={<SupportPage />} />
+          <Route path="terms-and-conditions" element={<TermsPage />} />
+          <Route path="studio" element={<BharatPlayStudio />} />
         </Route>
       </Route>
 

@@ -1,7 +1,9 @@
-import { API_BASE } from "../../../config/api";
+import { API_USERVIDEO } from "../../../config/api";
+import { getAccessToken } from "../../../utils/session";
 
 async function apiFetch(endpoint, options = {}) {
-  const url = `${API_BASE}${endpoint}`;
+  const url = `${API_USERVIDEO}${endpoint}`;
+  const token = getAccessToken();
 
   const response = await fetch(url, {
     ...options,
@@ -22,18 +24,18 @@ async function apiFetch(endpoint, options = {}) {
   return response.json();
 }
 
-export const getChannel = (handle) => apiFetch(`/channels/${handle}`);
+export const getChannel = (id) => apiFetch(`/channel/${id}`);
 
-export const getMyChannels = () => apiFetch(`/users/me/channels`); // ← returns list of channels owned by current user
+export const getMyChannels = () => apiFetch("/channel");
 
 export const createChannel = (data) =>
-  apiFetch("/channels", {
+  apiFetch("/createchannel", {
     method: "POST",
     body: JSON.stringify(data),
   });
 
 export const uploadVideo = (channelHandle, formData) =>
-  fetch(`${API_BASE}/channels/${channelHandle}/videos`, {
+  fetch(`${API_USERVIDEO}/upload/${channelHandle}`, {
     method: "POST",
     body: formData, // ← no Content-Type header! (browser sets multipart)
     credentials: "include",

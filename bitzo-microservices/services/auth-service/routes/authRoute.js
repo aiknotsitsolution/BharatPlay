@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const crypto = require("node:crypto");
+const bcrypt = require("bcryptjs");
 const {
   signAccessToken,
   signRefreshToken,
@@ -83,12 +85,17 @@ router.post("/auth/google", googleLimiter, async (req, res) => {
   }
 
   try {
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch (error) {
+      console.error("Google token verification failed:", error.message);
+      return res.status(401).json({ message: "Invalid Google token" });
+    }
 
     // Reject unverified emails — do not create accounts for them.
     if (payload.email_verified !== true) {
@@ -127,6 +134,9 @@ router.post("/auth/google", googleLimiter, async (req, res) => {
       user = await User.create({
         name: name || email.split("@")[0],
         email,
+        // Google-only accounts still satisfy the User schema, but this random
+        // hash cannot be used as a password login credential.
+        password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 12),
         googleId,
         avatar: picture,
         deviceId,
@@ -184,7 +194,10 @@ router.post("/auth/google", googleLimiter, async (req, res) => {
     });
   } catch (error) {
     console.error("Google Auth Error:", error);
-    return res.status(401).json({ message: "Invalid Google token" });
+    return res.status(500).json({
+      success: false,
+      message: "Google sign-in failed",
+    });
   }
 });
 router.get("/profile", authMiddleware, async (req, res) => {

@@ -37,10 +37,16 @@ const { width } = Dimensions.get("window");
 
 const googleConfig = Constants.expoConfig?.extra?.google || {};
 const GOOGLE_WEB_CLIENT_ID = googleConfig.webClientId || "";
-const GOOGLE_ANDROID_CLIENT_ID = googleConfig.androidClientId || "";
+const GOOGLE_ANDROID_CLIENT_ID = googleConfig.androidClientId || "1043684646784-d9igjhng2cfdp006ogsi0am1i3d4djh1.apps.googleusercontent.com";
 const GOOGLE_IOS_CLIENT_ID = googleConfig.iosClientId || "";
-const isGoogleClientId = (value) =>
-  value.endsWith(".apps.googleusercontent.com") && !value.startsWith("GOCSPX-");
+const isGoogleClientId = (value = "") => {
+  const normalized = String(value).trim();
+  return (
+    normalized.length > 0 &&
+    (normalized.startsWith("GOCSPX-") ||
+      normalized.endsWith(".apps.googleusercontent.com"))
+  );
+};
 const GOOGLE_CONFIGURED = Boolean(
   isGoogleClientId(GOOGLE_WEB_CLIENT_ID) &&
   isGoogleClientId(GOOGLE_ANDROID_CLIENT_ID) &&

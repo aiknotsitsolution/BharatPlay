@@ -11,10 +11,11 @@ import axios from "axios";
 import { API_ORIGIN } from "../../config/api";
 
 const API_URL = `${API_ORIGIN}/api/category`;
+const ALL_CHIP = { _id: "all", name: "All" };
 
 export default function TopicChips({ onTopicChange }) {
   const [topics, setTopics] = useState([]);
-  const [selectedTopic, setSelectedTopic] = useState("For you");
+  const [selectedTopic, setSelectedTopic] = useState(ALL_CHIP.name);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,15 +23,11 @@ export default function TopicChips({ onTopicChange }) {
       try {
         const res = await axios.get(API_URL);
         const data = Array.isArray(res.data) ? res.data : [];
-        setTopics(data);
-
-        if (data.length > 0) {
-          const hasForYou = data.some((item) => item.name === "For you");
-          if (!hasForYou) {
-            setSelectedTopic(data[0].name);
-            onTopicChange?.(data[0].name, data[0]._id || data[0].id);
-          }
-        }
+        setTopics([
+          ALL_CHIP,
+          ...data.filter((item) => item.name !== ALL_CHIP.name),
+        ]);
+        onTopicChange?.(ALL_CHIP.name, null);
       } catch (err) {
         console.error("Category fetch error:", err);
         // fallback
@@ -69,7 +66,10 @@ export default function TopicChips({ onTopicChange }) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {topics.map((topic) => {
+        {[
+          ALL_CHIP,
+          ...topics.filter((topic) => topic.name !== ALL_CHIP.name),
+        ].map((topic) => {
           const isActive = selectedTopic === topic.name;
           return (
             <TouchableOpacity

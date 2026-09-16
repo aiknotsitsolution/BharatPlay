@@ -157,7 +157,7 @@ export default function VideoDetailScreen() {
   const nextTargetRef = useRef(null);
   const playedVideoIdsRef = useRef(new Set());
   const resumeApplied = useRef(false);
-  const lastProgressSent = useRef(0);
+  const lastProgressSent = useRef({ time: 0, percent: 0, timestamp: 0 });
   const viewRequestInFlight = useRef(false);
   const latestTimeRef = useRef(0);
   const latestDurationRef = useRef(0);
@@ -210,15 +210,31 @@ export default function VideoDetailScreen() {
         Math.min(100, Math.round((time / videoDuration) * 100)),
       );
 
-      // Only send meaningful progress
       if (percent < 1) return;
 
+      const previous = lastProgressSent.current;
+      const timeDelta = time - previous.time;
+      const percentDelta = Math.abs(percent - previous.percent);
+      const isDuplicateBurst =
+        previous.time > 0 &&
+        timeDelta < 12 &&
+        percentDelta < 3 &&
+        Date.now() - previous.timestamp < 12000;
+
+      if (isDuplicateBurst) {
+        return;
+      }
+
+      lastProgressSent.current = {
+        time,
+        percent,
+        timestamp: Date.now(),
+      };
       viewRequestInFlight.current = true;
       try {
         const token = await AsyncStorage.getItem("token");
         const guestId = token ? null : await getGuestId();
 
-        // Save to history (only if logged in)
         if (token) {
           await fetch(`${API_BASE}/history/${routeId}`, {
             method: "POST",
@@ -394,7 +410,7 @@ export default function VideoDetailScreen() {
       setDuration(0);
       setIsPlaying(true);
       resumeApplied.current = false;
-      lastProgressSent.current = 0;
+      lastProgressSent.current = { time: 0, percent: 0, timestamp: 0 };
       latestTimeRef.current = 0;
       latestDurationRef.current = 0;
       cancelCountdown();
@@ -585,15 +601,21 @@ export default function VideoDetailScreen() {
     if (!routeId || !duration || !currentTime) return;
     const percent = Math.min(100, Math.round((currentTime / duration) * 100));
     setWatchedPercent(percent);
+    const previous = lastProgressSent.current;
     if (
       percent < 1 ||
-      (lastProgressSent.current > 0 &&
-        currentTime - lastProgressSent.current < 10)
+      (previous.time > 0 &&
+        currentTime - previous.time < 12 &&
+        Math.abs(percent - previous.percent) < 3)
     ) {
       return;
     }
 
-    lastProgressSent.current = currentTime;
+    lastProgressSent.current = {
+      time: currentTime,
+      percent,
+      timestamp: Date.now(),
+    };
     saveWatchProgress(currentTime, duration);
   }, [currentTime, duration, routeId, saveWatchProgress]);
 
@@ -1408,29 +1430,30 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     aspectRatio: 16 / 9,
     backgroundColor: "#000",
+    position: "relative",
+    overflow: "hidden",
   },
   videoPlayer: {
-    width: "100%",
-    height: "100%",
+    ...StyleSheet.absoluteFill,
   },
   fullscreenContainer: {
     flex: 1,
     backgroundColor: "#000",
     justifyContent: "center",
+    position: "relative",
   },
   fullscreenVideo: {
-    width: "100%",
-    height: "100%",
+    ...StyleSheet.absoluteFill,
   },
   tapZones: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     flexDirection: "row",
   },
   tapZone: {
     flex: 1,
   },
   playerControls: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "space-between",
   },

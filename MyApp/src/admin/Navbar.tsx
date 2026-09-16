@@ -42,6 +42,7 @@ export default function Navbar({ onMenuPress, points = 0 }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
+  const profileRequestInFlight = useRef(null);
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,7 +82,11 @@ export default function Navbar({ onMenuPress, points = 0 }) {
     checkAuth();
   }, []);
 
-  const fetchProfile = async (token) => {
+  const fetchProfile = useCallback(async (token) => {
+    if (!token) return;
+    if (profileRequestInFlight.current === token) return;
+
+    profileRequestInFlight.current = token;
     try {
       setLoading(true);
       const res = await axios.get(`${API_BASE_URL}/api/me`, {
@@ -106,20 +111,25 @@ export default function Navbar({ onMenuPress, points = 0 }) {
       setIsLoggedIn(false);
       redirectToLogin();
     } finally {
+      if (profileRequestInFlight.current === token) {
+        profileRequestInFlight.current = null;
+      }
       setLoading(false);
     }
-  };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       AsyncStorage.getItem("token").then((token) => {
-        if (active && token) fetchProfile(token);
+        if (active && token) {
+          fetchProfile(token);
+        }
       });
       return () => {
         active = false;
       };
-    }, []),
+    }, [fetchProfile]),
   );
 
   // Search hints

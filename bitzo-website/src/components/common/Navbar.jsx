@@ -35,7 +35,7 @@ import {
 } from "../../features/notifications/notificationsSlice";
 import axios from "axios";
 import { API_ORIGIN as API_BASE_URL } from "../../config/api";
-import logo from "../../../dist/assets/Bharatplay-Cb3qGLyP-Cb3qGLyP.png";
+import logo from "../../../public/Bharatplay-Cb3qGLyP-Cb3qGLyP-DSDLqCtA.png";
 
 const HINTS_URL = `${API_BASE_URL}/api/uservideo/search/hints`;
 

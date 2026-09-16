@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { toast } from "react-toastify";
-import { API_BASE } from "../../config/api";
+import { AUTH_API } from "../../config/api";
 import AnimatedBackground from "./AnimatedBackground";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
@@ -73,7 +73,7 @@ export default function AuthPageV2() {
   };
 
   const performLogin = async (email, password) => {
-    const res = await fetch(`${API_BASE}/login`, {
+    const res = await fetch(AUTH_API.login, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -114,7 +114,7 @@ export default function AuthPageV2() {
     }
 
     try {
-      const endpoint = isLogin ? "/login" : "/register";
+      const endpoint = isLogin ? AUTH_API.login : AUTH_API.register;
       const body = {
         ...(isLogin
           ? { email: formData.email, password: formData.password }
@@ -122,7 +122,7 @@ export default function AuthPageV2() {
         ...(otpRequired ? { otp } : {}),
       };
 
-      const res = await fetch(`${API_BASE}${endpoint}`, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -170,7 +170,7 @@ export default function AuthPageV2() {
     setError("");
 
     try {
-      const endpoint = isLogin ? "/login" : "/register";
+      const endpoint = isLogin ? AUTH_API.login : AUTH_API.register;
       const payload = isLogin
         ? { email: formData.email, password: formData.password }
         : {
@@ -179,7 +179,7 @@ export default function AuthPageV2() {
             password: formData.password,
           };
 
-      const res = await fetch(`${API_BASE}${endpoint}`, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -213,7 +213,7 @@ export default function AuthPageV2() {
     setClaimError("");
 
     try {
-      const res = await fetch(`${API_BASE}/claim-device`, {
+      const res = await fetch(AUTH_API.claimDevice, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -260,7 +260,7 @@ export default function AuthPageV2() {
     setError("");
 
     try {
-      const res = await fetch(`${API_BASE}/auth/google`, {
+      const res = await fetch(AUTH_API.google, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
