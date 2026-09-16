@@ -69,6 +69,10 @@ const formatCount = (value) => {
 
 const resolveMediaUrl = (value) => {
   if (!value) return "";
+  if (typeof value === "object") {
+    value = value.url || value.uri || value.src || value.path || "";
+  }
+  if (!value) return "";
   if (/^https?:\/\//i.test(value)) return value;
   const normalized = String(value).replace(/\\/g, "/");
   if (normalized.startsWith("uploads/")) return `${BACKEND_URL}/${normalized}`;
@@ -297,6 +301,18 @@ export default function VideoDetailScreen() {
     p.timeUpdateEventInterval = 0.5; // ← MUST ADD THIS
     p.play();
   });
+
+  useEffect(() => {
+    if (!player) return;
+
+    const subscription = player.addListener("statusChange", (event) => {
+      if (event.status === "error") {
+        console.warn("Video playback error:", event.error || "Unknown error");
+      }
+    });
+
+    return () => subscription.remove();
+  }, [player]);
 
   // ==================== HELPERS ====================
   const cancelCountdown = useCallback(() => {

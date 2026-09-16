@@ -13,6 +13,7 @@ import {
   FlatList,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { VideoView, useVideoPlayer } from "expo-video";
 import { ChevronRight, Play, Plus, Check } from "lucide-react-native";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -37,6 +38,24 @@ const SHORT_HEIGHT = SHORT_WIDTH * (16 / 9);
 const BACKEND_URL = API_ORIGIN;
 const API_BASE = `${BACKEND_URL}/api/uservideo`;
 const FEED_PAGE_SIZE = 8;
+
+function AutoplayPreview({ uri, style }) {
+  const player = useVideoPlayer(uri, (instance) => {
+    instance.loop = true;
+    instance.muted = true;
+    instance.play();
+  });
+
+  return (
+    <VideoView
+      player={player}
+      style={style}
+      contentFit="cover"
+      nativeControls={false}
+      allowsPictureInPicture={false}
+    />
+  );
+}
 
 const toMediaUrl = (value: unknown, fallback: string) => {
   if (!value) return fallback;
@@ -266,6 +285,46 @@ export default function NetflixStylePage() {
   const nextPageRef = useRef(1);
   const loadingMoreRef = useRef(false);
 
+  // Autoplay state (YouTube style)
+  const [activeVideoId, setActiveVideoId] = useState(null);
+
+  const isShortContent = (item) => {
+    const rawTypes = item?.videoType ?? item?.raw?.videoType ?? [];
+    const normalizedTypes = (Array.isArray(rawTypes) ? rawTypes : [rawTypes])
+      .filter(Boolean)
+      .map((type) => String(type).toLowerCase());
+
+    return (
+      Boolean(item?.isShort) ||
+      normalizedTypes.some(
+        (type) =>
+          type === "short" || type === "shorts" || type.includes("short"),
+      )
+    );
+  };
+
+  // Viewability config for autoplay when user stops scrolling
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 60,
+    minimumViewTime: 250,
+  }).current;
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (viewableItems && viewableItems.length > 0) {
+      // Pick the most visible item
+      const mostVisible = viewableItems[0];
+      const item = mostVisible?.item;
+
+      if (item?.id && !isShortContent(item) && item.videoUrl) {
+        setActiveVideoId(item.id);
+      } else {
+        setActiveVideoId(null);
+      }
+    } else {
+      setActiveVideoId(null);
+    }
+  }).current;
+
   const loadHomeData = useCallback(
     async (page = 1, append = false) => {
       try {
@@ -420,6 +479,7 @@ export default function NetflixStylePage() {
     setRefreshing(true);
     nextPageRef.current = 1;
     setHasMore(true);
+    setActiveVideoId(null); // stop any playing preview
     await loadHomeData();
     setRefreshing(false);
   };
@@ -441,22 +501,10 @@ export default function NetflixStylePage() {
     setLoadingMore(false);
   };
 
-  const isShortContent = (item) => {
-    const rawTypes = item?.videoType ?? item?.raw?.videoType ?? [];
-    const normalizedTypes = (Array.isArray(rawTypes) ? rawTypes : [rawTypes])
-      .filter(Boolean)
-      .map((type) => String(type).toLowerCase());
-
-    return (
-      Boolean(item?.isShort) ||
-      normalizedTypes.some(
-        (type) =>
-          type === "short" || type === "shorts" || type.includes("short"),
-      )
-    );
-  };
-
   const handleItemClick = (item) => {
+    // Stop preview when navigating
+    setActiveVideoId(null);
+
     if (item?.isChannel) {
       navigation.navigate("SubscribedChannels", { id: item.id });
       return;
@@ -609,42 +657,57 @@ export default function NetflixStylePage() {
     </View>
   );
 
-  // ──── YouTube-style Vertical Mixed Feed Card ────
-  const renderVerticalFeedItem = ({ item }) => (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={() => handleItemClick(item)}
-      style={styles.verticalCard}
-    >
-      <View style={styles.verticalThumbWrapper}>
-        <Image
-          source={{ uri: item.thumb || item.thumbnail }}
-          style={styles.verticalThumb}
-          resizeMode="cover"
-        />
-        {item.watchedPercent > 0 && (
-          <View style={styles.progressBarContainer}>
-            <View
-              style={[
-                styles.progressBarFill,
-                { width: `${Math.min(100, item.watchedPercent)}%` },
-              ]}
-            />
-          </View>
-        )}
-      </View>
+  // ──── YouTube-style Vertical Mixed Feed Card (with autoplay) ────
+  const renderVerticalFeedItem = ({ item }) => {
+    const isActive = activeVideoId === item.id && !!item.videoUrl;
+    const progress = Math.min(100, Math.max(0, item.watchedPercent || 0));
 
-      <View style={styles.verticalInfo}>
-        <Text style={styles.verticalTitle} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={styles.verticalMeta}>
-          {(item.views || 0).toLocaleString()} views
-          {item.channel?.name ? ` • ${item.channel.name}` : ""}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => handleItemClick(item)}
+        style={styles.verticalCard}
+      >
+        <View style={styles.verticalThumbWrapper}>
+          {isActive ? (
+            <AutoplayPreview uri={item.videoUrl} style={styles.verticalThumb} />
+          ) : (
+            <Image
+              source={{ uri: item.thumb || item.thumbnail }}
+              style={styles.verticalThumb}
+              resizeMode="cover"
+            />
+          )}
+
+          {/* Progress bar */}
+          {progress > 0 && (
+            <View style={styles.progressBarContainer}>
+              <View
+                style={[styles.progressBarFill, { width: `${progress}%` }]}
+              />
+            </View>
+          )}
+
+          {/* Muted badge when autoplaying */}
+          {isActive && (
+            <View style={styles.mutedBadge}>
+              <Text style={styles.mutedText}>🔇</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.verticalInfo}>
+          <Text style={styles.verticalTitle} numberOfLines={2}>
+            {item.title}
+          </Text>
+          <Text style={styles.verticalMeta}>
+            {(item.views || 0).toLocaleString()} views
+            {item.channel?.name ? ` • ${item.channel.name}` : ""}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -666,6 +729,9 @@ export default function NetflixStylePage() {
         contentContainerStyle={styles.scrollContent}
         onEndReached={loadMoreFeed}
         onEndReachedThreshold={0.6}
+        // YouTube-style autoplay when scroll stops
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
         ListHeaderComponent={
           <View style={styles.section}>
             <SectionHeader
@@ -909,5 +975,20 @@ const styles = StyleSheet.create({
     color: "#a1a1aa",
     fontSize: 13,
     marginTop: 4,
+  },
+
+  // Autoplay muted badge
+  mutedBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  mutedText: {
+    color: "#fff",
+    fontSize: 13,
   },
 });
