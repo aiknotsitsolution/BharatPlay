@@ -51,7 +51,7 @@ export default function WithdrawScreen() {
   const [ifsc, setIfsc] = useState("");
   const [bankName, setBankName] = useState("");
 
-  const usdBalance = (points * 0.01).toFixed(2);
+  const rupeeBalance = Number(points).toFixed(2);
 
   const methods = [
     {
@@ -133,10 +133,10 @@ export default function WithdrawScreen() {
       return;
     }
     if (withdrawAmount < selectedMethod.min) {
-      setError(`Minimum withdrawal is $${selectedMethod.min}`);
+      setError(`Minimum withdrawal is ₹${selectedMethod.min}`);
       return;
     }
-    if (withdrawAmount > parseFloat(usdBalance)) {
+    if (withdrawAmount > parseFloat(rupeeBalance)) {
       setError("Insufficient balance");
       return;
     }
@@ -208,13 +208,13 @@ export default function WithdrawScreen() {
 
       // Success Toast
       showToast(
-        `$${withdrawAmount.toFixed(2)} withdraw request submitted! Money will be credited within 45 working days.`,
+        `₹${withdrawAmount.toFixed(2)} withdrawal request submitted! Money will be credited within 45 working days.`,
       );
 
       // Also show Alert for better visibility
       Alert.alert(
         "Request Submitted ✅",
-        `Your withdrawal request of $${withdrawAmount.toFixed(2)} via ${selectedMethod.name} has been submitted successfully.\n\nYou will receive the money in your account within 45 working days.`,
+        `Your withdrawal request of ₹${withdrawAmount.toFixed(2)} via ${selectedMethod.name} has been submitted successfully.\n\nYou will receive the money in your account within 45 working days.`,
         [{ text: "OK" }],
       );
 
@@ -245,8 +245,6 @@ export default function WithdrawScreen() {
     >
       <Navbar onMenuPress={() => {}} points={0} />
 
-     
- 
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -257,12 +255,12 @@ export default function WithdrawScreen() {
           <View style={styles.balanceRow}>
             <View>
               <Text style={styles.balanceLabel}>Available Balance</Text>
-              <Text style={styles.balanceValue}>${usdBalance}</Text>
+              <Text style={styles.balanceValue}>₹{rupeeBalance}</Text>
             </View>
             <Wallet size={48} color="#facc15" style={{ opacity: 0.85 }} />
           </View>
           <Text style={styles.pointsText}>
-            ≈ {Number(points).toFixed(2)} Bitzo Points (1 point = $0.01)
+            ≈ {Number(points).toFixed(2)} Bitzo Points (1 point = ₹1)
           </Text>
         </View>
 
@@ -293,7 +291,7 @@ export default function WithdrawScreen() {
                   <View>
                     <Text style={styles.methodName}>{method.name}</Text>
                     <Text style={styles.methodMeta}>
-                      Min: ${method.min} • Fee: {method.fee}%
+                      Min: ₹{method.min} • Fee: {method.fee}%
                     </Text>
                   </View>
                 </View>
@@ -306,9 +304,9 @@ export default function WithdrawScreen() {
         {/* Amount Input */}
         {selectedMethod && (
           <View style={styles.amountSection}>
-            <Text style={styles.label}>Amount to Withdraw (USD)</Text>
+            <Text style={styles.label}>Amount to Withdraw (INR)</Text>
             <View style={styles.amountInputRow}>
-              <Text style={styles.currencySymbol}>$</Text>
+              <Text style={styles.currencySymbol}>₹</Text>
               <TextInput
                 style={styles.amountInput}
                 value={amount}
@@ -330,7 +328,7 @@ export default function WithdrawScreen() {
             ) : null}
 
             <Text style={styles.feeHint}>
-              You will receive ≈ $
+              You will receive ≈ ₹
               {(
                 (parseFloat(amount) || 0) *
                 (1 - selectedMethod.fee / 100)
