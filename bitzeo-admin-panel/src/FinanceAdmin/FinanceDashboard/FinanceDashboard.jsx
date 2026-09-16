@@ -1,9 +1,6 @@
-"use client";
-
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import toast from "react-hot-toast";
 import {
   LayoutDashboard,
   DollarSign,
@@ -33,6 +30,7 @@ import {
   Unlock,
   History,
   ChevronRight,
+  X,
 } from "lucide-react";
 
 const BASE_URL =
@@ -185,12 +183,12 @@ const TABS = [
 
 function StatCard({ title, value, sub, icon: Icon, trend, color = "indigo" }) {
   const colors = {
-    indigo: "bg-indigo-500/10 border-indigo-500/20 text-indigo-400",
+    indigo: "bg-bp-blue/10 border-bp-blue/20 text-bp-blue",
     emerald: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
-    amber: "bg-amber-500/10 border-amber-500/20 text-amber-400",
+    amber: "bg-bp-yellow/10 border-bp-yellow/20 text-bp-yellow",
     purple: "bg-purple-500/10 border-purple-500/20 text-purple-400",
     rose: "bg-rose-500/10 border-rose-500/20 text-rose-400",
-    blue: "bg-blue-500/10 border-blue-500/20 text-blue-400",
+    blue: "bg-bp-cyan/10 border-bp-cyan/20 text-bp-cyan",
   };
 
   return (
@@ -215,7 +213,7 @@ function StatCard({ title, value, sub, icon: Icon, trend, color = "indigo" }) {
           <span className={trend >= 0 ? "text-emerald-400" : "text-rose-400"}>
             {Math.abs(trend)}%
           </span>
-          <span className="text-gray-500">vs last period</span>
+          <span className="text-bp-text-muted">vs last period</span>
         </div>
       )}
     </div>
@@ -311,14 +309,14 @@ export default function FinanceDashboard() {
         />
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+      <div className="bg-bp-card border border-bp-border rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4">
           Quick Actions
         </h3>
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => setActiveTab("wallets")}
-            className="px-4 py-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 rounded-lg text-sm hover:bg-indigo-600/30 transition"
+            className="px-4 py-2 bg-bp-blue/20 text-bp-cyan border border-bp-blue/30 rounded-lg text-sm hover:bg-bp-blue/30 transition"
           >
             Review Withdrawals
           </button>
@@ -347,19 +345,19 @@ export default function FinanceDashboard() {
           <h2 className="text-lg font-semibold text-white">
             Ad Revenue Monitoring
           </h2>
-          <p className="text-sm text-gray-500">Last sync: 12 min ago</p>
+          <p className="text-sm text-bp-text-muted">Last sync: 12 min ago</p>
         </div>
         <div className="flex gap-2">
           <select
             value={countryFilter}
             onChange={(e) => setCountryFilter(e.target.value)}
-            className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-sm text-white outline-none focus:ring-2 focus:ring-bp-blue"
           >
             <option value="all">All Countries</option>
             <option value="india">India</option>
             <option value="intl">International</option>
           </select>
-          <button className="flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 hover:bg-gray-700 transition">
+          <button className="flex items-center gap-2 px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-sm text-white hover:bg-bp-border transition">
             <RefreshCw size={14} />
             Sync Now
           </button>
@@ -390,9 +388,9 @@ export default function FinanceDashboard() {
         />
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <div className="bg-bp-card border border-bp-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-800/50 text-gray-400 text-xs uppercase">
+          <thead className="bg-bp-elevated/50 text-bp-text-secondary text-xs uppercase">
             <tr>
               <th className="px-5 py-3 text-left">Network</th>
               <th className="px-5 py-3 text-left">Ad Type</th>
@@ -401,17 +399,17 @@ export default function FinanceDashboard() {
               <th className="px-5 py-3 text-center">Sync</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800">
+          <tbody className="divide-y divide-bp-border">
             {MOCK_CPM.map((row, i) => (
-              <tr key={i} className="hover:bg-gray-800/40 transition">
-                <td className="px-5 py-3.5 font-medium text-gray-200">
+              <tr key={i} className="hover:bg-bp-elevated/40 transition">
+                <td className="px-5 py-3.5 font-medium text-white">
                   {row.network}
                 </td>
-                <td className="px-5 py-3.5 text-gray-400">{row.type}</td>
-                <td className="px-5 py-3.5 text-right text-gray-300">
+                <td className="px-5 py-3.5 text-bp-text-secondary">{row.type}</td>
+                <td className="px-5 py-3.5 text-right text-white">
                   ${row.india}
                 </td>
-                <td className="px-5 py-3.5 text-right text-gray-300">
+                <td className="px-5 py-3.5 text-right text-white">
                   ${row.intl}
                 </td>
                 <td className="px-5 py-3.5 text-center">
@@ -419,7 +417,7 @@ export default function FinanceDashboard() {
                     className={`px-2 py-0.5 text-xs rounded-full ${
                       row.status === "synced"
                         ? "bg-emerald-500/15 text-emerald-400"
-                        : "bg-amber-500/15 text-amber-400"
+                        : "bg-bp-yellow/15 text-bp-yellow"
                     }`}
                   >
                     {row.status}
@@ -431,14 +429,14 @@ export default function FinanceDashboard() {
         </table>
       </div>
 
-      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
+      <div className="bg-bp-yellow/10 border border-bp-yellow/20 rounded-xl p-4 flex items-start gap-3">
         <AlertTriangle
           size={18}
-          className="text-amber-400 mt-0.5 flex-shrink-0"
+          className="text-bp-yellow mt-0.5 flex-shrink-0"
         />
         <div>
           <p className="text-sm font-medium text-amber-300">CPM Alert</p>
-          <p className="text-xs text-amber-400/80 mt-0.5">
+          <p className="text-xs text-bp-yellow/80 mt-0.5">
             Meta Native India CPM dropped 18% in last 24h. Review recommended.
           </p>
         </div>
@@ -476,15 +474,15 @@ export default function FinanceDashboard() {
         />
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+      <div className="bg-bp-card border border-bp-border rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-bp-border flex items-center justify-between">
           <h3 className="font-semibold text-white">Withdrawal Queue</h3>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-bp-text-muted">
             {MOCK_WALLETS.withdrawalQueue.length} pending
           </span>
         </div>
         <table className="w-full text-sm">
-          <thead className="bg-gray-800/50 text-gray-400 text-xs uppercase">
+          <thead className="bg-bp-elevated/50 text-bp-text-secondary text-xs uppercase">
             <tr>
               <th className="px-5 py-3 text-left">User</th>
               <th className="px-5 py-3 text-left">Type</th>
@@ -493,27 +491,27 @@ export default function FinanceDashboard() {
               <th className="px-5 py-3 text-center">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800">
+          <tbody className="divide-y divide-bp-border">
             {MOCK_WALLETS.withdrawalQueue.map((w) => (
-              <tr key={w.id} className="hover:bg-gray-800/40 transition">
-                <td className="px-5 py-3.5 font-medium text-gray-200">
+              <tr key={w.id} className="hover:bg-bp-elevated/40 transition">
+                <td className="px-5 py-3.5 font-medium text-white">
                   {w.user}
                 </td>
                 <td className="px-5 py-3.5">
                   <span
                     className={`px-2 py-0.5 text-xs rounded-full capitalize ${
                       w.type === "creator"
-                        ? "bg-indigo-500/15 text-indigo-400"
-                        : "bg-blue-500/15 text-blue-400"
+                        ? "bg-bp-blue/15 text-bp-blue"
+                        : "bg-bp-cyan/15 text-bp-cyan"
                     }`}
                   >
                     {w.type}
                   </span>
                 </td>
-                <td className="px-5 py-3.5 text-right font-medium text-gray-200">
+                <td className="px-5 py-3.5 text-right font-medium text-white">
                   {formatINR(w.amount)}
                 </td>
-                <td className="px-5 py-3.5 text-gray-500">{w.date}</td>
+                <td className="px-5 py-3.5 text-bp-text-muted">{w.date}</td>
                 <td className="px-5 py-3.5">
                   <div className="flex items-center justify-center gap-2">
                     <button
@@ -543,44 +541,44 @@ export default function FinanceDashboard() {
   // ================= TRUST =================
   const renderTrust = () => (
     <div className="space-y-6">
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      <div className="bg-bp-card border border-bp-border rounded-xl p-5">
         <h3 className="font-semibold text-white mb-4">Manual Trust Adjust</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <input
             placeholder="User email or ID"
-            className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-4 py-2.5 bg-bp-elevated border border-bp-border rounded-lg text-white placeholder:text-bp-text-muted outline-none focus:ring-2 focus:ring-bp-blue"
           />
           <input
             type="number"
             placeholder="New score (0-100)"
             min={0}
             max={100}
-            className="px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-4 py-2.5 bg-bp-elevated border border-bp-border rounded-lg text-white placeholder:text-bp-text-muted outline-none focus:ring-2 focus:ring-bp-blue"
           />
           <button
             onClick={handleTrustAdjust}
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition"
+            className="px-4 py-2.5 bg-bp-blue hover:bg-bp-blue text-white rounded-lg font-medium transition"
           >
             Update Score
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-bp-text-muted mt-2">
           All adjustments are logged with admin ID + timestamp.
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <div className="bg-bp-card border border-bp-border rounded-xl p-5">
           <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
             <Ban size={18} className="text-rose-400" />
             Freeze User
           </h3>
           <input
             placeholder="User email or ID"
-            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+            className="w-full px-4 py-2.5 bg-bp-elevated border border-bp-border rounded-lg text-white placeholder:text-bp-text-muted outline-none focus:ring-2 focus:ring-bp-blue mb-3"
           />
           <div className="flex gap-2">
-            <button className="flex-1 py-2 bg-amber-600/20 text-amber-300 border border-amber-500/30 rounded-lg text-sm hover:bg-amber-600/30 transition">
+            <button className="flex-1 py-2 bg-amber-600/20 text-amber-300 border border-bp-yellow/30 rounded-lg text-sm hover:bg-amber-600/30 transition">
               Temporary
             </button>
             <button className="flex-1 py-2 bg-rose-600/20 text-rose-300 border border-rose-500/30 rounded-lg text-sm hover:bg-rose-600/30 transition">
@@ -589,14 +587,14 @@ export default function FinanceDashboard() {
           </div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <div className="bg-bp-card border border-bp-border rounded-xl p-5">
           <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
             <Unlock size={18} className="text-emerald-400" />
             Unfreeze User
           </h3>
           <input
             placeholder="User email or ID"
-            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+            className="w-full px-4 py-2.5 bg-bp-elevated border border-bp-border rounded-lg text-white placeholder:text-bp-text-muted outline-none focus:ring-2 focus:ring-bp-blue mb-3"
           />
           <button className="w-full py-2 bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-sm hover:bg-emerald-600/30 transition">
             Restore Account
@@ -620,18 +618,18 @@ export default function FinanceDashboard() {
         {MOCK_FLAGGED.map((f) => (
           <div
             key={f.id}
-            className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4"
+            className="bg-bp-card border border-bp-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4"
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="font-medium text-gray-200">{f.user}</p>
+                <p className="font-medium text-white">{f.user}</p>
                 <span className="px-2 py-0.5 text-xs rounded-full bg-rose-500/15 text-rose-400">
                   {f.reason}
                 </span>
               </div>
-              <p className="text-sm text-gray-500 mt-1">{f.evidence}</p>
-              <p className="text-xs text-gray-600 mt-1">
-                Trust: {f.score} • {f.date}
+              <p className="text-sm text-bp-text-muted mt-1">{f.evidence}</p>
+              <p className="text-xs text-bp-text-muted mt-1">
+                Trust: {f.score} â€¢ {f.date}
               </p>
             </div>
             <div className="flex gap-2 flex-shrink-0">
@@ -643,7 +641,7 @@ export default function FinanceDashboard() {
               </button>
               <button
                 onClick={() => handleFraudAction(f.id, "clear")}
-                className="px-3 py-1.5 text-sm bg-gray-800 text-gray-300 border border-gray-700 rounded-lg hover:bg-gray-700 transition"
+                className="px-3 py-1.5 text-sm bg-bp-elevated text-white border border-bp-border rounded-lg hover:bg-bp-border transition"
               >
                 Clear
               </button>
@@ -660,19 +658,28 @@ export default function FinanceDashboard() {
       <div className="relative max-w-md">
         <Search
           size={16}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-bp-text-muted pointer-events-none"
         />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search creators..."
-          className="w-full pl-9 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl text-sm text-white placeholder:text-bp-text-muted outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
         />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <div className="bg-bp-card border border-bp-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-800/50 text-gray-400 text-xs uppercase">
+          <thead className="bg-bp-elevated/50 text-bp-text-secondary text-xs uppercase">
             <tr>
               <th className="px-5 py-3 text-left">Creator</th>
               <th className="px-5 py-3 text-right">Earnings</th>
@@ -682,25 +689,25 @@ export default function FinanceDashboard() {
               <th className="px-5 py-3 text-center">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800">
+          <tbody className="divide-y divide-bp-border">
             {MOCK_CREATORS.filter((c) =>
               c.name.toLowerCase().includes(search.toLowerCase()),
             ).map((c) => (
-              <tr key={c.id} className="hover:bg-gray-800/40 transition">
-                <td className="px-5 py-3.5 font-medium text-gray-200">
+              <tr key={c.id} className="hover:bg-bp-elevated/40 transition">
+                <td className="px-5 py-3.5 font-medium text-white">
                   {c.name}
                 </td>
                 <td className="px-5 py-3.5 text-right text-emerald-400">
                   {formatINR(c.earnings)}
                 </td>
-                <td className="px-5 py-3.5 text-center text-gray-300">
+                <td className="px-5 py-3.5 text-center text-white">
                   {c.videos}
                 </td>
                 <td className="px-5 py-3.5 text-center">
                   {c.flags > 0 ? (
                     <span className="text-rose-400 font-medium">{c.flags}</span>
                   ) : (
-                    <span className="text-gray-500">0</span>
+                    <span className="text-bp-text-muted">0</span>
                   )}
                 </td>
                 <td className="px-5 py-3.5 text-center">
@@ -708,14 +715,14 @@ export default function FinanceDashboard() {
                     className={`px-2 py-0.5 text-xs rounded-full capitalize ${
                       c.status === "active"
                         ? "bg-emerald-500/15 text-emerald-400"
-                        : "bg-amber-500/15 text-amber-400"
+                        : "bg-bp-yellow/15 text-bp-yellow"
                     }`}
                   >
                     {c.status}
                   </span>
                 </td>
                 <td className="px-5 py-3.5 text-center">
-                  <button className="text-indigo-400 hover:text-indigo-300 text-sm">
+                  <button className="text-bp-blue hover:text-bp-cyan text-sm">
                     View
                   </button>
                 </td>
@@ -730,16 +737,16 @@ export default function FinanceDashboard() {
   // ================= CONFIG =================
   const renderConfig = () => (
     <div className="space-y-6 max-w-2xl">
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-5">
+      <div className="bg-bp-card border border-bp-border rounded-xl p-5 space-y-5">
         <h3 className="font-semibold text-white">Revenue Share</h3>
-        <div className="flex items-center justify-between py-3 border-b border-gray-800">
+        <div className="flex items-center justify-between py-3 border-b border-bp-border">
           <div>
-            <p className="text-gray-200">Platform / Creator / Viewer</p>
-            <p className="text-xs text-gray-500">
-              Locked — contact Super Admin
+            <p className="text-white">Platform / Creator / Viewer</p>
+            <p className="text-xs text-bp-text-muted">
+              Locked â€” contact Super Admin
             </p>
           </div>
-          <span className="flex items-center gap-1.5 text-sm text-gray-400">
+          <span className="flex items-center gap-1.5 text-sm text-bp-text-secondary">
             <Lock size={14} />
             40 / 40 / 20
           </span>
@@ -747,11 +754,11 @@ export default function FinanceDashboard() {
 
         <h3 className="font-semibold text-white pt-2">Country Availability</h3>
         <div className="flex items-center justify-between py-2">
-          <span className="text-gray-300">India</span>
+          <span className="text-white">India</span>
           <button
             onClick={() => setIndiaEnabled(!indiaEnabled)}
             className={`w-11 h-6 rounded-full transition relative ${
-              indiaEnabled ? "bg-indigo-600" : "bg-gray-700"
+              indiaEnabled ? "bg-bp-blue" : "bg-bp-border"
             }`}
           >
             <span
@@ -763,11 +770,11 @@ export default function FinanceDashboard() {
           </button>
         </div>
         <div className="flex items-center justify-between py-2">
-          <span className="text-gray-300">International</span>
+          <span className="text-white">International</span>
           <button
             onClick={() => setIntlEnabled(!intlEnabled)}
             className={`w-11 h-6 rounded-full transition relative ${
-              intlEnabled ? "bg-indigo-600" : "bg-gray-700"
+              intlEnabled ? "bg-bp-blue" : "bg-bp-border"
             }`}
           >
             <span
@@ -780,8 +787,8 @@ export default function FinanceDashboard() {
         <h3 className="font-semibold text-white pt-2">Maintenance Mode</h3>
         <div className="flex items-center justify-between py-2">
           <div>
-            <p className="text-gray-300">Platform maintenance</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-white">Platform maintenance</p>
+            <p className="text-xs text-bp-text-muted">
               Users see maintenance screen
             </p>
           </div>
@@ -793,7 +800,7 @@ export default function FinanceDashboard() {
               );
             }}
             className={`w-11 h-6 rounded-full transition relative ${
-              maintenanceMode ? "bg-rose-600" : "bg-gray-700"
+              maintenanceMode ? "bg-rose-600" : "bg-bp-border"
             }`}
           >
             <span
@@ -813,25 +820,25 @@ export default function FinanceDashboard() {
         {["All", "Admin", "Earnings", "Fraud"].map((t) => (
           <button
             key={t}
-            className="px-3 py-1.5 text-sm rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition"
+            className="px-3 py-1.5 text-sm rounded-lg border border-bp-border text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text transition"
           >
             {t}
           </button>
         ))}
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl divide-y divide-gray-800">
+      <div className="bg-bp-card border border-bp-border rounded-xl divide-y divide-bp-border">
         {[
           {
             action: "Payout approved",
             user: "admin@vidoo",
-            target: "Rahul S. ₹850",
+            target: "Rahul S. â‚¹850",
             time: "10 min ago",
           },
           {
             action: "Trust score adjusted",
             user: "finance@vidoo",
-            target: "user_882 → 45",
+            target: "user_882 â†’ 45",
             time: "1h ago",
           },
           {
@@ -849,24 +856,24 @@ export default function FinanceDashboard() {
           {
             action: "Withdrawal rejected",
             user: "finance@vidoo",
-            target: "Unknown ₹1200",
+            target: "Unknown â‚¹1200",
             time: "5h ago",
           },
         ].map((log, i) => (
           <div
             key={i}
-            className="px-5 py-3.5 flex items-center gap-4 hover:bg-gray-800/30 transition"
+            className="px-5 py-3.5 flex items-center gap-4 hover:bg-bp-elevated/30 transition"
           >
-            <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center flex-shrink-0">
-              <History size={14} className="text-gray-500" />
+            <div className="w-8 h-8 rounded-full bg-bp-elevated flex items-center justify-center flex-shrink-0">
+              <History size={14} className="text-bp-text-muted" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-200">{log.action}</p>
-              <p className="text-xs text-gray-500">
-                {log.user} → {log.target}
+              <p className="text-sm text-white">{log.action}</p>
+              <p className="text-xs text-bp-text-muted">
+                {log.user} â†’ {log.target}
               </p>
             </div>
-            <span className="text-xs text-gray-600 flex-shrink-0">
+            <span className="text-xs text-bp-text-muted flex-shrink-0">
               {log.time}
             </span>
           </div>
@@ -887,16 +894,15 @@ export default function FinanceDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      <ToastContainer position="top-right" autoClose={3000} theme="dark" />
+    <div className="min-h-screen bg-bp-navy text-white">
 
-      <div className="max-w-7xl mx-auto p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-white">
             Finance Dashboard
           </h1>
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="text-bp-text-secondary text-[13px] mt-1">
             Earning monitoring • Security controls • System oversight
           </p>
         </div>
@@ -912,8 +918,8 @@ export default function FinanceDashboard() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
                   active
-                    ? "bg-indigo-600 text-white"
-                    : "bg-gray-900 text-gray-400 border border-gray-800 hover:bg-gray-800 hover:text-gray-200"
+                    ? "bg-bp-blue text-white"
+                    : "bg-bp-card text-bp-text-secondary border border-bp-border hover:bg-bp-elevated hover:text-bp-text"
                 }`}
               >
                 <Icon size={16} />

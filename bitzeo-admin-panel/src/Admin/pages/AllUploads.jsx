@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+﻿import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import DataTable from "react-data-table-component";
 import {
   Search,
+  X,
   Loader2,
   AlertTriangle,
-  Upload,
   Film,
   Video,
 } from "lucide-react";
@@ -106,7 +106,7 @@ export default function AllUploads() {
             : null;
           return (
             <div className="flex items-center gap-3 py-1">
-              <div className="w-24 h-14 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
+              <div className="w-24 h-14 rounded-lg overflow-hidden bg-bp-elevated flex-shrink-0">
                 {thumbSrc ? (
                   <img
                     src={thumbSrc}
@@ -115,17 +115,17 @@ export default function AllUploads() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <Video size={18} className="text-gray-600" />
+                    <Video size={18} className="text-bp-text-muted" />
                   </div>
                 )}
               </div>
               <div className="min-w-0">
-                <p className="font-medium text-gray-200 truncate max-w-[200px]">
+                <p className="font-medium text-white truncate max-w-[200px]">
                   {row.title}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-bp-text-muted mt-0.5">
                   {row.category?.name || "—"}
-                  {" · "}
+                  {" • "}
                   {formatDuration(row.duration)}
                 </p>
               </div>
@@ -139,14 +139,14 @@ export default function AllUploads() {
         grow: 1,
         cell: (row) => (
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-bp-blue/20 text-bp-blue flex items-center justify-center text-xs font-bold flex-shrink-0">
               {row.uploadedBy?.name?.charAt(0)?.toUpperCase() || "U"}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-200 truncate">
+              <p className="text-sm font-medium text-white truncate">
                 {row.uploadedBy?.name || "Unknown"}
               </p>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-bp-text-muted truncate">
                 {row.uploadedBy?.email || "—"}
               </p>
             </div>
@@ -170,7 +170,7 @@ export default function AllUploads() {
             <span
               className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
                 isVideo
-                  ? "bg-blue-500/15 text-blue-400 border border-blue-500/20"
+                  ? "bg-bp-cyan/15 text-bp-cyan border border-bp-cyan/20"
                   : "bg-pink-500/15 text-pink-400 border border-pink-500/20"
               }`}
             >
@@ -185,7 +185,7 @@ export default function AllUploads() {
         sortable: true,
         width: "90px",
         cell: (row) => (
-          <span className="text-gray-300 font-medium">
+          <span className="text-white font-medium">
             {(row.views || 0).toLocaleString()}
           </span>
         ),
@@ -196,7 +196,7 @@ export default function AllUploads() {
         sortable: true,
         width: "90px",
         cell: (row) => (
-          <span className="text-gray-300 font-medium">
+          <span className="text-white font-medium">
             {(row.likesCount || 0).toLocaleString()}
           </span>
         ),
@@ -207,7 +207,7 @@ export default function AllUploads() {
         sortable: true,
         width: "110px",
         cell: (row) => (
-          <span className="text-gray-300 font-medium">
+          <span className="text-white font-medium">
             {(row.commentCount || 0).toLocaleString()}
           </span>
         ),
@@ -218,7 +218,7 @@ export default function AllUploads() {
         sortable: true,
         width: "120px",
         cell: (row) => (
-          <span className="text-gray-500 text-sm">
+          <span className="text-bp-text-muted text-sm">
             {new Date(row.createdAt).toLocaleDateString()}
           </span>
         ),
@@ -231,15 +231,14 @@ export default function AllUploads() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Upload className="w-6 h-6 text-blue-400" />
+        <h1 className="text-2xl font-bold text-white">
           Uploads
         </h1>
-        <p className="text-gray-400 mt-1">Manage all videos and shorts</p>
+        <p className="text-[13px] text-bp-text-secondary mt-1">Manage all videos and shorts</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
+      <div className="flex items-center gap-1 bg-bp-card border border-bp-border rounded-xl p-1 w-fit">
         {TAB_DEFS.map((t) => {
           const isActive = activeTab === t.key;
           const count = counts[t.key] || 0;
@@ -249,8 +248,8 @@ export default function AllUploads() {
               onClick={() => handleTabChange(t.key)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                 isActive
-                  ? "bg-indigo-600 text-white"
-                  : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                  ? "bg-bp-blue text-white"
+                  : "text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated"
               }`}
             >
               {t.label}
@@ -258,7 +257,7 @@ export default function AllUploads() {
                 className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
                   isActive
                     ? "bg-white/20 text-white"
-                    : "bg-gray-800 text-gray-500"
+                    : "bg-bp-elevated text-bp-text-muted"
                 }`}
               >
                 {count.toLocaleString()}
@@ -271,16 +270,25 @@ export default function AllUploads() {
       {/* Search */}
       <div className="relative max-w-md">
         <Search
-          size={18}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+          size={16}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-bp-text-muted pointer-events-none"
         />
         <input
           type="text"
           placeholder="Search uploads..."
           value={searchInput}
           onChange={handleSearchChange}
-          className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl text-sm text-bp-text placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
         />
+        {searchInput && (
+          <button
+            type="button"
+            onClick={() => handleSearchChange({ target: { value: "" } })}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
 
       {/* Error */}
@@ -298,21 +306,21 @@ export default function AllUploads() {
       )}
 
       {/* Data Table */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+      <div className="bg-bp-card rounded-xl border border-bp-border overflow-hidden">
         <DataTable
           columns={columns}
           data={items}
           progressPending={_loading && !_loaded}
           progressComponent={
             <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 size={40} className="animate-spin text-indigo-400 mb-3" />
-              <p className="text-gray-400">Loading uploads...</p>
+              <Loader2 size={40} className="animate-spin text-bp-blue mb-3" />
+              <p className="text-bp-text-secondary">Loading uploads...</p>
             </div>
           }
           noDataComponent={
-            <div className="text-center py-20 text-gray-500">
+            <div className="text-center py-20 text-bp-text-muted">
               <Film size={40} className="mx-auto mb-3 opacity-40" />
-              <p className="text-lg font-medium text-gray-400">
+              <p className="text-lg font-medium text-bp-text-secondary">
                 {_search
                   ? `No uploads found for "${_search}"`
                   : "No uploads yet"}

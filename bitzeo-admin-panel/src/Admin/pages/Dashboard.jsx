@@ -1,16 +1,6 @@
-import {
-  BarChart3,
-  Users,
-  ShoppingCart,
-  DollarSign,
-  Video,
-  UserPlus,
-  Upload,
-  Eye,
-  TrendingUp,
-  Clock,
-  ArrowUpRight,
-  Play,
+﻿import {
+  Users, ShoppingCart, DollarSign, Video, UserPlus, Upload,
+  Eye, TrendingUp, TrendingDown, Clock, ArrowUpRight, Play, BarChart3,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useDashboardData from "../../hooks/useDashboardData";
@@ -19,64 +9,222 @@ const getAdminDisplayName = () => {
   try {
     const savedUser = JSON.parse(localStorage.getItem("adminUser") || "null");
     return savedUser?.name || "Admin";
-  } catch {
-    return "Admin";
-  }
+  } catch { return "Admin"; }
 };
 
-const StatCard = ({ title, value, change, icon: Icon, color, bg }) => (
-  <div className="bg-gray-900 p-5 rounded-2xl border border-gray-800 hover:border-gray-700 transition-all">
-    <div className="flex items-start justify-between">
-      <div>
-        <p className="text-sm text-gray-400 font-medium">{title}</p>
-        <p className="text-2xl font-bold text-white mt-1">{value}</p>
-        {change && (
-          <p
-            className={`text-xs font-medium mt-2 flex items-center gap-1 ${
-              change.startsWith("+") ? "text-emerald-400" : "text-red-400"
-            }`}
-          >
-            <TrendingUp className="w-3.5 h-3.5" />
-            {change} from last week
-          </p>
-        )}
-      </div>
-      <div className={`p-3 rounded-xl ${bg}`}>
-        <Icon className={`w-5 h-5 ${color}`} />
-      </div>
-    </div>
-  </div>
-);
+const STAT_CONFIG = [
+  { key: "revenue", title: "Total Revenue", value: "₹1,24,890", change: "+12.5%", icon: DollarSign, accent: "from-emerald-500 to-emerald-400", iconBg: "bg-emerald-500/10", iconColor: "text-emerald-400", glow: "stat-glow-green" },
+  { key: "orders", title: "New Orders", value: "342", change: "+8.2%", icon: ShoppingCart, accent: "from-bp-blue to-blue-400", iconBg: "bg-bp-blue/10", iconColor: "text-bp-blue", glow: "stat-glow-blue" },
+  { key: "users", title: "Active Users", dynamic: "activeUsers", icon: Users, accent: "from-bp-cyan to-cyan-300", iconBg: "bg-bp-cyan/10", iconColor: "text-bp-cyan", glow: "stat-glow-cyan" },
+  { key: "videos", title: "Videos Uploaded", dynamic: "totalVideos", icon: Video, accent: "from-bp-yellow to-amber-300", iconBg: "bg-bp-yellow/10", iconColor: "text-bp-yellow", glow: "stat-glow-yellow" },
+];
 
-// Helpers for real data
 const formatRelativeTime = (iso) => {
   if (!iso) return "just now";
   const diff = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 };
 
 const formatCount = (n) => {
-  const value = Number(n) || 0;
-  if (value >= 1000) return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}k`;
-  return value.toLocaleString();
+  const v = Number(n) || 0;
+  if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+  if (v >= 1000) return `${(v / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+  return v.toLocaleString();
 };
 
+/* ═══════════════ STAT CARD ═══════════════ */
+function StatCard({ title, value, change, icon: Icon, accent, iconBg, iconColor, glow }) {
+  const isPositive = change?.startsWith("+");
+  return (
+    <div className={`gradient-border-card card-top-highlight ${glow} group`}>
+      <div className="relative p-5 flex flex-col gap-3">
+        {/* Top row: icon + trend */}
+        <div className="flex items-center justify-between">
+          <div className={`p-2.5 rounded-xl ${iconBg}`}>
+            <Icon className={`w-5 h-5 ${iconColor}`} strokeWidth={1.8} />
+          </div>
+          {change && (
+            <span className={`badge ${isPositive ? "text-emerald-400 bg-emerald-500/10" : "text-red-400 bg-red-500/10"}`}>
+              {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              {change}
+            </span>
+          )}
+        </div>
+        {/* Bottom row: label + value */}
+        <div className="space-y-1">
+          <p className="text-[13px] text-bp-text-muted font-medium">{title}</p>
+          <p className="text-[28px] font-bold text-bp-text tracking-tight leading-none">{value}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ WEEKLY CHART ═══════════════ */
+function WeeklyChart({ data, maxUsers }) {
+  const maxVal = Math.max(maxUsers, ...data.map(d => d.videos), 1);
+  return (
+    <div className="gradient-border-card h-full flex flex-col">
+      <div className="relative p-6 flex-1 flex flex-col">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="section-title">Weekly Overview</h3>
+            <p className="text-[12px] text-bp-text-muted mt-0.5">Users & uploads this week</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-bp-blue" />
+              <span className="text-[11px] text-bp-text-muted">Users</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-bp-orange" />
+              <span className="text-[11px] text-bp-text-muted">Videos</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-end gap-2 flex-1 min-h-[200px]">
+          {data.map((item) => (
+            <div key={item.day} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+              <div className="w-full flex items-end justify-center gap-[3px] h-[160px]">
+                <div
+                  className="chart-bar w-full max-w-[14px] bg-gradient-to-t from-bp-blue/80 to-bp-blue"
+                  style={{ height: `${(item.users / maxVal) * 100}%`, color: "rgba(59,130,246,0.3)" }}
+                  title={`${item.users} users`}
+                />
+                <div
+                  className="chart-bar w-full max-w-[14px] bg-gradient-to-t from-bp-orange/80 to-bp-orange"
+                  style={{ height: `${(item.videos / maxVal) * 100}%`, color: "rgba(249,115,22,0.3)" }}
+                  title={`${item.videos} videos`}
+                />
+              </div>
+              <span className="text-[11px] font-medium text-bp-text-muted">{item.day}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ SNAPSHOT ═══════════════ */
+function TodaySnapshot({ snapshot }) {
+  const items = [
+    { label: "New Users", sub: "Joined today", value: snapshot.newUsers ?? 0, icon: UserPlus, color: "text-bp-blue", bg: "bg-bp-blue/10", glow: "snapshot-glow-blue" },
+    { label: "Videos Uploaded", sub: "Uploaded today", value: snapshot.videosUploaded ?? 0, icon: Upload, color: "text-bp-orange", bg: "bg-bp-orange/10", glow: "snapshot-glow-orange" },
+    { label: "Total Views", sub: "Across all videos", value: formatCount(snapshot.totalViews), icon: Eye, color: "text-emerald-400", bg: "bg-emerald-500/10", glow: "snapshot-glow-green" },
+    { label: "Watch Time", sub: "Hours watched", value: `${snapshot.watchTime ?? 0}h`, icon: Play, color: "text-bp-yellow", bg: "bg-bp-yellow/10", glow: "snapshot-glow-yellow" },
+  ];
+
+  return (
+    <div className="gradient-border-card h-full">
+      <div className="relative p-6 h-full">
+        <h3 className="section-title mb-4">Today's Snapshot</h3>
+        <div className="space-y-2">
+          {items.map((item) => (
+            <div key={item.label} className={`snapshot-row ${item.glow}`}>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${item.bg}`}>
+                  <item.icon className={`w-4 h-4 ${item.color}`} strokeWidth={1.8} />
+                </div>
+                <div>
+                  <p className="text-[13px] font-medium text-bp-text">{item.label}</p>
+                  <p className="text-[11px] text-bp-text-muted">{item.sub}</p>
+                </div>
+              </div>
+              <p className={`text-[20px] font-bold ${item.color}`}>{item.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ RECENT SECTIONS ═══════════════ */
+function RecentUsers({ users, onNavigate }) {
+  return (
+    <div className="gradient-border-card">
+      <div className="relative p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="section-title">Recent Users</h3>
+          <button onClick={onNavigate} className="text-[12px] font-medium text-bp-blue hover:text-bp-cyan flex items-center gap-1 transition-colors">
+            View all <ArrowUpRight className="w-3 h-3" />
+          </button>
+        </div>
+        <div className="space-y-0.5">
+          {users.map((user) => (
+            <div key={user.id} className="list-item">
+              <div className="relative shrink-0">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-bp-blue to-bp-cyan flex items-center justify-center text-white text-[11px] font-bold">
+                  {user.avatar}
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-bp-text truncate">{user.name}</p>
+                <p className="text-[12px] text-bp-text-muted truncate">{user.email}</p>
+              </div>
+              <span className="text-[11px] text-bp-text-muted shrink-0">{user.joined}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecentUploads({ videos, onNavigate }) {
+  return (
+    <div className="gradient-border-card">
+      <div className="relative p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="section-title">Recent Uploads</h3>
+          <button onClick={onNavigate} className="text-[12px] font-medium text-bp-orange hover:text-bp-yellow flex items-center gap-1 transition-colors">
+            View all <ArrowUpRight className="w-3 h-3" />
+          </button>
+        </div>
+        <div className="space-y-0.5">
+          {videos.map((video) => (
+            <div key={video.id} className="list-item">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-bp-orange/20 to-bp-yellow/20 flex items-center justify-center shrink-0">
+                <Play className="w-4 h-4 text-bp-orange" fill="currentColor" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-bp-text truncate">{video.title}</p>
+                <p className="text-[12px] text-bp-text-muted truncate">
+                  by <span className="text-bp-text-secondary font-medium">{video.uploadedBy}</span>
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="flex items-center gap-1 text-[11px] text-bp-text-muted">
+                  <Eye className="w-3 h-3" /> {video.views.toLocaleString()}
+                </div>
+                <span className="text-[11px] text-bp-text-muted">{video.time}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ MAIN DASHBOARD ═══════════════ */
 export default function Dashboard() {
-const navigate = useNavigate();
+  const navigate = useNavigate();
   const { data, generatedAt, loading, error, refetch } = useDashboardData();
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm text-gray-400">Loading dashboard...</p>
+          <div className="w-6 h-6 border-2 border-bp-blue border-t-transparent rounded-full animate-spin" />
+          <p className="text-[13px] text-bp-text-muted">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -85,18 +233,10 @@ const navigate = useNavigate();
   if (error === "unauthorized") {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-3">
-          <p className="text-gray-200 font-medium">
-            Session expired or unauthorized
-          </p>
-          <button
-            onClick={() => {
-              localStorage.removeItem("adminToken");
-              localStorage.removeItem("adminUser");
-              window.location.href = "/login";
-            }}
-            className="px-4 py-2 text-sm bg-violet-600 hover:bg-violet-500 text-white rounded-lg"
-          >
+        <div className="text-center space-y-4">
+          <p className="text-bp-text font-medium">Session expired</p>
+          <button onClick={() => { localStorage.removeItem("adminToken"); localStorage.removeItem("adminUser"); window.location.href = "/login"; }}
+            className="px-4 py-2 text-[13px] bg-bp-blue hover:bg-bp-blue/90 text-white rounded-lg transition-colors font-medium">
             Go to Login
           </button>
         </div>
@@ -107,12 +247,9 @@ const navigate = useNavigate();
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-3">
+        <div className="text-center space-y-4">
           <p className="text-red-400 font-medium">{error}</p>
-          <button
-            onClick={refetch}
-            className="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 text-white rounded-lg"
-          >
+          <button onClick={refetch} className="px-4 py-2 text-[13px] bg-bp-card hover:bg-bp-elevated text-bp-text rounded-lg border border-bp-border transition-colors font-medium">
             Retry
           </button>
         </div>
@@ -126,284 +263,55 @@ const navigate = useNavigate();
   const recentUsers = data?.recentUsers || [];
   const recentVideos = data?.recentUploads || [];
   const maxUsers = Math.max(...weeklyData.map((d) => d.users), 1);
-  const lastUpdated = generatedAt
-    ? formatRelativeTime(generatedAt)
-    : "just now";
+  const lastUpdated = generatedAt ? formatRelativeTime(generatedAt) : "just now";
 
   return (
-    <div className="space-y-7 p-1">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="space-y-8 animate-fade-in">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-gray-400 mt-0.5">
-            Welcome back, {getAdminDisplayName()} 👋 Here’s what’s happening
-            today
+          <h1 className="text-2xl font-bold text-bp-text tracking-tight">Dashboard</h1>
+          <p className="text-[13px] text-bp-text-muted mt-1">
+            Welcome back, <span className="text-bp-text-secondary font-medium">{getAdminDisplayName()}</span>. Here's what's happening today.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-400 bg-gray-900 border border-gray-800 px-3 py-1.5 rounded-lg">
-          <Clock className="w-4 h-4" />
-          <span>Last updated: {lastUpdated}</span>
+        <div className="flex items-center gap-1.5 text-[12px] text-bp-text-muted">
+          <Clock className="w-3.5 h-3.5" />
+          <span>Updated {lastUpdated}</span>
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Revenue"
-          value="₹1,24,890"
-          change="+12.5%"
-          icon={DollarSign}
-          color="text-emerald-400"
-          bg="bg-emerald-500/15"
-        />
-        <StatCard
-          title="New Orders"
-          value="342"
-          change="+8.2%"
-          icon={ShoppingCart}
-          color="text-blue-400"
-          bg="bg-blue-500/15"
-        />
-        <StatCard
-          title="Active Users"
-          value={(stats.activeUsers ?? 0).toLocaleString()}
-          icon={Users}
-          color="text-violet-400"
-          bg="bg-violet-500/15"
-        />
-        <StatCard
-          title="Videos Uploaded"
-          value={(stats.totalVideos ?? 0).toLocaleString()}
-          icon={Video}
-          color="text-amber-400"
-          bg="bg-amber-500/15"
-        />
+        {STAT_CONFIG.map((s) => (
+          <StatCard
+            key={s.key}
+            title={s.title}
+            value={s.dynamic ? (stats[s.dynamic] ?? 0).toLocaleString() : s.value}
+            change={s.change}
+            icon={s.icon}
+            accent={s.accent}
+            iconBg={s.iconBg}
+            iconColor={s.iconColor}
+            glow={s.glow}
+          />
+        ))}
       </div>
 
-      {/* Charts + Activity */}
+      {/* Chart + Snapshot */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        {/* Weekly Chart */}
-        <div className="xl:col-span-2 bg-gray-900 rounded-2xl border border-gray-800 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-lg font-semibold text-white">
-                Weekly Overview
-              </h2>
-              <p className="text-sm text-gray-400">New users & video uploads</p>
-            </div>
-            <div className="flex items-center gap-4 text-xs">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-violet-500"></div>
-                <span className="text-gray-400">Users</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-blue-400"></div>
-                <span className="text-gray-400">Videos</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Simple CSS Bar Chart */}
-          <div className="flex items-end justify-between gap-3 h-48">
-            {weeklyData.map((item) => (
-              <div
-                key={item.day}
-                className="flex-1 flex flex-col items-center gap-2"
-              >
-                <div className="w-full flex items-end justify-center gap-1 h-40">
-                  <div
-                    className="w-3.5 rounded-t-md bg-violet-500 hover:bg-violet-400 transition-all cursor-pointer"
-                    style={{ height: `${(item.users / maxUsers) * 100}%` }}
-                    title={`${item.users} users`}
-                  />
-                  <div
-                    className="w-3.5 rounded-t-md bg-blue-400 hover:bg-blue-300 transition-all cursor-pointer"
-                    style={{ height: `${(item.videos / 20) * 100}%` }}
-                    title={`${item.videos} videos`}
-                  />
-                </div>
-                <span className="text-xs font-medium text-gray-500">
-                  {item.day}
-                </span>
-              </div>
-            ))}
-          </div>
+        <div className="xl:col-span-2">
+          <WeeklyChart data={weeklyData} maxUsers={maxUsers} />
         </div>
-
-        {/* Today’s Snapshot */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-          <h2 className="text-lg font-semibold text-white mb-5">
-            Today’s Snapshot
-          </h2>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3.5 bg-violet-500/10 border border-violet-500/20 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-violet-500/20 rounded-lg">
-                  <UserPlus className="w-4 h-4 text-violet-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-200">New Users</p>
-                  <p className="text-xs text-gray-500">Joined today</p>
-                </div>
-              </div>
-              <p className="text-xl font-bold text-violet-400">
-                {snapshot.newUsers ?? 0}
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500/20 rounded-lg">
-                  <Upload className="w-4 h-4 text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-200">
-                    Videos Uploaded
-                  </p>
-                  <p className="text-xs text-gray-500">Uploaded today</p>
-                </div>
-              </div>
-              <p className="text-xl font-bold text-blue-400">
-                {snapshot.videosUploaded ?? 0}
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-500/20 rounded-lg">
-                  <Eye className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-200">
-                    Total Views
-                  </p>
-                  <p className="text-xs text-gray-500">Across all videos</p>
-                </div>
-              </div>
-              <p className="text-xl font-bold text-emerald-400">
-                {formatCount(snapshot.totalViews)}
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-500/20 rounded-lg">
-                  <Play className="w-4 h-4 text-amber-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-200">
-                    Watch Time
-                  </p>
-                  <p className="text-xs text-gray-500">Hours watched</p>
-                </div>
-              </div>
-              <p className="text-xl font-bold text-amber-400">
-                {snapshot.watchTime ?? 0}h
-              </p>
-            </div>
-          </div>
+        <div>
+          <TodaySnapshot snapshot={snapshot} />
         </div>
       </div>
 
-      {/* Recent Users + Recent Videos */}
+      {/* Recent */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Recent Users */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-violet-400" />
-              Recent Users
-            </h2>
-            <button
-              onClick={() => navigate("/alluser")}
-              className="text-sm text-violet-400 hover:text-violet-300 font-medium flex items-center gap-1 transition-colors"
-            >
-              View all <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            {recentUsers.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-800/70 transition-colors"
-              >
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center font-semibold text-sm">
-                    {user.avatar}
-                  </div>
-                  <span
-                    className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${
-                      user.status === "online"
-                        ? "bg-emerald-500"
-                        : "bg-gray-600"
-                    }`}
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-200 truncate">
-                    {user.name}
-                  </p>
-                  <p className="text-sm text-gray-500 truncate">{user.email}</p>
-                </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap">
-                  {user.joined}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Video Uploads */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Upload className="w-5 h-5 text-blue-400" />
-              Recent Uploads
-            </h2>
-            <button
-              onClick={() => navigate("/uploads")}
-              className="text-sm text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors"
-            >
-              View all <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            {recentVideos.map((video) => (
-              <div
-                key={video.id}
-                className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-gray-800/70 transition-colors"
-              >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center flex-shrink-0">
-                  <Video className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-200 truncate">
-                    {video.title}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    by{" "}
-                    <span className="text-gray-300 font-medium">
-                      {video.uploadedBy}
-                    </span>
-                  </p>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-3 h-3" /> {video.views.toLocaleString()}
-                    </span>
-                    <span>{video.duration}</span>
-                  </div>
-                </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap">
-                  {video.time}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <RecentUsers users={recentUsers} onNavigate={() => navigate("/alluser")} />
+        <RecentUploads videos={recentVideos} onNavigate={() => navigate("/uploads")} />
       </div>
     </div>
   );

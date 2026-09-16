@@ -45,6 +45,11 @@ const {
   toggleUserStatus,
   getDeletedUsers,
   hardDeleteUser,
+  getAdminProfile,
+  updateAdminProfile,
+  adminForgotPassword,
+  adminVerifyResetOtp,
+  adminResetPassword,
 } = require("../../controller/AdminController/AdminController");
 const requireAdmin = require("../../middlewares/requireAdmin");
 const { requirePermission } = require("../../middlewares/checkAdminPermission");
@@ -55,6 +60,9 @@ const {
   adminUserListLimiter,
   adminUserLimiter,
   adminDestructiveLimiter,
+  forgotPasswordLimiter,
+  resetPasswordLimiter,
+  verifyResetOtpLimiter,
 } = require("../../middlewares/rateLimit");
 const {
   getDashboard,
@@ -76,6 +84,24 @@ router.post("/employee-login", adminLoginLimiter, loginEmployee);
 router.post("/employee/login", adminLoginLimiter, loginEmployee);
 router.post("/refresh", refreshLimiter, adminRefresh);
 router.post("/logout", adminLogout);
+
+// ====================== PROTECTED: ADMIN PROFILE ======================
+router.get("/me", requireAdmin, getAdminProfile);
+router.patch(
+  "/profile",
+  fileUpload({
+    limits: { fileSize: 5 * 1024 * 1024 },
+    abortOnLimit: true,
+    useTempFiles: false,
+  }),
+  requireAdmin,
+  updateAdminProfile,
+);
+
+// ====================== PROTECTED: ADMIN PASSWORD RESET (OTP) ======================
+router.post("/forgot-password", forgotPasswordLimiter, requireAdmin, adminForgotPassword);
+router.post("/verify-reset-otp", verifyResetOtpLimiter, requireAdmin, adminVerifyResetOtp);
+router.post("/reset-password", resetPasswordLimiter, requireAdmin, adminResetPassword);
 
 // ====================== PROTECTED: EMPLOYEE MANAGEMENT ======================
 router.post("/employee/register", fileUpload({

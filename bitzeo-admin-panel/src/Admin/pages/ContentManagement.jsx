@@ -1,9 +1,6 @@
-"use client";
-
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import DataTable from "react-data-table-component";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import toast from "react-hot-toast";
 import {
   Loader2,
   Plus,
@@ -15,6 +12,7 @@ import {
   User,
   Tv,
   Search,
+  X,
 } from "lucide-react";
 import API, { API_BASE_URL } from "../../api";
 import { hasFeature } from "../../config/roleConfig";
@@ -30,6 +28,8 @@ const contentTableStyles = {
     ...tableCustomStyles.rows,
     style: {
       ...tableCustomStyles.rows.style,
+      paddingTop: "12px",
+      paddingBottom: "12px",
       marginTop: "4px",
       marginBottom: "4px",
       borderRadius: "8px",
@@ -63,14 +63,6 @@ export default function ContentManagement({ type = "long" }) {
 
   useEffect(() => {
     fetchVideos();
-    toast.info(`${isShorts ? "Shorts" : "Videos"} Management loaded`, {
-      position: "top-right",
-      autoClose: 2000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
   }, [pageType, isShorts]);
 
   const fetchVideos = async () => {
@@ -191,7 +183,7 @@ export default function ContentManagement({ type = "long" }) {
 
         return (
           <div
-            className="relative w-28 h-16 rounded-lg overflow-hidden cursor-pointer group bg-gray-800"
+            className="relative w-28 h-16 rounded-lg overflow-hidden cursor-pointer group bg-bp-elevated"
             onClick={(e) => {
               e.stopPropagation();
               setSelectedVideo(row);
@@ -212,7 +204,7 @@ export default function ContentManagement({ type = "long" }) {
               />
             )}
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-              <Play size={22} className="text-white" />
+              <Play size={22} style={{ color: "#fff" }} />
             </div>
           </div>
         );
@@ -225,8 +217,8 @@ export default function ContentManagement({ type = "long" }) {
       grow: 2,
       cell: (row) => (
         <div className="py-2">
-          <p className="font-medium text-gray-200 line-clamp-1">{row.title}</p>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="font-medium text-white line-clamp-1">{row.title}</p>
+          <p className="text-xs text-bp-text-muted mt-0.5">
             {row.category?.name || "—"} • {row.type || "—"}
           </p>
         </div>
@@ -239,14 +231,14 @@ export default function ContentManagement({ type = "long" }) {
         const uploader = row.uploadedBy;
         return (
           <div className="flex items-center gap-2 py-1">
-            <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-bp-blue/20 text-bp-blue flex items-center justify-center text-xs font-bold flex-shrink-0">
               {uploader?.name?.charAt(0)?.toUpperCase() || "U"}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-200 truncate">
+              <p className="text-sm font-medium text-white truncate">
                 {uploader?.name || "Unknown"}
               </p>
-              <p className="text-xs text-gray-500 truncate flex items-center gap-1">
+              <p className="text-xs text-bp-text-muted truncate flex items-center gap-1">
                 <Mail size={11} />
                 {uploader?.email || "—"}
               </p>
@@ -259,12 +251,12 @@ export default function ContentManagement({ type = "long" }) {
       name: "Channel",
       cell: (row) =>
         row.channel ? (
-          <span className="inline-flex items-center gap-1 text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1 text-sm text-bp-yellow bg-bp-yellow/10 border border-bp-yellow/20 px-2.5 py-1 rounded-full">
             <Tv size={13} />
             {row.channel.name || row.channel.handle}
           </span>
         ) : (
-          <span className="text-gray-500 text-sm">—</span>
+          <span className="text-bp-text-muted text-sm">—</span>
         ),
     },
     {
@@ -273,7 +265,7 @@ export default function ContentManagement({ type = "long" }) {
       sortable: true,
       width: "90px",
       cell: (row) => (
-        <span className="font-medium text-gray-300">{row.views || 0}</span>
+        <span className="font-medium text-white">{row.views || 0}</span>
       ),
     },
     {
@@ -282,7 +274,7 @@ export default function ContentManagement({ type = "long" }) {
       sortable: true,
       width: "120px",
       cell: (row) => (
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-bp-text-muted">
           {new Date(row.createdAt).toLocaleDateString()}
         </span>
       ),
@@ -298,7 +290,7 @@ export default function ContentManagement({ type = "long" }) {
               setSelectedVideo(row);
               setView("player");
             }}
-            className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 border border-indigo-500/20 transition"
+            className="p-1.5 rounded-lg bg-bp-blue/10 text-bp-blue hover:bg-bp-blue/20 border border-bp-blue/20 transition"
             title="Play"
           >
             <Play size={16} />
@@ -316,7 +308,7 @@ export default function ContentManagement({ type = "long" }) {
                 });
                 setView("update");
               }}
-              className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition"
+              className="p-1.5 rounded-lg bg-bp-cyan/10 text-bp-cyan hover:bg-bp-cyan/20 border border-bp-cyan/20 transition"
               title="Edit"
             >
               <Edit size={16} />
@@ -349,18 +341,17 @@ export default function ContentManagement({ type = "long" }) {
     const channel = selectedVideo.channel;
 
     return (
-      <div className="min-h-screen bg-gray-950 text-gray-100 p-4 md:p-8">
-        <ToastContainer position="top-right" autoClose={3000} theme="dark" />
+      <div className="text-white">
         <button
           onClick={() => setView("list")}
-          className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition"
+          className="mb-6 flex items-center gap-2 text-bp-text-secondary hover:text-bp-text transition"
         >
           <ArrowLeft size={20} />
           Back to list
         </button>
 
         <div className="max-w-6xl mx-auto">
-          <div className="bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800">
+          <div className="bg-black rounded-xl overflow-hidden shadow-2xl border border-bp-border">
             <video
               src={videoSrc}
               controls
@@ -377,26 +368,26 @@ export default function ContentManagement({ type = "long" }) {
             <h2 className="text-2xl md:text-3xl font-bold text-white">
               {selectedVideo.title}
             </h2>
-            <p className="text-gray-400 mt-2">
+            <p className="text-bp-text-secondary mt-2">
               {selectedVideo.description || "No description provided"}
             </p>
 
             {/* Uploader + Channel */}
-            <div className="mt-6 p-5 bg-gray-900 rounded-xl border border-gray-800">
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+            <div className="mt-6 p-5 bg-bp-card rounded-xl border border-bp-border">
+              <h3 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4">
                 Uploaded By
               </h3>
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-lg font-bold">
+                  <div className="w-12 h-12 rounded-full bg-bp-blue flex items-center justify-center text-lg font-bold">
                     {uploader?.name?.charAt(0)?.toUpperCase() || "U"}
                   </div>
                   <div>
                     <p className="font-semibold text-white flex items-center gap-2">
-                      <User size={16} className="text-indigo-400" />
+                      <User size={16} className="text-bp-blue" />
                       {uploader?.name || "Unknown User"}
                     </p>
-                    <p className="text-sm text-gray-400 flex items-center gap-2 mt-0.5">
+                    <p className="text-sm text-bp-text-secondary flex items-center gap-2 mt-0.5">
                       <Mail size={14} />
                       {uploader?.email || "No email"}
                     </p>
@@ -404,10 +395,10 @@ export default function ContentManagement({ type = "long" }) {
                 </div>
 
                 {channel && (
-                  <div className="sm:ml-auto flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
-                    <Tv size={16} className="text-amber-400" />
+                  <div className="sm:ml-auto flex items-center gap-2 px-4 py-2 bg-bp-elevated rounded-lg border border-bp-border">
+                    <Tv size={16} className="text-bp-yellow" />
                     <div>
-                      <p className="text-xs text-gray-400">Channel</p>
+                      <p className="text-xs text-bp-text-secondary">Channel</p>
                       <p className="font-medium text-white">
                         {channel.name || channel.handle || "—"}
                       </p>
@@ -419,34 +410,34 @@ export default function ContentManagement({ type = "long" }) {
 
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 text-sm">
               <div>
-                <div className="text-gray-500">Category</div>
-                <div className="font-medium text-gray-200">
+                <div className="text-bp-text-muted">Category</div>
+                <div className="font-medium text-white">
                   {selectedVideo.category?.name || "—"}
                 </div>
               </div>
               <div>
-                <div className="text-gray-500">Type</div>
-                <div className="font-medium text-gray-200">
+                <div className="text-bp-text-muted">Type</div>
+                <div className="font-medium text-white">
                   {selectedVideo.type || "—"}
                 </div>
               </div>
               <div>
-                <div className="text-gray-500">Duration</div>
-                <div className="font-medium text-gray-200">
+                <div className="text-bp-text-muted">Duration</div>
+                <div className="font-medium text-white">
                   {selectedVideo.duration
                     ? `${selectedVideo.duration} sec`
                     : "—"}
                 </div>
               </div>
               <div>
-                <div className="text-gray-500">Views</div>
-                <div className="font-medium text-gray-200">
+                <div className="text-bp-text-muted">Views</div>
+                <div className="font-medium text-white">
                   {selectedVideo.views || 0}
                 </div>
               </div>
               <div>
-                <div className="text-gray-500">Uploaded</div>
-                <div className="font-medium text-gray-200">
+                <div className="text-bp-text-muted">Uploaded</div>
+                <div className="font-medium text-white">
                   {new Date(selectedVideo.createdAt).toLocaleDateString()}
                 </div>
               </div>
@@ -464,7 +455,7 @@ export default function ContentManagement({ type = "long" }) {
                     });
                     setView("update");
                   }}
-                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-lg transition"
+                  className="flex items-center gap-2 bg-bp-blue hover:bg-bp-blue px-6 py-3 rounded-lg transition"
                 >
                   <Edit size={18} />
                   Edit Video
@@ -491,9 +482,8 @@ export default function ContentManagement({ type = "long" }) {
     const isUpdate = view === "update";
 
     return (
-      <div className="min-h-screen bg-gray-950 flex items-start justify-center py-10 px-4">
-        <ToastContainer position="top-right" autoClose={3000} theme="dark" />
-        <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-xl">
+      <div className="flex items-start justify-center py-10 px-4">
+        <div className="bg-bp-card border border-bp-border p-8 rounded-2xl shadow-xl w-full max-w-xl">
           <h2 className="text-2xl font-bold text-white mb-6 text-center">
             {isUpdate
               ? isShorts
@@ -506,14 +496,14 @@ export default function ContentManagement({ type = "long" }) {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-white mb-1.5">
                 Title *
               </label>
               <input
                 required
                 placeholder="Enter video title"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg 
-                           text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-bp-elevated border border-bp-border rounded-lg 
+                           text-white placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue focus:border-bp-blue"
                 value={formData.title}
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
@@ -522,14 +512,14 @@ export default function ContentManagement({ type = "long" }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-white mb-1.5">
                 Description
               </label>
               <textarea
                 rows={3}
                 placeholder="Enter description (optional)"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg 
-                           text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-bp-elevated border border-bp-border rounded-lg 
+                           text-white placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue focus:border-bp-blue"
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
@@ -538,13 +528,13 @@ export default function ContentManagement({ type = "long" }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-white mb-1.5">
                 Type *
               </label>
               <select
                 disabled
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg 
-                           text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-bp-elevated border border-bp-border rounded-lg 
+                           text-white focus:outline-none focus:ring-2 focus:ring-bp-blue focus:border-bp-blue"
                 value={formData.type}
                 onChange={(e) =>
                   setFormData({ ...formData, type: e.target.value })
@@ -556,14 +546,14 @@ export default function ContentManagement({ type = "long" }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-white mb-1.5">
                 Duration (seconds)
               </label>
               <input
                 type="number"
                 placeholder="e.g. 120"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg 
-                           text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-bp-elevated border border-bp-border rounded-lg 
+                           text-white placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue focus:border-bp-blue"
                 value={formData.duration}
                 onChange={(e) =>
                   setFormData({ ...formData, duration: e.target.value })
@@ -572,16 +562,16 @@ export default function ContentManagement({ type = "long" }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-white mb-1.5">
                 {isUpdate ? "Replace Video (optional)" : "Video File *"}
               </label>
               <input
                 type="file"
                 accept="video/*"
                 onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300
+                className="w-full px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white
                            file:mr-4 file:py-2 file:px-5 file:rounded file:border-0 file:text-sm 
-                           file:bg-indigo-500/20 file:text-indigo-400 hover:file:bg-indigo-500/30"
+                           file:bg-bp-blue/20 file:text-bp-blue hover:file:bg-bp-blue/30"
               />
             </div>
 
@@ -592,8 +582,8 @@ export default function ContentManagement({ type = "long" }) {
                   disabled={submitting}
                   className={`flex-1 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
                     submitting
-                      ? "bg-gray-700 cursor-not-allowed text-gray-400"
-                      : "bg-indigo-600 hover:bg-indigo-500 text-white"
+                      ? "bg-bp-border cursor-not-allowed text-bp-text-secondary"
+                      : "bg-bp-blue hover:bg-bp-blue text-white"
                   }`}
                 >
                   {submitting && <Loader2 size={18} className="animate-spin" />}
@@ -615,7 +605,7 @@ export default function ContentManagement({ type = "long" }) {
                   resetForm();
                   setView("list");
                 }}
-                className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition border border-gray-700"
+                className="flex-1 py-3 bg-bp-elevated hover:bg-bp-border text-white rounded-lg font-medium transition border border-bp-border"
               >
                 Cancel
               </button>
@@ -628,18 +618,17 @@ export default function ContentManagement({ type = "long" }) {
 
   // ================= LIST VIEW (DATA TABLE) =================
   return (
-    <div className="min-h-screen bg-gray-950 p-6 md:p-10">
-      <ToastContainer position="top-right" autoClose={3000} theme="dark" />
+    <div>
 
       <div className="max-w-7xl mx-auto">
         {/* Header with Title and Search */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
           {/* Title - Centered on left */}
           <div className="flex-1 text-center md:text-left">
-            <h1 className="text-4xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-white">
               {isShorts ? "Shorts Management" : "Video Management"}
             </h1>
-            <p className="text-gray-400 mt-2">
+            <p className="text-[13px] text-bp-text-secondary mt-1">
               {videos.length} {isShorts ? "shorts" : "videos"} total
             </p>
           </div>
@@ -648,24 +637,34 @@ export default function ContentManagement({ type = "long" }) {
           <div className="flex flex-col md:flex-row gap-3 md:items-center w-full md:w-auto">
             <div className="flex-1 md:flex-none relative w-full md:w-80">
               <Search
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-bp-text-muted pointer-events-none"
               />
               <input
                 type="text"
                 placeholder="Search by title, user, email, channel..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg 
-                           text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl
+                           text-white text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             {hasFeature("canUploadVideo") && (
               <button
                 onClick={() => setView("upload")}
-                className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-lg shadow transition whitespace-nowrap"
+                style={{ background: "linear-gradient(135deg, #0069BE, #0092CC)" }}
+                className="flex items-center justify-center gap-2 text-white px-6 py-2.5 rounded-xl text-sm font-semibold border border-white/10 shadow-md shadow-bp-blue/20 hover:shadow-lg hover:shadow-bp-blue/25 transition-all duration-200 whitespace-nowrap"
               >
-                <Plus size={20} />
+                <Plus size={18} />
                 {isShorts ? "Upload Short" : "Upload Video"}
               </button>
             )}
@@ -679,18 +678,18 @@ export default function ContentManagement({ type = "long" }) {
         )}
 
         {/* Data Table */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+        <div className="bg-bp-card rounded-2xl border border-bp-border overflow-hidden">
           <DataTable
             columns={columns}
             data={filteredVideos}
             progressPending={loading}
             progressComponent={
-              <div className="flex flex-col items-center justify-center py-16 bg-gray-900">
+              <div className="flex flex-col items-center justify-center py-16 bg-bp-card">
                 <Loader2
                   size={40}
-                  className="animate-spin text-indigo-400 mb-4"
+                  className="animate-spin text-bp-blue mb-4"
                 />
-                <p className="text-gray-400 font-medium">Loading videos...</p>
+                <p className="text-bp-text-secondary font-medium">Loading videos...</p>
               </div>
             }
             pagination
@@ -701,8 +700,8 @@ export default function ContentManagement({ type = "long" }) {
             pointerOnHover={false}
             theme="dark"
             noDataComponent={
-              <div className="text-center py-16 text-gray-500 bg-gray-900">
-                <p className="text-xl font-medium text-gray-400">
+              <div className="text-center py-16 text-bp-text-muted bg-bp-card">
+                <p className="text-xl font-medium text-bp-text-secondary">
                   No videos found
                 </p>
                 <p className="mt-2 text-sm">

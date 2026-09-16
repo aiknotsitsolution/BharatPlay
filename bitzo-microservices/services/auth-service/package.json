@@ -11,19 +11,20 @@
   "dependencies": {
     "axios": "^1.7.7",
     "bcryptjs": "^3.0.3",
+    "bitzo-microservices": "file:../..",
     "cloudinary": "^1.41.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.2",
     "google-auth-library": "^10.5.0",
     "imagekit": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.5",
+    "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
-    "nodemailer": "^9.0.5",
-    "dotenv": "^17.4.2",
-    "cors": "^2.8.6",
-    "cookie-parser": "^1.4.7",
-    "morgan": "^1.10.1"
+    "nodemailer": "^9.0.5"
   }
 }

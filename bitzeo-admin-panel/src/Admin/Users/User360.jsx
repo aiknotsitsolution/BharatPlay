@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -28,6 +28,7 @@ import {
   MonitorPlay,
 } from "lucide-react";
 import { hasFeature } from "../../config/roleConfig";
+import { formatDate, formatDateTime, formatNumber, formatDuration } from "../../utils/helpers";
 import {
   fetchAdminUserOverview,
   fetchAdminUserActivity,
@@ -41,40 +42,6 @@ import {
   fetchAdminUserVideosRedux,
   fetchAdminUserShortsRedux,
 } from "../../redux/slices/adminUser360Slice";
-
-function formatDate(dateStr) {
-  if (!dateStr) return "\u2014";
-  return new Date(dateStr).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function formatDateTime(dateStr) {
-  if (!dateStr) return "Never";
-  return new Date(dateStr).toLocaleString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatNumber(n) {
-  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
-  if (n >= 1000) return (n / 1000).toFixed(1) + "K";
-  return String(n);
-}
-
-function formatDuration(seconds) {
-  if (!seconds || seconds <= 0) return "0m";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
 
 const TABS = [
   { key: "overview", label: "Overview", icon: BarChart3 },
@@ -226,23 +193,23 @@ export default function User360() {
   // ==================== BADGES ====================
   const roleBadge = (role) => {
     if (role === "admin") return "bg-purple-500/15 text-purple-400 border border-purple-500/20";
-    if (role === "creator") return "bg-blue-500/15 text-blue-400 border border-blue-500/20";
-    return "bg-gray-500/15 text-gray-400 border border-gray-500/20";
+    if (role === "creator") return "bg-bp-cyan/15 text-bp-cyan border border-bp-cyan/20";
+    return "bg-bp-text-muted/15 text-bp-text-secondary border border-bp-text-muted/20";
   };
 
   const statusBadge = (status) => {
     const s = status || "active";
     if (s === "active") return "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20";
-    if (s === "suspended") return "bg-amber-500/15 text-amber-400 border border-amber-500/20";
+    if (s === "suspended") return "bg-bp-yellow/15 text-bp-yellow border border-bp-yellow/20";
     if (s === "banned") return "bg-red-500/15 text-red-400 border border-red-500/20";
-    return "bg-gray-500/15 text-gray-400 border border-gray-500/20";
+    return "bg-bp-text-muted/15 text-bp-text-secondary border border-bp-text-muted/20";
   };
 
   const severityBadge = (severity) => {
     if (severity === "critical") return "bg-red-500/15 text-red-400 border border-red-500/20";
-    if (severity === "high") return "bg-orange-500/15 text-orange-400 border border-orange-500/20";
-    if (severity === "medium") return "bg-amber-500/15 text-amber-400 border border-amber-500/20";
-    return "bg-gray-500/15 text-gray-400 border border-gray-500/20";
+    if (severity === "high") return "bg-bp-orange/15 text-bp-orange border border-bp-orange/20";
+    if (severity === "medium") return "bg-bp-yellow/15 text-bp-yellow border border-bp-yellow/20";
+    return "bg-bp-text-muted/15 text-bp-text-secondary border border-bp-text-muted/20";
   };
 
   const eventTypeLabel = (type) => {
@@ -263,12 +230,12 @@ export default function User360() {
   };
 
   const eventTypeColor = (type) => {
-    if (type.includes("LOGIN") || type.includes("REGISTER") || type.includes("LOGOUT")) return "text-blue-400";
-    if (type.includes("PASSWORD") || type.includes("DEVICE")) return "text-amber-400";
+    if (type.includes("LOGIN") || type.includes("REGISTER") || type.includes("LOGOUT")) return "text-bp-cyan";
+    if (type.includes("PASSWORD") || type.includes("DEVICE")) return "text-bp-yellow";
     if (type.includes("LIKE") || type.includes("SUBSCRIBE")) return "text-emerald-400";
     if (type.includes("UPLOAD") || type.includes("CREATE")) return "text-purple-400";
     if (type.includes("DELETE") || type.includes("DISLIKE") || type.includes("UNSUBSCRIBE")) return "text-red-400";
-    return "text-gray-400";
+    return "text-bp-text-secondary";
   };
 
   // ==================== PAGINATION HANDLERS ====================
@@ -296,14 +263,14 @@ export default function User360() {
       <div className="space-y-6">
         <button
           onClick={() => navigate("/alluser")}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-lg transition"
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-bp-text-secondary hover:text-bp-text bg-bp-elevated/50 hover:bg-bp-elevated border border-bp-border/50 rounded-lg transition"
         >
           <ArrowLeft size={16} />
           Back to Users
         </button>
         <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 size={40} className="animate-spin text-indigo-400 mb-3" />
-          <p className="text-gray-400">Loading user overview...</p>
+          <Loader2 size={40} className="animate-spin text-bp-blue mb-3" />
+          <p className="text-bp-text-secondary">Loading user overview...</p>
         </div>
       </div>
     );
@@ -315,20 +282,20 @@ export default function User360() {
       <div className="space-y-6">
         <button
           onClick={() => navigate("/alluser")}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-lg transition"
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-bp-text-secondary hover:text-bp-text bg-bp-elevated/50 hover:bg-bp-elevated border border-bp-border/50 rounded-lg transition"
         >
           <ArrowLeft size={16} />
           Back to Users
         </button>
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <AlertTriangle size={40} className="text-red-400 mb-3 opacity-60" />
-          <p className="text-lg font-medium text-gray-300 mb-1">User not found</p>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-lg font-medium text-white mb-1">User not found</p>
+          <p className="text-sm text-bp-text-muted mb-4">
             {overviewError?.message || "Could not load user data"}
           </p>
           <button
             onClick={retryOverview}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-bp-blue hover:bg-bp-blue text-white rounded-lg text-sm font-medium transition"
           >
             <RefreshCw size={14} />
             Retry
@@ -345,16 +312,16 @@ export default function User360() {
       {/* NAV */}
       <button
         onClick={() => navigate("/alluser")}
-        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-lg transition"
+        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-bp-text-secondary hover:text-bp-text bg-bp-elevated/50 hover:bg-bp-elevated border border-bp-border/50 rounded-lg transition"
       >
         <ArrowLeft size={16} />
         Back to Users
       </button>
 
       {/* USER HEADER */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-indigo-500/15 text-indigo-400 flex items-center justify-center text-2xl font-bold flex-shrink-0 border border-indigo-500/20">
+          <div className="w-16 h-16 rounded-full bg-bp-blue/15 text-bp-blue flex items-center justify-center text-2xl font-bold flex-shrink-0 border border-bp-blue/20">
             {user.avatar ? (
               <img src={user.avatar} alt={user.name} className="w-16 h-16 rounded-full object-cover" />
             ) : (
@@ -367,11 +334,11 @@ export default function User360() {
               <span className={`px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${roleBadge(user.role)}`}>{user.role}</span>
               <span className={`px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${statusBadge(user.status)}`}>{user.status || "active"}</span>
             </div>
-            <p className="text-gray-400 text-sm flex items-center gap-1.5 mb-0.5">
+            <p className="text-bp-text-secondary text-sm flex items-center gap-1.5 mb-0.5">
               <Mail size={13} />
               {user.email}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-bp-text-muted">
               Joined {formatDate(user.createdAt)}
               {user.lastLoginAt && <>, Last login {formatDateTime(user.lastLoginAt)}</>}
             </p>
@@ -379,17 +346,17 @@ export default function User360() {
           <div className="flex gap-5 text-center">
             <div>
               <p className="text-xl font-bold text-white">{user.trustScore}</p>
-              <p className="text-xs text-gray-500">Trust</p>
+              <p className="text-xs text-bp-text-muted">Trust</p>
             </div>
             <div>
               <p className="text-xl font-bold text-white">{user.rewardPoints}</p>
-              <p className="text-xs text-gray-500">Points</p>
+              <p className="text-xs text-bp-text-muted">Points</p>
             </div>
           </div>
           {hasFeature("canEditUsers") && (
             <button
               onClick={() => navigate(`/users/${userId}/edit`)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-300 bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-lg transition flex-shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-bp-elevated/50 hover:bg-bp-elevated border border-bp-border/50 rounded-lg transition flex-shrink-0"
             >
               Edit
             </button>
@@ -398,7 +365,7 @@ export default function User360() {
       </div>
 
       {/* TAB NAVIGATION */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-1 flex gap-1 overflow-x-auto">
+      <div className="bg-bp-card border border-bp-border rounded-2xl p-1 flex gap-1 overflow-x-auto">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -407,7 +374,7 @@ export default function User360() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition whitespace-nowrap ${
-                isActive ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
+                isActive ? "bg-bp-blue text-white" : "text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated/50"
               }`}
             >
               <Icon size={15} />
@@ -429,13 +396,13 @@ export default function User360() {
               { icon: ThumbsUp, color: "pink", value: content.totalLikes.toLocaleString(), label: "Likes" },
               { icon: MessageSquare, color: "cyan", value: content.totalComments.toLocaleString(), label: "Comments" },
             ].map((item) => (
-              <div key={item.label} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-3 hover:border-gray-700 transition">
+              <div key={item.label} className="bg-bp-card border border-bp-border rounded-xl p-4 flex items-center gap-3 hover:border-bp-border transition">
                 <div className={`w-10 h-10 rounded-lg bg-${item.color}-500/10 flex items-center justify-center flex-shrink-0`}>
                   <item.icon size={18} className={`text-${item.color}-400`} />
                 </div>
                 <div>
                   <p className="text-xl font-bold text-white leading-tight">{item.value}</p>
-                  <p className="text-xs text-gray-500">{item.label}</p>
+                  <p className="text-xs text-bp-text-muted">{item.label}</p>
                 </div>
               </div>
             ))}
@@ -449,57 +416,57 @@ export default function User360() {
               { value: engagement.watchLaterCount, label: "Watch Later" },
               { value: engagement.viewedVideosCount, label: "Viewed" },
             ].map((item) => (
-              <div key={item.label} className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center hover:border-gray-700 transition">
+              <div key={item.label} className="bg-bp-card border border-bp-border rounded-xl p-3 text-center hover:border-bp-border transition">
                 <p className="text-lg font-bold text-white">{item.value}</p>
-                <p className="text-xs text-gray-500">{item.label}</p>
+                <p className="text-xs text-bp-text-muted">{item.label}</p>
               </div>
             ))}
           </div>
 
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Shield size={15} className="text-indigo-400" />
+          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+            <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Shield size={15} className="text-bp-blue" />
               Account Information
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3">
               <div>
-                <p className="text-xs text-gray-600 mb-0.5">User ID</p>
-                <p className="text-sm text-gray-300 font-mono break-all">{user._id}</p>
+                <p className="text-xs text-bp-text-muted mb-0.5">User ID</p>
+                <p className="text-sm text-white font-mono break-all">{user._id}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600 mb-0.5">Registration</p>
-                <p className="text-sm text-gray-300 capitalize">{account.registrationMethod}</p>
+                <p className="text-xs text-bp-text-muted mb-0.5">Registration</p>
+                <p className="text-sm text-white capitalize">{account.registrationMethod}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600 mb-0.5">Status</p>
+                <p className="text-xs text-bp-text-muted mb-0.5">Status</p>
                 <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${statusBadge(user.status)}`}>{user.status || "active"}</span>
               </div>
               <div>
-                <p className="text-xs text-gray-600 mb-0.5">Account Age</p>
-                <p className="text-sm text-gray-300">{account.accountAge} days</p>
+                <p className="text-xs text-bp-text-muted mb-0.5">Account Age</p>
+                <p className="text-sm text-white">{account.accountAge} days</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600 mb-0.5">Created</p>
-                <p className="text-sm text-gray-300">{formatDateTime(user.createdAt)}</p>
+                <p className="text-xs text-bp-text-muted mb-0.5">Created</p>
+                <p className="text-sm text-white">{formatDateTime(user.createdAt)}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600 mb-0.5">Last Login</p>
-                <p className="text-sm text-gray-300">{formatDateTime(user.lastLoginAt)}</p>
+                <p className="text-xs text-bp-text-muted mb-0.5">Last Login</p>
+                <p className="text-sm text-white">{formatDateTime(user.lastLoginAt)}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600 mb-0.5">Last Activity</p>
-                <p className="text-sm text-gray-300">{formatDateTime(user.lastActivityAt)}</p>
+                <p className="text-xs text-bp-text-muted mb-0.5">Last Activity</p>
+                <p className="text-sm text-white">{formatDateTime(user.lastActivityAt)}</p>
               </div>
               {user.suspendedAt && (
                 <div>
-                  <p className="text-xs text-gray-600 mb-0.5">Suspended At</p>
-                  <p className="text-sm text-amber-400">{formatDateTime(user.suspendedAt)}</p>
+                  <p className="text-xs text-bp-text-muted mb-0.5">Suspended At</p>
+                  <p className="text-sm text-bp-yellow">{formatDateTime(user.suspendedAt)}</p>
                 </div>
               )}
               {user.suspendReason && (
                 <div className="sm:col-span-2">
-                  <p className="text-xs text-gray-600 mb-0.5">Suspension Reason</p>
-                  <p className="text-sm text-amber-400">{user.suspendReason}</p>
+                  <p className="text-xs text-bp-text-muted mb-0.5">Suspension Reason</p>
+                  <p className="text-sm text-bp-yellow">{user.suspendReason}</p>
                 </div>
               )}
             </div>
@@ -511,20 +478,20 @@ export default function User360() {
       {activeTab === "channels" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* LEFT: Channel List */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Tv size={15} className="text-amber-400" />
+          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+            <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Tv size={15} className="text-bp-yellow" />
               Channels ({channels.length})
             </h2>
             {channelsLoading ? (
               <div className="flex flex-col items-center justify-center py-8">
-                <Loader2 size={24} className="animate-spin text-amber-400 mb-2" />
-                <p className="text-xs text-gray-500">Loading channels...</p>
+                <Loader2 size={24} className="animate-spin text-bp-yellow mb-2" />
+                <p className="text-xs text-bp-text-muted">Loading channels...</p>
               </div>
             ) : channels.length === 0 ? (
               <div className="py-8 text-center">
-                <Tv size={28} className="text-gray-700 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">No channels found</p>
+                <Tv size={28} className="text-bp-text-muted mx-auto mb-2" />
+                <p className="text-sm text-bp-text-muted">No channels found</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
@@ -536,21 +503,21 @@ export default function User360() {
                       type="button"
                       onClick={() => setSelectedChannelId(ch._id)}
                       className={`w-full flex items-center gap-3 p-3 rounded-xl border transition text-left ${
-                        isActive ? "bg-indigo-500/10 border-indigo-500/30" : "bg-gray-800/50 border-gray-700/50 hover:bg-gray-800 hover:border-gray-600"
+                        isActive ? "bg-bp-blue/10 border-bp-blue/30" : "bg-bp-elevated/50 border-bp-border/50 hover:bg-bp-elevated hover:border-bp-border"
                       }`}
                     >
-                      <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      <div className="w-10 h-10 rounded-lg bg-bp-elevated flex items-center justify-center flex-shrink-0 overflow-hidden">
                         {ch.channelImage ? (
                           <img src={ch.channelImage} alt={ch.name} className="w-10 h-10 rounded-lg object-cover" />
                         ) : (
-                          <Tv size={18} className={isActive ? "text-indigo-400" : "text-gray-500"} />
+                          <Tv size={18} className={isActive ? "text-bp-blue" : "text-bp-text-muted"} />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`font-medium text-sm truncate ${isActive ? "text-indigo-300" : "text-gray-200"}`}>{ch.name}</p>
-                        <p className="text-xs text-gray-500">{formatNumber(ch.subscriberCount)} subs &middot; {ch.videoCount} videos</p>
+                        <p className={`font-medium text-sm truncate ${isActive ? "text-bp-cyan" : "text-white"}`}>{ch.name}</p>
+                        <p className="text-xs text-bp-text-muted">{formatNumber(ch.subscriberCount)} subs &middot; {ch.videoCount} videos</p>
                       </div>
-                      {isActive && <Check size={16} className="text-indigo-400 flex-shrink-0" />}
+                      {isActive && <Check size={16} className="text-bp-blue flex-shrink-0" />}
                     </button>
                   );
                 })}
@@ -559,22 +526,22 @@ export default function User360() {
           </div>
 
           {/* RIGHT: Selected Channel + Internal Tabs */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
             {selectedChannel ? (
               <>
                 {/* Channel Summary */}
-                <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 mb-4">
+                <div className="bg-bp-elevated/50 border border-bp-border/50 rounded-xl p-4 mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-700/50">
+                    <div className="w-12 h-12 rounded-xl bg-bp-elevated flex items-center justify-center flex-shrink-0 overflow-hidden border border-bp-border/50">
                       {selectedChannel.channelImage ? (
                         <img src={selectedChannel.channelImage} alt={selectedChannel.name} className="w-12 h-12 rounded-xl object-cover" />
                       ) : (
-                        <Tv size={20} className="text-indigo-400" />
+                        <Tv size={20} className="text-bp-blue" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-white text-sm truncate">{selectedChannel.name}</p>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500 mt-0.5">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-bp-text-muted mt-0.5">
                         <span>{formatNumber(selectedChannel.subscriberCount)} subscribers</span>
                         <span>&middot;</span>
                         <span>{selectedChannel.videoCount} videos</span>
@@ -589,22 +556,22 @@ export default function User360() {
                     <div className="flex gap-4 text-center flex-shrink-0">
                       <div>
                         <p className="text-sm font-bold text-white">{formatNumber(selectedChannel.totalViews || 0)}</p>
-                        <p className="text-[10px] text-gray-500">Views</p>
+                        <p className="text-[10px] text-bp-text-muted">Views</p>
                       </div>
                       <div>
                         <p className="text-sm font-bold text-white">{formatNumber(selectedChannel.totalLikes || 0)}</p>
-                        <p className="text-[10px] text-gray-500">Likes</p>
+                        <p className="text-[10px] text-bp-text-muted">Likes</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Internal Tab Bar */}
-                <div className="flex gap-1 mb-4 bg-gray-800/50 border border-gray-700/50 rounded-lg p-1">
+                <div className="flex gap-1 mb-4 bg-bp-elevated/50 border border-bp-border/50 rounded-lg p-1">
                   <button
                     onClick={() => setChannelContentTab("videos")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition flex-1 justify-center ${
-                      channelContentTab === "videos" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                      channelContentTab === "videos" ? "bg-bp-blue text-white" : "text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated"
                     }`}
                   >
                     <Video size={13} />
@@ -613,7 +580,7 @@ export default function User360() {
                   <button
                     onClick={() => setChannelContentTab("shorts")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition flex-1 justify-center ${
-                      channelContentTab === "shorts" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                      channelContentTab === "shorts" ? "bg-bp-blue text-white" : "text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated"
                     }`}
                   >
                     <Clapperboard size={13} />
@@ -646,15 +613,15 @@ export default function User360() {
                   />
                 ) : (
                   <div className="py-12 text-center">
-                    <Video size={32} className="text-gray-700 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">Select Videos or Shorts to view content</p>
+                    <Video size={32} className="text-bp-text-muted mx-auto mb-2" />
+                    <p className="text-sm text-bp-text-muted">Select Videos or Shorts to view content</p>
                   </div>
                 )}
               </>
             ) : (
               <div className="py-12 text-center">
-                <Tv size={32} className="text-gray-700 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Select a channel to view content</p>
+                <Tv size={32} className="text-bp-text-muted mx-auto mb-2" />
+                <p className="text-sm text-bp-text-muted">Select a channel to view content</p>
               </div>
             )}
           </div>
@@ -667,7 +634,7 @@ export default function User360() {
           {engagementLoading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 size={32} className="animate-spin text-red-400 mb-2" />
-              <p className="text-sm text-gray-500">Loading engagement data...</p>
+              <p className="text-sm text-bp-text-muted">Loading engagement data...</p>
             </div>
           ) : engagementData ? (
             <>
@@ -684,19 +651,19 @@ export default function User360() {
                   { icon: Play, value: formatDuration(engagementData.totalWatchMinutes * 60), label: "Watch Time", color: "red" },
                   { icon: MonitorPlay, value: engagementData.totalSessions, label: "Watch Sessions", color: "blue" },
                 ].map((item) => (
-                  <div key={item.label} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-3 hover:border-gray-700 transition">
+                  <div key={item.label} className="bg-bp-card border border-bp-border rounded-xl p-4 flex items-center gap-3 hover:border-bp-border transition">
                     <div className={`w-10 h-10 rounded-lg bg-${item.color}-500/10 flex items-center justify-center flex-shrink-0`}>
                       <item.icon size={18} className={`text-${item.color}-400`} />
                     </div>
                     <div>
                       <p className="text-lg font-bold text-white leading-tight">{item.value}</p>
-                      <p className="text-xs text-gray-500">{item.label}</p>
+                      <p className="text-xs text-bp-text-muted">{item.label}</p>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-                <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Subscribed Channels</h2>
+              <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+                <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-3">Subscribed Channels</h2>
                 <SubscriptionsList subscriptions={subscriptions} loading={subscriptionsLoading} />
               </div>
             </>
@@ -710,45 +677,45 @@ export default function User360() {
       {activeTab === "activity" && (
         <div className="space-y-5">
           {/* Watch History */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Clock size={15} className="text-blue-400" />
+          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+            <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Clock size={15} className="text-bp-cyan" />
               Watch History
-              <span className="text-xs text-gray-600 font-normal">({watchHistoryPagination.total} sessions)</span>
+              <span className="text-xs text-bp-text-muted font-normal">({watchHistoryPagination.total} sessions)</span>
             </h2>
             {watchHistoryLoading ? (
               <div className="flex flex-col items-center justify-center py-8">
-                <Loader2 size={24} className="animate-spin text-blue-400 mb-2" />
-                <p className="text-xs text-gray-500">Loading watch history...</p>
+                <Loader2 size={24} className="animate-spin text-bp-cyan mb-2" />
+                <p className="text-xs text-bp-text-muted">Loading watch history...</p>
               </div>
             ) : watchHistory.length === 0 ? (
               <div className="py-8 text-center">
-                <Clock size={28} className="text-gray-700 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">No watch history found</p>
+                <Clock size={28} className="text-bp-text-muted mx-auto mb-2" />
+                <p className="text-sm text-bp-text-muted">No watch history found</p>
               </div>
             ) : (
               <>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                   {watchHistory.map((session) => (
-                    <div key={session._id} className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-3 flex items-center gap-3">
-                      <div className="w-20 h-12 rounded-lg bg-gray-800 overflow-hidden flex-shrink-0">
+                    <div key={session._id} className="bg-bp-elevated/50 border border-bp-border/50 rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-20 h-12 rounded-lg bg-bp-elevated overflow-hidden flex-shrink-0">
                         {session.videoId?.thumbnail ? (
                           <img src={session.videoId.thumbnail} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <Play size={16} className="text-gray-600" />
+                            <Play size={16} className="text-bp-text-muted" />
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-200 font-medium truncate">{session.videoId?.title || "Deleted video"}</p>
-                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+                        <p className="text-sm text-white font-medium truncate">{session.videoId?.title || "Deleted video"}</p>
+                        <div className="flex items-center gap-3 text-xs text-bp-text-muted mt-0.5">
                           <span>{session.videoType}</span>
                           <span>{session.watchedPercent?.toFixed(0)}% watched</span>
                           <span>{formatDuration(session.watchedSeconds)}</span>
                         </div>
                       </div>
-                      <p className="text-xs text-gray-600 flex-shrink-0">{formatDateTime(session.startedAt)}</p>
+                      <p className="text-xs text-bp-text-muted flex-shrink-0">{formatDateTime(session.startedAt)}</p>
                     </div>
                   ))}
                 </div>
@@ -760,17 +727,17 @@ export default function User360() {
           </div>
 
           {/* Audit Events */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider flex items-center gap-2">
                 <Activity size={15} className="text-emerald-400" />
                 Audit Events
-                <span className="text-xs text-gray-600 font-normal">({activityPagination.total} events)</span>
+                <span className="text-xs text-bp-text-muted font-normal">({activityPagination.total} events)</span>
               </h2>
               <select
                 value={activityFilter}
                 onChange={(e) => setActivityFilter(e.target.value)}
-                className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-red-500"
+                className="bg-bp-elevated border border-bp-border text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-red-500"
               >
                 <option value="">All events</option>
                 <option value="USER_LOGIN">Login</option>
@@ -788,18 +755,18 @@ export default function User360() {
             {activityLoading ? (
               <div className="flex flex-col items-center justify-center py-8">
                 <Loader2 size={24} className="animate-spin text-emerald-400 mb-2" />
-                <p className="text-xs text-gray-500">Loading activity...</p>
+                <p className="text-xs text-bp-text-muted">Loading activity...</p>
               </div>
             ) : activityEvents.length === 0 ? (
               <div className="py-8 text-center">
-                <Activity size={28} className="text-gray-700 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">No activity events recorded. Tracking was not available before this update.</p>
+                <Activity size={28} className="text-bp-text-muted mx-auto mb-2" />
+                <p className="text-sm text-bp-text-muted">No activity events recorded. Tracking was not available before this update.</p>
               </div>
             ) : (
               <>
                 <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-1">
                   {activityEvents.map((event) => (
-                    <div key={event._id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-800/50 transition">
+                    <div key={event._id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-bp-elevated/50 transition">
                       <div
                         className={`w-2 h-2 rounded-full flex-shrink-0 ${eventTypeColor(event.eventType)}`}
                         style={{ backgroundColor: "currentColor" }}
@@ -807,14 +774,14 @@ export default function User360() {
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium ${eventTypeColor(event.eventType)}`}>{eventTypeLabel(event.eventType)}</p>
                         {event.metadata && Object.keys(event.metadata).length > 0 && (
-                          <p className="text-xs text-gray-600 truncate">
-                            {Object.entries(event.metadata).map(([k, v]) => `${k}: ${v}`).join(" · ")}
+                          <p className="text-xs text-bp-text-muted truncate">
+                            {Object.entries(event.metadata).map(([k, v]) => `${k}: ${v}`).join(" Â· ")}
                           </p>
                         )}
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-gray-500">{formatDateTime(event.createdAt)}</p>
-                        {event.ip && <p className="text-[10px] text-gray-600 font-mono">{event.ip}</p>}
+                        <p className="text-xs text-bp-text-muted">{formatDateTime(event.createdAt)}</p>
+                        {event.ip && <p className="text-[10px] text-bp-text-muted font-mono">{event.ip}</p>}
                       </div>
                     </div>
                   ))}
@@ -833,35 +800,35 @@ export default function User360() {
         <div className="space-y-5">
           {/* Trust Score + Active Sessions */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+            <div className="bg-bp-card border border-bp-border rounded-xl p-4 text-center">
               <p className="text-3xl font-bold text-white">{user.trustScore}</p>
-              <p className="text-xs text-gray-500 mt-1">Trust Score</p>
+              <p className="text-xs text-bp-text-muted mt-1">Trust Score</p>
             </div>
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+            <div className="bg-bp-card border border-bp-border rounded-xl p-4 text-center">
               <p className="text-3xl font-bold text-white">{activeSessions}</p>
-              <p className="text-xs text-gray-500 mt-1">Active Sessions</p>
+              <p className="text-xs text-bp-text-muted mt-1">Active Sessions</p>
             </div>
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+            <div className="bg-bp-card border border-bp-border rounded-xl p-4 text-center">
               <p className="text-3xl font-bold text-white">{devices.length}</p>
-              <p className="text-xs text-gray-500 mt-1">Known Devices</p>
+              <p className="text-xs text-bp-text-muted mt-1">Known Devices</p>
             </div>
           </div>
 
           {/* Devices */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Smartphone size={15} className="text-blue-400" />
+          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+            <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Smartphone size={15} className="text-bp-cyan" />
               Devices
             </h2>
             {devicesLoading ? (
               <div className="flex flex-col items-center justify-center py-8">
-                <Loader2 size={24} className="animate-spin text-blue-400 mb-2" />
-                <p className="text-xs text-gray-500">Loading devices...</p>
+                <Loader2 size={24} className="animate-spin text-bp-cyan mb-2" />
+                <p className="text-xs text-bp-text-muted">Loading devices...</p>
               </div>
             ) : devices.length === 0 ? (
               <div className="py-8 text-center">
-                <Smartphone size={28} className="text-gray-700 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">No devices recorded</p>
+                <Smartphone size={28} className="text-bp-text-muted mx-auto mb-2" />
+                <p className="text-sm text-bp-text-muted">No devices recorded</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -870,12 +837,12 @@ export default function User360() {
                   return (
                     <div
                       key={device._id}
-                      className={`bg-gray-800/50 border rounded-xl p-3 flex items-center gap-3 ${isCurrent ? "border-emerald-500/30" : "border-gray-700/50"}`}
+                      className={`bg-bp-elevated/50 border rounded-xl p-3 flex items-center gap-3 ${isCurrent ? "border-emerald-500/30" : "border-bp-border/50"}`}
                     >
-                      <Smartphone size={18} className={isCurrent ? "text-emerald-400" : "text-gray-500"} />
+                      <Smartphone size={18} className={isCurrent ? "text-emerald-400" : "text-bp-text-muted"} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-200 font-mono truncate">{device.deviceId}</p>
-                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+                        <p className="text-sm text-white font-mono truncate">{device.deviceId}</p>
+                        <div className="flex items-center gap-3 text-xs text-bp-text-muted mt-0.5">
                           <span className="truncate max-w-[200px]">{device.userAgent || "Unknown UA"}</span>
                           {device.lastIp && <span className="font-mono">{device.lastIp}</span>}
                         </div>
@@ -884,7 +851,7 @@ export default function User360() {
                         {isCurrent && (
                           <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">Current</span>
                         )}
-                        <p className="text-[10px] text-gray-600 mt-1">{formatDateTime(device.lastSeen)}</p>
+                        <p className="text-[10px] text-bp-text-muted mt-1">{formatDateTime(device.lastSeen)}</p>
                       </div>
                     </div>
                   );
@@ -894,12 +861,12 @@ export default function User360() {
           </div>
 
           {/* Fraud Events */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider flex items-center gap-2">
                 <AlertOctagon size={15} className="text-red-400" />
                 Fraud Events
-                <span className="text-xs text-gray-600 font-normal">({fraudPagination.total} events)</span>
+                <span className="text-xs text-bp-text-muted font-normal">({fraudPagination.total} events)</span>
               </h2>
               <div className="flex gap-2">
                 {Object.entries(severityCounts).map(([severity, count]) => (
@@ -910,7 +877,7 @@ export default function User360() {
                 <select
                   value={fraudFilter}
                   onChange={(e) => setFraudFilter(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-red-500"
+                  className="bg-bp-elevated border border-bp-border text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-red-500"
                 >
                   <option value="">All</option>
                   <option value="low">Low</option>
@@ -923,34 +890,34 @@ export default function User360() {
             {fraudLoading ? (
               <div className="flex flex-col items-center justify-center py-8">
                 <Loader2 size={24} className="animate-spin text-red-400 mb-2" />
-                <p className="text-xs text-gray-500">Loading fraud events...</p>
+                <p className="text-xs text-bp-text-muted">Loading fraud events...</p>
               </div>
             ) : fraudEvents.length === 0 ? (
               <div className="py-8 text-center">
-                <AlertOctagon size={28} className="text-gray-700 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">No fraud events detected</p>
+                <AlertOctagon size={28} className="text-bp-text-muted mx-auto mb-2" />
+                <p className="text-sm text-bp-text-muted">No fraud events detected</p>
               </div>
             ) : (
               <>
                 <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
                   {fraudEvents.map((event) => (
-                    <div key={event._id} className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-3">
+                    <div key={event._id} className="bg-bp-elevated/50 border border-bp-border/50 rounded-xl p-3">
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${severityBadge(event.severity)}`}>{event.severity}</span>
-                          <p className="text-sm font-medium text-gray-200">{event.eventType}</p>
+                          <p className="text-sm font-medium text-white">{event.eventType}</p>
                         </div>
-                        <p className="text-xs text-gray-600">{formatDateTime(event.createdAt)}</p>
+                        <p className="text-xs text-bp-text-muted">{formatDateTime(event.createdAt)}</p>
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <div className="flex items-center gap-4 text-xs text-bp-text-muted">
                         {event.ip && <span className="font-mono">{event.ip}</span>}
-                        {event.isVPN && <span className="text-amber-400">VPN</span>}
-                        {event.isProxy && <span className="text-amber-400">Proxy</span>}
+                        {event.isVPN && <span className="text-bp-yellow">VPN</span>}
+                        {event.isProxy && <span className="text-bp-yellow">Proxy</span>}
                         {event.riskScoreImpact !== 0 && <span className="text-red-400">Risk: {event.riskScoreImpact}</span>}
                       </div>
                       {event.metadata && Object.keys(event.metadata).length > 0 && (
-                        <p className="text-[11px] text-gray-600 mt-1">
-                          {Object.entries(event.metadata).map(([k, v]) => `${k}: ${v}`).join(" · ")}
+                        <p className="text-[11px] text-bp-text-muted mt-1">
+                          {Object.entries(event.metadata).map(([k, v]) => `${k}: ${v}`).join(" Â· ")}
                         </p>
                       )}
                     </div>
@@ -964,8 +931,8 @@ export default function User360() {
           </div>
 
           {/* Notifications */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+            <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
               <Bell size={15} className="text-purple-400" />
               Notifications
               {unreadCount > 0 && (
@@ -975,36 +942,36 @@ export default function User360() {
             {notificationsLoading ? (
               <div className="flex flex-col items-center justify-center py-8">
                 <Loader2 size={24} className="animate-spin text-purple-400 mb-2" />
-                <p className="text-xs text-gray-500">Loading notifications...</p>
+                <p className="text-xs text-bp-text-muted">Loading notifications...</p>
               </div>
             ) : notifications.length === 0 ? (
               <div className="py-8 text-center">
-                <Bell size={28} className="text-gray-700 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">No notifications</p>
+                <Bell size={28} className="text-bp-text-muted mx-auto mb-2" />
+                <p className="text-sm text-bp-text-muted">No notifications</p>
               </div>
             ) : (
               <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
                 {notifications.map((n) => (
                   <div
                     key={n._id}
-                    className={`flex items-center gap-3 p-2.5 rounded-lg transition ${n.isRead ? "hover:bg-gray-800/30" : "bg-gray-800/50 border border-gray-700/30"}`}
+                    className={`flex items-center gap-3 p-2.5 rounded-lg transition ${n.isRead ? "hover:bg-bp-elevated/30" : "bg-bp-elevated/50 border border-bp-border/30"}`}
                   >
-                    <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div className="w-8 h-8 rounded-full bg-bp-elevated flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {n.actor?.avatar ? (
                         <img src={n.actor.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
                       ) : (
-                        <Bell size={14} className="text-gray-500" />
+                        <Bell size={14} className="text-bp-text-muted" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-300">
-                        <span className="font-medium text-gray-200">{n.actor?.name || "User"}</span>{" "}
+                      <p className="text-sm text-white">
+                        <span className="font-medium text-white">{n.actor?.name || "User"}</span>{" "}
                         {n.type === "subscribe" && "subscribed to your channel"}
                         {n.type === "like" && "liked your video"}
                         {n.type === "comment" && "commented on your video"}
                         {n.type === "upload" && "uploaded a new video"}
                       </p>
-                      <p className="text-[11px] text-gray-600">{formatDateTime(n.createdAt)}</p>
+                      <p className="text-[11px] text-bp-text-muted">{formatDateTime(n.createdAt)}</p>
                     </div>
                     {!n.isRead && <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />}
                   </div>
@@ -1024,10 +991,10 @@ function SectionError({ message, onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <AlertTriangle size={32} className="text-red-400 mb-2 opacity-60" />
-      <p className="text-sm text-gray-400 mb-3">{message}</p>
+      <p className="text-sm text-bp-text-secondary mb-3">{message}</p>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-bp-elevated hover:bg-bp-border border border-bp-border rounded-lg transition"
       >
         <RefreshCw size={14} />
         Retry
@@ -1039,19 +1006,19 @@ function SectionError({ message, onRetry }) {
 function ContentGrid(props) {
   const { items, loading, error, pagination, emptyText, onPageChange, onRetry } = props;
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+    <div className="bg-bp-card border border-bp-border rounded-xl p-4">
       {loading ? (
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 size={32} className="animate-spin text-red-400 mb-2" />
-          <p className="text-sm text-gray-500">Loading...</p>
+          <p className="text-sm text-bp-text-muted">Loading...</p>
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <AlertTriangle size={32} className="text-red-400 mb-2 opacity-60" />
-          <p className="text-sm text-gray-400 mb-3">{error}</p>
+          <p className="text-sm text-bp-text-secondary mb-3">{error}</p>
           <button
             onClick={onRetry}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-bp-elevated hover:bg-bp-border border border-bp-border rounded-lg transition"
           >
             <RefreshCw size={14} />
             Retry
@@ -1059,30 +1026,30 @@ function ContentGrid(props) {
         </div>
       ) : items.length === 0 ? (
         <div className="py-12 text-center">
-          <props.emptyIcon size={32} className="text-gray-700 mx-auto mb-2" />
-          <p className="text-sm text-gray-500">{emptyText}</p>
+          <props.emptyIcon size={32} className="text-bp-text-muted mx-auto mb-2" />
+          <p className="text-sm text-bp-text-muted">{emptyText}</p>
         </div>
       ) : (
         <>
           <div className="flex flex-col gap-2">
             {items.map((v) => (
-              <div key={v._id} className="flex items-center gap-3 p-2 bg-gray-800/50 border border-gray-700/50 rounded-lg hover:border-gray-600 transition">
-                <div className="w-28 h-16 rounded-lg bg-gray-800 overflow-hidden flex-shrink-0">
+              <div key={v._id} className="flex items-center gap-3 p-2 bg-bp-elevated/50 border border-bp-border/50 rounded-lg hover:border-bp-border transition">
+                <div className="w-28 h-16 rounded-lg bg-bp-elevated overflow-hidden flex-shrink-0">
                   {v.thumbnail ? (
                     <img src={v.thumbnail} alt={v.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Video size={18} className="text-gray-700" />
+                      <Video size={18} className="text-bp-text-muted" />
                     </div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm text-gray-200 truncate">{v.title}</p>
-                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                  <p className="font-medium text-sm text-white truncate">{v.title}</p>
+                  <div className="flex items-center gap-3 text-xs text-bp-text-muted mt-1">
                     <span className="flex items-center gap-1"><Eye size={12} />{(v.views || 0).toLocaleString()}</span>
                     <span className="flex items-center gap-1"><ThumbsUp size={12} />{(v.likesCount || 0).toLocaleString()}</span>
                     <span className="flex items-center gap-1"><MessageSquare size={12} />{v.commentCount || v.comments?.length || 0}</span>
-                    <span className="text-gray-600">{formatDate(v.createdAt)}</span>
+                    <span className="text-bp-text-muted">{formatDate(v.createdAt)}</span>
                   </div>
                 </div>
               </div>
@@ -1099,20 +1066,20 @@ function ContentGrid(props) {
 
 function Pagination({ pagination, onPageChange }) {
   return (
-    <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-800">
-      <p className="text-sm text-gray-500">Page {pagination.page} of {pagination.totalPages}</p>
+    <div className="flex items-center justify-between mt-4 pt-3 border-t border-bp-border">
+      <p className="text-sm text-bp-text-muted">Page {pagination.page} of {pagination.totalPages}</p>
       <div className="flex gap-2">
         <button
           disabled={pagination.page <= 1}
           onClick={() => onPageChange(pagination.page - 1)}
-          className="p-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-40 transition"
+          className="p-2 rounded-lg border border-bp-border text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text disabled:opacity-40 transition"
         >
           <ChevronLeft size={18} />
         </button>
         <button
           disabled={pagination.page >= pagination.totalPages}
           onClick={() => onPageChange(pagination.page + 1)}
-          className="p-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-40 transition"
+          className="p-2 rounded-lg border border-bp-border text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text disabled:opacity-40 transition"
         >
           <ChevronRight size={18} />
         </button>
@@ -1125,35 +1092,35 @@ function SubscriptionsList({ subscriptions, loading }) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-8">
-        <Loader2 size={24} className="animate-spin text-amber-400 mb-2" />
-        <p className="text-xs text-gray-500">Loading subscriptions...</p>
+        <Loader2 size={24} className="animate-spin text-bp-yellow mb-2" />
+        <p className="text-xs text-bp-text-muted">Loading subscriptions...</p>
       </div>
     );
   }
   if (subscriptions.length === 0) {
     return (
       <div className="py-8 text-center">
-        <Tv size={28} className="text-gray-700 mx-auto mb-2" />
-        <p className="text-sm text-gray-500">No subscriptions found</p>
+        <Tv size={28} className="text-bp-text-muted mx-auto mb-2" />
+        <p className="text-sm text-bp-text-muted">No subscriptions found</p>
       </div>
     );
   }
   return (
     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
       {subscriptions.map((sub) => (
-        <div key={sub._id} className="flex items-center gap-3 p-2.5 bg-gray-800/50 border border-gray-700/50 rounded-xl">
-          <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+        <div key={sub._id} className="flex items-center gap-3 p-2.5 bg-bp-elevated/50 border border-bp-border/50 rounded-xl">
+          <div className="w-10 h-10 rounded-lg bg-bp-elevated flex items-center justify-center flex-shrink-0 overflow-hidden">
             {sub.channelImage ? (
               <img src={sub.channelImage} alt={sub.name} className="w-10 h-10 rounded-lg object-cover" />
             ) : (
-              <Tv size={18} className="text-gray-500" />
+              <Tv size={18} className="text-bp-text-muted" />
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-200 truncate">{sub.name}</p>
-            <p className="text-xs text-gray-500">{formatNumber(sub.subscriberCount)} subscribers</p>
+            <p className="text-sm font-medium text-white truncate">{sub.name}</p>
+            <p className="text-xs text-bp-text-muted">{formatNumber(sub.subscriberCount)} subscribers</p>
           </div>
-          {sub.creator && <p className="text-xs text-gray-600 flex-shrink-0">by {sub.creator.name}</p>}
+          {sub.creator && <p className="text-xs text-bp-text-muted flex-shrink-0">by {sub.creator.name}</p>}
         </div>
       ))}
     </div>

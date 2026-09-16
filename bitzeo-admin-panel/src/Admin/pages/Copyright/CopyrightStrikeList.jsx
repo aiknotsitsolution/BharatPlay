@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search,
@@ -14,8 +14,8 @@ import { fetchCopyrightStrikes } from "../../../api";
 
 const statusColors = {
   active: "bg-red-500/15 text-red-400 border-red-500/30",
-  expired: "bg-gray-500/15 text-gray-400 border-gray-500/30",
-  disputed: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  expired: "bg-bp-text-muted/15 text-bp-text-secondary border-bp-text-muted/30",
+  disputed: "bg-bp-orange/15 text-bp-orange border-bp-orange/30",
   removed: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
 };
 
@@ -89,18 +89,18 @@ export default function CopyrightStrikeList() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">Copyright Strikes</h1>
-        <p className="text-gray-400 mt-0.5">
+        <p className="text-[13px] text-bp-text-secondary mt-1">
           {pagination.total} total strikes
         </p>
       </div>
 
       {/* Filters */}
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+      <div className="bg-bp-card rounded-2xl border border-bp-border p-4">
         <div className="flex gap-3">
           <select
             value={status}
             onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-            className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-bp-blue"
           >
             {statusOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -110,53 +110,53 @@ export default function CopyrightStrikeList() {
       </div>
 
       {/* Table */}
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+      <div className="bg-bp-card rounded-2xl border border-bp-border overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-sm text-gray-400">Loading strikes...</p>
+              <div className="w-8 h-8 border-4 border-bp-blue border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-sm text-bp-text-secondary">Loading strikes...</p>
             </div>
           </div>
         ) : strikes.length === 0 ? (
           <div className="text-center py-16">
-            <AlertTriangle className="w-12 h-12 text-gray-700 mx-auto mb-3" />
-            <p className="text-gray-500">No strikes found</p>
+            <AlertTriangle className="w-12 h-12 text-bp-text-muted mx-auto mb-3" />
+            <p className="text-bp-text-muted">No strikes found</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-800">
-              <thead className="bg-gray-800/50">
+            <table className="min-w-full divide-y divide-bp-border">
+              <thead className="bg-bp-elevated/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">User</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Content</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Case</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Issued</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Expires</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-bp-text-secondary uppercase tracking-wider">User</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-bp-text-secondary uppercase tracking-wider">Content</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-bp-text-secondary uppercase tracking-wider">Case</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-bp-text-secondary uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-bp-text-secondary uppercase tracking-wider">Issued</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-bp-text-secondary uppercase tracking-wider">Expires</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-bp-text-secondary uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-bp-border">
                 {strikes.map((s) => {
                   const StatusIcon = statusIcons[s.status] || AlertTriangle;
                   return (
-                    <tr key={s._id} className="hover:bg-gray-800/50 transition-colors">
+                    <tr key={s._id} className="hover:bg-bp-elevated/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <p className="text-sm text-gray-200">{s.user?.name || "-"}</p>
-                          <p className="text-xs text-gray-500">{s.user?.email || "-"}</p>
+                          <p className="text-sm text-white">{s.user?.name || "-"}</p>
+                          <p className="text-xs text-bp-text-muted">{s.user?.email || "-"}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <p className="text-sm text-gray-200 truncate max-w-[200px]">
+                        <p className="text-sm text-white truncate max-w-[200px]">
                           {s.content?.title || "Untitled"}
                         </p>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
                           onClick={() => navigate(`/copyright/cases/${s.case?._id || s.case}`)}
-                          className="text-sm text-indigo-400 hover:text-indigo-300"
+                          className="text-sm text-bp-blue hover:text-bp-cyan"
                         >
                           {s.case?.caseNumber || "View Case"}
                         </button>
@@ -164,23 +164,23 @@ export default function CopyrightStrikeList() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium rounded-full border ${
-                            statusColors[s.status] || "bg-gray-500/15 text-gray-400 border-gray-500/30"
+                            statusColors[s.status] || "bg-bp-text-muted/15 text-bp-text-secondary border-bp-text-muted/30"
                           }`}
                         >
                           <StatusIcon size={12} />
                           {s.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-bp-text-muted">
                         {formatDate(s.createdAt)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-bp-text-muted">
                         {formatExpiry(s.expiresAt)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <button
                           onClick={() => navigate(`/copyright/strikes/${s._id}`)}
-                          className="p-1.5 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-lg transition-colors"
+                          className="p-1.5 text-bp-blue hover:text-bp-cyan hover:bg-bp-blue/10 rounded-lg transition-colors"
                         >
                           <Eye size={18} />
                         </button>
@@ -195,22 +195,22 @@ export default function CopyrightStrikeList() {
 
         {/* Pagination */}
         {pagination.pages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-800">
-            <p className="text-sm text-gray-500">
+          <div className="flex items-center justify-between px-6 py-4 border-t border-bp-border">
+            <p className="text-sm text-bp-text-muted">
               Page {pagination.page} of {pagination.pages} ({pagination.total} strikes)
             </p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-2 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft size={18} />
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
                 disabled={page >= pagination.pages}
-                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-2 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronRight size={18} />
               </button>

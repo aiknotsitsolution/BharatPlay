@@ -28,6 +28,7 @@ const {
   clearRefreshCookie,
 } = require("../../utils/refreshCookie");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const { logAuditEvent } = require("../../services/auditEventService");
 const { changeTrustScore } = require("../../services/trustScoreService");
 
@@ -1560,6 +1561,7 @@ exports.loginUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        profilePhoto: user.profilePhoto || null,
       },
     });
   } catch (error) {
@@ -3448,5 +3450,388 @@ exports.getEmployees = async (req, res) => {
       success: false,
       message: "Failed to fetch employees",
     });
+  }
+};
+
+// ================== ADMIN PROFILE (ME / SELF UPDATE) ==================
+
+exports.getAdminProfile = async (req, res) => {
+  try {
+    const adminId = req.admin._id;
+
+    const admin = await User.findById(adminId)
+      .select(
+        "name email role contactNumber countryCode dateOfJoining experienceYears profilePhoto isActive createdAt",
+      )
+      .lean();
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user: admin,
+    });
+  } catch (error) {
+    console.error("Get admin profile error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch profile",
+    });
+  }
+};
+
+exports.updateAdminProfile = async (req, res) => {
+  try {
+    const adminId = req.admin._id;
+    const update = {};
+
+    if (typeof req.body.name === "string" && req.body.name.trim()) {
+      update.name = req.body.name.trim();
+    }
+    if (typeof req.body.contactNumber === "string") {
+      update.contactNumber = req.body.contactNumber.trim();
+    }
+    if (typeof req.body.countryCode === "string") {
+      update.countryCode = req.body.countryCode.trim();
+    }
+    if (req.body.experienceYears !== undefined && req.body.experienceYears !== "") {
+      const yrs = parseInt(req.body.experienceYears, 10);
+      if (!Number.isNaN(yrs) && yrs >= 0) update.experienceYears = yrs;
+    }
+    if (req.body.dateOfJoining && req.body.dateOfJoining !== "") {
+      const d = new Date(req.body.dateOfJoining);
+      if (!Number.isNaN(d.getTime())) update.dateOfJoining = d;
+    }
+
+    // Profile photo → ImageKit (multipart file field "profilePhoto")
+    if (req.files && req.files.profilePhoto) {
+      const file = req.files.profilePhoto;
+
+      const allowedMimes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+      if (!allowedMimes.includes(file.mimetype)) {
+        return res.status(400).json({
+          success: false,
+          message: "Only JPG, PNG or WEBP images are allowed",
+        });
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({
+          success: false,
+          message: "Image size should be less than 5MB",
+        });
+      }
+
+      try {
+        const uploadResponse = await imagekit.upload({
+          file: file.data,
+          fileName: `admin_${Date.now()}_${file.name.replace(/\s+/g, "-")}`,
+          folder: "/admin-profiles",
+        });
+        update.profilePhoto = uploadResponse.url;
+      } catch (uploadErr) {
+        console.error("ImageKit upload error:", uploadErr);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload profile photo",
+        });
+      }
+    } else if (req.body.removePhoto === "1") {
+      update.profilePhoto = "";
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Nothing to update",
+      });
+    }
+
+    const admin = await User.findByIdAndUpdate(adminId, { $set: update }, { new: true })
+      .select(
+        "name email role contactNumber countryCode dateOfJoining experienceYears profilePhoto isActive createdAt",
+      );
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: admin,
+    });
+  } catch (error) {
+    console.error("Update admin profile error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update profile",
+    });
+  }
+};
+
+exports.adminForgotPassword = async (req, res) => {
+  try {
+    const admin = req.admin;
+    const normalizedEmail =
+      typeof admin.email === "string" ? admin.email.trim().toLowerCase() : "";
+
+    if (!normalizedEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "No registered email found on this account.",
+      });
+    }
+
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    const otpHash = await bcrypt.hash(otp, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await User.updateOne(
+      { _id: admin._id },
+      {
+        $set: {
+          resetOtpHash: otpHash,
+          resetOtpExpires: expiresAt,
+          resetOtpAttempts: 0,
+        },
+      },
+    );
+
+    logAuditEvent({
+      userId: admin._id,
+      eventType: "PASSWORD_RESET_REQUEST",
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+      metadata: { email: normalizedEmail },
+    }).catch(() => {});
+
+    const mailResult = await sendMailSafely(
+      getPasswordResetMailOptions(admin.email, admin.name, otp),
+    );
+
+    if (!mailResult.sent) {
+      console.error("OTP email send failed:", mailResult.reason);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send verification code. Please try again.",
+      });
+    }
+
+    console.log("OTP email sent successfully to:", admin.email);
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "A 6-digit verification code has been sent to your registered email.",
+    });
+  } catch (error) {
+    console.error("Admin forgot password error:", error.message);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+exports.adminVerifyResetOtp = async (req, res) => {
+  try {
+    const adminId = req.admin._id;
+    const { otp } = req.body || {};
+
+    if (typeof otp !== "string" || !/^\d{6}$/.test(otp)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid 6-digit verification code.",
+      });
+    }
+
+    const admin = await User.findById(adminId).select("+resetOtpHash");
+
+    if (!admin || !admin.resetOtpHash) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid or expired verification code. Please request a new one.",
+      });
+    }
+
+    if (
+      !admin.resetOtpExpires ||
+      new Date(admin.resetOtpExpires).getTime() < Date.now()
+    ) {
+      await User.updateOne(
+        { _id: adminId },
+        {
+          $unset: { resetOtpHash: 1, resetOtpExpires: 1, resetOtpAttempts: 1 },
+        },
+      );
+      return res.status(400).json({
+        success: false,
+        message: "This verification code has expired. Please request a new one.",
+      });
+    }
+
+    if (admin.resetOtpAttempts >= 5) {
+      await User.updateOne(
+        { _id: adminId },
+        {
+          $unset: { resetOtpHash: 1, resetOtpExpires: 1, resetOtpAttempts: 1 },
+        },
+      );
+      return res.status(400).json({
+        success: false,
+        message: "Too many incorrect attempts. Please request a new code.",
+      });
+    }
+
+    const otpValid = await bcrypt.compare(otp, admin.resetOtpHash);
+
+    if (!otpValid) {
+      const newAttempts = (admin.resetOtpAttempts || 0) + 1;
+      if (newAttempts >= 5) {
+        await User.updateOne(
+          { _id: adminId },
+          {
+            $unset: {
+              resetOtpHash: 1,
+              resetOtpExpires: 1,
+              resetOtpAttempts: 1,
+            },
+          },
+        );
+        return res.status(400).json({
+          success: false,
+          message: "Too many incorrect attempts. Please request a new code.",
+        });
+      }
+      await User.updateOne(
+        { _id: adminId },
+        { $set: { resetOtpAttempts: newAttempts } },
+      );
+      return res.status(400).json({
+        success: false,
+        message: "The verification code is incorrect.",
+      });
+    }
+
+    // OTP verified — generate a short-lived, single-use reset token.
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenHashVal = hashToken(resetToken);
+    const resetTokenExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    await User.updateOne(
+      { _id: adminId },
+      {
+        $set: {
+          resetTokenHash: resetTokenHashVal,
+          resetTokenExpires: resetTokenExpiresAt,
+        },
+        $unset: { resetOtpHash: 1, resetOtpExpires: 1, resetOtpAttempts: 1 },
+      },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP verified successfully.",
+      resetToken,
+    });
+  } catch (error) {
+    console.error("Admin verify reset OTP error:", error.message);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+exports.adminResetPassword = async (req, res) => {
+  try {
+    const adminId = req.admin._id;
+    const { token, newPassword } = req.body || {};
+
+    if (typeof token !== "string" || !token) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Reset token is required" });
+    }
+
+    if (typeof newPassword !== "string" || newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters",
+      });
+    }
+
+    const tokenHash = hashToken(token);
+    const admin = await User.findOne({
+      _id: adminId,
+      resetTokenHash: tokenHash,
+    }).select("+resetTokenHash");
+
+    if (!admin) {
+      return res.status(400).json({
+        success: false,
+        message: "Your password reset session has expired. Please start again.",
+      });
+    }
+
+    if (
+      !admin.resetTokenExpires ||
+      new Date(admin.resetTokenExpires).getTime() < Date.now()
+    ) {
+      await User.updateOne(
+        { _id: adminId },
+        {
+          $unset: {
+            resetTokenHash: 1,
+            resetTokenExpires: 1,
+            resetOtpHash: 1,
+            resetOtpExpires: 1,
+            resetOtpAttempts: 1,
+          },
+        },
+      );
+      return res.status(400).json({
+        success: false,
+        message: "Your password reset session has expired. Please start again.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await User.updateOne(
+      { _id: adminId },
+      {
+        $set: { password: hashedPassword },
+        $unset: {
+          resetTokenHash: 1,
+          resetTokenExpires: 1,
+          resetOtpHash: 1,
+          resetOtpExpires: 1,
+          resetOtpAttempts: 1,
+        },
+      },
+    );
+
+    logAuditEvent({
+      userId: adminId,
+      eventType: "PASSWORD_RESET_COMPLETE",
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+    }).catch(() => {});
+
+    await sendMailSafely(
+      getPasswordChangeConfirmationMailOptions(admin.email, admin.name),
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Password has been reset successfully",
+    });
+  } catch (error) {
+    console.error("Admin reset password error:", error.message);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };

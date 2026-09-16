@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { Loader2, X, AlertTriangle, Ban, ShieldOff, Trash2, RotateCcw } from "lucide-react";
 
 const ACTION_CONFIG = {
@@ -8,7 +8,7 @@ const ACTION_CONFIG = {
     icon: ShieldOff,
     color: "amber",
     buttonLabel: "Suspend",
-    buttonClass: "bg-amber-600 hover:bg-amber-500",
+    buttonClass: "bg-amber-600 hover:bg-bp-yellow",
     requireReason: true,
     reasonPlaceholder: "e.g. Violation of community guidelines",
   },
@@ -47,7 +47,7 @@ const ACTION_CONFIG = {
     icon: ShieldOff,
     color: "amber",
     buttonLabel: "Disable",
-    buttonClass: "bg-amber-600 hover:bg-amber-500",
+    buttonClass: "bg-amber-600 hover:bg-bp-yellow",
     requireReason: false,
   },
   enableChannel: {
@@ -94,7 +94,7 @@ const ACTION_CONFIG = {
     icon: ShieldOff,
     color: "amber",
     buttonLabel: "Disable",
-    buttonClass: "bg-amber-600 hover:bg-amber-500",
+    buttonClass: "bg-amber-600 hover:bg-bp-yellow",
     requireReason: false,
   },
   enableVideo: {
@@ -122,7 +122,7 @@ const ACTION_CONFIG = {
     icon: ShieldOff,
     color: "amber",
     buttonLabel: "Disable",
-    buttonClass: "bg-amber-600 hover:bg-amber-500",
+    buttonClass: "bg-amber-600 hover:bg-bp-yellow",
     requireReason: false,
   },
   enableShort: {
@@ -179,10 +179,10 @@ export default function ModerationDialog({ open, action, userName, targetName, o
 
   const colorClasses = {
     amber: {
-      iconBg: "bg-amber-500/15",
-      iconText: "text-amber-400",
-      border: "border-amber-500/20",
-      titleText: "text-amber-400",
+      iconBg: "bg-bp-yellow/15",
+      iconText: "text-bp-yellow",
+      border: "border-bp-yellow/20",
+      titleText: "text-bp-yellow",
     },
     emerald: {
       iconBg: "bg-emerald-500/15",
@@ -201,12 +201,13 @@ export default function ModerationDialog({ open, action, userName, targetName, o
   const c = colorClasses[config.color] || colorClasses.amber;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={config.title}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-[#1a1a1a] border border-gray-800 rounded-2xl w-full max-w-md shadow-2xl">
+      <div className="relative bg-bp-card border border-bp-border rounded-2xl w-full max-w-md shadow-2xl">
         <button
           onClick={onCancel}
-          className="absolute top-4 right-4 p-1 text-gray-500 hover:text-gray-300 transition"
+          className="absolute top-4 right-4 p-1 text-bp-text-muted hover:text-bp-text transition"
+          aria-label="Close dialog"
         >
           <X size={18} />
         </button>
@@ -218,22 +219,22 @@ export default function ModerationDialog({ open, action, userName, targetName, o
             </div>
             <div>
               <h3 className={`text-lg font-bold ${c.titleText}`}>{config.title}</h3>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-bp-text-secondary">
                 {targetName ? (
-                  <><span className="font-medium text-gray-200">{targetName}</span>{userName && <> — owned by <span className="font-medium text-gray-200">{userName}</span></>}</>
+                  <><span className="font-medium text-white">{targetName}</span>{userName && <> â€” owned by <span className="font-medium text-white">{userName}</span></>}</>
                 ) : (
-                  <>for <span className="font-medium text-gray-200">{userName}</span></>
+                  <>for <span className="font-medium text-white">{userName}</span></>
                 )}
               </p>
             </div>
           </div>
 
-          <p className="text-sm text-gray-400 mb-5 leading-relaxed">{config.description}</p>
+          <p className="text-sm text-bp-text-secondary mb-5 leading-relaxed">{config.description}</p>
 
           <form onSubmit={handleSubmit}>
             {config.requireReason && (
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                <label className="block text-sm font-medium text-white mb-1.5">
                   Reason <span className="text-red-400">*</span>
                 </label>
                 <textarea
@@ -246,7 +247,7 @@ export default function ModerationDialog({ open, action, userName, targetName, o
                   rows={3}
                   maxLength={500}
                   placeholder={config.reasonPlaceholder}
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 text-sm resize-none focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition"
+                  className="w-full px-4 py-2.5 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm resize-none focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition"
                 />
                 <div className="flex items-center justify-between mt-1">
                   {error ? (
@@ -256,7 +257,7 @@ export default function ModerationDialog({ open, action, userName, targetName, o
                   ) : (
                     <span />
                   )}
-                  <p className="text-[11px] text-gray-600">{reason.length}/500</p>
+                  <p className="text-[11px] text-bp-text-muted">{reason.length}/500</p>
                 </div>
               </div>
             )}
@@ -280,7 +281,7 @@ export default function ModerationDialog({ open, action, userName, targetName, o
                 type="button"
                 onClick={onCancel}
                 disabled={loading}
-                className="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium transition disabled:opacity-50"
+                className="px-5 py-2.5 bg-bp-elevated hover:bg-bp-border text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
               >
                 Cancel
               </button>
