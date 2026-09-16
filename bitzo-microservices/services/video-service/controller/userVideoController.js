@@ -1339,22 +1339,6 @@ const addView = async (req, res) => {
           newlyCounted = true;
         }
       }
-
-      // Updated history logic: move to front + limit to 100
-      if (shouldRecordHistory) {
-        const user = await User.findById(normalizedUserId);
-        if (user) {
-          const targetId = video._id.toString();
-          const history = (user.viewedVideos || []).map((id) => id.toString());
-
-          user.viewedVideos = [
-            targetId,
-            ...history.filter((id) => id !== targetId),
-          ].slice(0, 100);
-
-          await user.save();
-        }
-      }
     } else if (guestId) {
       video.viewers = video.viewers || [];
       const viewerEntry = video.viewers.find(
@@ -1391,11 +1375,6 @@ const addView = async (req, res) => {
       emitViewCountUpdated(video._id, video.views);
     }
 
-    const watchUserId = req.user?.userId || req.user?.id || normalizedUserId;
-    if (watchUserId) {
-      await recordWatchSession(video, watchUserId, req.body);
-    }
-
     res.status(200).json({
       success: true,
       message: watchedEnough ? "View counted" : "Watch progress recorded",
@@ -1403,6 +1382,33 @@ const addView = async (req, res) => {
       watchedPercent: percent,
       counted: newlyCounted,
       historyRecorded: shouldRecordHistory && !!normalizedUserId,
+    });
+
+    // History and trust/session bookkeeping must not delay the view response.
+    const watchUserId = req.user?.userId || req.user?.id || normalizedUserId;
+    setImmediate(async () => {
+      try {
+        if (shouldRecordHistory && normalizedUserId) {
+          const user = await User.findById(normalizedUserId);
+          if (user) {
+            const targetId = video._id.toString();
+            const history = (user.viewedVideos || []).map((id) =>
+              id.toString(),
+            );
+            user.viewedVideos = [
+              targetId,
+              ...history.filter((id) => id !== targetId),
+            ].slice(0, 100);
+            await user.save();
+          }
+        }
+
+        if (watchUserId) {
+          await recordWatchSession(video, watchUserId, req.body);
+        }
+      } catch (error) {
+        console.error("Async watch bookkeeping error:", error);
+      }
     });
   } catch (error) {
     console.error("Error in addView:", error);

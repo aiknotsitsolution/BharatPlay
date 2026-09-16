@@ -97,7 +97,7 @@ const getGuestId = async () => {
 
 export default function VideoDetailScreen() {
   const navigation = useNavigation<any>();
-  const route = useRoute();
+  const route = useRoute<any>();
   const routeId = route?.params?.id ?? route?.params?.videoId ?? 1;
   const routeVideo = route?.params?.item ?? route?.params?.video ?? null;
 
@@ -205,10 +205,12 @@ export default function VideoDetailScreen() {
         return;
       }
 
-      const percent = Math.max(
+      let percent = Math.max(
         1,
         Math.min(100, Math.round((time / videoDuration) * 100)),
       );
+
+      if (percent >= 95) percent = 100;
 
       if (percent < 1) return;
 
@@ -221,15 +223,9 @@ export default function VideoDetailScreen() {
         percentDelta < 3 &&
         Date.now() - previous.timestamp < 12000;
 
-      if (isDuplicateBurst) {
-        return;
-      }
+      if (isDuplicateBurst) return;
 
-      lastProgressSent.current = {
-        time,
-        percent,
-        timestamp: Date.now(),
-      };
+      lastProgressSent.current = { time, percent, timestamp: Date.now() };
       viewRequestInFlight.current = true;
       try {
         const token = await AsyncStorage.getItem("token");
@@ -336,7 +332,14 @@ export default function VideoDetailScreen() {
   }, []);
 
   const handleVideoEnded = useCallback(() => {
-    saveWatchProgress(latestTimeRef.current, latestDurationRef.current);
+    // Force full watch percent on end
+    const finalTime =
+      latestDurationRef.current > 0
+        ? latestDurationRef.current
+        : latestTimeRef.current;
+
+    saveWatchProgress(finalTime, latestDurationRef.current || finalTime);
+
     const next = getNextUpNext();
     if (!next) {
       setUpNextOverlay(null);
@@ -352,7 +355,6 @@ export default function VideoDetailScreen() {
       setCountdownLeft(null);
     }
   }, [getNextUpNext, autoplay, startCountdown, saveWatchProgress]);
-
   // Unlock orientation
   useEffect(() => {
     ScreenOrientation.unlockAsync().catch(() => {});
@@ -611,11 +613,6 @@ export default function VideoDetailScreen() {
       return;
     }
 
-    lastProgressSent.current = {
-      time: currentTime,
-      percent,
-      timestamp: Date.now(),
-    };
     saveWatchProgress(currentTime, duration);
   }, [currentTime, duration, routeId, saveWatchProgress]);
 
@@ -1527,7 +1524,7 @@ const styles = StyleSheet.create({
 
   // ========== UP NEXT OVERLAY ==========
   upNextOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.88)",
     justifyContent: "center",
     alignItems: "center",
