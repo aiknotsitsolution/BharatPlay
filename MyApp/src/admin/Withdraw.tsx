@@ -10,35 +10,47 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ToastAndroid,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ArrowLeft,
   Wallet,
-  Copy,
-  Check,
   AlertCircle,
+  Check,
+  Home,
+  Play,
+  Plus as PlusIcon,
+  Users,
+  User,
 } from "lucide-react-native";
-import * as Clipboard from "expo-clipboard";
 import { API_BASE } from "../../config/api";
-
-// Local:
-// const API_BASE = "https://exp://192.168.1.14:8081/api";
+import Navbar from "./Navbar";
 
 export default function WithdrawScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const [points, setPoints] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const [selectedMethod, setSelectedMethod] = useState(null);
-  const [copied, setCopied] = useState(false);
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
 
-  // 1 point = $0.01
+  // UPI Form
+  const [upiId, setUpiId] = useState("");
+  const [upiName, setUpiName] = useState("");
+
+  // Bank Form
+  const [accountName, setAccountName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [ifsc, setIfsc] = useState("");
+  const [bankName, setBankName] = useState("");
+
   const usdBalance = (points * 0.01).toFixed(2);
 
   const methods = [
@@ -49,11 +61,16 @@ export default function WithdrawScreen() {
       fee: 0,
       icon: "₹",
     },
-    { id: "paypal", name: "Cash", min: 10, fee: 2.9, icon: "$" },
-    { id: "bank", name: "Bank Transfer", min: 20, fee: 1.5, icon: "🏦" },
+    {
+      id: "bank",
+      name: "Bank Transfer",
+      min: 20,
+      fee: 1.5,
+      icon: "🏦",
+    },
   ];
 
-  // ─── Fetch points from /me ───
+  // ─── Fetch Balance ───
   useEffect(() => {
     const fetchBalance = async () => {
       try {
@@ -87,10 +104,21 @@ export default function WithdrawScreen() {
     fetchBalance();
   }, [navigation]);
 
-  const handleCopyUPI = async () => {
-    await Clipboard.setStringAsync("aditya@upi");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const resetForms = () => {
+    setUpiId("");
+    setUpiName("");
+    setAccountName("");
+    setAccountNumber("");
+    setIfsc("");
+    setBankName("");
+  };
+
+  const showToast = (message) => {
+    if (Platform.OS === "android") {
+      ToastAndroid.show(message, ToastAndroid.LONG);
+    } else {
+      Alert.alert("Success", message);
+    }
   };
 
   const handleWithdraw = async () => {
@@ -113,6 +141,37 @@ export default function WithdrawScreen() {
       return;
     }
 
+    // Validation
+    if (selectedMethod.id === "upi") {
+      if (!upiId.trim()) {
+        setError("Please enter your UPI ID");
+        return;
+      }
+      if (!upiName.trim()) {
+        setError("Please enter your name");
+        return;
+      }
+    }
+
+    if (selectedMethod.id === "bank") {
+      if (!accountName.trim()) {
+        setError("Please enter Account Holder Name");
+        return;
+      }
+      if (!accountNumber.trim()) {
+        setError("Please enter Account Number");
+        return;
+      }
+      if (!ifsc.trim()) {
+        setError("Please enter IFSC Code");
+        return;
+      }
+      if (!bankName.trim()) {
+        setError("Please enter Bank Name");
+        return;
+      }
+    }
+
     try {
       setSubmitting(true);
       setError("");
@@ -120,28 +179,48 @@ export default function WithdrawScreen() {
       const token = await AsyncStorage.getItem("token");
       if (!token) throw new Error("Please login again");
 
-      // Backend call (uncomment jab API ready ho)
+      const payload = {
+        amount: withdrawAmount,
+        method: selectedMethod.id,
+      };
+
+      if (selectedMethod.id === "upi") {
+        payload.upiId = upiId.trim();
+        payload.name = upiName.trim();
+      } else {
+        payload.accountName = accountName.trim();
+        payload.accountNumber = accountNumber.trim();
+        payload.ifsc = ifsc.trim().toUpperCase();
+        payload.bankName = bankName.trim();
+      }
+
+      // Backend call (uncomment when ready)
       // const res = await fetch(`${API_BASE}/withdraw`, {
       //   method: "POST",
       //   headers: {
       //     "Content-Type": "application/json",
       //     Authorization: `Bearer ${token}`,
       //   },
-      //   body: JSON.stringify({
-      //     amount: withdrawAmount,
-      //     method: selectedMethod.id,
-      //   }),
+      //   body: JSON.stringify(payload),
       // });
       // const data = await res.json();
       // if (!res.ok || !data.success) throw new Error(data.message || "Withdraw failed");
 
+      // Success Toast
+      showToast(
+        `$${withdrawAmount.toFixed(2)} withdraw request submitted! Money will be credited within 45 working days.`,
+      );
+
+      // Also show Alert for better visibility
       Alert.alert(
-        "Request Submitted",
-        `$${withdrawAmount.toFixed(2)} via ${selectedMethod.name} request submitted!\nProcessing: 1-3 business days.`,
+        "Request Submitted ✅",
+        `Your withdrawal request of $${withdrawAmount.toFixed(2)} via ${selectedMethod.name} has been submitted successfully.\n\nYou will receive the money in your account within 45 working days.`,
+        [{ text: "OK" }],
       );
 
       setAmount("");
       setSelectedMethod(null);
+      resetForms();
     } catch (err) {
       setError(err.message || "Something went wrong");
     } finally {
@@ -164,17 +243,10 @@ export default function WithdrawScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
     >
-      {/* Optional Header (back button) */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-        >
-          <ArrowLeft size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Withdraw</Text>
-      </View>
+      <Navbar onMenuPress={() => {}} points={0} />
 
+     
+ 
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -210,6 +282,7 @@ export default function WithdrawScreen() {
                 onPress={() => {
                   setSelectedMethod(method);
                   setError("");
+                  resetForms();
                 }}
                 activeOpacity={0.8}
               >
@@ -267,23 +340,82 @@ export default function WithdrawScreen() {
           </View>
         )}
 
-        {/* UPI Specific */}
+        {/* ========== UPI FORM ========== */}
         {selectedMethod?.id === "upi" && (
-          <View style={styles.upiBox}>
-            <Text style={styles.upiLabel}>Send to UPI ID:</Text>
-            <View style={styles.upiRow}>
-              <Text style={styles.upiId}>aditya@upi</Text>
-              <TouchableOpacity onPress={handleCopyUPI} style={styles.copyBtn}>
-                {copied ? (
-                  <Check size={18} color="#22c55e" />
-                ) : (
-                  <Copy size={18} color="#60a5fa" />
-                )}
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.upiHint}>
-              Send exact amount and share screenshot in support
+          <View style={styles.formBox}>
+            <Text style={styles.formTitle}>Enter Your UPI Details</Text>
+            <Text style={styles.formSubtitle}>
+              Money will be sent to this UPI ID
             </Text>
+
+            <Text style={styles.label}>UPI ID *</Text>
+            <TextInput
+              style={styles.input}
+              value={upiId}
+              onChangeText={setUpiId}
+              placeholder="yourname@upi / @paytm / @ybl"
+              placeholderTextColor="#71717a"
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+
+            <Text style={styles.label}>Full Name (as per UPI) *</Text>
+            <TextInput
+              style={styles.input}
+              value={upiName}
+              onChangeText={setUpiName}
+              placeholder="Enter full name"
+              placeholderTextColor="#71717a"
+            />
+          </View>
+        )}
+
+        {/* ========== BANK FORM ========== */}
+        {selectedMethod?.id === "bank" && (
+          <View style={styles.formBox}>
+            <Text style={styles.formTitle}>Enter Bank Account Details</Text>
+            <Text style={styles.formSubtitle}>
+              Money will be transferred to this account
+            </Text>
+
+            <Text style={styles.label}>Account Holder Name *</Text>
+            <TextInput
+              style={styles.input}
+              value={accountName}
+              onChangeText={setAccountName}
+              placeholder="Full name as per bank account"
+              placeholderTextColor="#71717a"
+            />
+
+            <Text style={styles.label}>Account Number *</Text>
+            <TextInput
+              style={styles.input}
+              value={accountNumber}
+              onChangeText={setAccountNumber}
+              placeholder="Enter account number"
+              placeholderTextColor="#71717a"
+              keyboardType="number-pad"
+            />
+
+            <Text style={styles.label}>IFSC Code *</Text>
+            <TextInput
+              style={styles.input}
+              value={ifsc}
+              onChangeText={(t) => setIfsc(t.toUpperCase())}
+              placeholder="e.g. SBIN0001234"
+              placeholderTextColor="#71717a"
+              autoCapitalize="characters"
+              maxLength={11}
+            />
+
+            <Text style={styles.label}>Bank Name *</Text>
+            <TextInput
+              style={styles.input}
+              value={bankName}
+              onChangeText={setBankName}
+              placeholder="e.g. State Bank of India"
+              placeholderTextColor="#71717a"
+            />
           </View>
         )}
 
@@ -311,11 +443,75 @@ export default function WithdrawScreen() {
         </TouchableOpacity>
 
         <Text style={styles.footerNote}>
-          Processing time: 1–3 business days • First withdrawal may take longer
-          for verification
+          Processing time:{" "}
+          <Text style={{ color: "#facc15", fontWeight: "600" }}>
+            45 working days
+          </Text>
+          {"\n"}
+          First withdrawal may take longer for verification
         </Text>
       </ScrollView>
+
+      {/* Bottom Tabs */}
+      <ProfileBottomTabs navigation={navigation} insets={insets} />
     </KeyboardAvoidingView>
+  );
+}
+
+// ========== BOTTOM TABS ==========
+function ProfileBottomTabs({ navigation, insets }) {
+  const tabs = [
+    { label: "Home", icon: Home, screen: "Home" },
+    { label: "Shorts", icon: Play, screen: "Shorts" },
+    { label: "Create", icon: PlusIcon, screen: "Create", center: true },
+    { label: "Subscribe", icon: Users, screen: "Subscribe" },
+    { label: "You", icon: User, screen: "You" },
+  ];
+
+  return (
+    <View
+      style={[
+        styles.profileBottomTabs,
+        {
+          height: 56 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+        },
+      ]}
+    >
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        return (
+          <TouchableOpacity
+            key={tab.label}
+            style={tab.center ? styles.profileCenterTab : styles.profileTab}
+            onPress={() =>
+              navigation.navigate("MainTabs", { screen: tab.screen })
+            }
+            activeOpacity={0.8}
+          >
+            {tab.center ? (
+              <View style={styles.profileCenterButton}>
+                <Icon size={28} color="#fff" strokeWidth={2.5} />
+              </View>
+            ) : (
+              <Icon
+                size={22}
+                color={tab.label === "You" ? "#fff" : "#a1a1aa"}
+                strokeWidth={tab.label === "You" ? 2.8 : 1.8}
+              />
+            )}
+            <Text
+              style={[
+                styles.profileTabLabel,
+                tab.label === "You" && styles.profileTabLabelActive,
+              ]}
+            >
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   );
 }
 
@@ -356,10 +552,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 16,
-    paddingBottom: 160, // bottom tab ke liye gap
+    paddingBottom: 160,
   },
 
-  // Balance Card
   balanceCard: {
     backgroundColor: "#1a1a2e",
     borderRadius: 16,
@@ -448,6 +643,7 @@ const styles = StyleSheet.create({
     color: "#a1a1aa",
     fontSize: 13,
     marginBottom: 8,
+    marginTop: 12,
   },
   amountInputRow: {
     flexDirection: "row",
@@ -485,7 +681,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  upiBox: {
+  // Form Box
+  formBox: {
     backgroundColor: "#1a1a1a",
     borderRadius: 14,
     padding: 16,
@@ -493,32 +690,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#333",
   },
-  upiLabel: {
-    color: "#a1a1aa",
+  formTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  formSubtitle: {
+    color: "#71717a",
     fontSize: 13,
     marginBottom: 8,
   },
-  upiRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#272727",
+  input: {
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#333",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
-  },
-  upiId: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  copyBtn: {
-    padding: 4,
-  },
-  upiHint: {
-    color: "#71717a",
-    fontSize: 12,
-    marginTop: 8,
+    fontSize: 15,
   },
 
   withdrawBtn: {
@@ -539,10 +730,58 @@ const styles = StyleSheet.create({
 
   footerNote: {
     color: "#71717a",
-    fontSize: 12,
+    fontSize: 13,
     textAlign: "center",
     marginTop: 24,
     marginBottom: 40,
-    lineHeight: 18,
+    lineHeight: 20,
+  },
+
+  // Bottom Tabs
+  profileBottomTabs: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    backgroundColor: "#0f0f0f",
+    borderTopWidth: 0.5,
+    borderTopColor: "#333",
+    paddingTop: 6,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  profileTab: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+  profileCenterTab: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileCenterButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ef4444",
+  },
+  profileTabLabel: {
+    color: "#a1a1aa",
+    fontSize: 10,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  profileTabLabelActive: {
+    color: "#fff",
   },
 });
