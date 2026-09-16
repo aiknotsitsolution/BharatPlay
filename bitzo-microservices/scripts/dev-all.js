@@ -87,8 +87,11 @@ async function startServices() {
       console.log(`[${name}] already running on port ${port}`);
       continue;
     }
+    
 
-    const child = spawn(process.execPath, [npmCli, "run", "dev"], {
+    // Keep the all-services runner stable while Morgan logs every API hit.
+    // Restart the affected service manually when code changes need loading.
+    const child = spawn(process.execPath, [npmCli, "run", "start"], {
       cwd: path.join(root, directory),
       env: { ...process.env, PORT: String(port) },
       stdio: ["inherit", "pipe", "pipe"],
@@ -115,6 +118,7 @@ async function startServices() {
   );
 }
 
+
 function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
@@ -130,9 +134,7 @@ function shutdown() {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
-console.log(
-  "Starting all Bitzo services. Press Ctrl+C to stop services started by this command.",
-);
+
 startServices().catch((error) => {
   console.error(error);
   shutdown();
