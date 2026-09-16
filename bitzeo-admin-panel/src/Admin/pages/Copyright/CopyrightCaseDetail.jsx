@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -24,22 +24,22 @@ import {
 import { hasFeature } from "../../../config/roleConfig";
 
 const statusColors = {
-  pending: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  under_review: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  pending: "bg-bp-yellow/15 text-bp-yellow border-bp-yellow/30",
+  under_review: "bg-bp-cyan/15 text-bp-cyan border-bp-cyan/30",
   takedown_approved: "bg-red-500/15 text-red-400 border-red-500/30",
-  takedown_rejected: "bg-gray-500/15 text-gray-400 border-gray-500/30",
-  disputed: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  takedown_rejected: "bg-bp-text-muted/15 text-bp-text-secondary border-bp-text-muted/30",
+  disputed: "bg-bp-orange/15 text-bp-orange border-bp-orange/30",
   dispute_under_review: "bg-purple-500/15 text-purple-400 border-purple-500/30",
   dispute_upheld: "bg-red-500/15 text-red-400 border-red-500/30",
   dispute_overturned: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   resolved: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  withdrawn: "bg-gray-500/15 text-gray-400 border-gray-500/30",
+  withdrawn: "bg-bp-text-muted/15 text-bp-text-secondary border-bp-text-muted/30",
 };
 
 const priorityColors = {
-  low: "text-gray-400",
-  medium: "text-yellow-400",
-  high: "text-orange-400",
+  low: "text-bp-text-secondary",
+  medium: "text-bp-yellow",
+  high: "text-bp-orange",
   urgent: "text-red-400",
 };
 
@@ -174,8 +174,8 @@ export default function CopyrightCaseDetail() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm text-gray-400">Loading case details...</p>
+          <div className="w-8 h-8 border-4 border-bp-blue border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm text-bp-text-secondary">Loading case details...</p>
         </div>
       </div>
     );
@@ -185,10 +185,10 @@ export default function CopyrightCaseDetail() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-3">
-          <p className="text-gray-200 font-medium">Case not found</p>
+          <p className="text-white font-medium">Case not found</p>
           <button
             onClick={() => navigate("/copyright/cases")}
-            className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg"
+            className="px-4 py-2 text-sm bg-bp-blue hover:bg-bp-blue text-white rounded-lg"
           >
             Back to Cases
           </button>
@@ -205,7 +205,7 @@ export default function CopyrightCaseDetail() {
       <div className="flex items-center gap-4">
         <button
           onClick={() => navigate("/copyright/cases")}
-          className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+          className="p-2 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated rounded-lg transition-colors"
         >
           <ArrowLeft size={20} />
         </button>
@@ -214,16 +214,16 @@ export default function CopyrightCaseDetail() {
             <h1 className="text-2xl font-bold text-white">{caseData.caseNumber}</h1>
             <span
               className={`px-2.5 py-0.5 text-xs font-medium rounded-full border ${
-                statusColors[caseData.status] || "bg-gray-500/15 text-gray-400 border-gray-500/30"
+                statusColors[caseData.status] || "bg-bp-text-muted/15 text-bp-text-secondary border-bp-text-muted/30"
               }`}
             >
               {statusLabels[caseData.status]}
             </span>
-            <span className={`text-xs font-medium capitalize ${priorityColors[caseData.priority] || "text-gray-400"}`}>
+            <span className={`text-xs font-medium capitalize ${priorityColors[caseData.priority] || "text-bp-text-secondary"}`}>
               {caseData.priority} priority
             </span>
           </div>
-          <p className="text-gray-400 mt-0.5">Created {formatDate(caseData.createdAt)}</p>
+          <p className="text-bp-text-secondary mt-0.5">Created {formatDate(caseData.createdAt)}</p>
         </div>
       </div>
 
@@ -231,40 +231,40 @@ export default function CopyrightCaseDetail() {
         {/* Main Content */}
         <div className="xl:col-span-2 space-y-6">
           {/* Claim Details */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+          <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-indigo-400" />
+              <FileText className="w-5 h-5 text-bp-blue" />
               Claim Details
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Claim Type</p>
-                <p className="text-sm text-gray-200 capitalize">{caseData.claim?.type?.replace(/_/g, " ")}</p>
+                <p className="text-sm text-bp-text-muted">Claim Type</p>
+                <p className="text-sm text-white capitalize">{caseData.claim?.type?.replace(/_/g, " ")}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Original Work</p>
-                <p className="text-sm text-gray-200">{caseData.claim?.originalWork || "-"}</p>
+                <p className="text-sm text-bp-text-muted">Original Work</p>
+                <p className="text-sm text-white">{caseData.claim?.originalWork || "-"}</p>
               </div>
               <div className="sm:col-span-2">
-                <p className="text-sm text-gray-500">Description</p>
-                <p className="text-sm text-gray-200">{caseData.claim?.description || "-"}</p>
+                <p className="text-sm text-bp-text-muted">Description</p>
+                <p className="text-sm text-white">{caseData.claim?.description || "-"}</p>
               </div>
             </div>
           </div>
 
           {/* Content Under Dispute */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+          <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <ExternalLink className="w-5 h-5 text-blue-400" />
+              <ExternalLink className="w-5 h-5 text-bp-cyan" />
               Content Under Dispute
             </h2>
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-xl bg-gray-800 flex items-center justify-center">
-                <FileText className="w-6 h-6 text-gray-500" />
+              <div className="w-16 h-16 rounded-xl bg-bp-elevated flex items-center justify-center">
+                <FileText className="w-6 h-6 text-bp-text-muted" />
               </div>
               <div>
-                <p className="font-medium text-gray-200">{caseData.content?.title || "Untitled"}</p>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <p className="font-medium text-white">{caseData.content?.title || "Untitled"}</p>
+                <p className="text-sm text-bp-text-muted mt-0.5">
                   Video ID: {caseData.content?.video?._id || caseData.content?.video}
                 </p>
               </div>
@@ -272,7 +272,7 @@ export default function CopyrightCaseDetail() {
           </div>
 
           {/* Evidence */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+          <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <Shield className="w-5 h-5 text-emerald-400" />
               Evidence ({caseData.evidence?.length || 0})
@@ -280,17 +280,17 @@ export default function CopyrightCaseDetail() {
             {caseData.evidence?.length > 0 ? (
               <div className="space-y-3">
                 {caseData.evidence.map((e, idx) => (
-                  <div key={idx} className="p-3 bg-gray-800/50 rounded-xl border border-gray-700/50">
+                  <div key={idx} className="p-3 bg-bp-elevated/50 rounded-xl border border-bp-border/50">
                     <div className="flex items-center justify-between">
-                      <span className="px-2 py-0.5 text-xs font-medium bg-gray-700 text-gray-300 rounded">
+                      <span className="px-2 py-0.5 text-xs font-medium bg-bp-border text-white rounded">
                         {e.type}
                       </span>
-                      <span className="text-xs text-gray-500">{formatDate(e.createdAt)}</span>
+                      <span className="text-xs text-bp-text-muted">{formatDate(e.createdAt)}</span>
                     </div>
-                    {e.title && <p className="text-sm text-gray-200 mt-2">{e.title}</p>}
-                    {e.description && <p className="text-sm text-gray-400 mt-1">{e.description}</p>}
+                    {e.title && <p className="text-sm text-white mt-2">{e.title}</p>}
+                    {e.description && <p className="text-sm text-bp-text-secondary mt-1">{e.description}</p>}
                     {e.url && (
-                      <a href={e.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-400 hover:underline mt-1 inline-block">
+                      <a href={e.url} target="_blank" rel="noopener noreferrer" className="text-sm text-bp-cyan hover:underline mt-1 inline-block">
                         {e.url}
                       </a>
                     )}
@@ -298,17 +298,17 @@ export default function CopyrightCaseDetail() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No evidence submitted yet</p>
+              <p className="text-sm text-bp-text-muted">No evidence submitted yet</p>
             )}
 
             {/* Add Evidence Form */}
-            <div className="mt-4 p-4 bg-gray-800/30 rounded-xl border border-gray-700/30">
-              <h3 className="text-sm font-medium text-gray-300 mb-3">Add Evidence</h3>
+            <div className="mt-4 p-4 bg-bp-elevated/30 rounded-xl border border-bp-border/30">
+              <h3 className="text-sm font-medium text-white mb-3">Add Evidence</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <select
                   value={evidenceForm.type}
                   onChange={(e) => setEvidenceForm({ ...evidenceForm, type: e.target.value })}
-                  className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-bp-blue"
                 >
                   <option value="url">URL</option>
                   <option value="document">Document</option>
@@ -322,21 +322,21 @@ export default function CopyrightCaseDetail() {
                   value={evidenceForm.title}
                   onChange={(e) => setEvidenceForm({ ...evidenceForm, title: e.target.value })}
                   placeholder="Title"
-                  className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue"
                 />
                 <input
                   type="text"
                   value={evidenceForm.url}
                   onChange={(e) => setEvidenceForm({ ...evidenceForm, url: e.target.value })}
                   placeholder="URL"
-                  className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue"
                 />
                 <input
                   type="text"
                   value={evidenceForm.description}
                   onChange={(e) => setEvidenceForm({ ...evidenceForm, description: e.target.value })}
                   placeholder="Description"
-                  className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue"
                 />
               </div>
               {hasFeature("canUpdateCopyrightStatus") && (
@@ -352,24 +352,24 @@ export default function CopyrightCaseDetail() {
           </div>
 
           {/* Notes */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+          <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-amber-400" />
+              <MessageSquare className="w-5 h-5 text-bp-yellow" />
               Notes ({caseData.notes?.length || 0})
             </h2>
             {caseData.notes?.length > 0 ? (
               <div className="space-y-3 mb-4">
                 {caseData.notes.map((n, idx) => (
-                  <div key={idx} className="p-3 bg-gray-800/50 rounded-xl border border-gray-700/50">
-                    <p className="text-sm text-gray-200">{n.text}</p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {n.author?.name || "Admin"} · {formatDate(n.createdAt)}
+                  <div key={idx} className="p-3 bg-bp-elevated/50 rounded-xl border border-bp-border/50">
+                    <p className="text-sm text-white">{n.text}</p>
+                    <p className="text-xs text-bp-text-muted mt-2">
+                      {n.author?.name || "Admin"} Â· {formatDate(n.createdAt)}
                     </p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 mb-4">No notes yet</p>
+              <p className="text-sm text-bp-text-muted mb-4">No notes yet</p>
             )}
 
             {/* Add Note Form */}
@@ -379,14 +379,14 @@ export default function CopyrightCaseDetail() {
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 placeholder="Add a note..."
-                className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue"
                 onKeyDown={(e) => e.key === "Enter" && handleAddNote()}
               />
               {hasFeature("canUpdateCopyrightStatus") && (
                 <button
                   onClick={handleAddNote}
                   disabled={updating || !noteText.trim()}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg disabled:opacity-50 transition-colors"
+                  className="px-4 py-2 bg-bp-blue hover:bg-bp-blue text-white rounded-lg disabled:opacity-50 transition-colors"
                 >
                   <Send size={16} />
                 </button>
@@ -395,7 +395,7 @@ export default function CopyrightCaseDetail() {
           </div>
 
           {/* Status History */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+          <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5 text-purple-400" />
               Status History
@@ -404,19 +404,19 @@ export default function CopyrightCaseDetail() {
               <div className="space-y-3">
                 {caseData.statusHistory.map((h, idx) => (
                   <div key={idx} className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                    <div className="w-2 h-2 rounded-full bg-bp-blue"></div>
                     <div className="flex-1">
-                      <p className="text-sm text-gray-200">
-                        {h.from ? statusLabels[h.from] || h.from : "Created"} → {statusLabels[h.to] || h.to}
+                      <p className="text-sm text-white">
+                        {h.from ? statusLabels[h.from] || h.from : "Created"} â†’ {statusLabels[h.to] || h.to}
                       </p>
-                      {h.reason && <p className="text-xs text-gray-500 mt-0.5">{h.reason}</p>}
+                      {h.reason && <p className="text-xs text-bp-text-muted mt-0.5">{h.reason}</p>}
                     </div>
-                    <span className="text-xs text-gray-500">{formatDate(h.timestamp)}</span>
+                    <span className="text-xs text-bp-text-muted">{formatDate(h.timestamp)}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No status changes yet</p>
+              <p className="text-sm text-bp-text-muted">No status changes yet</p>
             )}
           </div>
         </div>
@@ -424,46 +424,46 @@ export default function CopyrightCaseDetail() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Claimant Info */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-            <h3 className="text-sm font-medium text-gray-400 mb-3">Claimant</h3>
+          <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
+            <h3 className="text-sm font-medium text-bp-text-secondary mb-3">Claimant</h3>
             <div className="space-y-2">
-              <p className="text-sm text-gray-200">{caseData.claimant?.name}</p>
-              <p className="text-sm text-gray-500">{caseData.claimant?.email}</p>
+              <p className="text-sm text-white">{caseData.claimant?.name}</p>
+              <p className="text-sm text-bp-text-muted">{caseData.claimant?.email}</p>
               {caseData.claimant?.organization && (
-                <p className="text-sm text-gray-500">{caseData.claimant.organization}</p>
+                <p className="text-sm text-bp-text-muted">{caseData.claimant.organization}</p>
               )}
             </div>
           </div>
 
           {/* Respondent Info */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-            <h3 className="text-sm font-medium text-gray-400 mb-3">Respondent</h3>
+          <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
+            <h3 className="text-sm font-medium text-bp-text-secondary mb-3">Respondent</h3>
             <div className="space-y-2">
-              <p className="text-sm text-gray-200">{caseData.respondent?.name || "-"}</p>
-              <p className="text-sm text-gray-500">{caseData.respondent?.email || "-"}</p>
+              <p className="text-sm text-white">{caseData.respondent?.name || "-"}</p>
+              <p className="text-sm text-bp-text-muted">{caseData.respondent?.email || "-"}</p>
             </div>
           </div>
 
           {/* Assigned To */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-            <h3 className="text-sm font-medium text-gray-400 mb-3">Assigned To</h3>
+          <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
+            <h3 className="text-sm font-medium text-bp-text-secondary mb-3">Assigned To</h3>
             <div className="space-y-2">
-              <p className="text-sm text-gray-200">{caseData.assignedTo?.name || "Unassigned"}</p>
+              <p className="text-sm text-white">{caseData.assignedTo?.name || "Unassigned"}</p>
               {caseData.assignedTo?.email && (
-                <p className="text-sm text-gray-500">{caseData.assignedTo.email}</p>
+                <p className="text-sm text-bp-text-muted">{caseData.assignedTo.email}</p>
               )}
             </div>
           </div>
 
           {/* Status Update */}
           {allowedTransitions.length > 0 && (
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-              <h3 className="text-sm font-medium text-gray-400 mb-3">Update Status</h3>
+            <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
+              <h3 className="text-sm font-medium text-bp-text-secondary mb-3">Update Status</h3>
               <div className="space-y-3">
                 <select
                   value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-bp-blue"
                 >
                   <option value="">Select status...</option>
                   {allowedTransitions.map((s) => (
@@ -475,13 +475,13 @@ export default function CopyrightCaseDetail() {
                   onChange={(e) => setStatusReason(e.target.value)}
                   placeholder="Reason (optional)"
                   rows={3}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  className="w-full px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue resize-none"
                 />
                 {hasFeature("canUpdateCopyrightStatus") && (
                   <button
                     onClick={handleStatusUpdate}
                     disabled={updating || !newStatus}
-                    className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                    className="w-full px-4 py-2 bg-bp-blue hover:bg-bp-blue text-white rounded-lg disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                   >
                     {updating ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -499,17 +499,17 @@ export default function CopyrightCaseDetail() {
 
           {/* Resolution */}
           {caseData.resolution?.decision && (
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-              <h3 className="text-sm font-medium text-gray-400 mb-3">Resolution</h3>
+            <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
+              <h3 className="text-sm font-medium text-bp-text-secondary mb-3">Resolution</h3>
               <div className="space-y-2">
-                <p className="text-sm text-gray-200 capitalize">
+                <p className="text-sm text-white capitalize">
                   {caseData.resolution.decision.replace(/_/g, " ")}
                 </p>
                 {caseData.resolution.reason && (
-                  <p className="text-sm text-gray-500">{caseData.resolution.reason}</p>
+                  <p className="text-sm text-bp-text-muted">{caseData.resolution.reason}</p>
                 )}
                 {caseData.resolution.resolvedAt && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-bp-text-muted">
                     Resolved {formatDate(caseData.resolution.resolvedAt)}
                   </p>
                 )}
@@ -519,13 +519,13 @@ export default function CopyrightCaseDetail() {
 
           {/* Linked Strike */}
           {caseData.strike && (
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-              <h3 className="text-sm font-medium text-gray-400 mb-3">Linked Strike</h3>
+            <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
+              <h3 className="text-sm font-medium text-bp-text-secondary mb-3">Linked Strike</h3>
               <button
                 onClick={() => navigate(`/copyright/strikes/${caseData.strike._id || caseData.strike}`)}
-                className="w-full text-left p-3 bg-gray-800/50 rounded-xl border border-gray-700/50 hover:bg-gray-800 transition-colors"
+                className="w-full text-left p-3 bg-bp-elevated/50 rounded-xl border border-bp-border/50 hover:bg-bp-elevated transition-colors"
               >
-                <p className="text-sm text-indigo-400 font-medium">
+                <p className="text-sm text-bp-blue font-medium">
                   {caseData.strike.status || "View Strike"}
                 </p>
               </button>

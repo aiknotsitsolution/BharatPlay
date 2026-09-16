@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -17,8 +17,8 @@ import { fetchCopyrightStrikeById } from "../../../api";
 
 const statusColors = {
   active: "bg-red-500/15 text-red-400 border-red-500/30",
-  expired: "bg-gray-500/15 text-gray-400 border-gray-500/30",
-  disputed: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  expired: "bg-bp-text-muted/15 text-bp-text-secondary border-bp-text-muted/30",
+  disputed: "bg-bp-orange/15 text-bp-orange border-bp-orange/30",
   removed: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
 };
 
@@ -31,10 +31,10 @@ const statusIcons = {
 
 const InfoRow = ({ icon: Icon, label, value }) => (
   <div className="flex items-start gap-3 py-2.5">
-    <Icon className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />
+    <Icon className="w-4 h-4 text-bp-text-muted mt-0.5 shrink-0" />
     <div className="min-w-0">
-      <p className="text-xs text-gray-500 font-medium">{label}</p>
-      <p className="text-sm text-gray-200 mt-0.5 break-words">{value || "-"}</p>
+      <p className="text-xs text-bp-text-muted font-medium">{label}</p>
+      <p className="text-sm text-white mt-0.5 break-words">{value || "-"}</p>
     </div>
   </div>
 );
@@ -90,8 +90,8 @@ export default function CopyrightStrikeDetail() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-400">Loading strike details...</p>
+          <div className="w-8 h-8 border-4 border-bp-blue border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-bp-text-secondary">Loading strike details...</p>
         </div>
       </div>
     );
@@ -104,7 +104,7 @@ export default function CopyrightStrikeDetail() {
           <p className="text-red-400 font-medium">{error || "Strike not found"}</p>
           <button
             onClick={() => navigate(-1)}
-            className="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 text-white rounded-lg"
+            className="px-4 py-2 text-sm bg-bp-elevated hover:bg-bp-border text-white rounded-lg"
           >
             Go Back
           </button>
@@ -121,13 +121,13 @@ export default function CopyrightStrikeDetail() {
       <div className="flex items-center gap-4">
         <button
           onClick={() => navigate(-1)}
-          className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+          className="p-2 rounded-lg bg-bp-elevated hover:bg-bp-border text-white transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-white">Strike Detail</h1>
-          <p className="text-gray-400 mt-0.5 truncate">
+          <p className="text-bp-text-secondary mt-0.5 truncate">
             {strike.content?.title || strike._id}
           </p>
         </div>
@@ -146,12 +146,12 @@ export default function CopyrightStrikeDetail() {
         {/* Left Column: Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Strike Info */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+          <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
-              <Shield className="w-5 h-5 text-indigo-400" />
+              <Shield className="w-5 h-5 text-bp-blue" />
               Strike Information
             </h2>
-            <div className="divide-y divide-gray-800">
+            <div className="divide-y divide-bp-border">
               <InfoRow
                 icon={FileText}
                 label="Strike ID"
@@ -195,9 +195,9 @@ export default function CopyrightStrikeDetail() {
           </div>
 
           {/* Content */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+          <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
             <h2 className="text-lg font-semibold text-white mb-4">Struck Content</h2>
-            <div className="divide-y divide-gray-800">
+            <div className="divide-y divide-bp-border">
               <InfoRow
                 icon={FileText}
                 label="Video Title"
@@ -219,11 +219,11 @@ export default function CopyrightStrikeDetail() {
               )}
               {strike.content?.video?.thumbnail && (
                 <div className="py-3">
-                  <p className="text-xs text-gray-500 font-medium mb-2">Thumbnail</p>
+                  <p className="text-xs text-bp-text-muted font-medium mb-2">Thumbnail</p>
                   <img
                     src={strike.content.video.thumbnail}
                     alt="Video thumbnail"
-                    className="w-48 h-28 object-cover rounded-lg border border-gray-700"
+                    className="w-48 h-28 object-cover rounded-lg border border-bp-border"
                   />
                 </div>
               )}
@@ -232,21 +232,21 @@ export default function CopyrightStrikeDetail() {
 
           {/* Linked Case */}
           {strike.case && (
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+            <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
               <h2 className="text-lg font-semibold text-white mb-4">Linked Case</h2>
               <div
                 onClick={() => navigate(`/copyright/cases/${strike.case._id || strike.case}`)}
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-800/70 transition-colors cursor-pointer"
+                className="flex items-center justify-between p-3 rounded-xl hover:bg-bp-elevated/70 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gray-800 rounded-lg">
-                    <FileText className="w-4 h-4 text-gray-400" />
+                  <div className="p-2 bg-bp-elevated rounded-lg">
+                    <FileText className="w-4 h-4 text-bp-text-secondary" />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-200">
+                    <p className="font-medium text-white">
                       {strike.case?.caseNumber || "Case"}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-bp-text-muted">
                       {strike.case?.status?.replace(/_/g, " ") || "View case"}
                     </p>
                   </div>
@@ -260,12 +260,12 @@ export default function CopyrightStrikeDetail() {
         <div className="space-y-6">
           {/* Dispute Details */}
           {strike.dispute?.filed && (
-            <div className="bg-gray-900 rounded-2xl border border-orange-500/20 p-6">
-              <h2 className="text-lg font-semibold text-orange-400 flex items-center gap-2 mb-4">
+            <div className="bg-bp-card rounded-2xl border border-bp-orange/20 p-6">
+              <h2 className="text-lg font-semibold text-bp-orange flex items-center gap-2 mb-4">
                 <Scale className="w-5 h-5" />
                 Dispute Details
               </h2>
-              <div className="divide-y divide-gray-800">
+              <div className="divide-y divide-bp-border">
                 <InfoRow icon={Clock} label="Filed At" value={formatDate(strike.dispute.filedAt)} />
                 <InfoRow icon={FileText} label="Reason" value={strike.dispute.reason} />
                 {strike.dispute.additionalInfo && (
@@ -287,31 +287,31 @@ export default function CopyrightStrikeDetail() {
 
           {/* Status History */}
           {strike.statusHistory?.length > 0 && (
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+            <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
               <h2 className="text-lg font-semibold text-white mb-4">Status History</h2>
               <div className="space-y-3">
                 {strike.statusHistory.map((entry, idx) => (
                   <div key={idx} className="flex items-start gap-3 text-sm">
                     <div className="flex flex-col items-center">
-                      <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 mt-1.5" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-bp-blue mt-1.5" />
                       {idx < strike.statusHistory.length - 1 && (
-                        <div className="w-px h-full bg-gray-700 mt-1" />
+                        <div className="w-px h-full bg-bp-border mt-1" />
                       )}
                     </div>
                     <div className="pb-3 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         {entry.from && (
-                          <span className="text-gray-400">{entry.from.replace(/_/g, " ")}</span>
+                          <span className="text-bp-text-secondary">{entry.from.replace(/_/g, " ")}</span>
                         )}
                         {entry.from && (
-                          <span className="text-gray-600">→</span>
+                          <span className="text-bp-text-muted">â†’</span>
                         )}
-                        <span className="text-gray-200 font-medium">{entry.to.replace(/_/g, " ")}</span>
+                        <span className="text-white font-medium">{entry.to.replace(/_/g, " ")}</span>
                       </div>
                       {entry.reason && (
-                        <p className="text-gray-500 mt-0.5 text-xs">{entry.reason}</p>
+                        <p className="text-bp-text-muted mt-0.5 text-xs">{entry.reason}</p>
                       )}
-                      <p className="text-gray-600 text-xs mt-0.5">{formatDate(entry.timestamp)}</p>
+                      <p className="text-bp-text-muted text-xs mt-0.5">{formatDate(entry.timestamp)}</p>
                     </div>
                   </div>
                 ))}
@@ -321,13 +321,13 @@ export default function CopyrightStrikeDetail() {
 
           {/* User Info */}
           {strike.user && (
-            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+            <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
               <h2 className="text-lg font-semibold text-white mb-4">User</h2>
               <div
                 onClick={() => navigate(`/users/${strike.user._id || strike.user}`)}
-                className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/70 transition-colors cursor-pointer"
+                className="flex items-center gap-3 p-3 rounded-xl hover:bg-bp-elevated/70 transition-colors cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center overflow-hidden">
+                <div className="w-10 h-10 rounded-full bg-bp-elevated flex items-center justify-center overflow-hidden">
                   {strike.user.channelImage ? (
                     <img
                       src={strike.user.channelImage}
@@ -335,14 +335,14 @@ export default function CopyrightStrikeDetail() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <User className="w-5 h-5 text-gray-500" />
+                    <User className="w-5 h-5 text-bp-text-muted" />
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-200 truncate">
+                  <p className="font-medium text-white truncate">
                     {strike.user.name || "Unknown"}
                   </p>
-                  <p className="text-sm text-gray-500 truncate">
+                  <p className="text-sm text-bp-text-muted truncate">
                     {strike.user.email || ""}
                   </p>
                 </div>

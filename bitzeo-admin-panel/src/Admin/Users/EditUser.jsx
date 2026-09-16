@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
+import { formatDate, formatDateTime, formatNumber } from "../../utils/helpers";
 import {
   ArrowLeft,
   Loader2,
@@ -27,6 +28,7 @@ import {
   PowerOff,
   AlertOctagon,
   Search,
+  X,
 } from "lucide-react";
 import {
   fetchAdminUserById,
@@ -59,32 +61,6 @@ import ModerationDialog from "./ModerationDialog";
 import { hasFeature } from "../../config/roleConfig";
 
 const VALID_ROLES = ["viewer", "creator", "admin"];
-
-function formatDate(dateStr) {
-  if (!dateStr) return "Never";
-  return new Date(dateStr).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function formatDateTime(dateStr) {
-  if (!dateStr) return "Never";
-  return new Date(dateStr).toLocaleString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatNumber(n) {
-  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
-  if (n >= 1000) return (n / 1000).toFixed(1) + "K";
-  return String(n);
-}
 
 export default function EditUser() {
   const { userId } = useParams();
@@ -235,7 +211,7 @@ export default function EditUser() {
 
     const ts = Number(form.trustScore);
     if (!Number.isFinite(ts) || ts < 0 || ts > 100) {
-      errs.trustScore = "Trust score must be 0–100";
+      errs.trustScore = "Trust score must be 0â€“100";
     }
 
     const rp = Number(form.rewardPoints);
@@ -523,14 +499,14 @@ export default function EditUser() {
       <div className="space-y-6">
         <button
           onClick={() => navigate("/alluser")}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-lg transition"
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-bp-text-secondary hover:text-bp-text bg-bp-elevated/50 hover:bg-bp-elevated border border-bp-border/50 rounded-lg transition"
         >
           <ArrowLeft size={16} />
           Back to Users
         </button>
         <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 size={40} className="animate-spin text-indigo-400 mb-3" />
-          <p className="text-gray-400">Loading user data...</p>
+          <Loader2 size={40} className="animate-spin text-bp-blue mb-3" />
+          <p className="text-bp-text-secondary">Loading user data...</p>
         </div>
       </div>
     );
@@ -542,17 +518,17 @@ export default function EditUser() {
       <div className="space-y-6">
         <button
           onClick={() => navigate("/alluser")}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-lg transition"
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-bp-text-secondary hover:text-bp-text bg-bp-elevated/50 hover:bg-bp-elevated border border-bp-border/50 rounded-lg transition"
         >
           <ArrowLeft size={16} />
           Back to Users
         </button>
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <AlertTriangle size={40} className="text-red-400 mb-3 opacity-60" />
-          <p className="text-lg font-medium text-gray-300 mb-1">
+          <p className="text-lg font-medium text-white mb-1">
             Could not load user
           </p>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-bp-text-muted mb-4">
             {loadError || "User not found"}
           </p>
           <button
@@ -570,8 +546,8 @@ export default function EditUser() {
     if (role === "admin")
       return "bg-purple-500/15 text-purple-400 border border-purple-500/20";
     if (role === "creator")
-      return "bg-blue-500/15 text-blue-400 border border-blue-500/20";
-    return "bg-gray-500/15 text-gray-400 border border-gray-500/20";
+      return "bg-bp-cyan/15 text-bp-cyan border border-bp-cyan/20";
+    return "bg-bp-text-muted/15 text-bp-text-secondary border border-bp-text-muted/20";
   };
 
   const statusBadge = (s) => {
@@ -579,10 +555,10 @@ export default function EditUser() {
     if (st === "active")
       return "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20";
     if (st === "suspended")
-      return "bg-amber-500/15 text-amber-400 border border-amber-500/20";
+      return "bg-bp-yellow/15 text-bp-yellow border border-bp-yellow/20";
     if (st === "banned")
       return "bg-red-500/15 text-red-400 border border-red-500/20";
-    return "bg-gray-500/15 text-gray-400 border border-gray-500/20";
+    return "bg-bp-text-muted/15 text-bp-text-secondary border border-bp-text-muted/20";
   };
 
   return (
@@ -591,20 +567,20 @@ export default function EditUser() {
       <div className="flex items-center justify-between">
         <button
           onClick={handleCancel}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-lg transition"
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-bp-text-secondary hover:text-bp-text bg-bp-elevated/50 hover:bg-bp-elevated border border-bp-border/50 rounded-lg transition"
         >
           <ArrowLeft size={16} />
           Back to User
         </button>
         {dirty && (
-          <span className="text-xs text-amber-400 font-medium">
+          <span className="text-xs text-bp-yellow font-medium">
             Unsaved changes
           </span>
         )}
       </div>
 
       {/* SECTION 1: USER HEADER */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-red-500/15 text-red-400 flex items-center justify-center text-2xl font-bold flex-shrink-0 border border-red-500/20">
             {user.avatar ? (
@@ -627,11 +603,11 @@ export default function EditUser() {
                 {user.status || "active"}
               </span>
             </div>
-            <p className="text-sm text-gray-400 flex items-center gap-1.5 mb-0.5">
+            <p className="text-sm text-bp-text-secondary flex items-center gap-1.5 mb-0.5">
               <Mail size={13} />
               {user.email}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-bp-text-muted">
               ID: {user._id} &middot; Joined {formatDate(user.createdAt)}
             </p>
           </div>
@@ -641,15 +617,15 @@ export default function EditUser() {
       {/* EDIT FORM */}
       <form onSubmit={handleSave} className="space-y-5">
       {/* SECTION 2: BASIC INFORMATION */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <UserIcon size={15} className="text-indigo-400" />
+      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
+            <UserIcon size={15} className="text-bp-blue" />
             Basic Information
           </h2>
           <div className="space-y-4">
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-white mb-1.5">
                 Name
               </label>
               <input
@@ -657,22 +633,22 @@ export default function EditUser() {
                 value={form.name}
                 onChange={(e) => setField("name", e.target.value)}
                 maxLength={100}
-                className={`w-full px-4 py-2.5 bg-gray-800 border rounded-lg text-gray-100 text-sm
-                  focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition
-                  ${errors.name ? "border-red-500/60" : "border-gray-700"}`}
+                className={`w-full px-4 py-2.5 bg-bp-elevated border rounded-lg text-white text-sm
+                  focus:ring-2 focus:ring-bp-blue focus:border-bp-blue outline-none transition
+                  ${errors.name ? "border-red-500/60" : "border-bp-border"}`}
                 placeholder="Enter user name"
               />
               {errors.name && (
                 <p className="text-xs text-red-400 mt-1">{errors.name}</p>
               )}
-              <p className="text-[11px] text-gray-600 mt-1">
+              <p className="text-[11px] text-bp-text-muted mt-1">
                 {form.name.length}/100 characters
               </p>
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-white mb-1.5">
                 <span className="flex items-center gap-1.5">
                   <Mail size={13} />
                   Email
@@ -682,9 +658,9 @@ export default function EditUser() {
                 type="email"
                 value={form.email}
                 onChange={(e) => setField("email", e.target.value)}
-                className={`w-full px-4 py-2.5 bg-gray-800 border rounded-lg text-gray-100 text-sm
-                  focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition
-                  ${errors.email ? "border-red-500/60" : "border-gray-700"}`}
+                className={`w-full px-4 py-2.5 bg-bp-elevated border rounded-lg text-white text-sm
+                  focus:ring-2 focus:ring-bp-blue focus:border-bp-blue outline-none transition
+                  ${errors.email ? "border-red-500/60" : "border-bp-border"}`}
                 placeholder="user@example.com"
               />
               {errors.email && (
@@ -695,23 +671,23 @@ export default function EditUser() {
         </div>
 
       {/* SECTION 3: ACCOUNT & PERMISSIONS */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Shield size={15} className="text-amber-400" />
+      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
+            <Shield size={15} className="text-bp-yellow" />
             Account &amp; Permissions
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Role */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-white mb-1.5">
                 Role
               </label>
               <select
                 value={form.role}
                 onChange={(e) => setField("role", e.target.value)}
-                className={`w-full px-4 py-2.5 bg-gray-800 border rounded-lg text-gray-100 text-sm
-                  focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition
-                  ${errors.role ? "border-red-500/60" : "border-gray-700"}`}
+                className={`w-full px-4 py-2.5 bg-bp-elevated border rounded-lg text-white text-sm
+                  focus:ring-2 focus:ring-bp-blue focus:border-bp-blue outline-none transition
+                  ${errors.role ? "border-red-500/60" : "border-bp-border"}`}
               >
                 <option value="viewer">Viewer</option>
                 <option value="creator">Creator</option>
@@ -725,15 +701,15 @@ export default function EditUser() {
         </div>
 
       {/* SECTION 4: TRUST & REWARDS */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
             <Award size={15} className="text-pink-400" />
             Trust &amp; Rewards
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Trust Score */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-white mb-1.5">
                 Trust Score
               </label>
               <div className="relative">
@@ -746,16 +722,16 @@ export default function EditUser() {
                   onChange={(e) =>
                     setField("trustScore", Number(e.target.value))
                   }
-                  className={`w-full px-4 py-2.5 bg-gray-800 border rounded-lg text-gray-100 text-sm
-                    focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition
-                    ${errors.trustScore ? "border-red-500/60" : "border-gray-700"}`}
+                  className={`w-full px-4 py-2.5 bg-bp-elevated border rounded-lg text-white text-sm
+                    focus:ring-2 focus:ring-bp-blue focus:border-bp-blue outline-none transition
+                    ${errors.trustScore ? "border-red-500/60" : "border-bp-border"}`}
                 />
               </div>
               {errors.trustScore && (
                 <p className="text-xs text-red-400 mt-1">{errors.trustScore}</p>
               )}
               <div className="flex items-center justify-between mt-1.5">
-                <p className="text-[11px] text-gray-600">0–100</p>
+                <p className="text-[11px] text-bp-text-muted">0â€“100</p>
                 <div className="flex gap-1">
                   {[0, 25, 50, 75, 100].map((v) => (
                     <button
@@ -764,8 +740,8 @@ export default function EditUser() {
                       onClick={() => setField("trustScore", v)}
                       className={`px-1.5 py-0.5 text-[10px] rounded border transition ${
                         Number(form.trustScore) === v
-                          ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-300"
-                          : "bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300"
+                          ? "bg-bp-blue/20 border-bp-blue/40 text-bp-cyan"
+                          : "bg-bp-elevated border-bp-border text-bp-text-muted hover:text-bp-text"
                       }`}
                     >
                       {v}
@@ -774,7 +750,7 @@ export default function EditUser() {
                 </div>
               </div>
               {/* Visual bar */}
-              <div className="mt-2 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+              <div className="mt-2 h-1.5 bg-bp-elevated rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-300"
                   style={{
@@ -792,7 +768,7 @@ export default function EditUser() {
 
             {/* Reward Points */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label className="block text-sm font-medium text-white mb-1.5">
                 Reward Points
               </label>
               <input
@@ -803,40 +779,40 @@ export default function EditUser() {
                 onChange={(e) =>
                   setField("rewardPoints", Number(e.target.value))
                 }
-                className={`w-full px-4 py-2.5 bg-gray-800 border rounded-lg text-gray-100 text-sm
-                  focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition
-                  ${errors.rewardPoints ? "border-red-500/60" : "border-gray-700"}`}
+                className={`w-full px-4 py-2.5 bg-bp-elevated border rounded-lg text-white text-sm
+                  focus:ring-2 focus:ring-bp-blue focus:border-bp-blue outline-none transition
+                  ${errors.rewardPoints ? "border-red-500/60" : "border-bp-border"}`}
               />
               {errors.rewardPoints && (
                 <p className="text-xs text-red-400 mt-1">
                   {errors.rewardPoints}
                 </p>
               )}
-              <p className="text-[11px] text-gray-600 mt-1">Minimum: 0</p>
+              <p className="text-[11px] text-bp-text-muted mt-1">Minimum: 0</p>
             </div>
           </div>
         </div>
 
       {/* SECTION 5: MODERATION & ACCOUNT STATUS */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <ShieldOff size={15} className="text-amber-400" />
+      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
+            <ShieldOff size={15} className="text-bp-yellow" />
             Moderation &amp; Account Status
           </h2>
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-sm text-gray-300">Current status:</span>
+              <span className="text-sm text-white">Current status:</span>
               <span className={`px-2.5 py-1 text-xs font-semibold rounded-full capitalize ${statusBadge(user.status)}`}>
                 {user.status || "active"}
               </span>
             </div>
 
             {user.status === "suspended" && user.suspendReason && (
-              <div className="bg-amber-500/5 border border-amber-500/15 rounded-lg p-3">
-                <p className="text-xs text-gray-500 mb-0.5">Suspension reason</p>
-                <p className="text-sm text-amber-400">{user.suspendReason}</p>
+              <div className="bg-bp-yellow/5 border border-amber-500/15 rounded-lg p-3">
+                <p className="text-xs text-bp-text-muted mb-0.5">Suspension reason</p>
+                <p className="text-sm text-bp-yellow">{user.suspendReason}</p>
                 {user.suspendedAt && (
-                  <p className="text-[11px] text-gray-600 mt-1">
+                  <p className="text-[11px] text-bp-text-muted mt-1">
                     Since {formatDateTime(user.suspendedAt)}
                   </p>
                 )}
@@ -845,10 +821,10 @@ export default function EditUser() {
 
             {user.status === "banned" && user.banReason && (
               <div className="bg-red-500/5 border border-red-500/15 rounded-lg p-3">
-                <p className="text-xs text-gray-500 mb-0.5">Ban reason</p>
+                <p className="text-xs text-bp-text-muted mb-0.5">Ban reason</p>
                 <p className="text-sm text-red-400">{user.banReason}</p>
                 {user.bannedAt && (
-                  <p className="text-[11px] text-gray-600 mt-1">
+                  <p className="text-[11px] text-bp-text-muted mt-1">
                     Since {formatDateTime(user.bannedAt)}
                   </p>
                 )}
@@ -861,7 +837,7 @@ export default function EditUser() {
                   type="button"
                   onClick={() => openModerationDialog("suspend")}
                   disabled={moderationLoading}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg transition disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-bp-yellow bg-bp-yellow/10 hover:bg-bp-yellow/20 border border-bp-yellow/20 rounded-lg transition disabled:opacity-50"
                 >
                   <ShieldOff size={14} />
                   Suspend
@@ -894,47 +870,73 @@ export default function EditUser() {
         </div>
 
       {/* SECTION 6: ACCOUNT METADATA */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Info size={15} className="text-blue-400" />
+      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
+            <Info size={15} className="text-bp-cyan" />
             Account Metadata
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
             <div>
-              <p className="text-xs text-gray-600 mb-0.5">User ID</p>
-              <p className="text-sm text-gray-300 font-mono break-all">{user._id}</p>
+              <p className="text-xs text-bp-text-muted mb-0.5">User ID</p>
+              <p className="text-sm text-white font-mono break-all">{user._id}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-600 mb-0.5">Registration Method</p>
-              <p className="text-sm text-gray-300 capitalize">{user.registrationMethod || "local"}</p>
+              <p className="text-xs text-bp-text-muted mb-0.5">Registration Method</p>
+              <p className="text-sm text-white capitalize">{user.registrationMethod || "local"}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-600 mb-0.5">Created</p>
-              <p className="text-sm text-gray-300">{formatDateTime(user.createdAt)}</p>
+              <p className="text-xs text-bp-text-muted mb-0.5">Created</p>
+              <p className="text-sm text-white">{formatDateTime(user.createdAt)}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-600 mb-0.5">Last Login</p>
-              <p className="text-sm text-gray-300">{formatDateTime(user.lastLoginAt)}</p>
+              <p className="text-xs text-bp-text-muted mb-0.5">Last Login</p>
+              <p className="text-sm text-white">{formatDateTime(user.lastLoginAt)}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-600 mb-0.5">Last Activity</p>
-              <p className="text-sm text-gray-300">{formatDateTime(user.lastActivityAt)}</p>
+              <p className="text-xs text-bp-text-muted mb-0.5">Last Activity</p>
+              <p className="text-sm text-white">{formatDateTime(user.lastActivityAt)}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-600 mb-0.5">Trust Score</p>
-              <p className="text-sm text-gray-300">{user.trustScore}</p>
+              <p className="text-xs text-bp-text-muted mb-0.5">Trust Score</p>
+              <p className="text-sm text-white">{user.trustScore}</p>
             </div>
           </div>
         </div>
 
       </form>
 
+      {/* ACTION FOOTER */}
+      <div className="flex items-center gap-3 pt-2 pb-4">
+        {hasFeature("canEditUsers") && (
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || !dirty}
+          className="inline-flex items-center gap-2 px-6 py-2.5 bg-bp-blue hover:bg-bp-blue text-white rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {saving ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Save size={16} />
+          )}
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
+        )}
+        <button
+          type="button"
+          onClick={handleCancel}
+          className="px-6 py-2.5 bg-bp-elevated hover:bg-bp-border text-white rounded-lg text-sm font-medium transition"
+        >
+          Cancel
+        </button>
+      </div>
+
       {/* SECTION 7: CHANNEL & CONTENT MANAGEMENT */}
       <div className="space-y-5">
         {/* Section title */}
         <div className="flex items-center gap-2">
-          <Tv size={16} className="text-amber-400" />
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+          <Tv size={16} className="text-bp-yellow" />
+          <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider">
             Channel &amp; Content Management
           </h2>
         </div>
@@ -943,39 +945,48 @@ export default function EditUser() {
         <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-5">
 
           {/* ===== LEFT: Channel List ===== */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+          <div className="bg-bp-card border border-bp-border rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Channels <span className="text-gray-600">({channelsPagination.total ?? channels.length})</span>
+              <h3 className="text-xs font-semibold text-bp-text-muted uppercase tracking-wider">
+                Channels <span className="text-bp-text-muted">({channelsPagination.total ?? channels.length})</span>
               </h3>
-              <span className="text-[10px] text-gray-600">{channelPage} / {channelsPagination.totalPages || 1}</span>
+              <span className="text-[10px] text-bp-text-muted">{channelPage} / {channelsPagination.totalPages || 1}</span>
             </div>
 
             {/* Channel search */}
             <div className="relative mb-3">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-bp-text-muted pointer-events-none" />
               <input
                 type="text"
                 value={channelSearch}
                 onChange={handleChannelSearchChange}
                 placeholder="Search channels..."
-                className="w-full pl-8 pr-3 py-1.5 bg-gray-800/70 border border-gray-700/50 rounded-lg text-xs text-gray-300 placeholder:text-gray-600 focus:outline-none focus:border-indigo-500/50 transition"
+                className="w-full pl-8 pr-8 py-1.5 bg-bp-surface/60 border border-bp-border/50 rounded-lg text-xs text-white placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
               />
+              {channelSearch && (
+                <button
+                  type="button"
+                  onClick={() => handleChannelSearchChange({ target: { value: "" } })}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
+                >
+                  <X size={12} />
+                </button>
+              )}
             </div>
 
             {channelsLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 rounded-xl bg-gray-800/50 animate-pulse" />
+                  <div key={i} className="h-16 rounded-xl bg-bp-elevated/50 animate-pulse" />
                 ))}
               </div>
             ) : channels.length === 0 ? (
               <div className="py-10 text-center">
-                <Tv size={28} className="text-gray-700 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">
+                <Tv size={28} className="text-bp-text-muted mx-auto mb-2" />
+                <p className="text-sm text-bp-text-muted">
                   {debouncedChannelSearch ? "No matching channels found" : "No channels found"}
                 </p>
-                <p className="text-[11px] text-gray-600 mt-1">
+                <p className="text-[11px] text-bp-text-muted mt-1">
                   {debouncedChannelSearch ? "Try a different search term" : "This user has not created any channels."}
                 </p>
               </div>
@@ -991,22 +1002,22 @@ export default function EditUser() {
                         type="button"
                         onClick={() => { setSelectedChannelId(ch._id); setChannelContentTab(null); }}
                         className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl border transition text-left ${
-                          isActive ? "bg-indigo-500/10 border-indigo-500/30" : "bg-gray-800/40 border-gray-700/40 hover:bg-gray-800 hover:border-gray-600"
+                          isActive ? "bg-bp-blue/10 border-bp-blue/30" : "bg-bp-elevated/40 border-bp-border/40 hover:bg-bp-elevated hover:border-bp-border"
                         }`}
                       >
-                        <div className="w-9 h-9 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        <div className="w-9 h-9 rounded-lg bg-bp-elevated flex items-center justify-center flex-shrink-0 overflow-hidden">
                           {ch.channelImage ? (
                             <img src={ch.channelImage} alt={ch.name} className="w-9 h-9 rounded-lg object-cover" />
                           ) : (
-                            <Tv size={15} className={isActive ? "text-indigo-400" : "text-gray-500"} />
+                            <Tv size={15} className={isActive ? "text-bp-blue" : "text-bp-text-muted"} />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`font-medium text-xs truncate ${isActive ? "text-indigo-300" : "text-gray-200"}`}>{ch.name}</p>
-                          <p className="text-[11px] text-gray-500">{formatNumber(ch.subscriberCount || 0)} subs &middot; {ch.videoCount || 0} videos &middot; {ch.shortCount || 0} shorts</p>
+                          <p className={`font-medium text-xs truncate ${isActive ? "text-bp-cyan" : "text-white"}`}>{ch.name}</p>
+                          <p className="text-[11px] text-bp-text-muted">{formatNumber(ch.subscriberCount || 0)} subs &middot; {ch.videoCount || 0} videos &middot; {ch.shortCount || 0} shorts</p>
                         </div>
                         <ChannelStatusBadge status={chStatus} />
-                        {isActive && <Check size={14} className="text-indigo-400 flex-shrink-0" />}
+                        {isActive && <Check size={14} className="text-bp-blue flex-shrink-0" />}
                       </button>
                     );
                   })}
@@ -1025,17 +1036,17 @@ export default function EditUser() {
           </div>
 
           {/* ===== RIGHT: Selected Channel Detail ===== */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+          <div className="bg-bp-card border border-bp-border rounded-2xl p-4">
             {selectedChannel ? (
               <>
                 {/* Channel header */}
-                <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 mb-4">
+                <div className="bg-bp-elevated/50 border border-bp-border/50 rounded-xl p-4 mb-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-700/50">
+                    <div className="w-12 h-12 rounded-xl bg-bp-elevated flex items-center justify-center flex-shrink-0 overflow-hidden border border-bp-border/50">
                       {selectedChannel.channelImage ? (
                         <img src={selectedChannel.channelImage} alt={selectedChannel.name} className="w-12 h-12 rounded-xl object-cover" />
                       ) : (
-                        <Tv size={20} className="text-indigo-400" />
+                        <Tv size={20} className="text-bp-blue" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1043,7 +1054,7 @@ export default function EditUser() {
                         <p className="font-semibold text-white text-sm truncate">{selectedChannel.name}</p>
                         <ChannelStatusBadge status={selectedChannel.status || "active"} />
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-bp-text-muted">
                         <span>{formatNumber(selectedChannel.subscriberCount || 0)} subscribers</span>
                         <span>&middot;</span>
                         <span>{selectedChannel.videoCount || 0} videos</span>
@@ -1058,7 +1069,7 @@ export default function EditUser() {
                   </div>
 
                   {/* Moderation actions */}
-                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-700/50" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-bp-border/50" onClick={(e) => e.stopPropagation()}>
                     {(selectedChannel.status || "active") === "active" && (
                       <>
                         {hasFeature("canModerateContent") && <ChannelActionBtn icon={PowerOff} label="Disable" color="amber" onClick={() => openContentDialog("disableChannel", "channel", selectedChannel._id, selectedChannel.name)} />}
@@ -1079,12 +1090,12 @@ export default function EditUser() {
                 </div>
 
                 {/* Content Tabs */}
-                <div className="flex gap-1 mb-4 bg-gray-800/50 border border-gray-700/50 rounded-lg p-1">
+                <div className="flex gap-1 mb-4 bg-bp-elevated/50 border border-bp-border/50 rounded-lg p-1">
                   <button
                     type="button"
                     onClick={() => { setChannelContentTab("videos"); setVideoPage(1); }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition flex-1 justify-center ${
-                      channelContentTab === "videos" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                      channelContentTab === "videos" ? "bg-bp-blue text-white" : "text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated"
                     }`}
                   >
                     <Video size={13} />
@@ -1094,7 +1105,7 @@ export default function EditUser() {
                     type="button"
                     onClick={() => { setChannelContentTab("shorts"); setShortsPage(1); }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition flex-1 justify-center ${
-                      channelContentTab === "shorts" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                      channelContentTab === "shorts" ? "bg-bp-blue text-white" : "text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated"
                     }`}
                   >
                     <Clapperboard size={13} />
@@ -1145,15 +1156,15 @@ export default function EditUser() {
                   />
                 ) : (
                   <div className="py-12 text-center">
-                    <Video size={32} className="text-gray-700 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">Select Videos or Shorts to view content</p>
+                    <Video size={32} className="text-bp-text-muted mx-auto mb-2" />
+                    <p className="text-sm text-bp-text-muted">Select Videos or Shorts to view content</p>
                   </div>
                 )}
               </>
             ) : (
               <div className="py-12 text-center">
-                <Tv size={32} className="text-gray-700 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Select a channel to view content</p>
+                <Tv size={32} className="text-bp-text-muted mx-auto mb-2" />
+                <p className="text-sm text-bp-text-muted">Select a channel to view content</p>
               </div>
             )}
           </div>
@@ -1162,13 +1173,13 @@ export default function EditUser() {
       </div>
 
       {/* SECTION 8: DANGER ZONE */}
-      <form onSubmit={handleSave} className="space-y-5">
-      <div className="bg-gray-900 border border-red-500/20 rounded-2xl p-5">
+      <div className="space-y-5">
+      <div className="bg-bp-card border border-red-500/20 rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-4 flex items-center gap-2">
             <AlertTriangle size={15} />
             Danger Zone
           </h2>
-          <p className="text-sm text-gray-400 mb-4">
+          <p className="text-sm text-bp-text-secondary mb-4">
             Delete this user. The user will be moved to Deleted Users and can be restored later.
           </p>
           {hasFeature("canDeleteUsers") && (
@@ -1183,14 +1194,15 @@ export default function EditUser() {
             </button>
           ) : (
             <div className="bg-red-500/5 border border-red-500/15 rounded-lg p-4 space-y-3">
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-white">
                 Type <span className="font-mono text-red-400">DELETE</span> to confirm:
               </p>
               <input
                 type="text"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition"
+                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                className="w-full px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-sm text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition"
                 placeholder='Type "DELETE" to confirm'
                 autoFocus
               />
@@ -1209,7 +1221,7 @@ export default function EditUser() {
                 <button
                   type="button"
                   onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); }}
-                  className="px-4 py-2 text-sm font-medium text-gray-400 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition"
+                  className="px-4 py-2 text-sm font-medium text-bp-text-secondary bg-bp-elevated hover:bg-bp-border border border-bp-border rounded-lg transition"
                 >
                   Cancel
                 </button>
@@ -1218,31 +1230,7 @@ export default function EditUser() {
           ))}
         </div>
 
-        {/* ACTION FOOTER */}
-        <div className="flex items-center gap-3 pt-2 pb-4">
-          {hasFeature("canEditUsers") && (
-          <button
-            type="submit"
-            disabled={saving || !dirty}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Save size={16} />
-            )}
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
-          )}
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="px-6 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium transition"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
+      </div>
 
       <ModerationDialog
         key={moderationDialog.dialogKey}
@@ -1274,7 +1262,7 @@ function ChannelStatusBadge({ status }) {
   const s = status || "active";
   const styles = {
     active: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20",
-    disabled: "bg-amber-500/15 text-amber-400 border border-amber-500/20",
+    disabled: "bg-bp-yellow/15 text-bp-yellow border border-bp-yellow/20",
     banned: "bg-red-500/15 text-red-400 border border-red-500/20",
   };
   return (
@@ -1286,7 +1274,7 @@ function ChannelStatusBadge({ status }) {
 
 function ChannelActionBtn({ icon, label, color, onClick }) {
   const colors = {
-    amber: "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20",
+    amber: "text-bp-yellow bg-bp-yellow/10 hover:bg-bp-yellow/20 border-bp-yellow/20",
     emerald: "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20",
     red: "text-red-400 bg-red-500/10 hover:bg-red-500/20 border-red-500/20",
   };
@@ -1334,22 +1322,22 @@ function PaginationBar({ pagination, onPageChange, total, limit }) {
   };
 
   return (
-    <div className="mt-3 pt-3 border-t border-gray-800">
+    <div className="mt-3 pt-3 border-t border-bp-border">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-[11px] text-gray-500">Showing {start}–{end} of {total}</p>
+        <p className="text-[11px] text-bp-text-muted">Showing {start}â€“{end} of {total}</p>
       </div>
       <div className="flex items-center justify-center gap-1">
         <button
           type="button"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="p-1 rounded border border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 transition"
+          className="p-1 rounded border border-bp-border text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text disabled:opacity-30 transition"
         >
           <ChevronLeft size={14} />
         </button>
         {getPageNumbers().map((p, i) =>
           p === "..." ? (
-            <span key={`e${i}`} className="px-1 text-gray-600 text-xs">...</span>
+            <span key={`e${i}`} className="px-1 text-bp-text-muted text-xs">...</span>
           ) : (
             <button
               key={p}
@@ -1357,8 +1345,8 @@ function PaginationBar({ pagination, onPageChange, total, limit }) {
               onClick={() => onPageChange(p)}
               className={`min-w-[26px] h-[26px] rounded border text-[11px] font-medium transition ${
                 p === page
-                  ? "bg-indigo-600 border-indigo-600 text-white"
-                  : "border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-white"
+                  ? "bg-bp-blue border-bp-blue text-white"
+                  : "border-bp-border text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text"
               }`}
             >
               {p}
@@ -1369,7 +1357,7 @@ function PaginationBar({ pagination, onPageChange, total, limit }) {
           type="button"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="p-1 rounded border border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 transition"
+          className="p-1 rounded border border-bp-border text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text disabled:opacity-30 transition"
         >
           <ChevronRight size={14} />
         </button>
@@ -1393,11 +1381,11 @@ function ContentTable({
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2 mb-2">
-          <div className="h-8 w-48 rounded bg-gray-800/70 animate-pulse" />
-          <div className="h-8 w-24 rounded bg-gray-800/70 animate-pulse" />
+          <div className="h-8 w-48 rounded bg-bp-elevated/70 animate-pulse" />
+          <div className="h-8 w-24 rounded bg-bp-elevated/70 animate-pulse" />
         </div>
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-16 rounded-xl bg-gray-800/50 animate-pulse" />
+          <div key={i} className="h-16 rounded-xl bg-bp-elevated/50 animate-pulse" />
         ))}
       </div>
     );
@@ -1407,10 +1395,10 @@ function ContentTable({
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <AlertTriangle size={24} className="text-red-400 mb-2 opacity-60" />
-        <p className="text-sm text-gray-400 mb-3">{error?.message || "Failed to load content"}</p>
+        <p className="text-sm text-bp-text-secondary mb-3">{error?.message || "Failed to load content"}</p>
         <button
           onClick={onRetry}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-bp-elevated hover:bg-bp-border border border-bp-border rounded-lg transition"
         >
           <RefreshCw size={14} />
           Retry
@@ -1422,8 +1410,8 @@ function ContentTable({
   if (items.length === 0 && !searchValue) {
     return (
       <div className="py-10 text-center">
-        {emptyIcon && React.createElement(emptyIcon, { size: 28, className: "text-gray-700 mx-auto mb-2" })}
-        <p className="text-sm text-gray-500">{emptyText}</p>
+        {emptyIcon && React.createElement(emptyIcon, { size: 28, className: "text-bp-text-muted mx-auto mb-2" })}
+        <p className="text-sm text-bp-text-muted">{emptyText}</p>
       </div>
     );
   }
@@ -1433,14 +1421,23 @@ function ContentTable({
       {/* Toolbar: search + sort + limit */}
       <div className="flex items-center gap-2 mb-3">
         <div className="relative flex-1">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-bp-text-muted pointer-events-none" />
           <input
             type="text"
             value={searchValue || ""}
             onChange={onSearchChange}
             placeholder={`Search ${itemTypeLabel}...`}
-            className="w-full pl-8 pr-3 py-1.5 bg-gray-800/70 border border-gray-700/50 rounded-lg text-xs text-gray-300 placeholder:text-gray-600 focus:outline-none focus:border-indigo-500/50 transition"
+            className="w-full pl-8 pr-8 py-1.5 bg-bp-surface/60 border border-bp-border/50 rounded-lg text-xs text-white placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
           />
+          {searchValue && (
+            <button
+              type="button"
+              onClick={() => onSearchChange({ target: { value: "" } })}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
+            >
+              <X size={12} />
+            </button>
+          )}
         </div>
         <select
           value={sortValue}
@@ -1448,7 +1445,7 @@ function ContentTable({
             const [by, order] = e.target.value.split(":");
             onSortChange(by, order);
           }}
-          className="bg-gray-800/70 border border-gray-700/50 rounded-lg text-[11px] text-gray-400 px-2 py-1.5 focus:outline-none focus:border-indigo-500/50"
+          className="bg-bp-elevated/70 border border-bp-border/50 rounded-lg text-[11px] text-bp-text-secondary px-2 py-1.5 focus:outline-none focus:border-bp-blue/50"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1457,7 +1454,7 @@ function ContentTable({
         <select
           value={limit || 10}
           onChange={(e) => onLimitChange(Number(e.target.value))}
-          className="bg-gray-800/70 border border-gray-700/50 rounded-lg text-[11px] text-gray-400 px-2 py-1.5 focus:outline-none focus:border-indigo-500/50"
+          className="bg-bp-elevated/70 border border-bp-border/50 rounded-lg text-[11px] text-bp-text-secondary px-2 py-1.5 focus:outline-none focus:border-bp-blue/50"
         >
           {LIMIT_OPTIONS.map((n) => (
             <option key={n} value={n}>{n} / page</option>
@@ -1467,14 +1464,14 @@ function ContentTable({
 
       {items.length === 0 ? (
         <div className="py-8 text-center">
-          <Search size={24} className="text-gray-700 mx-auto mb-2" />
-          <p className="text-sm text-gray-500">No matching {itemTypeLabel} found.</p>
+          <Search size={24} className="text-bp-text-muted mx-auto mb-2" />
+          <p className="text-sm text-bp-text-muted">No matching {itemTypeLabel} found.</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead>
-              <tr className="text-[11px] text-gray-500 border-b border-gray-800">
+              <tr className="text-[11px] text-bp-text-muted border-b border-bp-border">
                 <th className="pb-2 pr-3 font-medium">Content</th>
                 <th className="pb-2 pr-3 font-medium text-right">Views</th>
                 <th className="pb-2 pr-3 font-medium text-right">Likes</th>
@@ -1483,34 +1480,34 @@ function ContentTable({
                 <th className="pb-2 font-medium text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800/50">
+            <tbody className="divide-y divide-bp-border">
               {items.map((item) => {
                 const itemStatus = item.status || "active";
                 const disableAction = type === "short" ? "disableShort" : "disableVideo";
                 const enableAction = type === "short" ? "enableShort" : "enableVideo";
                 const deleteAction = type === "short" ? "deleteShort" : "deleteVideo";
                 return (
-                  <tr key={item._id} className="hover:bg-gray-800/30 transition">
+                  <tr key={item._id} className="hover:bg-bp-elevated/30 transition">
                     <td className="py-2.5 pr-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-16 h-10 rounded-lg bg-gray-800 overflow-hidden flex-shrink-0">
+                        <div className="w-16 h-10 rounded-lg bg-bp-elevated overflow-hidden flex-shrink-0">
                           {item.thumbnail ? (
                             <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <Video size={14} className="text-gray-600" />
+                              <Video size={14} className="text-bp-text-muted" />
                             </div>
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[13px] text-gray-200 font-medium truncate max-w-[260px]">{item.title}</p>
-                          <p className="text-[10px] text-gray-600">{formatDate(item.createdAt)}</p>
+                          <p className="text-[13px] text-white font-medium truncate max-w-[260px]">{item.title}</p>
+                          <p className="text-[10px] text-bp-text-muted">{formatDate(item.createdAt)}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="py-2.5 pr-3 text-right text-[13px] text-gray-400">{(item.views || 0).toLocaleString()}</td>
-                    <td className="py-2.5 pr-3 text-right text-[13px] text-gray-400">{(item.likesCount || 0).toLocaleString()}</td>
-                    <td className="py-2.5 pr-3 text-right text-[13px] text-gray-400">{item.commentCount || 0}</td>
+                    <td className="py-2.5 pr-3 text-right text-[13px] text-bp-text-secondary">{(item.views || 0).toLocaleString()}</td>
+                    <td className="py-2.5 pr-3 text-right text-[13px] text-bp-text-secondary">{(item.likesCount || 0).toLocaleString()}</td>
+                    <td className="py-2.5 pr-3 text-right text-[13px] text-bp-text-secondary">{item.commentCount || 0}</td>
                     <td className="py-2.5 pr-3"><ChannelStatusBadge status={itemStatus} /></td>
                     <td className="py-2.5 text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -1519,7 +1516,7 @@ function ContentTable({
                             type="button"
                             onClick={() => onAction(disableAction, item)}
                             title="Disable"
-                            className="inline-flex items-center px-1.5 py-1 text-[11px] font-medium text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded transition"
+                            className="inline-flex items-center px-1.5 py-1 text-[11px] font-medium text-bp-yellow bg-bp-yellow/10 hover:bg-bp-yellow/20 border border-bp-yellow/20 rounded transition"
                           >
                             <PowerOff size={11} />
                           </button>

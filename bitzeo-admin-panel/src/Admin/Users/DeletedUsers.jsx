@@ -1,9 +1,7 @@
-"use client";
-
-import { useState, useEffect, useCallback } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import DataTable from "react-data-table-component";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import toast from "react-hot-toast";
+import { roleColor, formatDateTime } from "../../utils/helpers";
 import {
   Search,
   Trash2,
@@ -147,25 +145,6 @@ export default function DeletedUsers() {
     }
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "N/A";
-    return new Date(dateStr).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const roleColor = (role) => {
-    if (role === "admin")
-      return "bg-purple-500/15 text-purple-400 border border-purple-500/20";
-    if (role === "creator")
-      return "bg-blue-500/15 text-blue-400 border border-blue-500/20";
-    return "bg-gray-500/15 text-gray-400 border border-gray-500/20";
-  };
-
   const columns = [
     {
       name: "User",
@@ -186,10 +165,10 @@ export default function DeletedUsers() {
             )}
           </div>
           <div className="min-w-0">
-            <p className="font-medium text-gray-400 truncate line-through decoration-red-500/50">
+            <p className="font-medium text-bp-text-secondary truncate line-through decoration-red-500/50">
               {row.name}
             </p>
-            <p className="text-sm text-gray-500 truncate flex items-center gap-1">
+            <p className="text-sm text-bp-text-muted truncate flex items-center gap-1">
               <Mail size={12} />
               {row.email}
             </p>
@@ -220,8 +199,8 @@ export default function DeletedUsers() {
       cell: (row) => (
         <div className="flex items-center gap-1.5">
           <Calendar size={14} className="text-red-400 flex-shrink-0" />
-          <span className="text-sm text-gray-400">
-            {formatDate(row.deletedAt)}
+          <span className="text-sm text-bp-text-secondary">
+            {formatDateTime(row.deletedAt)}
           </span>
         </div>
       ),
@@ -232,7 +211,7 @@ export default function DeletedUsers() {
       sortable: false,
       width: "200px",
       cell: (row) => (
-        <span className="text-sm text-gray-500 truncate max-w-[180px] block" title={row.deleteReason || ""}>
+        <span className="text-sm text-bp-text-muted truncate max-w-[180px] block" title={row.deleteReason || ""}>
           {row.deleteReason || "No reason provided"}
         </span>
       ),
@@ -243,7 +222,7 @@ export default function DeletedUsers() {
       sortable: true,
       width: "120px",
       cell: (row) => (
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-bp-text-muted">
           {new Date(row.createdAt).toLocaleDateString()}
         </span>
       ),
@@ -286,39 +265,45 @@ export default function DeletedUsers() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <UserX size={28} className="text-red-400" />
+          <h1 className="text-2xl font-bold text-white">
             Deleted Users
           </h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <p className="text-[13px] text-bp-text-secondary mt-1">
             {totalRows} deleted user{totalRows !== 1 ? "s" : ""} found
           </p>
         </div>
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-bp-text-muted pointer-events-none" />
           <input
             type="text"
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg 
-                       focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 
-                       w-72 text-gray-100 placeholder-gray-500"
+            className="pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl w-72 text-sm text-white placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500/50 hover:border-bp-border transition-colors duration-200"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-white hover:bg-red-500/10 transition-colors duration-150"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Info Banner */}
       <div className="flex items-center gap-3 p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
         <Info size={18} className="text-red-400 flex-shrink-0" />
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-bp-text-secondary">
           These users have been soft-deleted and no longer appear in the main Users list. You can permanently remove them here.
         </p>
       </div>
 
       {/* DataTable */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+      <div className="bg-bp-card rounded-xl border border-bp-border overflow-hidden">
         <DataTable
           columns={columns}
           data={users}
@@ -330,13 +315,13 @@ export default function DeletedUsers() {
                 size={40}
                 className="animate-spin text-red-400 mb-3"
               />
-              <p className="text-gray-400">Loading deleted users...</p>
+              <p className="text-bp-text-secondary">Loading deleted users...</p>
             </div>
           }
           noDataComponent={
-            <div className="text-center py-20 text-gray-500">
+            <div className="text-center py-20 text-bp-text-muted">
               <UserX size={40} className="mx-auto mb-3 opacity-40" />
-              <p className="text-lg font-medium text-gray-400">
+              <p className="text-lg font-medium text-bp-text-secondary">
                 No deleted users found
               </p>
             </div>
@@ -360,8 +345,8 @@ export default function DeletedUsers() {
       {/* ========== CONFIRMATION MODAL ========== */}
       {confirmModal && targetUser && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-red-500/30 rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-5 border-b border-gray-800">
+          <div className="bg-bp-card border border-red-500/30 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-5 border-b border-bp-border">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <AlertTriangle size={22} className="text-red-400" />
                 Permanently Delete User?
@@ -369,14 +354,14 @@ export default function DeletedUsers() {
               <button
                 onClick={closeConfirmModal}
                 disabled={deleting}
-                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition disabled:opacity-50"
+                className="p-1.5 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated rounded-lg transition disabled:opacity-50"
               >
                 <X size={20} />
               </button>
             </div>
 
             <div className="p-5 space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-gray-800/50 border border-gray-700/50 rounded-xl">
+              <div className="flex items-center gap-3 p-3 bg-bp-elevated/50 border border-bp-border/50 rounded-xl">
                 <div className="w-10 h-10 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-sm flex-shrink-0">
                   {targetUser.avatar ? (
                     <img
@@ -389,23 +374,23 @@ export default function DeletedUsers() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-200 truncate">
+                  <p className="font-medium text-white truncate">
                     {targetUser.name}
                   </p>
-                  <p className="text-sm text-gray-500 truncate">
+                  <p className="text-sm text-bp-text-muted truncate">
                     {targetUser.email}
                   </p>
                 </div>
               </div>
 
               <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
-                <p className="text-sm text-gray-300 leading-relaxed">
+                <p className="text-sm text-white leading-relaxed">
                   This action will permanently remove this user and their database record. 
                   <span className="font-semibold text-red-400"> This cannot be undone.</span>
                 </p>
               </div>
 
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-bp-text-secondary">
                 Are you sure you want to permanently delete this user?
               </p>
 
@@ -413,7 +398,7 @@ export default function DeletedUsers() {
                 <button
                   onClick={closeConfirmModal}
                   disabled={deleting}
-                  className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition disabled:opacity-50"
+                  className="flex-1 py-2.5 bg-bp-elevated hover:bg-bp-border text-white rounded-lg font-medium transition disabled:opacity-50"
                 >
                   No, Cancel
                 </button>
@@ -444,8 +429,8 @@ export default function DeletedUsers() {
       {/* ========== RETAIN CONFIRMATION MODAL ========== */}
       {retainModal && retainTarget && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-emerald-500/30 rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-5 border-b border-gray-800">
+          <div className="bg-bp-card border border-emerald-500/30 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-5 border-b border-bp-border">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <RotateCcw size={22} className="text-emerald-400" />
                 Retain User?
@@ -453,14 +438,14 @@ export default function DeletedUsers() {
               <button
                 onClick={closeRetainModal}
                 disabled={retaining}
-                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition disabled:opacity-50"
+                className="p-1.5 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated rounded-lg transition disabled:opacity-50"
               >
                 <X size={20} />
               </button>
             </div>
 
             <div className="p-5 space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-gray-800/50 border border-gray-700/50 rounded-xl">
+              <div className="flex items-center gap-3 p-3 bg-bp-elevated/50 border border-bp-border/50 rounded-xl">
                 <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm flex-shrink-0">
                   {retainTarget.avatar ? (
                     <img
@@ -473,22 +458,22 @@ export default function DeletedUsers() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-200 truncate">
+                  <p className="font-medium text-white truncate">
                     {retainTarget.name}
                   </p>
-                  <p className="text-sm text-gray-500 truncate">
+                  <p className="text-sm text-bp-text-muted truncate">
                     {retainTarget.email}
                   </p>
                 </div>
               </div>
 
               <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4">
-                <p className="text-sm text-gray-300 leading-relaxed">
+                <p className="text-sm text-white leading-relaxed">
                   This will restore the user and move them back to the normal Users list.
                 </p>
               </div>
 
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-bp-text-secondary">
                 Are you sure you want to retain this user?
               </p>
 
@@ -496,7 +481,7 @@ export default function DeletedUsers() {
                 <button
                   onClick={closeRetainModal}
                   disabled={retaining}
-                  className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition disabled:opacity-50"
+                  className="flex-1 py-2.5 bg-bp-elevated hover:bg-bp-border text-white rounded-lg font-medium transition disabled:opacity-50"
                 >
                   No, Cancel
                 </button>

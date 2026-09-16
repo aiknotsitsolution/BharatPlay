@@ -2,9 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/jpeg" href="/Logo-image.jpg" />
+    <link rel="apple-touch-icon" href="/Logo-image.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>vite-project</title>
+    <meta name="theme-color" content="#F4F6FA" />
+    <title>BharatPlay – Admin</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("bp-theme") || "light";
+          document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

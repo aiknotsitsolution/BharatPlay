@@ -61,6 +61,32 @@ const adminSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    // Password reset (only a hash of the single-use token is stored)
+    resetTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    resetTokenExpires: {
+      type: Date,
+      default: null,
+    },
+
+    // Forgot Password OTP (bcrypt-hashed)
+    resetOtpHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    resetOtpExpires: {
+      type: Date,
+      default: null,
+    },
+    resetOtpAttempts: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true },
 );

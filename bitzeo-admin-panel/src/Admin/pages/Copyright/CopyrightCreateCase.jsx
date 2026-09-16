@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, AlertCircle, Search, X, FileText, User, Info } from "lucide-react";
+import { Send, AlertCircle, Search, X, FileText, User, Info } from "lucide-react";
 import toast from "react-hot-toast";
 import { createCopyrightCase, searchVideos, searchUsers } from "../../../api";
 import { hasFeature } from "../../../config/roleConfig";
@@ -108,23 +108,23 @@ function SearchableSelect({
 
   return (
     <div ref={wrapperRef} className="relative">
-      <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+      <label className="block text-[13px] font-medium text-white mb-1.5">
         {label}
       </label>
       {selectedLabel ? (
-        <div className="flex items-center gap-2 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm">
+        <div className="flex items-center gap-2 w-full px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm">
           <span className="flex-1 truncate">{selectedLabel}</span>
           <button
             type="button"
             onClick={handleClear}
-            className="p-0.5 rounded hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+            className="p-0.5 rounded hover:bg-bp-border text-bp-text-secondary hover:text-bp-text transition-colors"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       ) : (
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-bp-text-muted pointer-events-none" />
           <input
             type="text"
             value={query}
@@ -136,26 +136,26 @@ function SearchableSelect({
             onFocus={() => query.trim() && setOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="w-full pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+            className="w-full pl-9 pr-4 py-2 bg-bp-surface/60 border border-bp-border/50 rounded-xl text-white text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
           />
           {loading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-bp-border border-t-transparent rounded-full animate-spin" />
             </div>
           )}
         </div>
       )}
       {open && results.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full max-h-64 overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-xl">
+        <div className="absolute z-50 mt-2 w-full max-h-64 overflow-y-auto dropdown-scroll bg-bp-card border border-bp-border/60 rounded-xl shadow-2xl p-1.5">
           {results.map((item, i) => (
             <div
               key={item._id}
               onMouseDown={() => handleSelect(item)}
               onMouseEnter={() => setHighlight(i)}
-              className={`px-3 py-2.5 cursor-pointer text-sm border-b border-gray-700/50 last:border-0 transition-colors ${
+              className={`px-3 py-2.5 cursor-pointer text-sm rounded-lg transition-colors ${
                 i === highlight
-                  ? "bg-indigo-600/20 text-white"
-                  : "text-gray-300 hover:bg-gray-700/50"
+                  ? "bg-bp-blue/20 text-white"
+                  : "text-white hover:bg-bp-blue/10"
               }`}
             >
               {renderItem(item)}
@@ -164,7 +164,7 @@ function SearchableSelect({
         </div>
       )}
       {open && debouncedQuery.trim() && !loading && results.length === 0 && (
-        <div className="absolute z-50 mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-xl px-3 py-2.5 text-sm text-gray-500">
+        <div className="absolute z-50 mt-1 w-full bg-bp-elevated border border-bp-border rounded-lg shadow-xl px-3 py-2.5 text-sm text-bp-text-muted">
           No results found
         </div>
       )}
@@ -249,32 +249,25 @@ export default function CopyrightCreateCase() {
   const userSearchFn = useCallback((q) => searchUsers(q), []);
 
   const inputCls =
-    "w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors";
+    "w-full px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm focus:outline-none focus:border-bp-blue transition-colors";
   const selectCls =
-    "w-full px-3 py-2 pr-9 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors appearance-none cursor-pointer bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px] bg-[right_10px_center] bg-no-repeat";
+    "w-full px-3 py-2 pr-9 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm focus:outline-none focus:border-bp-blue transition-colors appearance-none cursor-pointer bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px] bg-[right_10px_center] bg-no-repeat";
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5">
+    <div className="max-w-7xl mx-auto space-y-5">
       {/* Header */}
-      <div className="flex items-start gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          className="mt-0.5 p-2 rounded-lg border border-gray-700 bg-gray-800/60 hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
-          title="Go back"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
+      <div>
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-white leading-tight">
+          <h1 className="text-2xl font-bold text-white leading-tight">
             Create Copyright Case
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-[13px] text-bp-text-muted mt-1">
             File a copyright claim against a video
           </p>
         </div>
       </div>
 
-      <p className="text-xs text-gray-500">Required fields must be completed.</p>
+      <p className="text-xs text-bp-text-muted">Required fields must be completed.</p>
 
       {/* Errors */}
       {errors.length > 0 && (
@@ -296,13 +289,13 @@ export default function CopyrightCreateCase() {
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Target Content */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5 space-y-4">
+        <div className="bg-bp-card rounded-2xl border border-bp-border p-5 space-y-4">
           <div>
             <h2 className="text-[15px] font-semibold text-white flex items-center gap-2">
-              <FileText className="w-4 h-4 text-gray-500" />
+              <FileText className="w-4 h-4 text-bp-text-muted" />
               Target Content
             </h2>
-            <p className="text-xs text-gray-500 mt-0.5 ml-6">
+            <p className="text-xs text-bp-text-muted mt-0.5 ml-6">
               Search and select the video and respondent user
             </p>
           </div>
@@ -329,15 +322,15 @@ export default function CopyrightCreateCase() {
                   {v.thumbnail ? (
                     <img src={v.thumbnail} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
                   ) : (
-                    <div className="w-10 h-10 rounded bg-gray-700 flex items-center justify-center text-xs text-gray-500 shrink-0">
+                    <div className="w-10 h-10 rounded bg-bp-border flex items-center justify-center text-xs text-bp-text-muted shrink-0">
                       No
                     </div>
                   )}
                   <div className="min-w-0">
                     <p className="font-medium text-white truncate">{v.title}</p>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-bp-text-muted truncate">
                       by {v.uploaderName}
-                      {v.videoType?.length ? ` · ${v.videoType.join(", ")}` : ""}
+                      {v.videoType?.length ? ` Â· ${v.videoType.join(", ")}` : ""}
                     </p>
                   </div>
                 </div>
@@ -361,15 +354,15 @@ export default function CopyrightCreateCase() {
                   {u.avatar ? (
                     <img src={u.avatar} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-gray-400 shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-bp-border flex items-center justify-center text-xs text-bp-text-secondary shrink-0">
                       {u.name?.charAt(0)?.toUpperCase()}
                     </div>
                   )}
                   <div className="min-w-0">
                     <p className="font-medium text-white truncate">{u.name}</p>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-bp-text-muted truncate">
                       {u.email}
-                      {u.role ? ` · ${u.role}` : ""}
+                      {u.role ? ` Â· ${u.role}` : ""}
                     </p>
                   </div>
                 </div>
@@ -378,7 +371,7 @@ export default function CopyrightCreateCase() {
             />
           </div>
           {selectedVideo && selectedUser && (
-            <p className="text-xs text-gray-500 flex items-center gap-1.5 ml-6">
+            <p className="text-xs text-bp-text-muted flex items-center gap-1.5 ml-6">
               <Info className="w-3.5 h-3.5 shrink-0" />
               Respondent auto-filled from video uploader. You can change it by searching again.
             </p>
@@ -386,19 +379,19 @@ export default function CopyrightCreateCase() {
         </div>
 
         {/* Claimant */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5 space-y-4">
+        <div className="bg-bp-card rounded-2xl border border-bp-border p-5 space-y-4">
           <div>
             <h2 className="text-[15px] font-semibold text-white flex items-center gap-2">
-              <User className="w-4 h-4 text-gray-500" />
+              <User className="w-4 h-4 text-bp-text-muted" />
               Claimant Information
             </h2>
-            <p className="text-xs text-gray-500 mt-0.5 ml-6">
+            <p className="text-xs text-bp-text-muted mt-0.5 ml-6">
               Contact details of the party filing the claim
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+              <label className="block text-[13px] font-medium text-white mb-1.5">
                 Name
               </label>
               <input
@@ -411,7 +404,7 @@ export default function CopyrightCreateCase() {
               />
             </div>
             <div>
-              <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+              <label className="block text-[13px] font-medium text-white mb-1.5">
                 Email
               </label>
               <input
@@ -424,7 +417,7 @@ export default function CopyrightCreateCase() {
               />
             </div>
             <div>
-              <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+              <label className="block text-[13px] font-medium text-white mb-1.5">
                 Organization
               </label>
               <input
@@ -437,7 +430,7 @@ export default function CopyrightCreateCase() {
               />
             </div>
             <div>
-              <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+              <label className="block text-[13px] font-medium text-white mb-1.5">
                 Phone
               </label>
               <input
@@ -453,19 +446,19 @@ export default function CopyrightCreateCase() {
         </div>
 
         {/* Claim Details */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5 space-y-4">
+        <div className="bg-bp-card rounded-2xl border border-bp-border p-5 space-y-4">
           <div>
             <h2 className="text-[15px] font-semibold text-white flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-gray-500" />
+              <AlertCircle className="w-4 h-4 text-bp-text-muted" />
               Claim Details
             </h2>
-            <p className="text-xs text-gray-500 mt-0.5 ml-6">
+            <p className="text-xs text-bp-text-muted mt-0.5 ml-6">
               Describe the claim and reference the original work
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+              <label className="block text-[13px] font-medium text-white mb-1.5">
                 Claim Type
               </label>
               <select
@@ -480,7 +473,7 @@ export default function CopyrightCreateCase() {
               </select>
             </div>
             <div>
-              <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+              <label className="block text-[13px] font-medium text-white mb-1.5">
                 Priority
               </label>
               <select
@@ -496,7 +489,7 @@ export default function CopyrightCreateCase() {
             </div>
           </div>
           <div>
-            <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+            <label className="block text-[13px] font-medium text-white mb-1.5">
               Claim Description
             </label>
             <textarea
@@ -510,7 +503,7 @@ export default function CopyrightCreateCase() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+              <label className="block text-[13px] font-medium text-white mb-1.5">
                 Original Work Title
               </label>
               <input
@@ -523,7 +516,7 @@ export default function CopyrightCreateCase() {
               />
             </div>
             <div>
-              <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+              <label className="block text-[13px] font-medium text-white mb-1.5">
                 Original Work URL
               </label>
               <input
@@ -543,7 +536,7 @@ export default function CopyrightCreateCase() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="px-4 py-2 text-sm font-medium text-gray-400 bg-gray-800 hover:bg-gray-750 hover:text-gray-300 border border-gray-700 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-bp-text-secondary bg-bp-elevated hover:bg-bp-border hover:text-bp-text border border-bp-border rounded-lg transition-colors"
           >
             Cancel
           </button>
@@ -551,7 +544,7 @@ export default function CopyrightCreateCase() {
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-bp-blue hover:bg-bp-blue rounded-lg transition-colors disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
               {submitting ? "Creating..." : "Create Case"}

@@ -119,6 +119,19 @@ export const fetchAdminUserEngagement = (id) =>
 export const getAdminUploads = (params) =>
   API.get("/admin/uploads", { params });
 
+// Admin Profile (self)
+export const getAdminProfile = () => API.get("/admin/me");
+export const updateAdminProfile = (formData) =>
+  API.patch("/admin/profile", formData);
+
+// Admin password reset (OTP)
+export const requestAdminPasswordOtp = () =>
+  API.post("/admin/forgot-password");
+export const verifyAdminResetOtp = (otp) =>
+  API.post("/admin/verify-reset-otp", { otp });
+export const resetAdminPassword = (token, newPassword) =>
+  API.post("/admin/reset-password", { token, newPassword });
+
 // Admin User Moderation
 export const suspendAdminUser = (id, reason) =>
   API.post(`/admin/users/${id}/suspend`, { reason });

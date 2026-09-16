@@ -1,11 +1,9 @@
-"use client";
-
-import { useState, useEffect, useMemo, useCallback } from "react";
+﻿import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import DataTable from "react-data-table-component";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import toast from "react-hot-toast";
+import { roleColor } from "../../utils/helpers";
 import {
   Search,
   Edit,
@@ -34,8 +32,8 @@ const isShortVideo = (v) => {
 
 function VideoListItem({ video }) {
   return (
-    <div className="flex items-center gap-3 p-3 bg-gray-800/50 border border-gray-700/50 rounded-xl">
-      <div className="w-16 h-10 rounded-lg bg-gray-800 overflow-hidden flex-shrink-0">
+    <div className="flex items-center gap-3 p-3 bg-bp-elevated/50 border border-bp-border/50 rounded-xl">
+      <div className="w-16 h-10 rounded-lg bg-bp-elevated overflow-hidden flex-shrink-0">
         {video.thumbnail && (
           <img
             src={video.thumbnail}
@@ -45,12 +43,12 @@ function VideoListItem({ video }) {
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm text-gray-200 truncate">
+        <p className="font-medium text-sm text-white truncate">
           {video.title}
         </p>
-        <p className="text-xs text-amber-400">{video.channelName}</p>
+        <p className="text-xs text-bp-yellow">{video.channelName}</p>
       </div>
-      <span className="text-xs text-gray-500">{video.views || 0} views</span>
+      <span className="text-xs text-bp-text-muted">{video.views || 0} views</span>
     </div>
   );
 }
@@ -197,14 +195,6 @@ export default function Users() {
     };
   }, [selectedChannel]);
 
-  const roleColor = (role) => {
-    if (role === "admin")
-      return "bg-purple-500/15 text-purple-400 border border-purple-500/20";
-    if (role === "creator")
-      return "bg-blue-500/15 text-blue-400 border border-blue-500/20";
-    return "bg-gray-500/15 text-gray-400 border border-gray-500/20";
-  };
-
   const columns = useMemo(
     () => [
       {
@@ -214,7 +204,7 @@ export default function Users() {
         grow: 2,
         cell: (row) => (
           <div className="flex items-center gap-3 py-1">
-            <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-bp-blue/20 text-bp-blue flex items-center justify-center font-bold text-sm flex-shrink-0">
               {row.avatar ? (
                 <img
                   src={row.avatar}
@@ -226,8 +216,8 @@ export default function Users() {
               )}
             </div>
             <div className="min-w-0">
-              <p className="font-medium text-gray-200 truncate">{row.name}</p>
-              <p className="text-sm text-gray-500 truncate flex items-center gap-1">
+              <p className="font-medium text-white truncate">{row.name}</p>
+              <p className="text-sm text-bp-text-muted truncate flex items-center gap-1">
                 <Mail size={12} />
                 {row.email}
               </p>
@@ -255,8 +245,8 @@ export default function Users() {
         width: "110px",
         cell: (row) => (
           <div className="flex items-center gap-1.5">
-            <Tv size={15} className="text-amber-400" />
-            <span className="font-semibold text-gray-300">
+            <Tv size={15} className="text-bp-yellow" />
+            <span className="font-semibold text-white">
               {row.totalChannels}
             </span>
           </div>
@@ -269,8 +259,8 @@ export default function Users() {
         width: "100px",
         cell: (row) => (
           <div className="flex items-center gap-1.5">
-            <Video size={15} className="text-blue-400" />
-            <span className="font-semibold text-gray-300">
+            <Video size={15} className="text-bp-cyan" />
+            <span className="font-semibold text-white">
               {row.totalVideos}
             </span>
           </div>
@@ -282,7 +272,7 @@ export default function Users() {
         sortable: true,
         width: "90px",
         cell: (row) => (
-          <span className="text-sm font-medium text-gray-300">
+          <span className="text-sm font-medium text-white">
             {row.trustScore}
           </span>
         ),
@@ -293,7 +283,7 @@ export default function Users() {
         sortable: true,
         width: "120px",
         cell: (row) => (
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-bp-text-muted">
             {new Date(row.createdAt).toLocaleDateString()}
           </span>
         ),
@@ -319,8 +309,8 @@ export default function Users() {
               <button
                 onClick={() => navigate(`/users/${row._id}/edit`)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium 
-                           text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 
-                           border border-indigo-500/20 rounded-lg transition"
+                           text-bp-blue bg-bp-blue/10 hover:bg-bp-blue/20 
+                           border border-bp-blue/20 rounded-lg transition"
                 title="Edit User"
               >
                 <Edit size={16} />
@@ -347,31 +337,37 @@ export default function Users() {
 
   return (
     <div className="space-y-6">
-      <ToastContainer position="top-right" autoClose={3000} theme="dark" />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Users</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{totalRows} total users</p>
+          <p className="text-[13px] text-bp-text-secondary mt-1">{totalRows} total users</p>
         </div>
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-bp-text-muted pointer-events-none" />
           <input
             type="text"
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg 
-                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
-                       w-72 text-gray-100 placeholder-gray-500"
+            className="pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl w-72 text-sm text-white placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
       {/* DataTable */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+      <div className="bg-bp-card rounded-xl border border-bp-border overflow-hidden">
         <DataTable
           columns={columns}
           data={users}
@@ -381,15 +377,15 @@ export default function Users() {
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2
                 size={40}
-                className="animate-spin text-indigo-400 mb-3"
+                className="animate-spin text-bp-blue mb-3"
               />
-              <p className="text-gray-400">Loading users...</p>
+              <p className="text-bp-text-secondary">Loading users...</p>
             </div>
           }
           noDataComponent={
-            <div className="text-center py-20 text-gray-500">
+            <div className="text-center py-20 text-bp-text-muted">
               <User size={40} className="mx-auto mb-3 opacity-40" />
-              <p className="text-lg font-medium text-gray-400">No users found</p>
+              <p className="text-lg font-medium text-bp-text-secondary">No users found</p>
             </div>
           }
           pagination
@@ -410,13 +406,14 @@ export default function Users() {
 
       {/* ========== DETAIL MODAL ========== */}
       {detailModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-gray-800 sticky top-0 bg-gray-900 z-10">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="User Details">
+          <div className="bg-bp-card border border-bp-border rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-bp-border sticky top-0 bg-bp-card z-10">
               <h2 className="text-xl font-bold text-white">User Details</h2>
               <button
                 onClick={() => setDetailModal(false)}
-                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition"
+                className="p-1.5 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated rounded-lg transition"
+                aria-label="Close user details"
               >
                 <X size={20} />
               </button>
@@ -426,14 +423,14 @@ export default function Users() {
               <div className="flex flex-col items-center justify-center py-20">
                 <Loader2
                   size={40}
-                  className="animate-spin text-indigo-400 mb-3"
+                  className="animate-spin text-bp-blue mb-3"
                 />
-                <p className="text-gray-400">Loading full details...</p>
+                <p className="text-bp-text-secondary">Loading full details...</p>
               </div>
             ) : selectedUser ? (
               <div className="p-5 space-y-5">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl font-bold">
+                  <div className="w-16 h-16 rounded-full bg-bp-blue/20 text-bp-blue flex items-center justify-center text-2xl font-bold">
                     {selectedUser.avatar ? (
                       <img
                         src={selectedUser.avatar}
@@ -448,7 +445,7 @@ export default function Users() {
                     <h3 className="text-lg font-bold text-white">
                       {selectedUser.name}
                     </h3>
-                    <p className="text-gray-400">{selectedUser.email}</p>
+                    <p className="text-bp-text-secondary">{selectedUser.email}</p>
                     <span
                       className={`mt-1 inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full capitalize ${roleColor(
                         selectedUser.role,
@@ -460,14 +457,14 @@ export default function Users() {
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-center">
-                    <p className="text-2xl font-bold text-amber-400">
+                  <div className="bg-bp-yellow/10 border border-bp-yellow/20 p-3 rounded-xl text-center">
+                    <p className="text-2xl font-bold text-bp-yellow">
                       {selectedUser.totalChannels}
                     </p>
                     <p className="text-xs text-amber-500/80">Channels</p>
                   </div>
-                  <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl text-center">
-                    <p className="text-2xl font-bold text-blue-400">
+                  <div className="bg-bp-cyan/10 border border-bp-cyan/20 p-3 rounded-xl text-center">
+                    <p className="text-2xl font-bold text-bp-cyan">
                       {selectedUser.totalVideos}
                     </p>
                     <p className="text-xs text-blue-500/80">Videos</p>
@@ -487,12 +484,12 @@ export default function Users() {
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-gray-200 mb-3 flex items-center gap-2">
-                    <Tv size={18} className="text-amber-400" />
+                  <h4 className="font-semibold text-white mb-3 flex items-center gap-2">
+                    <Tv size={18} className="text-bp-yellow" />
                     Channels ({selectedUser.totalChannels})
                   </h4>
                   {!selectedUser.channels?.length ? (
-                    <p className="text-sm text-gray-500">No channels found</p>
+                    <p className="text-sm text-bp-text-muted">No channels found</p>
                   ) : (
                     <div className="space-y-2">
                       {selectedUser.channels.map((ch) => {
@@ -504,11 +501,11 @@ export default function Users() {
                             onClick={() => setSelectedChannel(ch)}
                             className={`w-full flex items-center gap-3 p-3 rounded-xl border transition ${
                               isActive
-                                ? "bg-amber-500/10 border-amber-500/30"
-                                : "bg-gray-800/50 border-gray-700/50 hover:bg-gray-800 hover:border-gray-600"
+                                ? "bg-bp-yellow/10 border-bp-yellow/30"
+                                : "bg-bp-elevated/50 border-bp-border/50 hover:bg-bp-elevated hover:border-bp-border"
                             }`}
                           >
-                            <div className="w-10 h-10 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+                            <div className="w-10 h-10 rounded-lg bg-bp-yellow/15 flex items-center justify-center flex-shrink-0">
                               {ch.channelImage ? (
                                 <img
                                   src={ch.channelImage}
@@ -516,25 +513,25 @@ export default function Users() {
                                   alt={ch.name}
                                 />
                               ) : (
-                                <Tv size={18} className="text-amber-400" />
+                                <Tv size={18} className="text-bp-yellow" />
                               )}
                             </div>
                             <div className="flex-1 min-w-0 text-left">
                               <p
                                 className={`font-medium truncate ${
-                                  isActive ? "text-amber-200" : "text-gray-200"
+                                  isActive ? "text-amber-200" : "text-white"
                                 }`}
                               >
                                 {ch.name}
                               </p>
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-bp-text-muted">
                                 {ch.totalVideos} videos
                               </p>
                             </div>
                             {isActive && (
                               <Check
                                 size={18}
-                                className="text-amber-400 flex-shrink-0"
+                                className="text-bp-yellow flex-shrink-0"
                               />
                             )}
                           </button>
@@ -551,8 +548,8 @@ export default function Users() {
                       onClick={() => setActiveMediaTab("videos")}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg border font-medium text-sm transition ${
                         activeMediaTab === "videos"
-                          ? "bg-blue-500/15 border-blue-500/30 text-blue-300"
-                          : "bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+                          ? "bg-bp-cyan/15 border-bp-cyan/30 text-blue-300"
+                          : "bg-bp-elevated/50 border-bp-border/50 text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text"
                       }`}
                     >
                       <Video size={16} />
@@ -563,8 +560,8 @@ export default function Users() {
                       onClick={() => setActiveMediaTab("shorts")}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg border font-medium text-sm transition ${
                         activeMediaTab === "shorts"
-                          ? "bg-amber-500/15 border-amber-500/30 text-amber-300"
-                          : "bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+                          ? "bg-bp-yellow/15 border-bp-yellow/30 text-amber-300"
+                          : "bg-bp-elevated/50 border-bp-border/50 text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text"
                       }`}
                     >
                       <Clapperboard size={16} />
@@ -574,7 +571,7 @@ export default function Users() {
 
                   {activeMediaTab === "videos" ? (
                     channelVideos.length === 0 ? (
-                      <p className="text-sm text-gray-500">No videos found</p>
+                      <p className="text-sm text-bp-text-muted">No videos found</p>
                     ) : (
                       <div className="space-y-2 max-h-60 overflow-y-auto">
                         {channelVideos.map((v) => (
@@ -583,7 +580,7 @@ export default function Users() {
                       </div>
                     )
                   ) : channelShorts.length === 0 ? (
-                    <p className="text-sm text-gray-500">No shorts found</p>
+                    <p className="text-sm text-bp-text-muted">No shorts found</p>
                   ) : (
                     <div className="space-y-2 max-h-60 overflow-y-auto">
                       {channelShorts.map((v) => (
@@ -593,11 +590,11 @@ export default function Users() {
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-gray-800">
+                <div className="pt-2 border-t border-bp-border">
                   {hasFeature("canEditUsers") && (
                     <button
                       onClick={openEditFromDetail}
-                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition"
+                      className="w-full py-2.5 bg-bp-blue hover:bg-bp-blue text-white rounded-lg font-medium flex items-center justify-center gap-2 transition"
                     >
                       <Edit size={18} />
                       Update User
@@ -606,7 +603,7 @@ export default function Users() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-20 text-gray-500">
+              <div className="text-center py-20 text-bp-text-muted">
                 User not found
               </div>
             )}
@@ -616,13 +613,14 @@ export default function Users() {
 
       {/* ========== EDIT MODAL ========== */}
       {editModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-5 border-b border-gray-800">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Edit User">
+          <div className="bg-bp-card border border-bp-border rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-5 border-b border-bp-border">
               <h2 className="text-xl font-bold text-white">Edit User</h2>
               <button
                 onClick={() => setEditModal(false)}
-                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition"
+                className="p-1.5 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated rounded-lg transition"
+                aria-label="Close edit user"
               >
                 <X size={20} />
               </button>
@@ -630,7 +628,7 @@ export default function Users() {
 
             <form onSubmit={handleUpdate} className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                <label className="block text-sm font-medium text-white mb-1.5">
                   Name
                 </label>
                 <input
@@ -639,13 +637,13 @@ export default function Users() {
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg 
-                             text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 bg-bp-elevated border border-bp-border rounded-lg 
+                             text-white focus:ring-2 focus:ring-bp-blue focus:border-bp-blue outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                <label className="block text-sm font-medium text-white mb-1.5">
                   Email
                 </label>
                 <input
@@ -655,13 +653,13 @@ export default function Users() {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg 
-                             text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 bg-bp-elevated border border-bp-border rounded-lg 
+                             text-white focus:ring-2 focus:ring-bp-blue focus:border-bp-blue outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                <label className="block text-sm font-medium text-white mb-1.5">
                   Role
                 </label>
                 <select
@@ -669,8 +667,8 @@ export default function Users() {
                   onChange={(e) =>
                     setFormData({ ...formData, role: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg 
-                             text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 bg-bp-elevated border border-bp-border rounded-lg 
+                             text-white focus:ring-2 focus:ring-bp-blue focus:border-bp-blue outline-none"
                 >
                   <option value="viewer">Viewer</option>
                   <option value="creator">Creator</option>
@@ -680,7 +678,7 @@ export default function Users() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                  <label className="block text-sm font-medium text-white mb-1.5">
                     Trust Score
                   </label>
                   <input
@@ -694,12 +692,12 @@ export default function Users() {
                         trustScore: Number(e.target.value),
                       })
                     }
-                    className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg 
-                               text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                    className="w-full px-4 py-2.5 bg-bp-elevated border border-bp-border rounded-lg 
+                               text-white focus:ring-2 focus:ring-bp-blue focus:border-bp-blue outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                  <label className="block text-sm font-medium text-white mb-1.5">
                     Reward Points
                   </label>
                   <input
@@ -712,8 +710,8 @@ export default function Users() {
                         rewardPoints: Number(e.target.value),
                       })
                     }
-                    className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg 
-                               text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                    className="w-full px-4 py-2.5 bg-bp-elevated border border-bp-border rounded-lg 
+                               text-white focus:ring-2 focus:ring-bp-blue focus:border-bp-blue outline-none"
                   />
                 </div>
               </div>
@@ -723,7 +721,7 @@ export default function Users() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg 
+                    className="flex-1 py-2.5 bg-bp-blue hover:bg-bp-blue text-white rounded-lg 
                                font-medium flex items-center justify-center gap-2 disabled:opacity-60 transition"
                   >
                     {submitting && <Loader2 size={16} className="animate-spin" />}
@@ -733,7 +731,7 @@ export default function Users() {
                 <button
                   type="button"
                   onClick={() => setEditModal(false)}
-                  className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition"
+                  className="flex-1 py-2.5 bg-bp-elevated hover:bg-bp-border text-white rounded-lg font-medium transition"
                 >
                   Cancel
                 </button>
