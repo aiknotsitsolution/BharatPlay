@@ -31,6 +31,18 @@ function formatDuration(sec) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+const uploadsTableStyles = {
+  ...tableCustomStyles,
+  rows: {
+    ...tableCustomStyles.rows,
+    style: {
+      ...tableCustomStyles.rows.style,
+      paddingTop: "12px",
+      paddingBottom: "12px",
+    },
+  },
+};
+
 export default function AllUploads() {
   const dispatch = useDispatch();
   const { tabs, counts } = useSelector((s) => s.adminUploads);
@@ -98,6 +110,9 @@ export default function AllUploads() {
         name: "Content",
         selector: (row) => row.title,
         grow: 2,
+        header: () => (
+          <div className="w-full text-left">Content</div>
+        ),
         cell: (row) => {
           const thumbSrc = row.thumbnail
             ? row.thumbnail.startsWith("http")
@@ -137,8 +152,11 @@ export default function AllUploads() {
         name: "Creator",
         selector: (row) => row.uploadedBy?.name,
         grow: 1,
+        header: () => (
+          <div className="w-full text-left -ml-14">Creator</div>
+        ),
         cell: (row) => (
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 -ml-12">
             <div className="w-8 h-8 rounded-full bg-bp-blue/20 text-bp-blue flex items-center justify-center text-xs font-bold flex-shrink-0">
               {row.uploadedBy?.name?.charAt(0)?.toUpperCase() || "U"}
             </div>
@@ -168,7 +186,7 @@ export default function AllUploads() {
             : row.videoType === "long";
           return (
             <span
-              className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+              className={`inline-flex items-center -ml-3 text-xs font-semibold px-2.5 py-1 rounded-full ${
                 isVideo
                   ? "bg-bp-cyan/15 text-bp-cyan border border-bp-cyan/20"
                   : "bg-pink-500/15 text-pink-400 border border-pink-500/20"
@@ -185,7 +203,7 @@ export default function AllUploads() {
         sortable: true,
         width: "90px",
         cell: (row) => (
-          <span className="text-white font-medium">
+          <span className="text-white font-medium ml-4">
             {(row.views || 0).toLocaleString()}
           </span>
         ),
@@ -196,7 +214,7 @@ export default function AllUploads() {
         sortable: true,
         width: "90px",
         cell: (row) => (
-          <span className="text-white font-medium">
+          <span className="text-white font-medium ml-4">
             {(row.likesCount || 0).toLocaleString()}
           </span>
         ),
@@ -205,9 +223,9 @@ export default function AllUploads() {
         name: "Comments",
         selector: (row) => row.commentCount || 0,
         sortable: true,
-        width: "110px",
+        width: "130px",
         cell: (row) => (
-          <span className="text-white font-medium">
+          <span className="text-white font-medium pl-8">
             {(row.commentCount || 0).toLocaleString()}
           </span>
         ),
@@ -231,14 +249,14 @@ export default function AllUploads() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">
+        <h1 className="text-2xl font-bold text-bp-text">
           Uploads
         </h1>
         <p className="text-[13px] text-bp-text-secondary mt-1">Manage all videos and shorts</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-bp-card border border-bp-border rounded-xl p-1 w-fit">
+      <div className="flex items-center gap-1 bg-bp-card rounded-xl p-1 w-fit">
         {TAB_DEFS.map((t) => {
           const isActive = activeTab === t.key;
           const count = counts[t.key] || 0;
@@ -248,8 +266,8 @@ export default function AllUploads() {
               onClick={() => handleTabChange(t.key)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
                 isActive
-                  ? "bg-bp-blue text-white"
-                  : "text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated"
+                  ? "bg-bp-navy text-white"
+                  : "text-bp-text-secondary hover:text-bp-text hover:bg-bp-hover"
               }`}
             >
               {t.label}
@@ -284,7 +302,7 @@ export default function AllUploads() {
           <button
             type="button"
             onClick={() => handleSearchChange({ target: { value: "" } })}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-bp-text hover:bg-bp-elevated transition-colors duration-150"
           >
             <X size={14} />
           </button>
@@ -306,25 +324,21 @@ export default function AllUploads() {
       )}
 
       {/* Data Table */}
-      <div className="bg-bp-card rounded-xl border border-bp-border overflow-hidden">
+      <div className="bg-bp-card rounded-2xl">
         <DataTable
           columns={columns}
           data={items}
           progressPending={_loading && !_loaded}
           progressComponent={
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 size={40} className="animate-spin text-bp-blue mb-3" />
-              <p className="text-bp-text-secondary">Loading uploads...</p>
+            <div className="py-12 text-center text-bp-text-muted">
+              Loading uploads...
             </div>
           }
           noDataComponent={
-            <div className="text-center py-20 text-bp-text-muted">
-              <Film size={40} className="mx-auto mb-3 opacity-40" />
-              <p className="text-lg font-medium text-bp-text-secondary">
-                {_search
-                  ? `No uploads found for "${_search}"`
-                  : "No uploads yet"}
-              </p>
+            <div className="py-12 text-center text-bp-text-muted">
+              {_search
+                ? `No uploads found for "${_search}"`
+                : "No uploads yet"}
             </div>
           }
           pagination
@@ -336,11 +350,10 @@ export default function AllUploads() {
           paginationComponentOptions={{
             noRowsPerPage: true,
           }}
-          customStyles={tableCustomStyles}
+          customStyles={uploadsTableStyles}
           highlightOnHover
           pointerOnHover={false}
           responsive
-          theme="dark"
         />
       </div>
     </div>

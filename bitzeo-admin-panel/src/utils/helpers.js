@@ -98,3 +98,23 @@ export function setAdminPhoto(base64) {
     // ignore
   }
 }
+
+export const LOGIN_CELEBRATION_KEY = "bp-login-celebration";
+
+export function isLoginCelebrationEnabled() {
+  try {
+    return localStorage.getItem(LOGIN_CELEBRATION_KEY) === "1";
+  } catch (_) {
+    return false;
+  }
+}
+
+export function setLoginCelebrationEnabled(enabled) {
+  try {
+    if (enabled) {
+      localStorage.setItem(LOGIN_CELEBRATION_KEY, "1");
+    } else {
+      localStorage.removeItem(LOGIN_CELEBRATION_KEY);
+    }
+  } catch (_) {}
+}

@@ -265,7 +265,7 @@ export default function DeletedUsers() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-bp-text">
             Deleted Users
           </h1>
           <p className="text-[13px] text-bp-text-secondary mt-1">
@@ -280,13 +280,13 @@ export default function DeletedUsers() {
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl w-72 text-sm text-white placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500/50 hover:border-bp-border transition-colors duration-200"
+            className="pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl w-72 text-sm text-bp-text placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/20 focus:border-bp-blue/50 hover:border-bp-border transition-colors duration-200"
           />
           {search && (
             <button
               type="button"
               onClick={() => setSearch("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-white hover:bg-red-500/10 transition-colors duration-150"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-bp-text hover:bg-bp-elevated transition-colors duration-150"
             >
               <X size={14} />
             </button>
@@ -303,27 +303,20 @@ export default function DeletedUsers() {
       </div>
 
       {/* DataTable */}
-      <div className="bg-bp-card rounded-xl border border-bp-border overflow-hidden">
+      <div className="bg-bp-card rounded-2xl overflow-hidden">
         <DataTable
           columns={columns}
           data={users}
           customStyles={tableCustomStyles}
           progressPending={loading}
           progressComponent={
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2
-                size={40}
-                className="animate-spin text-red-400 mb-3"
-              />
-              <p className="text-bp-text-secondary">Loading deleted users...</p>
+            <div className="py-12 text-center text-bp-text-muted">
+              Loading deleted users...
             </div>
           }
           noDataComponent={
-            <div className="text-center py-20 text-bp-text-muted">
-              <UserX size={40} className="mx-auto mb-3 opacity-40" />
-              <p className="text-lg font-medium text-bp-text-secondary">
-                No deleted users found
-              </p>
+            <div className="py-12 text-center text-bp-text-muted">
+              No deleted users found
             </div>
           }
           pagination
@@ -332,13 +325,8 @@ export default function DeletedUsers() {
           paginationPerPage={LIMIT}
           paginationDefaultPage={page}
           onChangePage={handlePageChange}
-          paginationComponentOptions={{
-            noRowsPerPage: true,
-          }}
           highlightOnHover
           pointerOnHover={false}
-          responsive
-          theme="dark"
         />
       </div>
 

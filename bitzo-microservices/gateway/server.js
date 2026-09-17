@@ -82,16 +82,32 @@ function proxy(target, routePrefix = "/") {
 
       return `${routePrefix}${normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`}`;
     },
-    onError: (err, req, res) => {
-      console.error(`[gateway] proxy error to ${target}:`, err.message);
+    // http-proxy-middleware v3 requires handlers under `on` (top-level
+    // `onError` is silently ignored and the default plugin would answer
+    // connection failures with a misleading 504).
+    on: {
+      error: (err, req, res) => {
+        const code = err?.code || err?.message;
+        console.error(`[gateway] proxy error -> ${target}:`, code);
 
-      if (res && !res.headersSent) {
-        res.status(502).json({
-          success: false,
-          message: "Backend service unavailable",
-          target,
-        });
-      }
+        if (!res || res.headersSent) return;
+
+        // A genuine upstream timeout is a 504; a refused/reset connection
+        // (service restarting, crashed or not up yet) is a 502.
+        const status = code === "ETIMEDOUT" ? 504 : 502;
+        if (typeof res.status === "function") {
+          res.status(status).json({
+            success: false,
+            message:
+              status === 504
+                ? "Backend service timed out"
+                : "Backend service unavailable",
+            target,
+          });
+        } else if (typeof res.end === "function") {
+          res.end();
+        }
+      },
     },
   });
 }

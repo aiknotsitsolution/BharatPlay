@@ -54,13 +54,13 @@ exports.getAdminUploads = async (req, res) => {
 
     const [allCountResult, videosCountResult, shortsCountResult] =
       await Promise.all([
-        Video.aggregate(countPipeline("all")),
+        Video.estimatedDocumentCount(),
         Video.aggregate(countPipeline("long")),
         Video.aggregate(countPipeline("short")),
       ]);
 
     const counts = {
-      all: allCountResult[0]?.total || 0,
+      all: allCountResult || 0,
       videos: videosCountResult[0]?.total || 0,
       shorts: shortsCountResult[0]?.total || 0,
     };

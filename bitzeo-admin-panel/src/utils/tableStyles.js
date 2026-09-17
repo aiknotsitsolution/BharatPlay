@@ -2,7 +2,6 @@
  * Shared DataTable customStyles for the BharatPlay admin panel.
  * Uses CSS variables for theme-aware styling.
  */
-
 const tableCustomStyles = {
   table: {
     style: {
@@ -11,20 +10,22 @@ const tableCustomStyles = {
   },
   headRow: {
     style: {
-      backgroundColor: "color-mix(in srgb, var(--bp-surface) 50%, transparent)",
+      backgroundColor: "transparent",
       borderBottom: "none",
-      minHeight: "48px",
+      minHeight: "44px",
     },
   },
   headCells: {
     style: {
       color: "var(--bp-text-secondary)",
-      fontSize: "12px",
+      fontSize: "11px",
       fontWeight: "600",
       textTransform: "uppercase",
       letterSpacing: "0.05em",
-      paddingLeft: "20px",
-      paddingRight: "20px",
+      textAlign: "left",
+      justifyContent: "flex-start",
+      paddingLeft: "16px",
+      paddingRight: "16px",
     },
   },
   rows: {
@@ -37,32 +38,16 @@ const tableCustomStyles = {
       border: "none",
       boxShadow: "none",
       outline: "none",
-      "&:not(:last-of-type)": {
-        borderBottomStyle: "none",
-        borderBottomWidth: "0",
-        borderBottomColor: "transparent",
-        borderBottom: "none",
-        borderTop: "none",
-        border: "none",
-        boxShadow: "none",
-      },
       "&:hover": {
-        backgroundColor: "color-mix(in srgb, var(--bp-border) 40%, transparent)",
+        backgroundColor: "var(--bp-elevated)",
         color: "var(--bp-text)",
         cursor: "default",
-        borderBottom: "none",
-        borderTop: "none",
-        border: "none",
-        boxShadow: "none",
-        outline: "none",
       },
     },
     highlightOnHoverStyle: {
-      backgroundColor: "color-mix(in srgb, var(--bp-border) 40%, transparent)",
+      backgroundColor: "var(--bp-elevated)",
       color: "var(--bp-text)",
       outline: "none",
-      outlineStyle: "none",
-      outlineWidth: "0",
       borderBottom: "none",
       borderTop: "none",
       border: "none",
@@ -71,8 +56,8 @@ const tableCustomStyles = {
   },
   cells: {
     style: {
-      paddingLeft: "20px",
-      paddingRight: "20px",
+      paddingLeft: "16px",
+      paddingRight: "16px",
       color: "var(--bp-text-secondary)",
       borderBottom: "none",
       borderTop: "none",
@@ -85,19 +70,20 @@ const tableCustomStyles = {
     style: {
       backgroundColor: "transparent",
       borderTop: "none",
-      borderTopStyle: "none",
-      borderTopWidth: "0",
-      borderTopColor: "transparent",
       color: "var(--bp-text-secondary)",
-      minHeight: "56px",
+      minHeight: "52px",
+      justifyContent: "center",
     },
     pageButtonsStyle: {
       color: "var(--bp-text-secondary)",
       fill: "var(--bp-text-secondary)",
       backgroundColor: "transparent",
-      borderRadius: "8px",
+      borderRadius: "6px",
+      minWidth: "32px",
+      minHeight: "32px",
+      margin: "0 2px",
       "&:hover:not(:disabled)": {
-        backgroundColor: "var(--bp-border)",
+        backgroundColor: "var(--bp-elevated)",
         color: "var(--bp-text)",
         fill: "var(--bp-text)",
       },

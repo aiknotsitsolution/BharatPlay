@@ -14,11 +14,11 @@ import { fetchCopyrightStats, fetchCopyrightCases } from "../../../api";
 import { hasFeature } from "../../../config/roleConfig";
 
 const StatCard = ({ title, value, icon: Icon, color, bg }) => (
-  <div className="bg-bp-card p-5 rounded-2xl border border-bp-border hover:border-bp-elevated transition-all">
+  <div className="stat-card">
     <div className="flex items-start justify-between">
       <div>
         <p className="text-sm text-bp-text-secondary font-medium">{title}</p>
-        <p className="text-2xl font-bold text-white mt-1">{value}</p>
+        <p className="text-2xl font-bold text-bp-text mt-1">{value}</p>
       </div>
       <div className={`p-3 rounded-xl ${bg}`}>
         <Icon className={`w-5 h-5 ${color}`} />
@@ -100,7 +100,7 @@ export default function CopyrightDashboard() {
     <div className="space-y-7">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Copyright Management</h1>
+          <h1 className="text-2xl font-bold text-bp-text">Copyright Management</h1>
           <p className="text-[13px] text-bp-text-secondary mt-1">Manage copyright cases, strikes, and disputes</p>
         </div>
         <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 text-sm bg-bp-card hover:bg-bp-elevated text-white rounded-lg border border-bp-border transition-colors">
@@ -117,11 +117,11 @@ export default function CopyrightDashboard() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        <div className="bg-bp-card rounded-2xl border border-bp-border p-6">
-          <h2 className="text-lg font-semibold text-white mb-5">Quick Actions</h2>
+        <div className="bg-bp-card rounded-2xl p-6">
+          <h2 className="text-lg font-semibold text-bp-text mb-5">Quick Actions</h2>
           <div className="space-y-3">
             {hasFeature("canCreateCopyrightCase") && (
-              <button onClick={() => navigate("/copyright/cases/new")} className="w-full flex items-center justify-between p-3.5 bg-bp-blue/10 border border-bp-blue/20 rounded-xl hover:bg-bp-blue/20 transition-colors">
+              <button onClick={() => navigate("/copyright/cases/new")} className="w-full flex items-center justify-between p-3.5 bg-bp-blue/10 rounded-xl hover:bg-bp-blue/20 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-bp-blue/20 rounded-lg"><Plus className="w-4 h-4 text-bp-blue" /></div>
                   <span className="text-sm font-medium text-white">Create New Case</span>
@@ -129,21 +129,21 @@ export default function CopyrightDashboard() {
                 <ArrowUpRight className="w-4 h-4 text-bp-blue" />
               </button>
             )}
-            <button onClick={() => navigate("/copyright/cases")} className="w-full flex items-center justify-between p-3.5 bg-bp-blue/10 border border-bp-blue/20 rounded-xl hover:bg-bp-blue/20 transition-colors">
+            <button onClick={() => navigate("/copyright/cases")} className="w-full flex items-center justify-between p-3.5 bg-bp-blue/10 rounded-xl hover:bg-bp-blue/20 transition-colors">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-bp-blue/20 rounded-lg"><FileText className="w-4 h-4 text-bp-blue" /></div>
                 <span className="text-sm font-medium text-white">View All Cases</span>
               </div>
               <ArrowUpRight className="w-4 h-4 text-bp-blue" />
             </button>
-            <button onClick={() => navigate("/copyright/strikes")} className="w-full flex items-center justify-between p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-colors">
+            <button onClick={() => navigate("/copyright/strikes")} className="w-full flex items-center justify-between p-3.5 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-red-500/20 rounded-lg"><AlertTriangle className="w-4 h-4 text-red-400" /></div>
                 <span className="text-sm font-medium text-white">View All Strikes</span>
               </div>
               <ArrowUpRight className="w-4 h-4 text-red-400" />
             </button>
-            <button onClick={() => navigate("/copyright/cases?status=pending")} className="w-full flex items-center justify-between p-3.5 bg-bp-yellow/10 border border-bp-yellow/20 rounded-xl hover:bg-bp-yellow/20 transition-colors">
+            <button onClick={() => navigate("/copyright/cases?status=pending")} className="w-full flex items-center justify-between p-3.5 bg-bp-yellow/10 rounded-xl hover:bg-bp-yellow/20 transition-colors">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-bp-yellow/20 rounded-lg"><Clock className="w-4 h-4 text-bp-yellow" /></div>
                 <span className="text-sm font-medium text-white">Pending Cases</span>
@@ -153,9 +153,9 @@ export default function CopyrightDashboard() {
           </div>
         </div>
 
-        <div className="xl:col-span-2 bg-bp-card rounded-2xl border border-bp-border p-6">
+        <div className="xl:col-span-2 bg-bp-card rounded-2xl p-6">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-bp-text flex items-center gap-2">
               <Shield className="w-5 h-5 text-bp-blue" />
               Recent Cases
             </h2>

@@ -16,11 +16,19 @@ import {
 } from "lucide-react";
 import API, { API_BASE_URL } from "../../api";
 import { hasFeature } from "../../config/roleConfig";
+import { formatDateTime } from "../../utils/helpers";
 import tableCustomStyles from "../../utils/tableStyles";
 
 
 
 const MEDIA_BASE = API_BASE_URL.replace(/\/api\/?$/, "");
+
+function formatDuration(sec) {
+  if (!sec && sec !== 0) return "—";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 
 const contentTableStyles = {
   ...tableCustomStyles,
@@ -219,7 +227,7 @@ export default function ContentManagement({ type = "long" }) {
         <div className="py-2">
           <p className="font-medium text-white line-clamp-1">{row.title}</p>
           <p className="text-xs text-bp-text-muted mt-0.5">
-            {row.category?.name || "—"} • {row.type || "—"}
+            {row.category?.name || "—"} • {formatDuration(row.duration)} • {isShorts ? "Short" : "Long"}
           </p>
         </div>
       ),
@@ -272,10 +280,10 @@ export default function ContentManagement({ type = "long" }) {
       name: "Date",
       selector: (row) => row.createdAt,
       sortable: true,
-      width: "120px",
+      width: "160px",
       cell: (row) => (
         <span className="text-sm text-bp-text-muted">
-          {new Date(row.createdAt).toLocaleDateString()}
+          {formatDateTime(row.createdAt)}
         </span>
       ),
     },
@@ -351,7 +359,7 @@ export default function ContentManagement({ type = "long" }) {
         </button>
 
         <div className="max-w-6xl mx-auto">
-          <div className="bg-black rounded-xl overflow-hidden shadow-2xl border border-bp-border">
+          <div className="bg-bp-card rounded-xl overflow-hidden shadow-2xl">
             <video
               src={videoSrc}
               controls
@@ -373,13 +381,13 @@ export default function ContentManagement({ type = "long" }) {
             </p>
 
             {/* Uploader + Channel */}
-            <div className="mt-6 p-5 bg-bp-card rounded-xl border border-bp-border">
+            <div className="mt-6 p-5 bg-bp-card rounded-xl">
               <h3 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4">
                 Uploaded By
               </h3>
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-bp-blue flex items-center justify-center text-lg font-bold">
+                  <div className="w-12 h-12 rounded-full bg-bp-blue text-white flex items-center justify-center text-lg font-bold">
                     {uploader?.name?.charAt(0)?.toUpperCase() || "U"}
                   </div>
                   <div>
@@ -395,7 +403,7 @@ export default function ContentManagement({ type = "long" }) {
                 </div>
 
                 {channel && (
-                  <div className="sm:ml-auto flex items-center gap-2 px-4 py-2 bg-bp-elevated rounded-lg border border-bp-border">
+                  <div className="sm:ml-auto flex items-center gap-2 px-4 py-2 bg-bp-elevated rounded-lg">
                     <Tv size={16} className="text-bp-yellow" />
                     <div>
                       <p className="text-xs text-bp-text-secondary">Channel</p>
@@ -418,7 +426,7 @@ export default function ContentManagement({ type = "long" }) {
               <div>
                 <div className="text-bp-text-muted">Type</div>
                 <div className="font-medium text-white">
-                  {selectedVideo.type || "—"}
+                  {isShorts ? "Short" : "Long"}
                 </div>
               </div>
               <div>
@@ -438,7 +446,7 @@ export default function ContentManagement({ type = "long" }) {
               <div>
                 <div className="text-bp-text-muted">Uploaded</div>
                 <div className="font-medium text-white">
-                  {new Date(selectedVideo.createdAt).toLocaleDateString()}
+                  {formatDateTime(selectedVideo.createdAt)}
                 </div>
               </div>
             </div>
@@ -455,7 +463,7 @@ export default function ContentManagement({ type = "long" }) {
                     });
                     setView("update");
                   }}
-                  className="flex items-center gap-2 bg-bp-blue hover:bg-bp-blue px-6 py-3 rounded-lg transition"
+                  className="flex items-center gap-2 bg-bp-elevated border border-bp-border text-bp-text-secondary hover:text-bp-text hover:bg-bp-hover px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200"
                 >
                   <Edit size={18} />
                   Edit Video
@@ -464,7 +472,7 @@ export default function ContentManagement({ type = "long" }) {
               {hasFeature("canModerateContent") && (
                 <button
                   onClick={() => handleDelete(selectedVideo._id)}
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-500 px-6 py-3 rounded-lg transition"
+                  className="flex items-center gap-2 text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200"
                 >
                   <Trash2 size={18} />
                   Delete Video
@@ -483,7 +491,7 @@ export default function ContentManagement({ type = "long" }) {
 
     return (
       <div className="flex items-start justify-center py-10 px-4">
-        <div className="bg-bp-card border border-bp-border p-8 rounded-2xl shadow-xl w-full max-w-xl">
+        <div className="bg-bp-card p-8 rounded-2xl shadow-xl w-full max-w-xl">
           <h2 className="text-2xl font-bold text-white mb-6 text-center">
             {isUpdate
               ? isShorts
@@ -625,7 +633,7 @@ export default function ContentManagement({ type = "long" }) {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
           {/* Title - Centered on left */}
           <div className="flex-1 text-center md:text-left">
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-bp-text">
               {isShorts ? "Shorts Management" : "Video Management"}
             </h1>
             <p className="text-[13px] text-bp-text-secondary mt-1">
@@ -646,13 +654,13 @@ export default function ContentManagement({ type = "long" }) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl
-                           text-white text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
+                           text-bp-text text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-bp-text hover:bg-bp-elevated transition-colors duration-150"
                 >
                   <X size={14} />
                 </button>
@@ -661,8 +669,7 @@ export default function ContentManagement({ type = "long" }) {
             {hasFeature("canUploadVideo") && (
               <button
                 onClick={() => setView("upload")}
-                style={{ background: "linear-gradient(135deg, #0069BE, #0092CC)" }}
-                className="flex items-center justify-center gap-2 text-white px-6 py-2.5 rounded-xl text-sm font-semibold border border-white/10 shadow-md shadow-bp-blue/20 hover:shadow-lg hover:shadow-bp-blue/25 transition-all duration-200 whitespace-nowrap"
+                className="flex items-center justify-center gap-2 bg-bp-elevated border border-bp-border text-bp-text-secondary hover:text-bp-text hover:bg-bp-hover px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap"
               >
                 <Plus size={18} />
                 {isShorts ? "Upload Short" : "Upload Video"}
@@ -678,32 +685,25 @@ export default function ContentManagement({ type = "long" }) {
         )}
 
         {/* Data Table */}
-        <div className="bg-bp-card rounded-2xl border border-bp-border overflow-hidden">
+        <div className="bg-bp-card rounded-2xl overflow-hidden">
           <DataTable
             columns={columns}
             data={filteredVideos}
             progressPending={loading}
             progressComponent={
-              <div className="flex flex-col items-center justify-center py-16 bg-bp-card">
-                <Loader2
-                  size={40}
-                  className="animate-spin text-bp-blue mb-4"
-                />
-                <p className="text-bp-text-secondary font-medium">Loading videos...</p>
+              <div className="py-12 text-center text-bp-text-muted">
+                Loading videos...
               </div>
             }
             pagination
             paginationPerPage={10}
-            paginationRowsPerPageOptions={[5, 10, 20, 50]}
+            paginationRowsPerPageOptions={[5, 10, 15, 25, 50]}
             customStyles={contentTableStyles}
             highlightOnHover
             pointerOnHover={false}
-            theme="dark"
             noDataComponent={
-              <div className="text-center py-16 text-bp-text-muted bg-bp-card">
-                <p className="text-xl font-medium text-bp-text-secondary">
-                  No videos found
-                </p>
+              <div className="py-12 text-center text-bp-text-muted">
+                <p className="text-sm">No videos found</p>
                 <p className="mt-2 text-sm">
                   {search
                     ? "Try a different search term"

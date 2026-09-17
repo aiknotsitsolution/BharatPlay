@@ -258,7 +258,7 @@ export default function CopyrightCreateCase() {
       {/* Header */}
       <div>
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-white leading-tight">
+          <h1 className="text-2xl font-bold text-bp-text leading-tight">
             Create Copyright Case
           </h1>
           <p className="text-[13px] text-bp-text-muted mt-1">
@@ -291,7 +291,7 @@ export default function CopyrightCreateCase() {
         {/* Target Content */}
         <div className="bg-bp-card rounded-2xl border border-bp-border p-5 space-y-4">
           <div>
-            <h2 className="text-[15px] font-semibold text-white flex items-center gap-2">
+            <h2 className="text-[15px] font-semibold text-bp-text flex items-center gap-2">
               <FileText className="w-4 h-4 text-bp-text-muted" />
               Target Content
             </h2>
@@ -544,7 +544,7 @@ export default function CopyrightCreateCase() {
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-bp-blue hover:bg-bp-blue rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-bp-blue hover:bg-bp-blue/90 rounded-lg transition-colors disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
               {submitting ? "Creating..." : "Create Case"}

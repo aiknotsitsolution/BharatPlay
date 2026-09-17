@@ -11,6 +11,7 @@ import {
   Mail,
   Shield,
   Award,
+  Star,
   AlertTriangle,
   Trash2,
   Info,
@@ -562,7 +563,7 @@ export default function EditUser() {
   };
 
   return (
-    <div className="space-y-5 max-w-5xl">
+    <div className="space-y-5">
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <button
@@ -580,7 +581,7 @@ export default function EditUser() {
       </div>
 
       {/* SECTION 1: USER HEADER */}
-      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
+      <div className="bg-bp-card rounded-2xl p-5">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-red-500/15 text-red-400 flex items-center justify-center text-2xl font-bold flex-shrink-0 border border-red-500/20">
             {user.avatar ? (
@@ -607,8 +608,18 @@ export default function EditUser() {
               <Mail size={13} />
               {user.email}
             </p>
+            <div className="flex items-center gap-4 mt-1">
+              <span className="text-xs text-bp-text-muted flex items-center gap-1">
+                <Award size={12} className="text-bp-cyan" />
+                Trust: <span className="text-bp-text font-medium">{user.trustScore ?? 0}</span>
+              </span>
+              <span className="text-xs text-bp-text-muted flex items-center gap-1">
+                <Star size={12} className="text-bp-yellow" />
+                Rewards: <span className="text-bp-text font-medium">{user.rewardPoints ?? 0}</span>
+              </span>
+            </div>
             <p className="text-xs text-bp-text-muted">
-              ID: {user._id} &middot; Joined {formatDate(user.createdAt)}
+              Joined {formatDate(user.createdAt)}
             </p>
           </div>
         </div>
@@ -616,8 +627,9 @@ export default function EditUser() {
 
       {/* EDIT FORM */}
       <form onSubmit={handleSave} className="space-y-5">
-      {/* SECTION 2: BASIC INFORMATION */}
-      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
+      {/* SECTION 2: BASIC INFORMATION + ACCOUNT & PERMISSIONS */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="bg-bp-card rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
             <UserIcon size={15} className="text-bp-blue" />
             Basic Information
@@ -671,7 +683,7 @@ export default function EditUser() {
         </div>
 
       {/* SECTION 3: ACCOUNT & PERMISSIONS */}
-      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
+      <div className="bg-bp-card rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
             <Shield size={15} className="text-bp-yellow" />
             Account &amp; Permissions
@@ -699,102 +711,236 @@ export default function EditUser() {
             </div>
           </div>
         </div>
-
-      {/* SECTION 4: TRUST & REWARDS */}
-      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Award size={15} className="text-pink-400" />
-            Trust &amp; Rewards
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Trust Score */}
-            <div>
-              <label className="block text-sm font-medium text-white mb-1.5">
-                Trust Score
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={form.trustScore}
-                  onChange={(e) =>
-                    setField("trustScore", Number(e.target.value))
-                  }
-                  className={`w-full px-4 py-2.5 bg-bp-elevated border rounded-lg text-white text-sm
-                    focus:ring-2 focus:ring-bp-blue focus:border-bp-blue outline-none transition
-                    ${errors.trustScore ? "border-red-500/60" : "border-bp-border"}`}
-                />
-              </div>
-              {errors.trustScore && (
-                <p className="text-xs text-red-400 mt-1">{errors.trustScore}</p>
-              )}
-              <div className="flex items-center justify-between mt-1.5">
-                <p className="text-[11px] text-bp-text-muted">0â€“100</p>
-                <div className="flex gap-1">
-                  {[0, 25, 50, 75, 100].map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setField("trustScore", v)}
-                      className={`px-1.5 py-0.5 text-[10px] rounded border transition ${
-                        Number(form.trustScore) === v
-                          ? "bg-bp-blue/20 border-bp-blue/40 text-bp-cyan"
-                          : "bg-bp-elevated border-bp-border text-bp-text-muted hover:text-bp-text"
-                      }`}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Visual bar */}
-              <div className="mt-2 h-1.5 bg-bp-elevated rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-300"
-                  style={{
-                    width: `${Math.min(100, Math.max(0, Number(form.trustScore)))}%`,
-                    backgroundColor:
-                      Number(form.trustScore) >= 70
-                        ? "#10b981"
-                        : Number(form.trustScore) >= 40
-                          ? "#f59e0b"
-                          : "#ef4444",
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Reward Points */}
-            <div>
-              <label className="block text-sm font-medium text-white mb-1.5">
-                Reward Points
-              </label>
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={form.rewardPoints}
-                onChange={(e) =>
-                  setField("rewardPoints", Number(e.target.value))
-                }
-                className={`w-full px-4 py-2.5 bg-bp-elevated border rounded-lg text-white text-sm
-                  focus:ring-2 focus:ring-bp-blue focus:border-bp-blue outline-none transition
-                  ${errors.rewardPoints ? "border-red-500/60" : "border-bp-border"}`}
-              />
-              {errors.rewardPoints && (
-                <p className="text-xs text-red-400 mt-1">
-                  {errors.rewardPoints}
-                </p>
-              )}
-              <p className="text-[11px] text-bp-text-muted mt-1">Minimum: 0</p>
-            </div>
-          </div>
         </div>
 
+      {/* SECTION 4: TRUST & REWARDS — REMOVED (displayed in top card) */}
+
+      {/* CHANNEL & CONTENT MANAGEMENT */}
+      <div className="space-y-5">
+        <div className="flex items-center gap-2">
+          <Tv size={16} className="text-bp-yellow" />
+          <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider">
+            Channel &amp; Content Management
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-5">
+          {/* ===== LEFT: Channel List ===== */}
+          <div className="bg-bp-card rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-bp-text-muted uppercase tracking-wider">
+                Channels <span className="text-bp-text-muted">({channelsPagination.total ?? channels.length})</span>
+              </h3>
+              <span className="text-[10px] text-bp-text-muted">{channelPage} / {channelsPagination.totalPages || 1}</span>
+            </div>
+            <div className="relative mb-3">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-bp-text-muted pointer-events-none" />
+              <input
+                type="text"
+                value={channelSearch}
+                onChange={handleChannelSearchChange}
+                placeholder="Search channels..."
+                className="w-full pl-8 pr-8 py-1.5 bg-bp-surface/60 border border-bp-border/50 rounded-lg text-xs text-white placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
+              />
+              {channelSearch && (
+                <button
+                  type="button"
+                  onClick={() => handleChannelSearchChange({ target: { value: "" } })}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+            {channelsLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-16 rounded-xl bg-bp-elevated/50 animate-pulse" />
+                ))}
+              </div>
+            ) : channels.length === 0 ? (
+              <div className="py-10 text-center">
+                <Tv size={28} className="text-bp-text-muted mx-auto mb-2" />
+                <p className="text-sm text-bp-text-muted">
+                  {debouncedChannelSearch ? "No matching channels found" : "No channels found"}
+                </p>
+                <p className="text-[11px] text-bp-text-muted mt-1">
+                  {debouncedChannelSearch ? "Try a different search term" : "This user has not created any channels."}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+                  {channels.map((ch) => {
+                    const isActive = effectiveSelectedChannelId === ch._id;
+                    const chStatus = ch.status || "active";
+                    return (
+                      <button
+                        key={ch._id}
+                        type="button"
+                        onClick={() => { setSelectedChannelId(ch._id); setChannelContentTab(null); }}
+                        className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl border transition text-left ${
+                          isActive ? "bg-bp-blue/10 border-bp-blue/30" : "bg-bp-elevated/40 border-bp-border/40 hover:bg-bp-elevated hover:border-bp-border"
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-lg bg-bp-elevated flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {ch.channelImage ? (
+                            <img src={ch.channelImage} alt={ch.name} className="w-9 h-9 rounded-lg object-cover" />
+                          ) : (
+                            <Tv size={15} className={isActive ? "text-bp-blue" : "text-bp-text-muted"} />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-medium text-xs truncate ${isActive ? "text-bp-cyan" : "text-white"}`}>{ch.name}</p>
+                          <p className="text-[11px] text-bp-text-muted">{formatNumber(ch.subscriberCount || 0)} subs &middot; {ch.videoCount || 0} videos &middot; {ch.shortCount || 0} shorts</p>
+                        </div>
+                        <ChannelStatusBadge status={chStatus} />
+                        {isActive && <Check size={14} className="text-bp-blue flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                {channelsPagination.totalPages > 1 && (
+                  <PaginationBar
+                    pagination={channelsPagination}
+                    onPageChange={setChannelPage}
+                    total={channelsPagination.total}
+                    limit={channelLimit}
+                  />
+                )}
+              </>
+            )}
+          </div>
+          {/* ===== RIGHT: Selected Channel Detail ===== */}
+          <div className="bg-bp-card rounded-2xl p-4">
+            {selectedChannel ? (
+              <>
+                <div className="bg-bp-elevated/50 border border-bp-border/50 rounded-xl p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-bp-elevated flex items-center justify-center flex-shrink-0 overflow-hidden border border-bp-border/50">
+                      {selectedChannel.channelImage ? (
+                        <img src={selectedChannel.channelImage} alt={selectedChannel.name} className="w-12 h-12 rounded-xl object-cover" />
+                      ) : (
+                        <Tv size={20} className="text-bp-blue" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="font-semibold text-white text-sm truncate">{selectedChannel.name}</p>
+                        <ChannelStatusBadge status={selectedChannel.status || "active"} />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-bp-text-muted">
+                        <span>{formatNumber(selectedChannel.subscriberCount || 0)} subscribers</span>
+                        <span>&middot;</span>
+                        <span>{selectedChannel.videoCount || 0} videos</span>
+                        {(selectedChannel.shortCount || 0) > 0 && (
+                          <>
+                            <span>&middot;</span>
+                            <span>{selectedChannel.shortCount} shorts</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-bp-border/50" onClick={(e) => e.stopPropagation()}>
+                    {(selectedChannel.status || "active") === "active" && (
+                      <>
+                        {hasFeature("canModerateContent") && <ChannelActionBtn icon={PowerOff} label="Disable" color="amber" onClick={() => openContentDialog("disableChannel", "channel", selectedChannel._id, selectedChannel.name)} />}
+                        {hasFeature("canBanUsers") && <ChannelActionBtn icon={Ban} label="Ban" color="red" onClick={() => openContentDialog("banChannel", "channel", selectedChannel._id, selectedChannel.name)} />}
+                      </>
+                    )}
+                    {(selectedChannel.status || "active") === "disabled" && (
+                      <>
+                        {hasFeature("canModerateContent") && <ChannelActionBtn icon={Power} label="Enable" color="emerald" onClick={() => openContentDialog("enableChannel", "channel", selectedChannel._id, selectedChannel.name)} />}
+                        {hasFeature("canBanUsers") && <ChannelActionBtn icon={Ban} label="Ban" color="red" onClick={() => openContentDialog("banChannel", "channel", selectedChannel._id, selectedChannel.name)} />}
+                      </>
+                    )}
+                    {(selectedChannel.status || "active") === "banned" && (
+                      <ChannelActionBtn icon={RotateCcw} label="Restore" color="emerald" onClick={() => openContentDialog("restoreChannel", "channel", selectedChannel._id, selectedChannel.name)} />
+                    )}
+                    {hasFeature("canDeleteUsers") && <ChannelActionBtn icon={Trash2} label="Delete" color="red" onClick={() => openContentDialog("deleteChannel", "channel", selectedChannel._id, selectedChannel.name)} />}
+                  </div>
+                </div>
+                <div className="flex gap-1 mb-4 bg-bp-elevated/50 border border-bp-border/50 rounded-lg p-1">
+                  <button
+                    type="button"
+                    onClick={() => { setChannelContentTab("videos"); setVideoPage(1); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition flex-1 justify-center ${
+                      channelContentTab === "videos" ? "bg-bp-blue text-white" : "text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated"
+                    }`}
+                  >
+                    <Video size={13} />
+                    Videos {channelContentTab === "videos" && videosPagination.total > 0 && <span className="text-[10px] opacity-70">({videosPagination.total})</span>}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setChannelContentTab("shorts"); setShortsPage(1); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition flex-1 justify-center ${
+                      channelContentTab === "shorts" ? "bg-bp-blue text-white" : "text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated"
+                    }`}
+                  >
+                    <Clapperboard size={13} />
+                    Shorts {channelContentTab === "shorts" && shortsPagination.total > 0 && <span className="text-[10px] opacity-70">({shortsPagination.total})</span>}
+                  </button>
+                </div>
+                {channelContentTab === "videos" ? (
+                  <ContentTable
+                    items={videos}
+                    loading={videosLoading}
+                    error={videosError}
+                    pagination={videosPagination}
+                    type="video"
+                    emptyIcon={Video}
+                    emptyText="No videos found"
+                    searchValue={videoSearch}
+                    onSearchChange={handleVideoSearchChange}
+                    sortBy={videoSortBy}
+                    sortOrder={videoSortOrder}
+                    onSortChange={(by, order) => { setVideoSortBy(by); setVideoSortOrder(order); setVideoPage(1); }}
+                    limit={videoLimit}
+                    onLimitChange={(l) => { setVideoLimit(l); setVideoPage(1); }}
+                    onPageChange={(p) => setVideoPage(p)}
+                    onRetry={() => dispatch(fetchAdminUserVideosRedux({ userId, channelId: effectiveSelectedChannelId, page: videoPage, limit: videoLimit, search: debouncedVideoSearch, sortBy: videoSortBy, sortOrder: videoSortOrder }))}
+                    onAction={(action, item) => openContentDialog(action, "video", item._id, item.title)}
+                  />
+                ) : channelContentTab === "shorts" ? (
+                  <ContentTable
+                    items={shorts}
+                    loading={shortsLoading}
+                    error={shortsError}
+                    pagination={shortsPagination}
+                    type="short"
+                    emptyIcon={Clapperboard}
+                    emptyText="No shorts found"
+                    searchValue={shortsSearch}
+                    onSearchChange={handleShortsSearchChange}
+                    sortBy={shortsSortBy}
+                    sortOrder={shortsSortOrder}
+                    onSortChange={(by, order) => { setShortsSortBy(by); setShortsSortOrder(order); setShortsPage(1); }}
+                    limit={shortsLimit}
+                    onLimitChange={(l) => { setShortsLimit(l); setShortsPage(1); }}
+                    onPageChange={(p) => setShortsPage(p)}
+                    onRetry={() => dispatch(fetchAdminUserShortsRedux({ userId, channelId: effectiveSelectedChannelId, page: shortsPage, limit: shortsLimit, search: debouncedShortsSearch, sortBy: shortsSortBy, sortOrder: shortsSortOrder }))}
+                    onAction={(action, item) => openContentDialog(action, "short", item._id, item.title)}
+                  />
+                ) : (
+                  <div className="py-12 text-center">
+                    <Video size={32} className="text-bp-text-muted mx-auto mb-2" />
+                    <p className="text-sm text-bp-text-muted">Select Videos or Shorts to view content</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="py-12 text-center">
+                <Tv size={32} className="text-bp-text-muted mx-auto mb-2" />
+                <p className="text-sm text-bp-text-muted">Select a channel to view content</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* SECTION 5: MODERATION & ACCOUNT STATUS */}
-      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
+      <div className="bg-bp-card rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
             <ShieldOff size={15} className="text-bp-yellow" />
             Moderation &amp; Account Status
@@ -808,7 +954,7 @@ export default function EditUser() {
             </div>
 
             {user.status === "suspended" && user.suspendReason && (
-              <div className="bg-bp-yellow/5 border border-amber-500/15 rounded-lg p-3">
+              <div className="bg-bp-yellow/5 border border-bp-yellow/20 rounded-lg p-3">
                 <p className="text-xs text-bp-text-muted mb-0.5">Suspension reason</p>
                 <p className="text-sm text-bp-yellow">{user.suspendReason}</p>
                 {user.suspendedAt && (
@@ -870,7 +1016,7 @@ export default function EditUser() {
         </div>
 
       {/* SECTION 6: ACCOUNT METADATA */}
-      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
+      <div className="bg-bp-card rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
             <Info size={15} className="text-bp-cyan" />
             Account Metadata
@@ -929,247 +1075,6 @@ export default function EditUser() {
         >
           Cancel
         </button>
-      </div>
-
-      {/* SECTION 7: CHANNEL & CONTENT MANAGEMENT */}
-      <div className="space-y-5">
-        {/* Section title */}
-        <div className="flex items-center gap-2">
-          <Tv size={16} className="text-bp-yellow" />
-          <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider">
-            Channel &amp; Content Management
-          </h2>
-        </div>
-
-        {/* Two-column layout: fixed left + flexible right */}
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-5">
-
-          {/* ===== LEFT: Channel List ===== */}
-          <div className="bg-bp-card border border-bp-border rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-bp-text-muted uppercase tracking-wider">
-                Channels <span className="text-bp-text-muted">({channelsPagination.total ?? channels.length})</span>
-              </h3>
-              <span className="text-[10px] text-bp-text-muted">{channelPage} / {channelsPagination.totalPages || 1}</span>
-            </div>
-
-            {/* Channel search */}
-            <div className="relative mb-3">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-bp-text-muted pointer-events-none" />
-              <input
-                type="text"
-                value={channelSearch}
-                onChange={handleChannelSearchChange}
-                placeholder="Search channels..."
-                className="w-full pl-8 pr-8 py-1.5 bg-bp-surface/60 border border-bp-border/50 rounded-lg text-xs text-white placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
-              />
-              {channelSearch && (
-                <button
-                  type="button"
-                  onClick={() => handleChannelSearchChange({ target: { value: "" } })}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-
-            {channelsLoading ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 rounded-xl bg-bp-elevated/50 animate-pulse" />
-                ))}
-              </div>
-            ) : channels.length === 0 ? (
-              <div className="py-10 text-center">
-                <Tv size={28} className="text-bp-text-muted mx-auto mb-2" />
-                <p className="text-sm text-bp-text-muted">
-                  {debouncedChannelSearch ? "No matching channels found" : "No channels found"}
-                </p>
-                <p className="text-[11px] text-bp-text-muted mt-1">
-                  {debouncedChannelSearch ? "Try a different search term" : "This user has not created any channels."}
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
-                  {channels.map((ch) => {
-                    const isActive = effectiveSelectedChannelId === ch._id;
-                    const chStatus = ch.status || "active";
-                    return (
-                      <button
-                        key={ch._id}
-                        type="button"
-                        onClick={() => { setSelectedChannelId(ch._id); setChannelContentTab(null); }}
-                        className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl border transition text-left ${
-                          isActive ? "bg-bp-blue/10 border-bp-blue/30" : "bg-bp-elevated/40 border-bp-border/40 hover:bg-bp-elevated hover:border-bp-border"
-                        }`}
-                      >
-                        <div className="w-9 h-9 rounded-lg bg-bp-elevated flex items-center justify-center flex-shrink-0 overflow-hidden">
-                          {ch.channelImage ? (
-                            <img src={ch.channelImage} alt={ch.name} className="w-9 h-9 rounded-lg object-cover" />
-                          ) : (
-                            <Tv size={15} className={isActive ? "text-bp-blue" : "text-bp-text-muted"} />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`font-medium text-xs truncate ${isActive ? "text-bp-cyan" : "text-white"}`}>{ch.name}</p>
-                          <p className="text-[11px] text-bp-text-muted">{formatNumber(ch.subscriberCount || 0)} subs &middot; {ch.videoCount || 0} videos &middot; {ch.shortCount || 0} shorts</p>
-                        </div>
-                        <ChannelStatusBadge status={chStatus} />
-                        {isActive && <Check size={14} className="text-bp-blue flex-shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* Channel pagination */}
-                {channelsPagination.totalPages > 1 && (
-                  <PaginationBar
-                    pagination={channelsPagination}
-                    onPageChange={setChannelPage}
-                    total={channelsPagination.total}
-                    limit={channelLimit}
-                  />
-                )}
-              </>
-            )}
-          </div>
-
-          {/* ===== RIGHT: Selected Channel Detail ===== */}
-          <div className="bg-bp-card border border-bp-border rounded-2xl p-4">
-            {selectedChannel ? (
-              <>
-                {/* Channel header */}
-                <div className="bg-bp-elevated/50 border border-bp-border/50 rounded-xl p-4 mb-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-bp-elevated flex items-center justify-center flex-shrink-0 overflow-hidden border border-bp-border/50">
-                      {selectedChannel.channelImage ? (
-                        <img src={selectedChannel.channelImage} alt={selectedChannel.name} className="w-12 h-12 rounded-xl object-cover" />
-                      ) : (
-                        <Tv size={20} className="text-bp-blue" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <p className="font-semibold text-white text-sm truncate">{selectedChannel.name}</p>
-                        <ChannelStatusBadge status={selectedChannel.status || "active"} />
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-bp-text-muted">
-                        <span>{formatNumber(selectedChannel.subscriberCount || 0)} subscribers</span>
-                        <span>&middot;</span>
-                        <span>{selectedChannel.videoCount || 0} videos</span>
-                        {(selectedChannel.shortCount || 0) > 0 && (
-                          <>
-                            <span>&middot;</span>
-                            <span>{selectedChannel.shortCount} shorts</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Moderation actions */}
-                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-bp-border/50" onClick={(e) => e.stopPropagation()}>
-                    {(selectedChannel.status || "active") === "active" && (
-                      <>
-                        {hasFeature("canModerateContent") && <ChannelActionBtn icon={PowerOff} label="Disable" color="amber" onClick={() => openContentDialog("disableChannel", "channel", selectedChannel._id, selectedChannel.name)} />}
-                        {hasFeature("canBanUsers") && <ChannelActionBtn icon={Ban} label="Ban" color="red" onClick={() => openContentDialog("banChannel", "channel", selectedChannel._id, selectedChannel.name)} />}
-                      </>
-                    )}
-                    {(selectedChannel.status || "active") === "disabled" && (
-                      <>
-                        {hasFeature("canModerateContent") && <ChannelActionBtn icon={Power} label="Enable" color="emerald" onClick={() => openContentDialog("enableChannel", "channel", selectedChannel._id, selectedChannel.name)} />}
-                        {hasFeature("canBanUsers") && <ChannelActionBtn icon={Ban} label="Ban" color="red" onClick={() => openContentDialog("banChannel", "channel", selectedChannel._id, selectedChannel.name)} />}
-                      </>
-                    )}
-                    {(selectedChannel.status || "active") === "banned" && (
-                      <ChannelActionBtn icon={RotateCcw} label="Restore" color="emerald" onClick={() => openContentDialog("restoreChannel", "channel", selectedChannel._id, selectedChannel.name)} />
-                    )}
-                    {hasFeature("canDeleteUsers") && <ChannelActionBtn icon={Trash2} label="Delete" color="red" onClick={() => openContentDialog("deleteChannel", "channel", selectedChannel._id, selectedChannel.name)} />}
-                  </div>
-                </div>
-
-                {/* Content Tabs */}
-                <div className="flex gap-1 mb-4 bg-bp-elevated/50 border border-bp-border/50 rounded-lg p-1">
-                  <button
-                    type="button"
-                    onClick={() => { setChannelContentTab("videos"); setVideoPage(1); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition flex-1 justify-center ${
-                      channelContentTab === "videos" ? "bg-bp-blue text-white" : "text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated"
-                    }`}
-                  >
-                    <Video size={13} />
-                    Videos {channelContentTab === "videos" && videosPagination.total > 0 && <span className="text-[10px] opacity-70">({videosPagination.total})</span>}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setChannelContentTab("shorts"); setShortsPage(1); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition flex-1 justify-center ${
-                      channelContentTab === "shorts" ? "bg-bp-blue text-white" : "text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated"
-                    }`}
-                  >
-                    <Clapperboard size={13} />
-                    Shorts {channelContentTab === "shorts" && shortsPagination.total > 0 && <span className="text-[10px] opacity-70">({shortsPagination.total})</span>}
-                  </button>
-                </div>
-
-                {/* Content Table */}
-                {channelContentTab === "videos" ? (
-                  <ContentTable
-                    items={videos}
-                    loading={videosLoading}
-                    error={videosError}
-                    pagination={videosPagination}
-                    type="video"
-                    emptyIcon={Video}
-                    emptyText="No videos found"
-                    searchValue={videoSearch}
-                    onSearchChange={handleVideoSearchChange}
-                    sortBy={videoSortBy}
-                    sortOrder={videoSortOrder}
-                    onSortChange={(by, order) => { setVideoSortBy(by); setVideoSortOrder(order); setVideoPage(1); }}
-                    limit={videoLimit}
-                    onLimitChange={(l) => { setVideoLimit(l); setVideoPage(1); }}
-                    onPageChange={(p) => setVideoPage(p)}
-                    onRetry={() => dispatch(fetchAdminUserVideosRedux({ userId, channelId: effectiveSelectedChannelId, page: videoPage, limit: videoLimit, search: debouncedVideoSearch, sortBy: videoSortBy, sortOrder: videoSortOrder }))}
-                    onAction={(action, item) => openContentDialog(action, "video", item._id, item.title)}
-                  />
-                ) : channelContentTab === "shorts" ? (
-                  <ContentTable
-                    items={shorts}
-                    loading={shortsLoading}
-                    error={shortsError}
-                    pagination={shortsPagination}
-                    type="short"
-                    emptyIcon={Clapperboard}
-                    emptyText="No shorts found"
-                    searchValue={shortsSearch}
-                    onSearchChange={handleShortsSearchChange}
-                    sortBy={shortsSortBy}
-                    sortOrder={shortsSortOrder}
-                    onSortChange={(by, order) => { setShortsSortBy(by); setShortsSortOrder(order); setShortsPage(1); }}
-                    limit={shortsLimit}
-                    onLimitChange={(l) => { setShortsLimit(l); setShortsPage(1); }}
-                    onPageChange={(p) => setShortsPage(p)}
-                    onRetry={() => dispatch(fetchAdminUserShortsRedux({ userId, channelId: effectiveSelectedChannelId, page: shortsPage, limit: shortsLimit, search: debouncedShortsSearch, sortBy: shortsSortBy, sortOrder: shortsSortOrder }))}
-                    onAction={(action, item) => openContentDialog(action, "short", item._id, item.title)}
-                  />
-                ) : (
-                  <div className="py-12 text-center">
-                    <Video size={32} className="text-bp-text-muted mx-auto mb-2" />
-                    <p className="text-sm text-bp-text-muted">Select Videos or Shorts to view content</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="py-12 text-center">
-                <Tv size={32} className="text-bp-text-muted mx-auto mb-2" />
-                <p className="text-sm text-bp-text-muted">Select a channel to view content</p>
-              </div>
-            )}
-          </div>
-
-        </div>
       </div>
 
       {/* SECTION 8: DANGER ZONE */}

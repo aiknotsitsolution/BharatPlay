@@ -319,7 +319,7 @@ export default function User360() {
       </button>
 
       {/* USER HEADER */}
-      <div className="bg-bp-card border border-bp-border rounded-2xl p-5">
+      <div className="bg-bp-card rounded-2xl p-5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-bp-blue/15 text-bp-blue flex items-center justify-center text-2xl font-bold flex-shrink-0 border border-bp-blue/20">
             {user.avatar ? (
@@ -365,7 +365,7 @@ export default function User360() {
       </div>
 
       {/* TAB NAVIGATION */}
-      <div className="bg-bp-card border border-bp-border rounded-2xl p-1 flex gap-1 overflow-x-auto">
+      <div className="bg-bp-card rounded-2xl p-1 flex gap-1 overflow-x-auto">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -396,7 +396,7 @@ export default function User360() {
               { icon: ThumbsUp, color: "pink", value: content.totalLikes.toLocaleString(), label: "Likes" },
               { icon: MessageSquare, color: "cyan", value: content.totalComments.toLocaleString(), label: "Comments" },
             ].map((item) => (
-              <div key={item.label} className="bg-bp-card border border-bp-border rounded-xl p-4 flex items-center gap-3 hover:border-bp-border transition">
+              <div key={item.label} className="bg-bp-card rounded-xl p-4 flex items-center gap-3 hover:border-bp-border transition">
                 <div className={`w-10 h-10 rounded-lg bg-${item.color}-500/10 flex items-center justify-center flex-shrink-0`}>
                   <item.icon size={18} className={`text-${item.color}-400`} />
                 </div>
@@ -416,14 +416,14 @@ export default function User360() {
               { value: engagement.watchLaterCount, label: "Watch Later" },
               { value: engagement.viewedVideosCount, label: "Viewed" },
             ].map((item) => (
-              <div key={item.label} className="bg-bp-card border border-bp-border rounded-xl p-3 text-center hover:border-bp-border transition">
+              <div key={item.label} className="bg-bp-card rounded-xl p-3 text-center hover:border-bp-border transition">
                 <p className="text-lg font-bold text-white">{item.value}</p>
                 <p className="text-xs text-bp-text-muted">{item.label}</p>
               </div>
             ))}
           </div>
 
-          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+          <div className="bg-bp-card rounded-xl p-4">
             <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
               <Shield size={15} className="text-bp-blue" />
               Account Information
@@ -478,7 +478,7 @@ export default function User360() {
       {activeTab === "channels" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* LEFT: Channel List */}
-          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+          <div className="bg-bp-card rounded-xl p-4">
             <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
               <Tv size={15} className="text-bp-yellow" />
               Channels ({channels.length})
@@ -526,7 +526,7 @@ export default function User360() {
           </div>
 
           {/* RIGHT: Selected Channel + Internal Tabs */}
-          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+          <div className="bg-bp-card rounded-xl p-4">
             {selectedChannel ? (
               <>
                 {/* Channel Summary */}
@@ -651,7 +651,7 @@ export default function User360() {
                   { icon: Play, value: formatDuration(engagementData.totalWatchMinutes * 60), label: "Watch Time", color: "red" },
                   { icon: MonitorPlay, value: engagementData.totalSessions, label: "Watch Sessions", color: "blue" },
                 ].map((item) => (
-                  <div key={item.label} className="bg-bp-card border border-bp-border rounded-xl p-4 flex items-center gap-3 hover:border-bp-border transition">
+                  <div key={item.label} className="bg-bp-card rounded-xl p-4 flex items-center gap-3 hover:border-bp-border transition">
                     <div className={`w-10 h-10 rounded-lg bg-${item.color}-500/10 flex items-center justify-center flex-shrink-0`}>
                       <item.icon size={18} className={`text-${item.color}-400`} />
                     </div>
@@ -662,7 +662,7 @@ export default function User360() {
                   </div>
                 ))}
               </div>
-              <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+              <div className="bg-bp-card rounded-xl p-4">
                 <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-3">Subscribed Channels</h2>
                 <SubscriptionsList subscriptions={subscriptions} loading={subscriptionsLoading} />
               </div>
@@ -677,7 +677,7 @@ export default function User360() {
       {activeTab === "activity" && (
         <div className="space-y-5">
           {/* Watch History */}
-          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+          <div className="bg-bp-card rounded-xl p-4">
             <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
               <Clock size={15} className="text-bp-cyan" />
               Watch History
@@ -727,7 +727,7 @@ export default function User360() {
           </div>
 
           {/* Audit Events */}
-          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+          <div className="bg-bp-card rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider flex items-center gap-2">
                 <Activity size={15} className="text-emerald-400" />
@@ -800,22 +800,22 @@ export default function User360() {
         <div className="space-y-5">
           {/* Trust Score + Active Sessions */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="bg-bp-card border border-bp-border rounded-xl p-4 text-center">
+            <div className="bg-bp-card rounded-xl p-4 text-center">
               <p className="text-3xl font-bold text-white">{user.trustScore}</p>
               <p className="text-xs text-bp-text-muted mt-1">Trust Score</p>
             </div>
-            <div className="bg-bp-card border border-bp-border rounded-xl p-4 text-center">
+            <div className="bg-bp-card rounded-xl p-4 text-center">
               <p className="text-3xl font-bold text-white">{activeSessions}</p>
               <p className="text-xs text-bp-text-muted mt-1">Active Sessions</p>
             </div>
-            <div className="bg-bp-card border border-bp-border rounded-xl p-4 text-center">
+            <div className="bg-bp-card rounded-xl p-4 text-center">
               <p className="text-3xl font-bold text-white">{devices.length}</p>
               <p className="text-xs text-bp-text-muted mt-1">Known Devices</p>
             </div>
           </div>
 
           {/* Devices */}
-          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+          <div className="bg-bp-card rounded-xl p-4">
             <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
               <Smartphone size={15} className="text-bp-cyan" />
               Devices
@@ -861,7 +861,7 @@ export default function User360() {
           </div>
 
           {/* Fraud Events */}
-          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+          <div className="bg-bp-card rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider flex items-center gap-2">
                 <AlertOctagon size={15} className="text-red-400" />
@@ -931,7 +931,7 @@ export default function User360() {
           </div>
 
           {/* Notifications */}
-          <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+          <div className="bg-bp-card rounded-xl p-4">
             <h2 className="text-sm font-semibold text-bp-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
               <Bell size={15} className="text-purple-400" />
               Notifications
@@ -1006,7 +1006,7 @@ function SectionError({ message, onRetry }) {
 function ContentGrid(props) {
   const { items, loading, error, pagination, emptyText, onPageChange, onRetry } = props;
   return (
-    <div className="bg-bp-card border border-bp-border rounded-xl p-4">
+    <div className="bg-bp-card rounded-xl p-4">
       {loading ? (
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 size={32} className="animate-spin text-red-400 mb-2" />

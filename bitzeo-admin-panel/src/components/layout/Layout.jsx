@@ -13,14 +13,15 @@ export default function Layout() {
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-label="Close navigation"
         />
       )}
 
       {/* Mobile sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-[260px] sidebar-gradient transform transition-transform duration-300 ease-in-out md:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 w-[264px] sidebar-gradient transform transition-transform duration-300 ease-in-out md:hidden ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -28,9 +29,9 @@ export default function Layout() {
       </div>
 
       {/* Main content */}
-      <div className="md:pl-[260px] flex flex-col min-h-screen">
+      <div className="md:pl-[264px] flex flex-col min-h-screen">
         <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="flex-1 p-5 md:p-8 lg:p-10 max-w-[1400px]">
+        <main className="flex-1 p-4 sm:p-6 w-full max-w-[1440px] mx-auto">
           <Outlet />
         </main>
       </div>

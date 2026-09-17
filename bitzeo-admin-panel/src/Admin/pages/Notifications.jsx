@@ -122,7 +122,7 @@ export default function Notifications() {
     video: { icon: Video, bg: "bg-bp-blue/12", text: "text-bp-blue" },
     short: { icon: Clapperboard, bg: "bg-bp-cyan/12", text: "text-bp-cyan" },
     case: { icon: Shield, bg: "bg-bp-yellow/12", text: "text-bp-yellow" },
-    user: { icon: UserPlus, bg: "bg-emerald-500/12", text: "text-emerald-400" },
+    user: { icon: UserPlus, bg: "bg-emerald-500/12", text: "text-emerald-600" },
   };
 
   return (
@@ -130,7 +130,7 @@ export default function Notifications() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Notifications</h1>
+          <h1 className="text-2xl font-bold text-bp-text">Notifications</h1>
           <p className="text-[13px] text-bp-text-secondary mt-1">
             {loading ? "Checking for updates..." : newCount > 0 ? `${newCount} new update${newCount !== 1 ? "s" : ""}` : "You're all caught up"}
           </p>
@@ -147,8 +147,7 @@ export default function Notifications() {
       </div>
 
       {/* List */}
-      <div className="relative bg-bp-card border border-bp-border rounded-2xl shadow-xl overflow-hidden">
-        <div className="absolute top-0 left-[15%] right-[15%] h-px bg-gradient-to-r from-transparent via-bp-blue/30 to-transparent" />
+      <div className="bp-card overflow-hidden">
         {loading ? (
           <div className="p-4 space-y-2">
             {[1, 2, 3, 4].map((i) => (
@@ -166,7 +165,7 @@ export default function Notifications() {
             <div className="relative mb-5">
               <div
                 className="w-20 h-20 rounded-full flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, rgba(0,140,255,0.12), rgba(0,217,255,0.08))", border: "2px solid rgba(0,140,255,0.25)" }}
+                style={{ background: "linear-gradient(135deg, rgba(79,70,229,0.12), rgba(129,140,248,0.08))", border: "2px solid rgba(79,70,229,0.28)" }}
               >
                 <Bell size={30} className="text-bp-blue" />
               </div>

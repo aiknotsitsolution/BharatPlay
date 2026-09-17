@@ -58,10 +58,12 @@ exports.getDashboard = async (req, res) => {
     const weekStart = weekDays[0].start;
     const sevenDaysAgo = new Date(weekStart);
     const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     const [
       totalUsers,
       totalVideos,
+      totalShorts,
       activeUsersAgg,
       usersThisWeek,
       videosThisWeek,
@@ -73,8 +75,9 @@ exports.getDashboard = async (req, res) => {
       recentUploadDocs,
       onlineIds,
     ] = await Promise.all([
-      User.countDocuments(),
-      Video.countDocuments(),
+      User.estimatedDocumentCount(),
+      Video.estimatedDocumentCount(),
+      Video.countDocuments({ videoType: "short" }),
       WatchSession.aggregate([
         { $match: { lastActiveAt: { $gte: sevenDaysAgo } } },
         { $group: { _id: "$userId" } },
@@ -86,12 +89,13 @@ exports.getDashboard = async (req, res) => {
       Video.countDocuments({ createdAt: { $gte: startOfToday } }),
       Video.aggregate([{ $group: { _id: null, total: { $sum: "$views" } } }]),
       WatchSession.aggregate([
+        { $match: { lastActiveAt: { $gte: thirtyDaysAgo } } },
         { $group: { _id: null, total: { $sum: "$watchedSeconds" } } },
       ]),
       User.find()
         .sort({ createdAt: -1 })
         .limit(5)
-        .select("name email createdAt")
+        .select("name email createdAt avatar")
         .lean(),
       Video.find()
         .sort({ createdAt: -1 })
@@ -122,7 +126,7 @@ exports.getDashboard = async (req, res) => {
       name: user.name,
       email: user.email,
       joined: formatRelativeTime(user.createdAt),
-      avatar: getInitials(user.name),
+      avatar: user.avatar || getInitials(user.name),
       status: onlineSet.has(String(user._id)) ? "online" : "offline",
     }));
 
@@ -138,6 +142,8 @@ exports.getDashboard = async (req, res) => {
     const stats = {
       totalUsers,
       totalVideos,
+      totalShorts,
+      totalLongVideos: totalVideos - totalShorts,
       activeUsers: activeUsersAgg[0]?.count || 0,
       newUsersThisWeek: usersThisWeek.length,
     };

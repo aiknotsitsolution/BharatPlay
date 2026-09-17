@@ -32,7 +32,7 @@ export default function Orders() {
         </div>
       </div>
 
-      <div className="bg-bp-card rounded-xl border border-bp-border overflow-hidden">
+      <div className="bg-bp-card rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-bp-border">
             <thead className="bg-bp-surface">

@@ -211,7 +211,7 @@ export default function CopyrightCaseDetail() {
         </button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">{caseData.caseNumber}</h1>
+            <h1 className="text-2xl font-bold text-bp-text">{caseData.caseNumber}</h1>
             <span
               className={`px-2.5 py-0.5 text-xs font-medium rounded-full border ${
                 statusColors[caseData.status] || "bg-bp-text-muted/15 text-bp-text-secondary border-bp-text-muted/30"

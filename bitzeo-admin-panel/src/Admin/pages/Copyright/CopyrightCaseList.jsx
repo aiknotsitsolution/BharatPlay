@@ -108,7 +108,7 @@ export default function CopyrightCaseList() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Copyright Cases</h1>
+          <h1 className="text-2xl font-bold text-bp-text">Copyright Cases</h1>
           <p className="text-[13px] text-bp-text-secondary mt-1">
             {pagination.total} total cases
           </p>
@@ -116,7 +116,7 @@ export default function CopyrightCaseList() {
         {hasFeature("canCreateCopyrightCase") && (
           <button
             onClick={() => navigate("/copyright/cases/new")}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-bp-blue hover:bg-bp-blue text-white rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 bg-bp-elevated border border-bp-border text-bp-text-secondary hover:text-bp-text hover:bg-bp-hover px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
           >
             <Plus className="w-4 h-4" />
             New Case
@@ -125,7 +125,7 @@ export default function CopyrightCaseList() {
       </div>
 
       {/* Filters */}
-      <div className="bg-bp-card rounded-2xl border border-bp-border p-4">
+      <div className="bg-bp-card rounded-2xl p-4">
         <div className="flex flex-col lg:flex-row gap-4">
           <form onSubmit={handleSearch} className="flex-1">
             <div className="relative">
@@ -135,13 +135,13 @@ export default function CopyrightCaseList() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by case number, claimant name, or email..."
-                className="w-full pl-9 pr-9 py-2 bg-bp-surface/60 border border-bp-border/50 rounded-xl text-white text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
+                className="w-full pl-9 pr-9 py-2 bg-bp-surface/60 border border-bp-border/50 rounded-xl text-bp-text text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-bp-text hover:bg-bp-elevated transition-colors duration-150"
                 >
                   <X size={14} />
                 </button>
@@ -172,7 +172,7 @@ export default function CopyrightCaseList() {
       </div>
 
       {/* Table */}
-      <div className="bg-bp-card rounded-2xl border border-bp-border overflow-hidden">
+      <div className="bg-bp-card rounded-2xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="flex flex-col items-center gap-3">

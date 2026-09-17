@@ -88,7 +88,7 @@ export default function CopyrightStrikeList() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Copyright Strikes</h1>
+        <h1 className="text-2xl font-bold text-bp-text">Copyright Strikes</h1>
         <p className="text-[13px] text-bp-text-secondary mt-1">
           {pagination.total} total strikes
         </p>
@@ -110,7 +110,7 @@ export default function CopyrightStrikeList() {
       </div>
 
       {/* Table */}
-      <div className="bg-bp-card rounded-2xl border border-bp-border overflow-hidden">
+      <div className="bg-bp-card rounded-2xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="flex flex-col items-center gap-3">

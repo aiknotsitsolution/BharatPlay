@@ -11,6 +11,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import Layout from "./components/layout/Layout";
 import RoleGuard from "./components/RoleGuard";
 import IntroScreen from "./components/IntroScreen";
+import FlowerCelebration from "./components/FlowerCelebration";
 import AdminLogin from "./Admin/pages/Auth/AdminLogin";
 import EmployeeLogin from "./Admin/pages/Auth/EmployeeLogin";
 import ForgotPassword from "./Admin/pages/Auth/ForgotPassword";
@@ -72,6 +73,7 @@ function App() {
   return (
     <BrowserRouter>
       <IntroScreen />
+      <FlowerCelebration />
       <ThemeProvider>
         <Toaster
           position="top-right"
@@ -84,7 +86,7 @@ function App() {
             },
             success: {
               iconTheme: {
-                primary: "#008CFF",
+                primary: "#4F46E5",
                 secondary: "#fff",
               },
             },

@@ -8,7 +8,7 @@ import {
   verifyAdminResetOtp,
   resetAdminPassword,
 } from "../../api";
-import { getAdminDisplayName, getInitials, getAdminPhoto, getAdminEmail } from "../../utils/helpers";
+import { getAdminDisplayName, getInitials, getAdminPhoto, getAdminEmail, isLoginCelebrationEnabled, setLoginCelebrationEnabled } from "../../utils/helpers";
 import { getCurrentRole, getRoleMeta } from "../../config/roleConfig";
 
 export default function Profile() {
@@ -35,6 +35,8 @@ export default function Profile() {
   const [pwSending, setPwSending] = useState(false);
   const [pwVerifying, setPwVerifying] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+
+  const [loginCelebration, setLoginCelebration] = useState(isLoginCelebrationEnabled());
 
   const roleMeta = getRoleMeta(role);
 
@@ -231,15 +233,13 @@ export default function Profile() {
       </div>
 
       {/* Profile card */}
-      <div className="relative bg-bp-card border border-bp-border rounded-2xl shadow-xl overflow-hidden">
-        <div className="absolute top-0 left-[15%] right-[15%] h-px bg-gradient-to-r from-transparent via-bp-blue/30 to-transparent" />
-        <div className="p-6 md:p-8">
+      <div className="bp-card p-6 md:p-8">
           {/* Identity */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-5 mb-8">
             <div className="relative shrink-0">
               <div
                 className="w-20 h-20 rounded-full flex items-center justify-center overflow-hidden"
-                style={{ background: "linear-gradient(135deg, rgba(0,140,255,0.12), rgba(0,217,255,0.08))", border: "2px solid rgba(0,140,255,0.25)" }}
+                style={{ background: "linear-gradient(135deg, rgba(79,70,229,0.12), rgba(129,140,248,0.08))", border: "2px solid rgba(79,70,229,0.28)" }}
               >
                 {activePhoto ? (
                   <img src={activePhoto} alt={name} className="w-full h-full object-cover" />
@@ -251,7 +251,7 @@ export default function Profile() {
                 <>
                   <button
                     onClick={() => fileRef.current?.click()}
-                    className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-gradient-to-br from-bp-blue to-bp-cyan border-[3px] border-bp-card flex items-center justify-center text-white shadow-md shadow-bp-blue/30 hover:scale-110 active:scale-95 transition-transform duration-200"
+                    className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-bp-blue border-[3px] border-bp-card flex items-center justify-center text-white shadow-sm hover:bg-bp-blue/90 active:scale-95 transition-all duration-200"
                     title="Change photo"
                   >
                     <Camera size={13} />
@@ -313,7 +313,7 @@ export default function Profile() {
             {!editing ? (
               <button
                 onClick={startEditing}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-bp-blue to-bp-cyan hover:from-bp-cyan hover:to-bp-blue text-white shadow-lg shadow-bp-blue/25 transition-all duration-200"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-bp-elevated border border-bp-border text-bp-text-secondary hover:text-bp-text hover:bg-bp-hover transition-all duration-200"
               >
                 <Pencil size={15} />
                 Edit Profile
@@ -323,7 +323,7 @@ export default function Profile() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-bp-blue to-bp-cyan hover:from-bp-cyan hover:to-bp-blue text-white shadow-lg shadow-bp-blue/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-bp-blue hover:bg-bp-blue/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 >
                   <CheckCheck size={15} />
                   {saving ? "Saving..." : "Save Changes"}
@@ -371,14 +371,11 @@ export default function Profile() {
             </p>
           )}
         </div>
-      </div>
 
       {/* Security / Password Reset (OTP) */}
-      <div className="relative bg-bp-card border border-bp-border rounded-2xl shadow-xl overflow-hidden">
-        <div className="absolute top-0 left-[15%] right-[15%] h-px bg-gradient-to-r from-transparent via-bp-orange/30 to-transparent" />
-        <div className="p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-1.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(255,106,0,0.1), rgba(255,196,0,0.08))" }}>
+      <div className="bp-card p-6 md:p-8">
+        <div className="flex items-center gap-3 mb-1.5">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(79,70,229,0.1), rgba(129,140,248,0.08))" }}>
               <Lock size={17} className="text-bp-text" />
             </div>
             <div>
@@ -393,7 +390,7 @@ export default function Profile() {
             <button
               onClick={handleSendOtp}
               disabled={pwSending}
-              className="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-bp-blue to-bp-cyan hover:from-bp-cyan hover:to-bp-blue text-white shadow-lg shadow-bp-blue/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-bp-elevated border border-bp-border text-bp-text-secondary hover:text-bp-text hover:bg-bp-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               <SendHorizonal size={16} />
               {pwSending ? "Sending..." : "Send Verification Code"}
@@ -472,7 +469,7 @@ export default function Profile() {
                 <button
                   onClick={handleVerifyReset}
                   disabled={pwVerifying}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-bp-blue to-bp-cyan hover:from-bp-cyan hover:to-bp-blue text-white shadow-lg shadow-bp-blue/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-bp-blue hover:bg-bp-blue/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 >
                   <CheckCheck size={16} />
                   {pwVerifying ? "Resetting..." : "Verify & Reset"}
@@ -493,6 +490,48 @@ export default function Profile() {
               </div>
             </div>
           )}
+        </div>
+
+      {/* Login Celebration */}
+      <div className="bp-card p-6 md:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, rgba(79,70,229,0.1), rgba(129,140,248,0.08))" }}>
+              <span className="text-[17px] leading-none">🌸</span>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-bp-text">Login Celebration</h2>
+              <p className="text-[13px] text-bp-text-secondary mt-0.5 max-w-md">
+                Show a flower animation after a successful login.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <span className={`text-[13px] font-semibold ${loginCelebration ? "text-bp-blue" : "text-bp-text-muted"}`}>
+              {loginCelebration ? "ON" : "OFF"}
+            </span>
+            <button
+              role="switch"
+              aria-checked={loginCelebration}
+              aria-label="Toggle login celebration animation"
+              onClick={() => {
+                const next = !loginCelebration;
+                setLoginCelebration(next);
+                setLoginCelebrationEnabled(next);
+                toast.success(next ? "Flower animation enabled on login" : "Flower animation disabled");
+              }}
+              className={`relative inline-flex items-center h-7 w-[52px] rounded-full transition-colors duration-200 ${
+                loginCelebration ? "bg-bp-blue" : "bg-bp-border"
+              }`}
+            >
+              <span
+                className={`inline-block w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
+                  loginCelebration ? "translate-x-[26px]" : "translate-x-[4px]"
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
     </div>

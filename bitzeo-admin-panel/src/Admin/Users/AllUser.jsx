@@ -22,6 +22,17 @@ import { hasFeature } from "../../config/roleConfig";
 import { API_BASE_URL } from "../../api";
 import tableCustomStyles from "../../utils/tableStyles";
 
+const allUserTableStyles = {
+  ...tableCustomStyles,
+  headCells: {
+    style: {
+      ...tableCustomStyles.headCells.style,
+      textAlign: "center",
+      justifyContent: "center",
+    },
+  },
+};
+
 const BASE_URL = API_BASE_URL;
 const LIMIT = 15;
 
@@ -43,7 +54,7 @@ function VideoListItem({ video }) {
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm text-white truncate">
+        <p className="font-medium text-sm text-bp-text truncate">
           {video.title}
         </p>
         <p className="text-xs text-bp-yellow">{video.channelName}</p>
@@ -201,9 +212,9 @@ export default function Users() {
         name: "User",
         selector: (row) => row.name,
         sortable: true,
-        grow: 2,
+        grow: 1,
         cell: (row) => (
-          <div className="flex items-center gap-3 py-1">
+          <div className="flex items-center gap-3 py-1 overflow-hidden">
             <div className="w-10 h-10 rounded-full bg-bp-blue/20 text-bp-blue flex items-center justify-center font-bold text-sm flex-shrink-0">
               {row.avatar ? (
                 <img
@@ -215,12 +226,12 @@ export default function Users() {
                 row.name?.charAt(0)?.toUpperCase() || "U"
               )}
             </div>
-            <div className="min-w-0">
-              <p className="font-medium text-white truncate">{row.name}</p>
-              <p className="text-sm text-bp-text-muted truncate flex items-center gap-1">
-                <Mail size={12} />
-                {row.email}
-              </p>
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <p className="font-medium text-bp-text truncate">{row.name}</p>
+              <div className="flex items-center gap-1">
+                <Mail size={12} className="text-bp-text-muted flex-shrink-0" />
+                <p className="text-sm text-bp-text-muted truncate min-w-0" title={row.email}>{row.email}</p>
+              </div>
             </div>
           </div>
         ),
@@ -229,24 +240,24 @@ export default function Users() {
         name: "Role",
         selector: (row) => row.role,
         sortable: true,
-        width: "120px",
         cell: (row) => (
-          <span
-            className={`px-2.5 py-1 text-xs font-semibold rounded-full capitalize ${roleColor(row.role)}`}
-          >
-            {row.role}
-          </span>
+          <div className="pl-8">
+            <span
+              className={`px-2.5 py-1 text-xs font-semibold rounded-full capitalize ${roleColor(row.role)}`}
+            >
+              {row.role}
+            </span>
+          </div>
         ),
       },
       {
         name: "Channels",
         selector: (row) => row.totalChannels,
         sortable: true,
-        width: "110px",
         cell: (row) => (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 pl-12">
             <Tv size={15} className="text-bp-yellow" />
-            <span className="font-semibold text-white">
+            <span className="font-semibold text-bp-text">
               {row.totalChannels}
             </span>
           </div>
@@ -256,11 +267,10 @@ export default function Users() {
         name: "Videos",
         selector: (row) => row.totalVideos,
         sortable: true,
-        width: "100px",
         cell: (row) => (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 pl-12">
             <Video size={15} className="text-bp-cyan" />
-            <span className="font-semibold text-white">
+            <span className="font-semibold text-bp-text">
               {row.totalVideos}
             </span>
           </div>
@@ -270,9 +280,8 @@ export default function Users() {
         name: "Trust",
         selector: (row) => row.trustScore,
         sortable: true,
-        width: "90px",
         cell: (row) => (
-          <span className="text-sm font-medium text-white">
+          <span className="text-sm font-medium text-bp-text pl-12">
             {row.trustScore}
           </span>
         ),
@@ -281,16 +290,14 @@ export default function Users() {
         name: "Joined",
         selector: (row) => row.createdAt,
         sortable: true,
-        width: "120px",
         cell: (row) => (
-          <span className="text-sm text-bp-text-muted">
+          <span className="text-sm text-bp-text-muted pl-8">
             {new Date(row.createdAt).toLocaleDateString()}
           </span>
         ),
       },
       {
         name: "Actions",
-        width: "200px",
         center: true,
         cell: (row) => (
           <div className="flex items-center justify-center gap-2">
@@ -341,7 +348,7 @@ export default function Users() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Users</h1>
+          <h1 className="text-2xl font-bold text-bp-text">Users</h1>
           <p className="text-[13px] text-bp-text-secondary mt-1">{totalRows} total users</p>
         </div>
 
@@ -352,13 +359,13 @@ export default function Users() {
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl w-72 text-sm text-white placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
+            className="pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl w-72 text-sm text-bp-text placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
           />
           {search && (
             <button
               type="button"
               onClick={() => setSearch("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-bp-text hover:bg-bp-elevated transition-colors duration-150"
             >
               <X size={14} />
             </button>
@@ -367,25 +374,20 @@ export default function Users() {
       </div>
 
       {/* DataTable */}
-      <div className="bg-bp-card rounded-xl border border-bp-border overflow-hidden">
+      <div className="bg-bp-card rounded-2xl overflow-hidden">
         <DataTable
           columns={columns}
           data={users}
-          customStyles={tableCustomStyles}
+          customStyles={allUserTableStyles}
           progressPending={loading}
           progressComponent={
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2
-                size={40}
-                className="animate-spin text-bp-blue mb-3"
-              />
-              <p className="text-bp-text-secondary">Loading users...</p>
+            <div className="py-12 text-center text-bp-text-muted">
+              Loading users...
             </div>
           }
           noDataComponent={
-            <div className="text-center py-20 text-bp-text-muted">
-              <User size={40} className="mx-auto mb-3 opacity-40" />
-              <p className="text-lg font-medium text-bp-text-secondary">No users found</p>
+            <div className="py-12 text-center text-bp-text-muted">
+              No users found
             </div>
           }
           pagination
@@ -394,13 +396,8 @@ export default function Users() {
           paginationPerPage={LIMIT}
           paginationDefaultPage={page}
           onChangePage={handlePageChange}
-          paginationComponentOptions={{
-            noRowsPerPage: true,
-          }}
           highlightOnHover
           pointerOnHover={false}
-          responsive
-          theme="dark"
         />
       </div>
 
@@ -409,7 +406,7 @@ export default function Users() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="User Details">
           <div className="bg-bp-card border border-bp-border rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-bp-border sticky top-0 bg-bp-card z-10">
-              <h2 className="text-xl font-bold text-white">User Details</h2>
+              <h2 className="text-xl font-bold text-bp-text">User Details</h2>
               <button
                 onClick={() => setDetailModal(false)}
                 className="p-1.5 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated rounded-lg transition"
@@ -442,7 +439,7 @@ export default function Users() {
                     )}
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">
+                    <h3 className="text-lg font-bold text-bp-text">
                       {selectedUser.name}
                     </h3>
                     <p className="text-bp-text-secondary">{selectedUser.email}</p>
@@ -461,7 +458,7 @@ export default function Users() {
                     <p className="text-2xl font-bold text-bp-yellow">
                       {selectedUser.totalChannels}
                     </p>
-                    <p className="text-xs text-amber-500/80">Channels</p>
+                    <p className="text-xs text-bp-cyan/80">Channels</p>
                   </div>
                   <div className="bg-bp-cyan/10 border border-bp-cyan/20 p-3 rounded-xl text-center">
                     <p className="text-2xl font-bold text-bp-cyan">
@@ -470,13 +467,13 @@ export default function Users() {
                     <p className="text-xs text-blue-500/80">Videos</p>
                   </div>
                   <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl text-center">
-                    <p className="text-2xl font-bold text-emerald-400">
+                    <p className="text-2xl font-bold text-emerald-600">
                       {selectedUser.trustScore}
                     </p>
                     <p className="text-xs text-emerald-500/80">Trust Score</p>
                   </div>
                   <div className="bg-purple-500/10 border border-purple-500/20 p-3 rounded-xl text-center">
-                    <p className="text-2xl font-bold text-purple-400">
+                    <p className="text-2xl font-bold text-bp-cyan">
                       {selectedUser.rewardPoints}
                     </p>
                     <p className="text-xs text-purple-500/80">Points</p>
@@ -484,7 +481,7 @@ export default function Users() {
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-white mb-3 flex items-center gap-2">
+                  <h4 className="font-semibold text-bp-text mb-3 flex items-center gap-2">
                     <Tv size={18} className="text-bp-yellow" />
                     Channels ({selectedUser.totalChannels})
                   </h4>
@@ -519,7 +516,7 @@ export default function Users() {
                             <div className="flex-1 min-w-0 text-left">
                               <p
                                 className={`font-medium truncate ${
-                                  isActive ? "text-amber-200" : "text-white"
+                                  isActive ? "text-bp-yellow" : "text-bp-text"
                                 }`}
                               >
                                 {ch.name}
@@ -548,7 +545,7 @@ export default function Users() {
                       onClick={() => setActiveMediaTab("videos")}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg border font-medium text-sm transition ${
                         activeMediaTab === "videos"
-                          ? "bg-bp-cyan/15 border-bp-cyan/30 text-blue-300"
+                          ? "bg-bp-cyan/15 border-bp-cyan/30 text-bp-cyan"
                           : "bg-bp-elevated/50 border-bp-border/50 text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text"
                       }`}
                     >
@@ -560,7 +557,7 @@ export default function Users() {
                       onClick={() => setActiveMediaTab("shorts")}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg border font-medium text-sm transition ${
                         activeMediaTab === "shorts"
-                          ? "bg-bp-yellow/15 border-bp-yellow/30 text-amber-300"
+                          ? "bg-bp-yellow/15 border-bp-yellow/30 text-bp-yellow"
                           : "bg-bp-elevated/50 border-bp-border/50 text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text"
                       }`}
                     >
@@ -594,7 +591,7 @@ export default function Users() {
                   {hasFeature("canEditUsers") && (
                     <button
                       onClick={openEditFromDetail}
-                      className="w-full py-2.5 bg-bp-blue hover:bg-bp-blue text-white rounded-lg font-medium flex items-center justify-center gap-2 transition"
+                      className="w-full py-2.5 bg-bp-blue hover:bg-bp-blue/90 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition"
                     >
                       <Edit size={18} />
                       Update User
@@ -721,7 +718,7 @@ export default function Users() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 py-2.5 bg-bp-blue hover:bg-bp-blue text-white rounded-lg 
+                    className="flex-1 py-2.5 bg-bp-blue hover:bg-bp-blue/90 text-white rounded-lg 
                                font-medium flex items-center justify-center gap-2 disabled:opacity-60 transition"
                   >
                     {submitting && <Loader2 size={16} className="animate-spin" />}

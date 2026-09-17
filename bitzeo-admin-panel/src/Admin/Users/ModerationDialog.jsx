@@ -8,7 +8,7 @@ const ACTION_CONFIG = {
     icon: ShieldOff,
     color: "amber",
     buttonLabel: "Suspend",
-    buttonClass: "bg-amber-600 hover:bg-bp-yellow",
+    buttonClass: "bg-bp-yellow hover:bg-bp-yellow/85",
     requireReason: true,
     reasonPlaceholder: "e.g. Violation of community guidelines",
   },
@@ -47,7 +47,7 @@ const ACTION_CONFIG = {
     icon: ShieldOff,
     color: "amber",
     buttonLabel: "Disable",
-    buttonClass: "bg-amber-600 hover:bg-bp-yellow",
+    buttonClass: "bg-bp-yellow hover:bg-bp-yellow/85",
     requireReason: false,
   },
   enableChannel: {
@@ -94,7 +94,7 @@ const ACTION_CONFIG = {
     icon: ShieldOff,
     color: "amber",
     buttonLabel: "Disable",
-    buttonClass: "bg-amber-600 hover:bg-bp-yellow",
+    buttonClass: "bg-bp-yellow hover:bg-bp-yellow/85",
     requireReason: false,
   },
   enableVideo: {
@@ -122,7 +122,7 @@ const ACTION_CONFIG = {
     icon: ShieldOff,
     color: "amber",
     buttonLabel: "Disable",
-    buttonClass: "bg-amber-600 hover:bg-bp-yellow",
+    buttonClass: "bg-bp-yellow hover:bg-bp-yellow/85",
     requireReason: false,
   },
   enableShort: {

@@ -149,30 +149,28 @@ const CategoryManagement = () => {
         </div>
 
         {/* Add New Category */}
-        <div className="gradient-border-card bg-bp-card rounded-2xl shadow-xl overflow-hidden card-top-highlight mb-6">
-          <div className="p-6">
-            <h2 className="text-lg font-semibold mb-4 text-bp-text">
-              Add New Category
-            </h2>
+        <div className="bp-card p-6 mb-6">
+          <h2 className="text-lg font-semibold mb-4 text-bp-text">
+            Add New Category
+          </h2>
 
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
-                placeholder="Enter category name..."
-                className="flex-1 px-4 py-3 bg-bp-surface/60 border border-bp-border/50 rounded-xl
-                         focus:outline-none focus:border-bp-blue/40 focus:ring-2 focus:ring-bp-blue/30 hover:border-bp-border
-                         text-bp-text text-sm placeholder:text-bp-text-muted transition-colors duration-200"
-              />
-              <button
-                onClick={handleAddCategory}
-                disabled={!newCategory.trim() || isSubmitting}
-                style={{ background: "linear-gradient(135deg, #0069BE, #0092CC)" }}
-                className="px-6 py-3 text-white text-sm font-semibold rounded-xl flex items-center gap-2 border border-white/10
-                         disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md shadow-bp-blue/20 hover:shadow-lg hover:shadow-bp-blue/25"
-              >
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
+              placeholder="Enter category name..."
+              className="flex-1 px-4 py-3 bg-bp-surface/60 border border-bp-border/50 rounded-xl
+                       focus:outline-none focus:border-bp-blue/40 focus:ring-2 focus:ring-bp-blue/30 hover:border-bp-border
+                       text-bp-text text-sm placeholder:text-bp-text-muted transition-colors duration-200"
+            />
+            <button
+              onClick={handleAddCategory}
+              disabled={!newCategory.trim() || isSubmitting}
+              className="px-6 py-3 bg-bp-blue hover:bg-bp-blue/90 text-white text-sm font-semibold rounded-xl flex items-center gap-2
+                       disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
                 {isSubmitting ? (
                   <Loader2 size={18} className="animate-spin" />
                 ) : (
@@ -181,15 +179,13 @@ const CategoryManagement = () => {
                 Add Category
               </button>
             </div>
-          </div>
         </div>
 
         {/* Categories Table */}
-        <div className="gradient-border-card bg-bp-card rounded-2xl shadow-xl overflow-hidden card-top-highlight">
-          <div className="p-6">
-            <h2 className="text-lg font-semibold mb-4 text-bp-text">
-              All Categories ({categories.length})
-            </h2>
+        <div className="bp-card p-6">
+          <h2 className="text-lg font-semibold mb-4 text-bp-text">
+            All Categories ({categories.length})
+          </h2>
 
             {loading ? (
               <div className="flex flex-col items-center justify-center py-16">
@@ -296,7 +292,6 @@ const CategoryManagement = () => {
               </div>
             )}
           </div>
-        </div>
       </div>
     </div>
   )

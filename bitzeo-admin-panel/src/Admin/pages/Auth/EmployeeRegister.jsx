@@ -1274,7 +1274,7 @@ export default function UsersManagement() {
 
     if (score <= 2) return { label: "Weak", color: "bg-red-500", width: "33%" };
     if (score === 3 || score === 4)
-      return { label: "Medium", color: "bg-yellow-500", width: "66%" };
+      return { label: "Medium", color: "bg-bp-cyan", width: "66%" };
     return { label: "Strong", color: "bg-emerald-500", width: "100%" };
   };
 
@@ -1432,6 +1432,7 @@ export default function UsersManagement() {
       name: "User",
       selector: (row) => row.name,
       sortable: true,
+      center: true,
       cell: (row) => (
         <div
           className={`flex items-center gap-3 py-2 ${
@@ -1473,6 +1474,7 @@ export default function UsersManagement() {
       name: "Email",
       selector: (row) => row.email,
       sortable: true,
+      center: true,
       cell: (row) => (
         <div
           className={`flex items-center gap-1.5 ${
@@ -1489,6 +1491,7 @@ export default function UsersManagement() {
       name: "Role",
       selector: (row) => row.role,
       sortable: true,
+      center: true,
       cell: (row) => (
         <span
           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -1499,7 +1502,7 @@ export default function UsersManagement() {
               : row.role === "finance"
               ? "bg-emerald-500/20 text-emerald-300"
               : row.role === "support"
-              ? "bg-bp-yellow/20 text-amber-300"
+              ? "bg-bp-yellow/15 text-bp-yellow"
               : "bg-bp-text-muted/20 text-white"
           }`}
         >
@@ -1512,6 +1515,7 @@ export default function UsersManagement() {
       name: "Status",
       selector: (row) => (row.isActive !== false ? "Active" : "Inactive"),
       sortable: true,
+      center: true,
       cell: (row) =>
         row.isActive !== false ? (
           <span className="text-emerald-400 text-sm flex items-center gap-1">
@@ -1527,6 +1531,7 @@ export default function UsersManagement() {
       name: "Joined",
       selector: (row) => row.createdAt,
       sortable: true,
+      center: true,
       cell: (row) => (
         <span
           className={`text-sm ${
@@ -1541,6 +1546,7 @@ export default function UsersManagement() {
     },
     {
       name: "Actions",
+      center: true,
       cell: (row) => (
         <div className="flex items-center justify-end gap-1">
           {/* Enable / Disable Dropdown */}
@@ -1591,7 +1597,7 @@ export default function UsersManagement() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-bp-text">
               All Employee users
             </h1>
             <p className="text-[13px] text-bp-text-secondary mt-1">
@@ -1602,8 +1608,7 @@ export default function UsersManagement() {
           {hasFeature("canCreateEmployee") && (
             <button
               onClick={() => setShowAddModal(true)}
-              style={{ background: "linear-gradient(135deg, #0069BE, #0092CC)" }}
-              className="inline-flex items-center gap-2 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border border-white/10 shadow-md shadow-bp-blue/20 hover:shadow-lg hover:shadow-bp-blue/25"
+              className="inline-flex items-center gap-2 bg-bp-elevated border border-bp-border text-bp-text-secondary hover:text-bp-text hover:bg-bp-hover px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
             >
               <UserPlus size={18} />
               Add Employee
@@ -1620,13 +1625,13 @@ export default function UsersManagement() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, email or contact..."
-              className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 text-white rounded-xl text-sm placeholder:text-bp-text-muted focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border outline-none transition-colors duration-200"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-white hover:bg-bp-blue/10 transition-colors duration-150"
+className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 text-bp-text rounded-xl text-sm placeholder:text-bp-text-muted focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border outline-none transition-colors duration-200"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-bp-text hover:bg-bp-elevated transition-colors duration-150"
               >
                 <X size={14} />
               </button>
@@ -1703,7 +1708,7 @@ export default function UsersManagement() {
         </div>
 
         {/* Data Table */}
-        <div className="bg-bp-card border border-bp-border rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-bp-card rounded-2xl overflow-hidden">
           <DataTable
             columns={columns}
             data={filteredUsers}
@@ -1734,19 +1739,16 @@ export default function UsersManagement() {
             {/* Close button */}
             <button
               onClick={() => { setShowViewModal(false); setSelectedUser(null); }}
-              className="absolute top-4 right-4 z-20 p-2 rounded-xl bg-bp-elevated/60 border border-bp-border/50 text-bp-text-secondary hover:text-white hover:bg-bp-elevated hover:border-bp-border transition-all duration-200"
+              className="absolute top-4 right-4 z-20 p-2 rounded-xl bg-bp-elevated/60 border border-bp-border/50 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated hover:border-bp-border transition-all duration-200"
             >
               <X size={18} />
             </button>
-
-            {/* Top accent glow */}
-            <div className="absolute top-0 left-[15%] right-[15%] h-px bg-gradient-to-r from-transparent via-bp-blue/30 to-transparent" />
 
             <div className="p-8">
               {/* Avatar + Identity */}
               <div className="flex flex-col items-center text-center mb-8">
                 <div className="relative mb-5">
-                  <div className="w-24 h-24 rounded-full flex items-center justify-center shadow-lg" style={{ background: "linear-gradient(135deg, rgba(0,140,255,0.12), rgba(0,217,255,0.08))", border: "2px solid rgba(0,140,255,0.25)" }}>
+                  <div className="w-24 h-24 rounded-full flex items-center justify-center shadow-lg" style={{ background: "linear-gradient(135deg, rgba(230,57,70,0.14), rgba(242,109,120,0.08))", border: "2px solid rgba(230,57,70,0.28)" }}>
                     {selectedUser.profilePhoto ? (
                       <img src={selectedUser.profilePhoto} alt={selectedUser.name} className="w-full h-full rounded-full object-cover" />
                     ) : (
@@ -1814,13 +1816,10 @@ export default function UsersManagement() {
                 setShowAddModal(false);
                 resetForm();
               }}
-              className="absolute top-4 right-4 z-20 p-2 rounded-xl bg-bp-elevated/60 border border-bp-border/50 text-bp-text-secondary hover:text-white hover:bg-bp-elevated hover:border-bp-border transition-all duration-200"
+              className="absolute top-4 right-4 z-20 p-2 rounded-xl bg-bp-elevated/60 border border-bp-border/50 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated hover:border-bp-border transition-all duration-200"
             >
               <X size={18} />
             </button>
-
-            {/* Top accent glow */}
-            <div className="absolute top-0 left-[15%] right-[15%] h-px bg-gradient-to-r from-transparent via-bp-blue/30 to-transparent" />
 
             <div className="p-6">
             <form
@@ -1831,7 +1830,7 @@ export default function UsersManagement() {
               {/* Header + Photo (single row, no scroll) */}
               <div className="flex items-center gap-5">
                 <div className="relative shrink-0">
-                  <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(0,140,255,0.12), rgba(0,217,255,0.08))", border: "2px solid rgba(0,140,255,0.25)" }}>
+                  <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(230,57,70,0.14), rgba(242,109,120,0.08))", border: "2px solid rgba(230,57,70,0.28)" }}>
                     {photoPreview ? (
                       <img
                         src={photoPreview}
@@ -1842,7 +1841,7 @@ export default function UsersManagement() {
                       <Camera className="w-6 h-6 text-bp-text-muted" />
                     )}
                   </div>
-                  <label className="absolute -bottom-0.5 -right-0.5 bg-bp-blue hover:bg-[#0095ff] text-white p-1.5 rounded-full cursor-pointer border-[3px] border-bp-card shadow-lg transition-colors duration-200">
+                  <label className="absolute -bottom-0.5 -right-0.5 bg-bp-blue hover:bg-bp-blue/90 text-white p-1.5 rounded-full cursor-pointer border-[3px] border-bp-card shadow-sm transition-colors duration-200">
                     <Camera size={12} />
                     <input
                       type="file"
@@ -2217,7 +2216,7 @@ export default function UsersManagement() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 py-2.5 bg-bp-blue hover:bg-[#0095ff] disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold shadow-lg shadow-bp-blue/20 transition-all duration-200"
+                    className="flex-1 py-2.5 bg-bp-blue hover:bg-bp-blue/90 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-all duration-200"
                   >
                     {isSubmitting ? "Creating..." : "Create Employee"}
                   </button>
