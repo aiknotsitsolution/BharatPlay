@@ -19,8 +19,6 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { API_ORIGIN } from "../../config/api";
-// Optional: expo-speech-recognition or @react-native-voice/voice for voice search
-// import Voice from "@react-native-voice/voice";
 
 const { width } = Dimensions.get("window");
 const API_BASE_URL = API_ORIGIN;
@@ -44,6 +42,7 @@ export default function Navbar({ onMenuPress, points = 0 }) {
   const [loading, setLoading] = useState(false);
   const profileRequestInFlight = useRef(null);
 
+  
   // Search
   const [searchQuery, setSearchQuery] = useState("");
   const [hints, setHints] = useState([]);
