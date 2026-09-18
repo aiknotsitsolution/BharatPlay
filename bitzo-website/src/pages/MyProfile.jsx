@@ -791,9 +791,9 @@ export default function Profile() {
 
       {/* ====================== EDIT PROFILE MODAL ====================== */}
       {isEditOpen && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 rounded-2xl max-w-lg w-full border border-zinc-800 shadow-2xl">
-            <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-zinc-800">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-6">
+          <div className="bg-zinc-900 rounded-2xl w-full max-w-3xl max-h-[90vh] border border-zinc-800 shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-800">
               <h2 className="text-xl font-semibold">Edit Profile</h2>
               <button
                 onClick={closeEdit}
@@ -803,7 +803,7 @@ export default function Profile() {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[calc(90vh-68px)]">
               {editError && (
                 <div className="bg-red-950 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm">
                   {editError}
@@ -813,7 +813,7 @@ export default function Profile() {
               {/* Avatar */}
               <div>
                 <span className="text-xs text-zinc-400 block mb-2">Avatar</span>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
                   <img
                     src={
                       avatarPreview ||
@@ -821,9 +821,9 @@ export default function Profile() {
                       user.avatar
                     }
                     alt="Avatar Preview"
-                    className="w-20 h-20 rounded-full object-cover border-2 border-zinc-700"
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-zinc-700 shrink-0"
                   />
-                  <label className="cursor-pointer flex-1 flex items-center gap-2 px-5 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-700 text-sm transition-colors">
+                  <label className="cursor-pointer flex-1 flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg border border-zinc-700 text-sm transition-colors">
                     <Upload size={18} />
                     <span className="truncate">
                       {avatarFile ? avatarFile.name : "Choose new image"}
@@ -932,29 +932,40 @@ export default function Profile() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {[
                   ["country", "Country", "IN"],
                   ["timezone", "Timezone", "Asia/Kolkata"],
                   ["simMcc", "SIM MCC (auto)", "Detected from location"],
                   ["advertisingId", "Advertising ID", "Optional"],
-                ].map(([field, label, placeholder]) => (
-                  <div key={field}>
-                    <span className="text-xs text-zinc-400 block mb-1">
-                      {label}
-                    </span>
-                    <input
-                      type="text"
-                      value={editForm[field]}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, [field]: e.target.value })
-                      }
-                      readOnly={field === "simMcc"}
-                      className={`w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-red-600 ${field === "simMcc" ? "cursor-not-allowed text-zinc-500" : ""}`}
-                      placeholder={placeholder}
-                    />
-                  </div>
-                ))}
+                ].map(([field, label, placeholder]) => {
+                  const isReadOnly = true;
+                  const isAutoField =
+                    field === "simMcc" || field === "advertisingId";
+
+                  return (
+                    <div key={field}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-zinc-400">{label}</span>
+                        {isAutoField && (
+                          <span className="text-[10px] font-medium text-red-300 bg-red-950/80 border border-red-800 px-2 py-0.5 rounded-full">
+                            Not editable
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={editForm[field]}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, [field]: e.target.value })
+                        }
+                        readOnly={isReadOnly}
+                        className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-500 cursor-not-allowed focus:outline-none"
+                        placeholder={placeholder}
+                      />
+                    </div>
+                  );
+                })}
               </div>
 
               <div>
@@ -977,18 +988,18 @@ export default function Profile() {
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4">
+              <div className="flex justify-end gap-3 pt-2">
                 <button
                   onClick={closeEdit}
                   disabled={editLoading}
-                  className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm disabled:opacity-50"
+                  className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleEditSubmit}
                   disabled={editLoading}
-                  className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:opacity-60"
+                  className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:opacity-60"
                 >
                   {editLoading ? "Saving..." : "Save Changes"}
                 </button>

@@ -33,6 +33,7 @@ import {
   fetchNotifications,
   resetNotifications,
 } from "../../features/notifications/notificationsSlice";
+import { fetchProfileData } from "../../features/profile/profileSlice";
 import axios from "axios";
 import { API_ORIGIN as API_BASE_URL } from "../../config/api";
 import logo from "../../../public/Bharatplay-Cb3qGLyP-Cb3qGLyP-DSDLqCtA.png";
@@ -43,7 +44,9 @@ export default function Navbar({ toggleSidebar }) {
   const { points } = useRewards();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const profileUser = useSelector((state) => state.profile?.user);
   const unreadCount = useSelector((state) => state.notifications.unreadCount);
+  const user = profileUser;
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [copyrightOpen, setCopyrightOpen] = useState(false);
@@ -52,7 +55,6 @@ export default function Navbar({ toggleSidebar }) {
   const [isLoggedIn, setIsLoggedIn] = useState(
     Boolean(localStorage.getItem("token")),
   );
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const trustScore = Math.max(0, Math.min(100, Number(user?.trustScore ?? 50)));
@@ -234,14 +236,15 @@ export default function Navbar({ toggleSidebar }) {
       if (!isLoggedIn) return;
       try {
         setLoading(true);
-        const token = localStorage.getItem("token");
-        const response = await axios.get(`${API_BASE_URL}/api/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUser(response.data.user || response.data);
+        await dispatch(fetchProfileData());
       } catch (error) {
         console.error("Profile fetch failed:", error);
-        if (error.response?.status === 401) handleSignOut();
+        if (
+          error?.payload?.includes("Session expired") ||
+          error?.status === 401
+        ) {
+          handleSignOut();
+        }
       } finally {
         setLoading(false);
       }
@@ -252,7 +255,6 @@ export default function Navbar({ toggleSidebar }) {
       const token = localStorage.getItem("token");
       setIsLoggedIn(Boolean(token));
       if (token) fetchProfile();
-      else setUser(null);
     };
     window.addEventListener("auth-change", handleAuthChange);
     window.addEventListener("storage", handleAuthChange);
@@ -260,7 +262,7 @@ export default function Navbar({ toggleSidebar }) {
       window.removeEventListener("auth-change", handleAuthChange);
       window.removeEventListener("storage", handleAuthChange);
     };
-  }, [isLoggedIn]);
+  }, [dispatch, isLoggedIn]);
 
   useEffect(() => {
     if (isLoggedIn) dispatch(fetchNotifications());
@@ -296,7 +298,6 @@ export default function Navbar({ toggleSidebar }) {
     } finally {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      setUser(null);
       setIsLoggedIn(false);
       setIsDropdownOpen(false);
       setIsSettingsOpen(false);

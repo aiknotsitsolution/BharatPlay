@@ -185,6 +185,14 @@ const profileSlice = createSlice({
         state.user = action.payload.user;
         state.myVideos = action.payload.myVideos;
         state.historyVideos = action.payload.historyVideos;
+
+        if (action.payload?.user) {
+          try {
+            localStorage.setItem("user", JSON.stringify(action.payload.user));
+          } catch (_) {
+            // ignore storage quota / privacy issues
+          }
+        }
       })
       .addCase(fetchProfileData.rejected, (state, action) => {
         state.loading = false;
