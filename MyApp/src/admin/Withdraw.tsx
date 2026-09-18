@@ -29,6 +29,8 @@ import {
 import { API_BASE } from "../../config/api";
 import Navbar from "./Navbar";
 
+const WITHDRAWALS_ENABLED = false;
+
 export default function WithdrawScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
@@ -123,6 +125,13 @@ export default function WithdrawScreen() {
 
   const handleWithdraw = async () => {
     const withdrawAmount = parseFloat(amount);
+
+    if (!WITHDRAWALS_ENABLED) {
+      setError(
+        "Withdrawals are not available yet. Your points remain in your account until BharatPlay enables verified payouts.",
+      );
+      return;
+    }
 
     if (!withdrawAmount || withdrawAmount <= 0) {
       setError("Enter a valid amount");

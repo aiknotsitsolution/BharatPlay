@@ -190,9 +190,26 @@ export default function LegalSidebarScreen() {
             <Text style={styles.paragraph}>
               We may share data with trusted service providers that help us run
               the platform, support analytics, enable security features, and
-              manage advertising or app operations. We may also disclose data to
-              law enforcement, regulators, or other authorities when required by
-              law or necessary to protect user safety and platform integrity.
+              manage advertising or app operations. Depending on the release,
+              country, and mediation configuration, advertising partners may
+              include AppLovin MAX, Unity Ads, LevelPlay (ironSource),
+              Mintegral, or other providers enabled in the future. We may also
+              disclose data to law enforcement, regulators, or other authorities
+              when required by law or necessary to protect user safety and
+              platform integrity.
+            </Text>
+
+            <Text style={styles.heading}>Rewards and Advertising</Text>
+            <Text style={styles.paragraph}>
+              Rewarded ads may provide in-app points when an eligible ad is
+              completed and the server confirms the event. Points are not a
+              guaranteed cash payment. Rewards may be limited, reversed, or
+              frozen for duplicate accounts, automation, invalid activity,
+              fraud, policy violations, or technical errors. Conversion rates,
+              eligibility, minimum withdrawal thresholds, supported payout
+              methods, and processing times depend on the active BharatPlay
+              rewards program and are shown when available. Never click ads or
+              interact with ads solely to manipulate rewards.
             </Text>
 
             <Text style={styles.heading}>Your Rights</Text>
