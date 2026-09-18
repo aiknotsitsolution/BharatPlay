@@ -77,8 +77,8 @@ function ProductCard({ icon, title, subtitle, availability, children, cta }) {
 
 export default function HomePage() {
   usePageMeta(
-    "BharatPlay | Watch, Create & Discover Videos",
-    "BharatPlay is a video platform for streaming, discovering, uploading and sharing content across web and Android. Explore trending videos, creator channels and official BharatPlay apps.",
+    "BharatPlay | Watch Videos, Shorts & Creator Content",
+    "BharatPlay is a creator-first video platform for streaming, discovering, uploading, and sharing short and long-form content on web and Android.",
   );
 
   const playUrl = SITE.googlePlayUrl;
@@ -88,7 +88,7 @@ export default function HomePage() {
     name: "BharatPlay",
     url: "https://bharatplay.com/",
     description:
-      "BharatPlay is a modern video platform for watching, creating, discovering, and sharing content across web and Android.",
+      "BharatPlay is a creator-first video platform for streaming, discovering, uploading, and sharing short and long-form content on web and Android.",
     publisher: {
       "@type": "Organization",
       name: "BharatPlay",
@@ -131,13 +131,14 @@ export default function HomePage() {
                 </span>
 
                 <h1 className="mt-5 max-w-xl text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
-                  Watch, create and discover content that feels built for India.
+                  Watch videos, follow creators, and share your own content on
+                  BharatPlay.
                 </h1>
 
                 <p className="mt-4 max-w-xl text-sm leading-relaxed text-zinc-400 sm:text-base">
-                  BharatPlay brings together trending short videos, long-form
-                  entertainment, creator channels, and community engagement in
-                  one modern digital experience for web and Android users.
+                  Discover trending short videos, long-form entertainment,
+                  creator channels, and community-driven content in one modern
+                  platform built for web and Android users.
                 </p>
 
                 <div className="mt-7 flex flex-col items-start gap-3 sm:flex-row">
@@ -194,8 +195,8 @@ export default function HomePage() {
             Why BharatPlay
           </p>
           <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-            A modern video platform built for creators, viewers, and
-            communities.
+            A creator-first video platform built for discovery, community, and
+            entertainment.
           </h2>
         </div>
 

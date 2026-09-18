@@ -42,7 +42,6 @@ export default function Navbar({ onMenuPress, points = 0 }) {
   const [loading, setLoading] = useState(false);
   const profileRequestInFlight = useRef(null);
 
-  
   // Search
   const [searchQuery, setSearchQuery] = useState("");
   const [hints, setHints] = useState([]);
@@ -487,7 +486,22 @@ export default function Navbar({ onMenuPress, points = 0 }) {
               <MenuItem icon="❓" label="FAQ" />
               <MenuItem icon="💬" label="Feedback" />
               <MenuItem icon="📞" label="Customer Support" />
-              <MenuItem icon="📄" label="Terms and Conditions" />
+              <MenuItem
+                icon="📄"
+                label="Terms and Conditions"
+                onPress={() => {
+                  setIsDropdownOpen(false);
+                  navigation.navigate("LegalSidebar");
+                }}
+              />
+              <MenuItem
+                icon="🔒"
+                label="Advance Settings"
+                onPress={() => {
+                  setIsDropdownOpen(false);
+                  navigation.navigate("LegalSidebar");
+                }}
+              />
 
               <TouchableOpacity
                 style={[

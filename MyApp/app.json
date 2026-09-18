@@ -4,6 +4,17 @@
     "slug": "Bharatplay",
     "scheme": "bharatplay",
     "version": "1.0.0",
+    "description": "Bharatplay is a creator-first entertainment app for short videos, discovery, and community-driven content experiences.",
+    "keywords": [
+      "bharatplay",
+      "india",
+      "short videos",
+      "creator platform",
+      "entertainment",
+      "social video",
+      "reels",
+      "video app"
+    ],
     "orientation": "portrait",
     "icon": "./assets/Bharatplay-Cb3qGLyP-Cb3qGLyP.png",
     "userInterfaceStyle": "light",

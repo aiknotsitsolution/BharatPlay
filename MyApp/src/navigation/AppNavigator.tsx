@@ -1,24 +1,4 @@
-// import React from "react";
-// import { NavigationContainer } from "@react-navigation/native";
-// import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-// import LoginScreen from "../screens/LoginScreen";
-// import RegisterScreen from "../screens/RegisterScreen";
-// import DashboardScreen from "../screens/DashboardScreen";
-
-// const Stack = createNativeStackNavigator();
-
-// export default function AppNavigator() {
-//   return (
-//     <NavigationContainer>
-//       <Stack.Navigator screenOptions={{ headerShown: false }}>
-//         <Stack.Screen name="Login" component={LoginScreen} />
-//         <Stack.Screen name="Register" component={RegisterScreen} />
-//         <Stack.Screen name="Dashboard" component={DashboardScreen} />
-//       </Stack.Navigator>
-//     </NavigationContainer>
-//   );
-// }
 
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, AppState, View } from "react-native";
@@ -33,6 +13,7 @@ import VideoDetailScreen from "../admin/VideoDetailScreen";
 import CopyrightClaimPage from "../admin/CopyrightClaimPage";
 import CopyrightScreen from "../screens/CopyrightClaimScreen";
 import { API_ORIGIN } from "../../config/api";
+import LegalSidebarScreen from "../admin/LegalSidebarScreen";
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -122,7 +103,11 @@ export default function AppNavigator() {
 
         <Stack.Screen name="Copyright" component={CopyrightScreen} />
         <Stack.Screen name="CopyrightClaim" component={CopyrightClaimPage} />
-
+<Stack.Screen
+  name="LegalSidebar"
+  component={LegalSidebarScreen}
+  options={{ headerShown: false }}
+/>
         {/* <Stack.Screen name="SubscribedChannels" component={SubscribedChannels} /> */}
       </Stack.Navigator>
     </NavigationContainer>
