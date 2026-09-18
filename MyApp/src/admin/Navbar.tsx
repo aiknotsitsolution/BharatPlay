@@ -46,6 +46,7 @@ export default function Navbar({ onMenuPress, points = 0 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [hints, setHints] = useState([]);
   const [showHints, setShowHints] = useState(false);
+  const [hintsLoading, setHintsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
 
   const redirectToLogin = () => {
@@ -136,10 +137,12 @@ export default function Navbar({ onMenuPress, points = 0 }) {
     if (!q) {
       setHints([]);
       setShowHints(false);
+      setHintsLoading(false);
       return;
     }
 
     const timer = setTimeout(async () => {
+      setHintsLoading(true);
       try {
         const res = await axios.get(HINTS_URL, { params: { q } });
         const data = res.data?.data || res.data?.hints || res.data || [];
@@ -147,6 +150,9 @@ export default function Navbar({ onMenuPress, points = 0 }) {
         setShowHints(true);
       } catch {
         setHints([]);
+        setShowHints(true);
+      } finally {
+        setHintsLoading(false);
       }
     }, 300);
 
@@ -160,6 +166,7 @@ export default function Navbar({ onMenuPress, points = 0 }) {
       setShowHints(false);
       setIsListening(false);
       navigation.navigate("Search", { q });
+      setSearchQuery("");
     },
     [searchQuery, navigation],
   );
@@ -309,32 +316,39 @@ export default function Navbar({ onMenuPress, points = 0 }) {
       </View>
 
       {/* Hints Dropdown */}
-      {showHints && hints.length > 0 && (
-        <View style={styles.hintsBox}>
-          <ScrollView keyboardShouldPersistTaps="handled">
-            {hints.map((hint, i) => {
-              const text =
-                typeof hint === "string"
-                  ? hint
-                  : hint.text || hint.title || hint.name || "";
-              const type = hint.type || "";
-              return (
-                <TouchableOpacity
-                  key={i}
-                  style={styles.hintItem}
-                  onPress={() => onHintClick(hint)}
-                >
-                  <Text style={styles.hintIcon}>🔍</Text>
-                  <Text style={styles.hintText} numberOfLines={1}>
-                    {text}
-                  </Text>
-                  {type ? <Text style={styles.hintType}>{type}</Text> : null}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
+      {showHints &&
+        searchQuery.trim() &&
+        (hintsLoading || hints.length > 0) && (
+          <View style={styles.hintsBox}>
+            <Text style={styles.hintsTitle}>
+              {hintsLoading
+                ? "Finding matching results..."
+                : "Matching results"}
+            </Text>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {hints.map((hint, i) => {
+                const text =
+                  typeof hint === "string"
+                    ? hint
+                    : hint.text || hint.title || hint.name || "";
+                const type = hint.type || "";
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.hintItem}
+                    onPress={() => onHintClick(hint)}
+                  >
+                    <Text style={styles.hintIcon}>🔍</Text>
+                    <Text style={styles.hintText} numberOfLines={1}>
+                      {text}
+                    </Text>
+                    {type ? <Text style={styles.hintType}>{type}</Text> : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
       {/* Profile Dropdown Modal */}
       <Modal
@@ -731,6 +745,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  hintsTitle: {
+    color: "#9ca3af",
+    fontSize: 11,
+    fontWeight: "600",
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   hintItem: {
     flexDirection: "row",
