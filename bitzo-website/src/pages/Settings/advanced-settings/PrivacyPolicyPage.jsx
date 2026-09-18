@@ -6,7 +6,7 @@ import SITE from "../../../config/site";
 const SECTIONS = [
   {
     title: "1. Introduction",
-    body: "This Privacy Policy explains how BharatPlay (\"we\", \"our\" or \"us\") collects, uses, stores, shares and protects information relating to users of the BharatPlay website and the BharatPlay Android application (together, the \"Service\"). By using the Service, you agree to the practices described in this policy.",
+    body: <>This Privacy Policy explains how BharatPlay ("we", "our" or "us") collects, uses, stores, shares and protects information relating to users of the BharatPlay website and the BharatPlay Android application (together, the "Service"). By using the Service, you agree to the practices described in this policy. This policy should be read alongside our <Link to="/terms" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Terms & Conditions</Link>.</>,
   },
   {
     title: "2. Information We Collect",
@@ -74,7 +74,7 @@ const SECTIONS = [
   },
   {
     title: "18. Consent",
-    body: "By using the Service and providing us with your information, you consent to the collection, use and sharing of your information as described in this Privacy Policy.",
+    body: <>By using the Service and providing us with your information, you consent to the collection, use and sharing of your information as described in this Privacy Policy. Your use of the Service is also governed by our <Link to="/terms" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Terms & Conditions</Link>.</>,
   },
   {
     title: "19. Account & Data Deletion",
