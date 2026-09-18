@@ -1,17 +1,12 @@
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 
 export default function ListItem({
   title,
   subtitle,
-  onPress,
-  onEdit,
-  onDelete,
+  onPress = () => {},
+  onEdit = undefined,
+  onDelete = undefined,
 }) {
   return (
     <TouchableOpacity

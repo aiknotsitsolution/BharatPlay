@@ -9,8 +9,7 @@ import {
   StatusBar,
   Platform,
 } from "react-native";
-import { Video } from "expo-av"; // Expo ke liye
-// import Video from "react-native-video"; // Bare RN ke liye yeh use karo
+import Video from "react-native-video";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 // Ya: import Icon from "react-native-vector-icons/Ionicons";
 
@@ -67,17 +66,15 @@ export default function ShortsScreen() {
     return (
       <View style={styles.videoContainer}>
         <Video
-          ref={(ref) => (videoRefs.current[index] = ref)}
+          ref={(ref) => {
+            videoRefs.current[index] = ref;
+          }}
           source={{ uri: item.videoUrl }}
           style={styles.video}
           resizeMode="cover"
-          shouldPlay={isActive}
-          isLooping
-          isMuted={muted}
-          // Bare RN ke liye:
-          // paused={!isActive}
-          // muted={muted}
-          // repeat
+          paused={!isActive}
+          repeat
+          muted={muted}
         />
 
         {/* Dark overlay */}
@@ -169,10 +166,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   video: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.15)",
   },
   bottomLeft: {

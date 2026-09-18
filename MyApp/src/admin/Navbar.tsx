@@ -292,7 +292,7 @@ export default function Navbar({ onMenuPress, points = 0 }) {
             placeholderTextColor="#9ca3af"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            onSubmitEditing={() => handleSearch()}
+            onSubmitEditing={() => handleSearch(searchQuery)}
             onFocus={() =>
               searchQuery.trim() && hints.length > 0 && setShowHints(true)
             }
@@ -300,7 +300,7 @@ export default function Navbar({ onMenuPress, points = 0 }) {
           />
           <TouchableOpacity
             style={styles.searchBtn}
-            onPress={() => handleSearch()}
+            onPress={() => handleSearch(searchQuery)}
             activeOpacity={0.7}
           >
             <Text style={styles.searchIcon}>🔍</Text>
@@ -523,7 +523,7 @@ export default function Navbar({ onMenuPress, points = 0 }) {
   );
 }
 
-function MenuItem({ icon, label, onPress, small }) {
+function MenuItem({ icon, label, onPress = () => {}, small = false }) {
   return (
     <TouchableOpacity
       style={[styles.menuItem, small && { paddingLeft: 36 }]}

@@ -94,7 +94,7 @@ const normalizeVideoListItem = (video: Record<string, any> = {}) => ({
   isDisliked: Boolean(video.isDisliked || video.userReaction === "dislike"),
 });
 
-const normalizeShort = (video = {}) => ({
+const normalizeShort = (video: Record<string, any> = {}) => ({
   id: video._id || video.id,
   title: video.title || "Untitled short",
   thumbnail: toMediaUrl(
@@ -110,7 +110,7 @@ const normalizeShort = (video = {}) => ({
   isShort: true,
 });
 
-const normalizeSubscriptionChannel = (channel = {}) => ({
+const normalizeSubscriptionChannel = (channel: Record<string, any> = {}) => ({
   id: channel._id || channel.id || channel.channelId,
   title: channel.name || channel.channelName || "Subscribed Channel",
   thumb:
@@ -131,7 +131,7 @@ const normalizeSubscriptionChannel = (channel = {}) => ({
   videoType: "channel",
 });
 
-const getArrayFromPayload = (payload) => {
+const getArrayFromPayload = (payload: any): Record<string, any>[] => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.videos)) return payload.videos;
   if (Array.isArray(payload?.data)) return payload.data;
@@ -147,7 +147,9 @@ const fetchWithAuth = async (endpoint, params = {}) => {
     const token = await AsyncStorage.getItem("token");
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     const query = new URLSearchParams(
-      Object.entries(params).filter(([, value]) => value !== undefined),
+      Object.entries(params)
+        .filter(([, value]) => value !== undefined)
+        .map(([key, value]) => [key, String(value)]),
     ).toString();
 
     const res = await fetch(
@@ -266,7 +268,7 @@ function MovieCard({ item, onPress, onAddToWatchLater, twoColumn = false }) {
 // Main Screen
 // ────────────────────────────────────────────────
 export default function NetflixStylePage() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
 
   const [recommended, setRecommended] = useState([]);
   const [trending, setTrending] = useState([]);
@@ -846,7 +848,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   cardOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.25)",
     justifyContent: "flex-end",
     padding: 8,

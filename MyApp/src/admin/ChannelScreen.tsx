@@ -271,7 +271,7 @@ export default function ChannelScreen({ navigation }) {
           uri: asset.uri,
           type: asset.mimeType || "image/jpeg",
           name: asset.fileName || `avatar_${Date.now()}.jpg`,
-        });
+        } as any);
       }
 
       // Banner
@@ -281,13 +281,13 @@ export default function ChannelScreen({ navigation }) {
           uri: asset.uri,
           type: asset.mimeType || "image/jpeg",
           name: asset.fileName || `banner_${Date.now()}.jpg`,
-        });
+        } as any);
       }
 
       console.log("Sending with XMLHttpRequest...");
 
       // ========== XMLHttpRequest (yeh important hai) ==========
-      const result = await new Promise((resolve, reject) => {
+      const result: any = await new Promise<any>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
 
         xhr.open("POST", `${API_BASE}/uservideo/createchannel`);
@@ -396,7 +396,7 @@ export default function ChannelScreen({ navigation }) {
         uri: videoUri,
         type: "video/mp4",
         name: `video_${Date.now()}.mp4`,
-      });
+      } as any);
 
       // Thumbnail (optional)
       if (thumbnailUri) {
@@ -404,11 +404,11 @@ export default function ChannelScreen({ navigation }) {
           uri: thumbnailUri,
           type: "image/jpeg",
           name: `thumbnail_${Date.now()}.jpg`,
-        });
+        } as any);
       }
 
       // ========== XMLHttpRequest (same as create channel) ==========
-      const result = await new Promise((resolve, reject) => {
+      const result: any = await new Promise<any>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open(
           "POST",
@@ -1326,7 +1326,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   playOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.25)",
     justifyContent: "center",
     alignItems: "center",

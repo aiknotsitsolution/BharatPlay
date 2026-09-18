@@ -30,7 +30,7 @@ import { API_BASE } from "../../config/api";
 import Navbar from "./Navbar";
 
 export default function WithdrawScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
   const [points, setPoints] = useState(0);
@@ -179,7 +179,7 @@ export default function WithdrawScreen() {
       const token = await AsyncStorage.getItem("token");
       if (!token) throw new Error("Please login again");
 
-      const payload = {
+      const payload: Record<string, string | number> = {
         amount: withdrawAmount,
         method: selectedMethod.id,
       };

@@ -49,6 +49,7 @@ function TabNavigator() {
 
   return (
     <Tab.Navigator
+      id="admin-tabs"
       screenOptions={({ route }) => ({
         headerShown: false,
 
@@ -157,7 +158,7 @@ function TabNavigator() {
 
 export default function AdminTabNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator id="admin-stack" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={TabNavigator} />
       <Stack.Screen name="VideoDetail" component={VideoDetailScreen} />
       <Stack.Screen name="SubscribedChannels" component={SubscribedChannels} />

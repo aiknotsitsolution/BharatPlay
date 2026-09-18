@@ -38,7 +38,7 @@ const SHORT_HEIGHT = SHORT_WIDTH * (16 / 9);
 // ────────────────────────────────────────────────
 // Normalize helpers
 // ────────────────────────────────────────────────
-const normalizeVideo = (video = {}) => ({
+const normalizeVideo = (video: Record<string, any> = {}) => ({
   id: video._id || video.id,
   title: video.title || "Untitled video",
   thumb: video.thumbnail
@@ -62,7 +62,7 @@ const normalizeVideo = (video = {}) => ({
   isShort: false,
 });
 
-const normalizeShort = (video = {}) => ({
+const normalizeShort = (video: Record<string, any> = {}) => ({
   id: video._id || video.id,
   title: video.title || "Untitled short",
   thumbnail: video.thumbnail
@@ -81,7 +81,7 @@ const normalizeShort = (video = {}) => ({
   isShort: true,
 });
 
-const normalizeChannel = (channel = {}) => ({
+const normalizeChannel = (channel: Record<string, any> = {}) => ({
   id: channel._id || channel.id,
   name: channel.name || "Channel",
   avatar:
@@ -157,8 +157,8 @@ function ShortCard({ item, onPress }) {
 // Main Screen
 // ────────────────────────────────────────────────
 export default function SearchPage() {
-  const route = useRoute();
-  const navigation = useNavigation();
+  const route = useRoute<any>();
+  const navigation = useNavigation<any>();
 
   // query aata hai route params se
   const initialQuery = route.params?.q || route.params?.query || "";
@@ -413,6 +413,7 @@ export default function SearchPage() {
         <FlatList
           data={[{ type: "content" }]}
           keyExtractor={() => "main"}
+          renderItem={() => null}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 30 }}
           ListHeaderComponent={

@@ -1313,7 +1313,7 @@ const TAB_BAR_HEIGHT = 64;
 // ────────────────────────────────────────────────
 // Normalize helpers
 // ────────────────────────────────────────────────
-const normalizeVideoListItem = (video = {}) => ({
+const normalizeVideoListItem = (video: Record<string, any> = {}) => ({
   id: video._id || video.id,
   title: video.title || "Untitled video",
   thumb: video.thumbnail
@@ -1339,7 +1339,7 @@ const normalizeVideoListItem = (video = {}) => ({
   isShort: false,
 });
 
-const normalizeShort = (video = {}) => ({
+const normalizeShort = (video: Record<string, any> = {}) => ({
   id: video._id || video.id,
   title: video.title || "Untitled short",
   thumbnail: video.thumbnail
@@ -1522,8 +1522,8 @@ function BottomTabBar({ navigation }) {
 // Main Screen
 // ────────────────────────────────────────────────
 export default function ViewAll() {
-  const route = useRoute();
-  const navigation = useNavigation();
+  const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   const { type } = route.params || {};
 
   const section = SECTIONS[type];
