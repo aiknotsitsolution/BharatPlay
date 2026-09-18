@@ -36,8 +36,17 @@ import MyClaimsPage from "../pages/MyClaimsPage";
 import FAQPage from "../pages/FAQPage";
 import FeedbackPage from "../pages/FeedbackPage";
 import SupportPage from "../pages/SupportPage";
-import TermsPage from "../pages/TermsPage";
 import BharatPlayStudio from "../pages/Studio/BharatPlayStudio";
+
+// Public company website
+import PublicLayout from "../components/public/PublicLayout";
+import HomePage from "../pages/public/HomePage";
+import AboutPage from "../pages/public/AboutPage";
+import PrivacyPolicyPage from "../pages/public/PrivacyPolicyPage";
+import TermsConditionsPage from "../pages/public/TermsConditionsPage";
+import ContactPage from "../pages/public/ContactPage";
+import DeleteAccountPage from "../pages/public/DeleteAccountPage";
+import AppsPage from "../pages/public/AppsPage";
 
 function ViewAllRoute() {
   const { type } = useParams();
@@ -50,6 +59,19 @@ function ViewAllRoute() {
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* PUBLIC COMPANY SITE — no authentication required */}
+      <Route element={<PublicLayout />}>
+        <Route index element={<HomePage />} />
+        <Route path="about" element={<AboutPage />} />
+        <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="terms" element={<TermsConditionsPage />} />
+        <Route path="contact" element={<ContactPage />} />
+        <Route path="delete-account" element={<DeleteAccountPage />} />
+        <Route path="apps" element={<AppsPage />} />
+        {/* Kept for backwards compatibility */}
+        <Route path="terms-and-conditions" element={<TermsConditionsPage />} />
+      </Route>
+
       {/* OLD LOGIN DESIGN — KEPT FOR EASY ROLLBACK */}
       {/* <Route path="/login" element={<AuthPage />} /> */}
 
@@ -59,7 +81,7 @@ export default function AppRoutes() {
 
       <Route element={<ProtectedLayout />}>
         <Route element={<MainLayout />}>
-          <Route index element={<Home />} />
+          <Route path="home" element={<Home />} />
           <Route path="shorts" element={<Shorts />} />
           <Route path="shorts/:id" element={<Shorts />} />
           <Route path="trending" element={<Trending />} />
@@ -86,7 +108,6 @@ export default function AppRoutes() {
           <Route path="faq" element={<FAQPage />} />
           <Route path="feedback" element={<FeedbackPage />} />
           <Route path="customer-support" element={<SupportPage />} />
-          <Route path="terms-and-conditions" element={<TermsPage />} />
           <Route path="studio" element={<BharatPlayStudio />} />
         </Route>
       </Route>
