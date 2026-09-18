@@ -5,19 +5,19 @@ import {
   Mail,
   User,
   Calendar,
-  FileText,
   Loader2,
   AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
-import { fetchDeletionRequests, updateDeletionRequest } from "../../../api";
+import { fetchDeletionRequestById, updateDeletionRequest } from "../../../api";
 import toast from "react-hot-toast";
 
 const statusOptions = [
-  { value: "pending", label: "Pending", color: "bg-bp-yellow/15 text-bp-yellow" },
-  { value: "verified", label: "Verified", color: "bg-bp-cyan/15 text-bp-cyan" },
-  { value: "processing", label: "Processing", color: "bg-purple-500/15 text-purple-400" },
-  { value: "completed", label: "Completed", color: "bg-emerald-500/15 text-emerald-400" },
-  { value: "rejected", label: "Rejected", color: "bg-red-500/15 text-red-400" },
+  { value: "pending", label: "Pending", color: "bg-bp-yellow/15 text-bp-yellow", desc: "Awaiting review" },
+  { value: "verified", label: "Verified", color: "bg-bp-cyan/15 text-bp-cyan", desc: "Identity confirmed" },
+  { value: "processing", label: "Processing", color: "bg-purple-500/15 text-purple-400", desc: "Deletion in progress" },
+  { value: "completed", label: "Completed", color: "bg-emerald-500/15 text-emerald-400", desc: "Account deleted" },
+  { value: "rejected", label: "Rejected", color: "bg-red-500/15 text-red-400", desc: "Request denied" },
 ];
 
 export default function DeletionRequestDetail() {
@@ -26,17 +26,24 @@ export default function DeletionRequestDetail() {
 
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [updating, setUpdating] = useState(false);
   const [adminNotes, setAdminNotes] = useState("");
 
   const fetchRequest = async () => {
     setLoading(true);
+    setError("");
     try {
-      const res = await fetchDeletionRequests({ page: 1, limit: 100 });
-      const found = (res.data?.requests || []).find((r) => r._id === id);
-      setRequest(found || null);
+      const res = await fetchDeletionRequestById(id);
+      if (res.data?.success) {
+        setRequest(res.data.request);
+        setAdminNotes(res.data.request.adminNotes || "");
+      } else {
+        setError(res.data?.message || "Request not found");
+      }
     } catch (err) {
       console.error("Failed to fetch deletion request:", err);
+      setError(err.response?.data?.message || "Failed to load request");
     } finally {
       setLoading(false);
     }
@@ -69,7 +76,7 @@ export default function DeletionRequestDetail() {
         toast.error(res.data?.message || "Failed to update status");
       }
     } catch (err) {
-      toast.error("Failed to update status");
+      toast.error(err.response?.data?.message || "Failed to update status");
     } finally {
       setUpdating(false);
     }
@@ -88,7 +95,7 @@ export default function DeletionRequestDetail() {
         toast.error(res.data?.message || "Failed to save notes");
       }
     } catch (err) {
-      toast.error("Failed to save notes");
+      toast.error(err.response?.data?.message || "Failed to save notes");
     } finally {
       setUpdating(false);
     }
@@ -110,29 +117,38 @@ export default function DeletionRequestDetail() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-7 h-7 border-2 border-bp-blue border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-bp-text-secondary">
-            Loading deletion request...
-          </p>
+          <p className="text-sm text-bp-text-secondary">Loading deletion request...</p>
         </div>
       </div>
     );
   }
 
-  if (!request) {
+  if (error || !request) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-3">
-          <p className="text-red-600 font-medium">Request not found</p>
-          <button
-            onClick={() => navigate("/support/deletion")}
-            className="px-4 py-2 text-sm bg-bp-card hover:bg-bp-elevated text-bp-text rounded-lg border border-bp-border"
-          >
-            Back to list
-          </button>
+        <div className="text-center space-y-4">
+          <p className="text-red-500 font-medium">{error || "Request not found"}</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={fetchRequest}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-bp-card hover:bg-bp-elevated text-bp-text rounded-lg border border-bp-border"
+            >
+              <RotateCcw size={14} />
+              Retry
+            </button>
+            <button
+              onClick={() => navigate("/support/deletion")}
+              className="px-4 py-2 text-sm bg-bp-card hover:bg-bp-elevated text-bp-text rounded-lg border border-bp-border"
+            >
+              Back to list
+            </button>
+          </div>
         </div>
       </div>
     );
   }
+
+  const currentStatus = statusOptions.find((s) => s.value === request.status);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -144,14 +160,15 @@ export default function DeletionRequestDetail() {
         >
           <ArrowLeft size={20} className="text-bp-text-secondary" />
         </button>
-        <div>
-          <h1 className="text-2xl font-bold text-bp-text">
-            Deletion Request
-          </h1>
-          <p className="text-[13px] text-bp-text-secondary mt-1">
-            {request.email}
-          </p>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold text-bp-text">Deletion Request</h1>
+          <p className="text-[13px] text-bp-text-secondary mt-1">{request.email}</p>
         </div>
+        {currentStatus && (
+          <span className={`px-3 py-1 text-xs font-medium rounded-full border ${currentStatus.color}`}>
+            {currentStatus.label}
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -160,15 +177,13 @@ export default function DeletionRequestDetail() {
           {/* Request details */}
           <div className="bg-bp-card rounded-2xl p-6 space-y-5">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-red-500/10">
+              <div className="p-2.5 rounded-xl bg-red-500/10">
                 <Mail size={18} className="text-red-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-bp-text">
-                  {request.email}
-                </p>
+                <p className="text-sm font-semibold text-bp-text">{request.email}</p>
                 {request.userId && (
-                  <p className="text-xs text-bp-text-muted font-mono">
+                  <p className="text-xs text-bp-text-muted font-mono mt-0.5">
                     User ID: {request.userId}
                   </p>
                 )}
@@ -219,9 +234,7 @@ export default function DeletionRequestDetail() {
 
           {/* Admin Notes */}
           <div className="bg-bp-card rounded-2xl p-6">
-            <h2 className="text-base font-semibold text-bp-text mb-4">
-              Admin Notes
-            </h2>
+            <h2 className="text-base font-semibold text-bp-text mb-4">Admin Notes</h2>
             <textarea
               value={adminNotes}
               onChange={(e) => setAdminNotes(e.target.value)}
@@ -235,9 +248,7 @@ export default function DeletionRequestDetail() {
                 disabled={updating}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-bp-elevated border border-bp-border text-bp-text text-sm font-medium rounded-xl hover:bg-bp-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {updating ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : null}
+                {updating ? <Loader2 size={16} className="animate-spin" /> : null}
                 Save Notes
               </button>
             </div>
@@ -248,27 +259,28 @@ export default function DeletionRequestDetail() {
         <div className="space-y-6">
           {/* Status */}
           <div className="bg-bp-card rounded-2xl p-6">
-            <h2 className="text-base font-semibold text-bp-text mb-4">
-              Status
-            </h2>
+            <h2 className="text-base font-semibold text-bp-text mb-4">Status</h2>
             <div className="space-y-2">
               {statusOptions.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => handleStatusUpdate(opt.value)}
                   disabled={updating || request.status === opt.value}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all duration-150 ${
                     request.status === opt.value
-                      ? `${opt.color} border-current`
-                      : "bg-bp-elevated border-bp-border hover:bg-bp-hover text-bp-text-secondary"
+                      ? `${opt.color} border-current ring-1 ring-current/20`
+                      : "bg-bp-elevated border-bp-border hover:bg-bp-hover text-bp-text-secondary hover:border-bp-text-muted"
                   } disabled:cursor-not-allowed`}
                 >
                   <div
-                    className={`w-3 h-3 rounded-full ${
+                    className={`w-3 h-3 rounded-full transition-colors ${
                       request.status === opt.value ? "bg-current" : "bg-bp-text-muted"
                     }`}
                   />
-                  <span className="text-sm font-medium">{opt.label}</span>
+                  <div className="text-left">
+                    <span className="text-sm font-medium block">{opt.label}</span>
+                    <span className="text-xs opacity-60">{opt.desc}</span>
+                  </div>
                 </button>
               ))}
             </div>
@@ -288,40 +300,30 @@ export default function DeletionRequestDetail() {
 
           {/* Metadata */}
           <div className="bg-bp-card rounded-2xl p-6">
-            <h2 className="text-base font-semibold text-bp-text mb-4">
-              Details
-            </h2>
-            <div className="space-y-3">
+            <h2 className="text-base font-semibold text-bp-text mb-4">Details</h2>
+            <div className="space-y-4">
               <div>
-                <p className="text-xs text-bp-text-muted">Request ID</p>
-                <p className="text-sm text-bp-text font-mono">{request._id}</p>
+                <p className="text-xs text-bp-text-muted mb-1">Request ID</p>
+                <p className="text-sm text-bp-text font-mono break-all">{request._id}</p>
               </div>
               <div>
-                <p className="text-xs text-bp-text-muted">Created</p>
-                <p className="text-sm text-bp-text">
-                  {formatDate(request.createdAt)}
-                </p>
+                <p className="text-xs text-bp-text-muted mb-1">Created</p>
+                <p className="text-sm text-bp-text">{formatDate(request.createdAt)}</p>
               </div>
               <div>
-                <p className="text-xs text-bp-text-muted">Last Updated</p>
-                <p className="text-sm text-bp-text">
-                  {formatDate(request.updatedAt)}
-                </p>
+                <p className="text-xs text-bp-text-muted mb-1">Last Updated</p>
+                <p className="text-sm text-bp-text">{formatDate(request.updatedAt)}</p>
               </div>
               {request.processedBy && (
                 <div>
-                  <p className="text-xs text-bp-text-muted">Processed By</p>
-                  <p className="text-sm text-bp-text font-mono">
-                    {request.processedBy}
-                  </p>
+                  <p className="text-xs text-bp-text-muted mb-1">Processed By</p>
+                  <p className="text-sm text-bp-text font-mono break-all">{request.processedBy}</p>
                 </div>
               )}
               {request.processedAt && (
                 <div>
-                  <p className="text-xs text-bp-text-muted">Processed At</p>
-                  <p className="text-sm text-bp-text">
-                    {formatDate(request.processedAt)}
-                  </p>
+                  <p className="text-xs text-bp-text-muted mb-1">Processed At</p>
+                  <p className="text-sm text-bp-text">{formatDate(request.processedAt)}</p>
                 </div>
               )}
             </div>

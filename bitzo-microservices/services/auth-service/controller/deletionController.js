@@ -115,6 +115,20 @@ exports.getDeletionRequests = async (req, res) => {
   }
 };
 
+exports.getDeletionRequestById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const request = await DeletionRequest.findById(id).lean();
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Request not found." });
+    }
+    return res.status(200).json({ success: true, request });
+  } catch (err) {
+    console.error("[deletion] Fetch by ID error:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch request." });
+  }
+};
+
 exports.updateDeletionStatus = async (req, res) => {
   try {
     const { id } = req.params;
