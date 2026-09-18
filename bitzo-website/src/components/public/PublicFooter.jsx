@@ -1,23 +1,22 @@
 import { Link } from "react-router-dom";
-import { Sun, Moon } from "lucide-react";
 import { SITE } from "../../config/site";
 import { useTheme } from "../../context/ThemeContext";
 import SiteLogo from "./SiteLogo";
 
 const COLUMNS = [
   {
-    title: "Company",
+    title: "BharatPlay",
     links: [
       { label: "About Us", path: "/about" },
-      { label: "Press", path: "/about" },
-      { label: "Jobs", path: "/about" },
       { label: "Contact", path: "/contact" },
+      { label: "Careers", path: "/about" },
+      { label: "Press", path: "/about" },
     ],
   },
   {
     title: "Products",
     links: [
-      { label: "Website", path: "/apps" },
+      { label: "BharatPlay Website", path: "/apps" },
       { label: "Mobile App", path: "/apps" },
       { label: "Shorts", path: "/" },
       { label: "Premium", path: "/about" },
@@ -34,11 +33,11 @@ const COLUMNS = [
     ],
   },
   {
-    title: "Business",
+    title: "For Business",
     links: [
-      { label: "For Business", path: "/for-business" },
+      { label: "Advertising", path: "/advertising" },
       { label: "Developers", path: "/developers" },
-      { label: "BharatPlay Advertising", path: "/advertising" },
+      { label: "Partnerships", path: "/for-business" },
     ],
   },
   {
@@ -47,7 +46,6 @@ const COLUMNS = [
       { label: "Privacy", path: "/privacy-policy" },
       { label: "Terms", path: "/terms" },
       { label: "Account & Data Deletion", path: "/delete-account" },
-      { label: "Brand Guidelines", path: "/terms" },
     ],
   },
 ];
@@ -60,7 +58,7 @@ const BOTTOM_LINKS = [
 ];
 
 export default function PublicFooter() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const isDark = theme === "dark";
 
   return (
@@ -142,19 +140,6 @@ export default function PublicFooter() {
             >
               Help
             </a>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
-                isDark
-                  ? "border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white"
-                  : "border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-900"
-              }`}
-              aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
-            >
-              {isDark ? <Sun size={13} /> : <Moon size={13} />}
-              {isDark ? "Light" : "Dark"}
-            </button>
           </div>
         </div>
       </div>

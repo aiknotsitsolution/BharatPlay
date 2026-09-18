@@ -27,7 +27,6 @@ export default function SubscribedChannels() {
   const [videos, setVideos] = useState([]);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscribersCount, setSubscribersCount] = useState(0);
-  const [subscribeLoading, setSubscribeLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("Home");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -79,20 +78,27 @@ export default function SubscribedChannels() {
 
   const handleSubscribe = async () => {
     if (!id) return;
-    setSubscribeLoading(true);
+
     const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Please login to subscribe");
+      return;
+    }
+
+    const wasSubscribed = isSubscribed;
+    setIsSubscribed((prev) => !prev);
 
     try {
       const res = await fetch(`${API_BASE}/subscribe/${id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
       });
       const data = await res.json();
       if (data.success) {
-        setIsSubscribed(data.subscribed);
+        setIsSubscribed(Boolean(data.subscribed));
         if (typeof data.subscribersCount === "number") {
           setSubscribersCount(data.subscribersCount);
         }
@@ -103,12 +109,12 @@ export default function SubscribedChannels() {
         );
       } else {
         toast.error(data.message || "Subscription action failed");
+        setIsSubscribed(wasSubscribed);
       }
     } catch (err) {
       console.error(err);
       toast.error("Something went wrong");
-    } finally {
-      setSubscribeLoading(false);
+      setIsSubscribed(wasSubscribed);
     }
   };
 
@@ -233,12 +239,11 @@ export default function SubscribedChannels() {
             <div className="mt-4">
               <button
                 onClick={handleSubscribe}
-                disabled={subscribeLoading}
                 className={`inline-flex items-center gap-2 h-9 px-4 rounded-full text-[14px] font-medium transition ${
                   isSubscribed
                     ? "bg-[#272727] hover:bg-[#3a3a3a] text-gray-200 border border-gray-700"
                     : "bg-red-600 hover:bg-red-700 text-white"
-                } ${subscribeLoading ? "opacity-70" : ""}`}
+                }`}
               >
                 {isSubscribed ? (
                   <>

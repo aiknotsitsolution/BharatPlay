@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { CheckCircle2, Trash2, ShieldCheck, Clock, UserX, Mail, Loader2 } from "lucide-react";
 import LegalPageLayout from "../../../components/public/LegalPageLayout";
 import { useTheme } from "../../../context/ThemeContext";
@@ -16,15 +17,28 @@ const REASONS = [
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const getLoggedInUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    return null;
+  }
+};
+
+const getInitialDeletionForm = () => {
+  const user = getLoggedInUser();
+  return {
+    email: user?.email || "",
+    accountIdentifier: "",
+    reason: "",
+  };
+};
+
 export default function DeleteAccountPage() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [step, setStep] = useState("form"); // form | confirm | success
-  const [form, setForm] = useState({
-    email: "",
-    accountIdentifier: "",
-    reason: "",
-  });
+  const [form, setForm] = useState(getInitialDeletionForm);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
@@ -149,7 +163,7 @@ export default function DeleteAccountPage() {
             <button
               type="button"
               onClick={() => {
-                setForm({ email: "", accountIdentifier: "", reason: "" });
+                setForm(getInitialDeletionForm());
                 setErrors({});
                 setStep("form");
               }}
@@ -161,6 +175,12 @@ export default function DeleteAccountPage() {
             >
               Submit another request
             </button>
+            <Link
+              to="/my-support-requests"
+              className="mt-3 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium text-red-500 hover:text-red-400 transition-colors"
+            >
+              Track your request status
+            </Link>
           </div>
         ) : (
           <>

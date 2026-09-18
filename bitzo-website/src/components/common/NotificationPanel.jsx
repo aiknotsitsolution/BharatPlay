@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { CheckCheck, Trash2, Loader2, Bell } from "lucide-react";
@@ -7,6 +7,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   deleteNotification,
+  clearAllNotifications,
 } from "../../features/notifications/notificationsSlice";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 
@@ -79,6 +80,7 @@ const formatTime = (timestamp) => {
 export default function NotificationPanel({ isOpen, onClose }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [clearing, setClearing] = useState(false);
   const { notifications, unreadCount, loading } = useSelector(
     (state) => state.notifications,
   );
@@ -111,6 +113,12 @@ export default function NotificationPanel({ isOpen, onClose }) {
     }
   };
 
+  const handleClearAll = () => {
+    if (notifications.length === 0 || clearing) return;
+    setClearing(true);
+    dispatch(clearAllNotifications()).finally(() => setClearing(false));
+  };
+
   return (
     <div className="absolute right-0 mt-3 w-[min(20rem,calc(100vw-2rem))] max-h-[calc(100dvh-5rem)] overflow-y-auto overflow-x-hidden scroll-smooth bg-[#0f0f0f] border border-gray-700 rounded-xl shadow-2xl z-50 text-white">
       <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-[#0f0f0f]">
@@ -123,15 +131,32 @@ export default function NotificationPanel({ isOpen, onClose }) {
             </span>
           )}
         </div>
-        {unreadCount > 0 && (
-          <button
-            onClick={handleMarkAll}
-            className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
-          >
-            <CheckCheck size={15} />
-            Mark all read
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {notifications.length > 0 && (
+            <button
+              onClick={handleClearAll}
+              disabled={clearing}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-400 font-medium transition-colors disabled:opacity-50"
+              title="Delete all notifications"
+            >
+              {clearing ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Trash2 size={14} />
+              )}
+              Clear all
+            </button>
+          )}
+          {unreadCount > 0 && (
+            <button
+              onClick={handleMarkAll}
+              className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+            >
+              <CheckCheck size={15} />
+              Mark all read
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (

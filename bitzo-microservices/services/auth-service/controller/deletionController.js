@@ -15,14 +15,20 @@ exports.submitDeletionRequest = async (req, res) => {
     if (!emailRegex.test(email.trim()))
       return res.status(400).json({ success: false, message: "Please enter a valid email address." });
 
-    // Check if user exists with this email
-    const user = await User.findOne({ email: email.trim().toLowerCase() }).lean();
+    // Associate with logged-in user if present, otherwise find by email
+    let userId = req.user?.id || null;
+    if (!userId) {
+      const userByEmail = await User.findOne({
+        email: email.trim().toLowerCase(),
+      }).lean();
+      userId = userByEmail?._id || null;
+    }
 
     const deletionRequest = await DeletionRequest.create({
       email: email.trim().toLowerCase(),
       accountIdentifier: accountIdentifier?.trim() || "",
       reason: reason?.trim() || "",
-      userId: user?._id || null,
+      userId,
     });
 
     // Notify support team
@@ -38,7 +44,7 @@ exports.submitDeletionRequest = async (req, res) => {
               <table style="width: 100%; border-collapse: collapse;">
                 <tr><td style="padding: 8px; font-weight: bold; color: #555;">Email:</td><td style="padding: 8px;">${email.trim()}</td></tr>
                 <tr><td style="padding: 8px; font-weight: bold; color: #555;">Account ID:</td><td style="padding: 8px;">${accountIdentifier?.trim() || "N/A"}</td></tr>
-                <tr><td style="padding: 8px; font-weight: bold; color: #555;">User Found:</td><td style="padding: 8px;">${user ? "Yes (" + user._id + ")" : "No"}</td></tr>
+                <tr><td style="padding: 8px; font-weight: bold; color: #555;">User Found:</td><td style="padding: 8px;">${userId ? "Yes (" + userId + ")" : "No"}</td></tr>
                 <tr><td style="padding: 8px; font-weight: bold; color: #555;">Reason:</td><td style="padding: 8px;">${reason?.trim() || "Not provided"}</td></tr>
               </table>
               <p style="margin-top: 16px; color: #999; font-size: 12px;">
@@ -107,11 +113,58 @@ exports.getDeletionRequests = async (req, res) => {
     return res.status(200).json({
       success: true,
       requests,
-      pagination: { page: Number(page), limit: Number(limit), total },
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit)) || 1,
+      },
     });
   } catch (err) {
     console.error("[deletion] Fetch error:", err);
     return res.status(500).json({ success: false, message: "Failed to fetch requests." });
+  }
+};
+
+exports.getMyDeletionRequests = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const user = await User.findById(userId).select("email").lean();
+    const { status, page = 1, limit = 20 } = req.query;
+
+    const filter = {
+      $or: [
+        { userId },
+        ...(user?.email ? [{ email: String(user.email).toLowerCase() }] : []),
+      ],
+    };
+    if (status) filter.status = status;
+
+    const requests = await DeletionRequest.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+      .lean();
+
+    const total = await DeletionRequest.countDocuments(filter);
+
+    return res.status(200).json({
+      success: true,
+      requests,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit)) || 1,
+      },
+    });
+  } catch (err) {
+    console.error("[deletion] My requests error:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch your requests." });
   }
 };
 

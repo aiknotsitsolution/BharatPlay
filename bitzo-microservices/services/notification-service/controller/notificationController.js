@@ -79,6 +79,21 @@ const markAllNotificationsRead = async (req, res) => {
   }
 };
 
+const clearAllNotifications = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    await Notification.deleteMany({ recipient: userId });
+
+    emitNotificationRead(userId, null, 0, true);
+
+    res.status(200).json({ success: true, unreadCount: 0 });
+  } catch (error) {
+    console.error("Error in clearAllNotifications:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 const deleteNotification = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -111,5 +126,6 @@ module.exports = {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  clearAllNotifications,
   deleteNotification,
 };

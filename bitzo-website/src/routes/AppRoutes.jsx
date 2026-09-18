@@ -36,6 +36,7 @@ import MyClaimsPage from "../pages/MyClaimsPage";
 import FAQPage from "../pages/FAQPage";
 import FeedbackPage from "../pages/FeedbackPage";
 import BharatPlayStudio from "../pages/Studio/BharatPlayStudio";
+import MySupportRequests from "../pages/MySupportRequests";
 
 // Public company website
 import PublicLayout from "../components/public/PublicLayout";
@@ -126,6 +127,7 @@ export default function AppRoutes() {
             element={<Navigate to="/contact" replace />}
           />
           <Route path="studio" element={<BharatPlayStudio />} />
+    <Route path="my-support-requests" element={<MySupportRequests />} />
         </Route>
       </Route>
 

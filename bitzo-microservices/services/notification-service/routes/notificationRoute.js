@@ -5,11 +5,13 @@ const {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  clearAllNotifications,
   deleteNotification,
 } = require("../controller/notificationController");
 
 router.get("/", isAuthenticated, getNotifications);
 router.patch("/read-all", isAuthenticated, markAllNotificationsRead);
+router.delete("/clear-all", isAuthenticated, clearAllNotifications);
 router.patch("/:id/read", isAuthenticated, markNotificationRead);
 router.delete("/:id", isAuthenticated, deleteNotification);
 

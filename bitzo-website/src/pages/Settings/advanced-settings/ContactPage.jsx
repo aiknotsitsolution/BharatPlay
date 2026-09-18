@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Mail, HelpCircle, ShieldCheck, UserX, AlertTriangle, Briefcase, CheckCircle2, Send, Loader2 } from "lucide-react";
 import LegalPageLayout from "../../../components/public/LegalPageLayout";
 import { useTheme } from "../../../context/ThemeContext";
@@ -26,16 +27,29 @@ const CONTACT_CHANNELS = [
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function ContactPage() {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
+const getLoggedInUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    return null;
+  }
+};
+
+const getInitialContactForm = () => {
+  const user = getLoggedInUser();
+  return {
+    name: user?.name || "",
+    email: user?.email || "",
     inquiryType: INQUIRY_TYPES[0],
     subject: "",
     message: "",
-  });
+  };
+};
+
+export default function ContactPage() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const [form, setForm] = useState(getInitialContactForm);
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -169,13 +183,7 @@ export default function ContactPage() {
             <button
               type="button"
               onClick={() => {
-                setForm({
-                  name: "",
-                  email: "",
-                  inquiryType: INQUIRY_TYPES[0],
-                  subject: "",
-                  message: "",
-                });
+                setForm(getInitialContactForm());
                 setErrors({});
                 setSubmitted(false);
               }}
@@ -187,6 +195,12 @@ export default function ContactPage() {
             >
               Send another request
             </button>
+            <Link
+              to="/my-support-requests"
+              className="mt-3 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium text-red-500 hover:text-red-400 transition-colors"
+            >
+              Track your request status
+            </Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate>

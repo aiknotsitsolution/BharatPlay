@@ -908,6 +908,7 @@ import {
   ChevronDown,
   ChevronUp,
   Tv,
+  LifeBuoy,
 } from "lucide-react";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 
@@ -1022,8 +1023,9 @@ export default function Sidebar({ isOpen }) {
                       { path: "/history", icon: History, label: "History" },
                       { path: "/liked-videos", icon: Heart, label: "Liked videos" },
                       { path: "/watch-later", icon: Clock, label: "Watch later" },
-                      { path: "/your-videos", icon: Video, label: "Your videos" },
-                    ].map((sub) => (
+{ path: "/your-videos", icon: Video, label: "Your videos" },
+      { path: "/my-support-requests", icon: LifeBuoy, label: "Support requests" },
+    ].map((sub) => (
                       <button
                         key={sub.path}
                         onClick={() => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   Edit,
   Video as VideoIcon,
@@ -276,7 +277,11 @@ export default function ChannelPage() {
 
         setChannel(channelData);
         setSubscribersCount(selected.subscribedBy?.length || 0);
-        setIsSubscribed(selected.subscribedBy?.includes(getUserId()) || false);
+        setIsSubscribed(
+          (selected.subscribedBy || []).some(
+            (s) => String(s?._id || s) === String(getUserId()),
+          ) || false,
+        );
 
         navigate(`/channel/${cleanHandle}`, { replace: true });
       } catch (err) {
@@ -299,9 +304,15 @@ export default function ChannelPage() {
 
     const token = getToken();
     if (!token) {
-      alert("Please login to subscribe");
+      toast.error("Please login to subscribe");
       return;
     }
+
+    const wasSubscribed = isSubscribed;
+    setIsSubscribed((prev) => !prev);
+    setSubscribersCount((prev) =>
+      Math.max(0, prev + (wasSubscribed ? -1 : 1)),
+    );
 
     try {
       const res = await fetch(
@@ -319,8 +330,9 @@ export default function ChannelPage() {
 
       if (!res.ok) throw new Error(result.message || "Subscription failed");
 
-      setIsSubscribed(result.subscribed);
+      setIsSubscribed(Boolean(result.subscribed));
       setSubscribersCount(result.subscribersCount);
+      toast.success(result.subscribed ? "Subscribed" : "Unsubscribed");
 
       // Update channel object
       setChannel((prev) => ({
@@ -329,7 +341,11 @@ export default function ChannelPage() {
       }));
     } catch (error) {
       console.error("Subscription error:", error);
-      alert(error.message || "Something went wrong");
+      setIsSubscribed(wasSubscribed);
+      setSubscribersCount((prev) =>
+        Math.max(0, prev + (wasSubscribed ? 1 : -1)),
+      );
+      toast.error(error.message || "Something went wrong");
     }
   };
 
