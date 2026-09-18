@@ -120,7 +120,7 @@ import SITE from "../../config/site";
 const SECTIONS = [
   {
     title: "1. Introduction",
-    body: "This Privacy Policy explains how BharatPlay (\"we\", \"our\" or \"us\") collects, uses, stores, shares and protects information relating to users of the BharatPlay website and the BharatPlay Android application (together, the \"Service\"). By using the Service, you agree to the practices described in this policy.",
+    body: 'This Privacy Policy explains how BharatPlay ("we", "our" or "us") collects, uses, stores, shares and protects information relating to users of the BharatPlay website and the BharatPlay Android application (together, the "Service"). By using the Service, you agree to the practices described in this policy.',
   },
   {
     title: "2. Information We Collect",
@@ -160,11 +160,11 @@ const SECTIONS = [
   },
   {
     title: "11. Advertising and Advertising Identifiers",
-    body: "Where advertising is shown on the Service, we or our advertising partners may use cookies, device advertising identifiers, or similar technologies to serve and measure ads. These partners may collect information about your device and interactions with ads. You can manage advertising preferences through your device or browser settings.",
+    body: "Where advertising is shown on the Service, we or our advertising partners may use cookies, device advertising identifiers, or similar technologies to serve and measure ads. Depending on the app version, country, and enabled mediation configuration, advertising partners may include AppLovin MAX, Unity Ads, LevelPlay (ironSource), Mintegral, or other providers that we enable in the future. These partners may collect information about your device, approximate location, and interactions with ads. You can manage advertising preferences through your device or browser settings. Rewarded advertising does not guarantee a cash payment; any rewards are subject to the applicable program rules, fraud checks, eligibility, and available payout process.",
   },
   {
     title: "12. Third-Party Services and SDKs",
-    body: "The Service uses third-party services and software development kits (SDKs). For example, the website uses Google Sign-In for authentication, and the Android app uses Firebase Authentication (and related Firebase services) for sign-in and account features. These providers process data according to their own privacy policies and our instructions. We may also use other third-party SDKs for analytics, crash reporting, or advertising where applicable.",
+    body: "The Service uses third-party services and software development kits (SDKs). For example, the website uses Google Sign-In for authentication, and the Android app uses Firebase Authentication (and related Firebase services) for sign-in and account features. These providers process data according to their own privacy policies and our instructions. We may also use third-party SDKs for analytics, crash reporting, fraud prevention, or advertising where applicable. The exact providers enabled for a release will be listed in the relevant app-store disclosures and may vary by country or mediation setup.",
   },
   {
     title: "13. How We Use Information",
@@ -200,7 +200,7 @@ const SECTIONS = [
   },
   {
     title: "21. Changes to This Privacy Policy",
-    body: "We may update this Privacy Policy from time to time. When we make material changes, we will update the \"Last Updated\" date at the top of this page and, where appropriate, notify you through the Service. Your continued use of the Service after changes take effect constitutes your acceptance of the updated policy.",
+    body: 'We may update this Privacy Policy from time to time. When we make material changes, we will update the "Last Updated" date at the top of this page and, where appropriate, notify you through the Service. Your continued use of the Service after changes take effect constitutes your acceptance of the updated policy.',
   },
   {
     title: "22. Contact Us",

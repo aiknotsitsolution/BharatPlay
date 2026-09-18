@@ -1,7 +1,9 @@
 // src/pages/WithdrawPage.jsx
-import React, { useState } from 'react';
-import { ArrowLeft, Wallet, Copy, Check, AlertCircle } from 'lucide-react';
-import { useRewards } from '../../context/RewardContext'; // your points context
+import React, { useState } from "react";
+import { ArrowLeft, Wallet, Copy, Check, AlertCircle } from "lucide-react";
+import { useRewards } from "../../context/RewardContext"; // your points context
+
+const WITHDRAWALS_ENABLED = false;
 
 export default function WithdrawPage() {
   const { points } = useRewards(); // current points from context
@@ -11,30 +13,37 @@ export default function WithdrawPage() {
 
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [copied, setCopied] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [error, setError] = useState('');
+  const [amount, setAmount] = useState("");
+  const [error, setError] = useState("");
 
   // Available withdraw methods (you can expand)
   const methods = [
-    { id: 'upi', name: 'UPI (Google Pay / PhonePe)', min: 5, fee: 0 },
-    { id: 'paypal', name: 'Cash', min: 10, fee: 2.9 },
-    { id: 'bank', name: 'Bank Transfer', min: 20, fee: 1.5 },
+    { id: "upi", name: "UPI (Google Pay / PhonePe)", min: 5, fee: 0 },
+    { id: "paypal", name: "Cash", min: 10, fee: 2.9 },
+    { id: "bank", name: "Bank Transfer", min: 20, fee: 1.5 },
   ];
-``
+  ``;
   const handleCopyUPI = () => {
-    navigator.clipboard.writeText('aditya@upi'); // replace with real UPI ID
+    navigator.clipboard.writeText("aditya@upi"); // replace with real UPI ID
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleWithdraw = () => {
+    if (!WITHDRAWALS_ENABLED) {
+      setError(
+        "Withdrawals are not available yet. Your points remain in your account until BharatPlay enables verified payouts.",
+      );
+      return;
+    }
+
     const withdrawAmount = parseFloat(amount);
     if (!withdrawAmount || withdrawAmount <= 0) {
-      setError('Enter a valid amount');
+      setError("Enter a valid amount");
       return;
     }
     if (!selectedMethod) {
-      setError('Select a withdrawal method');
+      setError("Select a withdrawal method");
       return;
     }
     if (withdrawAmount < selectedMethod.min) {
@@ -42,16 +51,18 @@ export default function WithdrawPage() {
       return;
     }
     if (withdrawAmount > parseFloat(usdBalance)) {
-      setError('Insufficient balance');
+      setError("Insufficient balance");
       return;
     }
 
     // Here you would call your backend API
-    alert(`Withdrawal request of $${withdrawAmount.toFixed(2)} via ${selectedMethod.name} submitted!`);
+    alert(
+      `Withdrawal request of $${withdrawAmount.toFixed(2)} via ${selectedMethod.name} submitted!`,
+    );
     // Reset form
-    setAmount('');
+    setAmount("");
     setSelectedMethod(null);
-    setError('');
+    setError("");
   };
 
   return (
@@ -66,7 +77,7 @@ export default function WithdrawPage() {
 
       <div className="pt-20 px-4 max-w-md mx-auto">
         {/* Balance Card */}
-        <div className="bg-gradient-to-br from-[#1a1a2e] to-[#0f0f1f] rounded-2xl p-6 mb-6 border border-gray-700 shadow-xl">
+        <div className="bg-linear-to-br from-[#1a1a2e] to-[#0f0f1f] rounded-2xl p-6 mb-6 border border-gray-700 shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-gray-400 text-sm">Available Balance</p>
@@ -88,13 +99,17 @@ export default function WithdrawPage() {
               onClick={() => setSelectedMethod(method)}
               className={`w-full p-4 rounded-xl border transition-all flex items-center justify-between ${
                 selectedMethod?.id === method.id
-                  ? 'border-blue-600 bg-blue-950/30'
-                  : 'border-gray-700 hover:border-gray-500 bg-[#1a1a1a]'
+                  ? "border-blue-600 bg-blue-950/30"
+                  : "border-gray-700 hover:border-gray-500 bg-[#1a1a1a]"
               }`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center">
-                  {method.id === 'upi' ? '₹' : method.id === 'paypal' ? '$' : '🏦'}
+                  {method.id === "upi"
+                    ? "₹"
+                    : method.id === "paypal"
+                      ? "$"
+                      : "🏦"}
                 </div>
                 <div className="text-left">
                   <p className="font-medium">{method.name}</p>
@@ -117,13 +132,15 @@ export default function WithdrawPage() {
               Amount to Withdraw (USD)
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                $
+              </span>
               <input
                 type="number"
                 value={amount}
                 onChange={(e) => {
                   setAmount(e.target.value);
-                  setError('');
+                  setError("");
                 }}
                 placeholder="0.00"
                 className="w-full bg-[#1a1a1a] border border-gray-700 rounded-xl py-3.5 pl-10 pr-4 text-xl focus:outline-none focus:border-blue-600"
@@ -140,18 +157,22 @@ export default function WithdrawPage() {
             )}
 
             <p className="text-xs text-gray-500 mt-2">
-              You will receive ≈ ${(amount * (1 - selectedMethod.fee / 100)).toFixed(2)} after fee
+              You will receive ≈ $
+              {(amount * (1 - selectedMethod.fee / 100)).toFixed(2)} after fee
             </p>
           </div>
         )}
 
         {/* UPI Specific (example) */}
-        {selectedMethod?.id === 'upi' && (
+        {selectedMethod?.id === "upi" && (
           <div className="bg-[#1a1a1a] p-4 rounded-xl mb-8">
             <p className="text-sm mb-2">Send to UPI ID:</p>
             <div className="flex items-center justify-between bg-[#272727] p-3 rounded-lg">
               <span className="font-medium">aditya@upi</span>
-              <button onClick={handleCopyUPI} className="text-blue-400 hover:text-blue-300">
+              <button
+                onClick={handleCopyUPI}
+                className="text-blue-400 hover:text-blue-300"
+              >
                 {copied ? <Check size={18} /> : <Copy size={18} />}
               </button>
             </div>
@@ -167,15 +188,16 @@ export default function WithdrawPage() {
           disabled={!selectedMethod || !amount || parseFloat(amount) <= 0}
           className={`w-full py-4 rounded-xl font-bold text-lg transition ${
             selectedMethod && amount && parseFloat(amount) > 0
-              ? 'bg-green-600 hover:bg-green-700 text-white'
-              : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              ? "bg-green-600 hover:bg-green-700 text-white"
+              : "bg-gray-700 text-gray-500 cursor-not-allowed"
           }`}
         >
           Withdraw Now
         </button>
 
         <p className="text-center text-xs text-gray-500 mt-6">
-          Processing time: 1–3 business days • First withdrawal may take longer for verification
+          Processing time: 1–3 business days • First withdrawal may take longer
+          for verification
         </p>
       </div>
     </div>

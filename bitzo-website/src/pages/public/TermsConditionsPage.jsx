@@ -4,7 +4,7 @@ import SITE from "../../config/site";
 const SECTIONS = [
   {
     title: "1. Introduction",
-    body: "These Terms & Conditions (\"Terms\") govern your access to and use of the BharatPlay website and Android application (together, the \"Service\"). By accessing or using the Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.",
+    body: 'These Terms & Conditions ("Terms") govern your access to and use of the BharatPlay website and Android application (together, the "Service"). By accessing or using the Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.',
   },
   {
     title: "2. Eligibility",
@@ -39,23 +39,27 @@ const SECTIONS = [
     body: "We may suspend or terminate your account at any time if you violate these Terms or if we believe it is necessary to protect the Service or other users. You may delete your account at any time through the Delete Account page. Upon termination, your right to use the Service ends immediately.",
   },
   {
-    title: "10. Disclaimers",
-    body: "The Service is provided on an \"as is\" and \"as available\" basis. We do not guarantee that the Service will be uninterrupted, error-free or secure. To the maximum extent permitted by law, we disclaim all warranties, express or implied.",
+    title: "10. Rewards, Advertising and Withdrawals",
+    body: "BharatPlay may offer points or other in-app rewards for eligible activity, including approved rewarded-ad experiences. Rewards are promotional, have no guaranteed cash value until a withdrawal is approved, and may be limited, reversed, withheld, or removed for invalid activity, duplicate accounts, automation, fraud, chargebacks, policy violations, or technical errors. Conversion rates, minimum thresholds, supported payout methods, fees, regions, and processing times may change and are shown in the app when available. A withdrawal request is not a payment guarantee; payouts require an active BharatPlay account, successful verification, an available payout system, and final approval. Users must not encourage accidental ad clicks or use methods that manipulate ad measurement.",
   },
   {
-    title: "11. Limitation of Liability",
+    title: "11. Disclaimers",
+    body: 'The Service is provided on an "as is" and "as available" basis. We do not guarantee that the Service will be uninterrupted, error-free or secure. To the maximum extent permitted by law, we disclaim all warranties, express or implied.',
+  },
+  {
+    title: "12. Limitation of Liability",
     body: "To the maximum extent permitted by law, BharatPlay and its officers, directors and employees shall not be liable for any indirect, incidental, special, consequential or punitive damages arising out of your use of the Service.",
   },
   {
-    title: "12. Changes to Terms",
-    body: "We may update these Terms from time to time. When we make material changes, we will update the \"Last Updated\" date and, where appropriate, notify you. Your continued use of the Service after changes take effect constitutes acceptance of the revised Terms.",
+    title: "13. Changes to Terms",
+    body: 'We may update these Terms from time to time. When we make material changes, we will update the "Last Updated" date and, where appropriate, notify you. Your continued use of the Service after changes take effect constitutes acceptance of the revised Terms.',
   },
   {
-    title: "13. Governing Law",
+    title: "14. Governing Law",
     body: "These Terms are governed by the laws of India. Any disputes arising out of or relating to these Terms or the Service shall be subject to the exclusive jurisdiction of the courts in India.",
   },
   {
-    title: "14. Contact Us",
+    title: "15. Contact Us",
     body: SITE.supportEmail
       ? `If you have questions about these Terms, you can contact us at ${SITE.supportEmail}.`
       : "If you have questions about these Terms, please use the Contact page to reach us.",
