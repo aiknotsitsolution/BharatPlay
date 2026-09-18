@@ -32,7 +32,7 @@ export default function AuthPageV2() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
+  const from = location.state?.from?.pathname || "/home";
 
   useEffect(() => {
     const token = localStorage.getItem("token");

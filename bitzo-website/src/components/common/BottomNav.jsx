@@ -9,7 +9,7 @@ import { fetchProfileData } from "../../features/profile/profileSlice";
 
 
 const bottomItems = [
-  { icon: Home, label: "Home", path: "/" },
+  { icon: Home, label: "Home", path: "/home" },
   { icon: Flame, label: "Shorts", path: "/shorts" },
   { icon: Plus, label: "", path: "/uploadvideo", isCenter: true },
   { icon: MonitorSpeakerIcon, label: "Earn More", path: "/video/1" },

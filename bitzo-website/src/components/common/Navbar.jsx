@@ -357,7 +357,7 @@ export default function Navbar({ toggleSidebar }) {
             <Menu size={22} className="text-white" />
           </button>
 
-          <Link to="/" className="flex items-center flex-shrink-0 gap-0 ml-1">
+          <Link to="/home" className="flex items-center flex-shrink-0 gap-0 ml-1">
             <div className="w-16 h-12 rounded-md overflow-hidden flex items-center justify-center">
               <img
                 src={logo}
