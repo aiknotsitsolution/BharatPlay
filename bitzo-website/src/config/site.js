@@ -10,17 +10,14 @@ const isBrowser = typeof window !== "undefined";
 
 export const SITE = {
   brandName: "BharatPlay",
-  brandTagline: "Watch. Create. Earn rewards.",
+  brandTagline: "Watch. Create. Connect.",
 
   description:
-    "BharatPlay is the official BharatPlay digital platform — a video experience where you can watch, discover and upload short and long videos across web and mobile.",
+    "BharatPlay is a video and creator platform where people can watch, discover, upload and share short and long videos across web and mobile.",
 
   // Verified in the repository: the website is a video-sharing platform.
   product: {
-    categories: [
-      "BharatPlay Website (Web)",
-      "BharatPlay Mobile App (Android)",
-    ],
+    categories: ["BharatPlay Website (Web)", "BharatPlay Mobile App (Android)"],
   },
 
   // Verified from MyApp/app.json
@@ -38,7 +35,10 @@ export const SITE = {
 
   // Google Play listing. Not present in the repository — set VITE_GOOGLE_PLAY_URL
   // to the real listing URL when available. Never fabricate.
-  googlePlayUrl: (import.meta.env.VITE_GOOGLE_PLAY_URL || "").replace(/\/+$/, ""),
+  googlePlayUrl: (import.meta.env.VITE_GOOGLE_PLAY_URL || "").replace(
+    /\/+$/,
+    "",
+  ),
 
   // Support / contact email. Not verified in the repository — set
   // VITE_SUPPORT_EMAIL when the real address is available.

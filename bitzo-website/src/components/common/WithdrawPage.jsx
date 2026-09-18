@@ -1,6 +1,6 @@
 // src/pages/WithdrawPage.jsx
 import React, { useState } from "react";
-import { ArrowLeft, Wallet, Copy, Check, AlertCircle } from "lucide-react";
+import { ArrowLeft, Wallet, AlertCircle } from "lucide-react";
 import { useRewards } from "../../context/RewardContext"; // your points context
 
 const WITHDRAWALS_ENABLED = false;
@@ -12,7 +12,6 @@ export default function WithdrawPage() {
   const usdBalance = (points * 0.01).toFixed(2); // $257.30 if points=25730
 
   const [selectedMethod, setSelectedMethod] = useState(null);
-  const [copied, setCopied] = useState(false);
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
 
@@ -23,12 +22,6 @@ export default function WithdrawPage() {
     { id: "bank", name: "Bank Transfer", min: 20, fee: 1.5 },
   ];
   ``;
-  const handleCopyUPI = () => {
-    navigator.clipboard.writeText("aditya@upi"); // replace with real UPI ID
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const handleWithdraw = () => {
     if (!WITHDRAWALS_ENABLED) {
       setError(
@@ -80,14 +73,21 @@ export default function WithdrawPage() {
         <div className="bg-linear-to-br from-[#1a1a2e] to-[#0f0f1f] rounded-2xl p-6 mb-6 border border-gray-700 shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-gray-400 text-sm">Available Balance</p>
+              <p className="text-gray-400 text-sm">BharatPlay Points</p>
               <p className="text-4xl font-bold">${usdBalance}</p>
             </div>
             <Wallet size={48} className="text-yellow-400 opacity-80" />
           </div>
           <p className="text-sm text-gray-500">
-            ≈ {points.toFixed(2)} Bharat Play Points (1 point = $0.01)
+            Current points are promotional and are not cash until a verified
+            BharatPlay payout program is enabled.
           </p>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-amber-700/50 bg-amber-950/30 p-4 text-sm leading-relaxed text-amber-200">
+          Withdrawals are not available in this release. Do not send money or
+          payment details to anyone claiming to represent BharatPlay. Your
+          points remain associated with your account.
         </div>
 
         {/* Select Method */}
@@ -97,10 +97,13 @@ export default function WithdrawPage() {
             <button
               key={method.id}
               onClick={() => setSelectedMethod(method)}
+              disabled={!WITHDRAWALS_ENABLED}
               className={`w-full p-4 rounded-xl border transition-all flex items-center justify-between ${
-                selectedMethod?.id === method.id
-                  ? "border-blue-600 bg-blue-950/30"
-                  : "border-gray-700 hover:border-gray-500 bg-[#1a1a1a]"
+                !WITHDRAWALS_ENABLED
+                  ? "border-gray-800 bg-[#151515] text-gray-500 cursor-not-allowed"
+                  : selectedMethod?.id === method.id
+                    ? "border-blue-600 bg-blue-950/30"
+                    : "border-gray-700 hover:border-gray-500 bg-[#1a1a1a]"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -163,41 +166,27 @@ export default function WithdrawPage() {
           </div>
         )}
 
-        {/* UPI Specific (example) */}
-        {selectedMethod?.id === "upi" && (
-          <div className="bg-[#1a1a1a] p-4 rounded-xl mb-8">
-            <p className="text-sm mb-2">Send to UPI ID:</p>
-            <div className="flex items-center justify-between bg-[#272727] p-3 rounded-lg">
-              <span className="font-medium">aditya@upi</span>
-              <button
-                onClick={handleCopyUPI}
-                className="text-blue-400 hover:text-blue-300"
-              >
-                {copied ? <Check size={18} /> : <Copy size={18} />}
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Send exact amount and share screenshot in support
-            </p>
-          </div>
-        )}
-
         {/* Withdraw Button */}
         <button
           onClick={handleWithdraw}
-          disabled={!selectedMethod || !amount || parseFloat(amount) <= 0}
+          disabled={
+            !WITHDRAWALS_ENABLED ||
+            !selectedMethod ||
+            !amount ||
+            parseFloat(amount) <= 0
+          }
           className={`w-full py-4 rounded-xl font-bold text-lg transition ${
             selectedMethod && amount && parseFloat(amount) > 0
               ? "bg-green-600 hover:bg-green-700 text-white"
               : "bg-gray-700 text-gray-500 cursor-not-allowed"
           }`}
         >
-          Withdraw Now
+          {WITHDRAWALS_ENABLED ? "Withdraw Now" : "Withdrawals Unavailable"}
         </button>
 
         <p className="text-center text-xs text-gray-500 mt-6">
-          Processing time: 1–3 business days • First withdrawal may take longer
-          for verification
+          Any future payout will require account verification, eligibility
+          checks, and an active BharatPlay payout provider.
         </p>
       </div>
     </div>
