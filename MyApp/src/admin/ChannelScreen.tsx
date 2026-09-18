@@ -489,6 +489,30 @@ export default function ChannelScreen({ navigation }) {
 
   const tabs = ["Videos", "Shorts", "Playlists", "Posts"];
 
+  const handleVideoPress = (video) => {
+    const videoId = video?._id || video?.id;
+    const videoTypes = Array.isArray(video?.videoType)
+      ? video.videoType
+      : [video?.videoType];
+    const isShort = videoTypes.some(
+      (type) => String(type).toLowerCase() === "short",
+    );
+
+    if (isShort) {
+      navigation.navigate("MainTabs", {
+        screen: "Shorts",
+        params: { video },
+      });
+      return;
+    }
+
+    navigation.navigate("VideoDetail", {
+      id: videoId,
+      item: video,
+      video,
+    });
+  };
+
   // ================= RENDER VIDEO ITEM =================
   const renderVideo = ({ item }) => {
     const thumb =
@@ -496,7 +520,11 @@ export default function ChannelScreen({ navigation }) {
       "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=800";
 
     return (
-      <TouchableOpacity style={styles.videoCard} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={styles.videoCard}
+        activeOpacity={0.85}
+        onPress={() => handleVideoPress(item)}
+      >
         <View style={styles.thumbnailWrapper}>
           <Image source={{ uri: thumb }} style={styles.thumbnail} />
           <View style={styles.playOverlay}>

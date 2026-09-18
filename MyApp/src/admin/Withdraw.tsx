@@ -263,13 +263,24 @@ export default function WithdrawScreen() {
         <View style={styles.balanceCard}>
           <View style={styles.balanceRow}>
             <View>
-              <Text style={styles.balanceLabel}>Available Balance</Text>
-              <Text style={styles.balanceValue}>₹{rupeeBalance}</Text>
+              <Text style={styles.balanceLabel}>BharatPlay Points</Text>
+              <Text style={styles.balanceValue}>
+                {Number(points).toFixed(2)}
+              </Text>
             </View>
             <Wallet size={48} color="#facc15" style={{ opacity: 0.85 }} />
           </View>
           <Text style={styles.pointsText}>
-            ≈ {Number(points).toFixed(2)} Bitzo Points (1 point = ₹1)
+            Promotional points only. They are not cash until a verified
+            BharatPlay payout program is enabled.
+          </Text>
+        </View>
+
+        <View style={styles.noticeBox}>
+          <Text style={styles.noticeText}>
+            Withdrawals are not available in this release. Do not send money or
+            payment details to anyone claiming to represent BharatPlay. Your
+            points remain associated with your account.
           </Text>
         </View>
 
@@ -284,9 +295,11 @@ export default function WithdrawScreen() {
                 key={method.id}
                 style={[
                   styles.methodCard,
+                  !WITHDRAWALS_ENABLED && styles.methodCardDisabled,
                   isSelected && styles.methodCardActive,
                 ]}
                 onPress={() => {
+                  if (!WITHDRAWALS_ENABLED) return;
                   setSelectedMethod(method);
                   setError("");
                   resetForms();
@@ -430,6 +443,7 @@ export default function WithdrawScreen() {
         <TouchableOpacity
           style={[
             styles.withdrawBtn,
+            !WITHDRAWALS_ENABLED && styles.withdrawBtnDisabled,
             (!selectedMethod ||
               !amount ||
               parseFloat(amount) <= 0 ||
@@ -438,24 +452,26 @@ export default function WithdrawScreen() {
           ]}
           onPress={handleWithdraw}
           disabled={
-            !selectedMethod || !amount || parseFloat(amount) <= 0 || submitting
+            !WITHDRAWALS_ENABLED ||
+            !selectedMethod ||
+            !amount ||
+            parseFloat(amount) <= 0 ||
+            submitting
           }
           activeOpacity={0.85}
         >
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.withdrawBtnText}>Withdraw Now</Text>
+            <Text style={styles.withdrawBtnText}>
+              {WITHDRAWALS_ENABLED ? "Withdraw Now" : "Withdrawals Unavailable"}
+            </Text>
           )}
         </TouchableOpacity>
 
         <Text style={styles.footerNote}>
-          Processing time:{" "}
-          <Text style={{ color: "#facc15", fontWeight: "600" }}>
-            45 working days
-          </Text>
-          {"\n"}
-          First withdrawal may take longer for verification
+          Any future payout will require account verification, eligibility
+          checks, and an active BharatPlay payout provider.
         </Text>
       </ScrollView>
 
@@ -611,6 +627,22 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
+  },
+  methodCardDisabled: {
+    opacity: 0.55,
+  },
+  noticeBox: {
+    backgroundColor: "#422006",
+    borderColor: "#92400e",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+  },
+  noticeText: {
+    color: "#fde68a",
+    fontSize: 13,
+    lineHeight: 19,
   },
   methodCardActive: {
     borderColor: "#3b82f6",

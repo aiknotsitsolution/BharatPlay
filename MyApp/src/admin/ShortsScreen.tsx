@@ -246,6 +246,8 @@ function ShortVideo({
   muted: boolean;
   onProgress: (currentTime: number, duration: number) => void;
 }) {
+  const [paused, setPaused] = useState(false);
+
   const player = useVideoPlayer(item.videoUrl, (videoPlayer) => {
     videoPlayer.loop = true;
     videoPlayer.muted = muted;
@@ -270,7 +272,7 @@ function ShortVideo({
     try {
       player.muted = muted;
 
-      if (isActive) {
+      if (isActive && !paused) {
         player.play();
       } else {
         player.pause();
@@ -278,7 +280,13 @@ function ShortVideo({
     } catch (error) {
       console.warn("Video play/pause error:", error);
     }
-  }, [isActive, muted, player, item.videoUrl]);
+  }, [isActive, muted, paused, player, item.videoUrl]);
+
+  useEffect(() => {
+    if (!isActive) {
+      setPaused(false);
+    }
+  }, [isActive]);
 
   /* -------------------------------------------------------
      VIDEO PROGRESS
@@ -310,12 +318,26 @@ function ShortVideo({
   }
 
   return (
-    <VideoView
-      player={player}
-      style={styles.video}
-      contentFit="cover"
-      nativeControls={false}
-    />
+    <TouchableOpacity
+      activeOpacity={1}
+      style={styles.videoTapArea}
+      onPress={() => {
+        if (!isActive) return;
+        setPaused((previous) => !previous);
+      }}
+    >
+      <VideoView
+        player={player}
+        style={styles.video}
+        contentFit="cover"
+        nativeControls={false}
+      />
+      {isActive && (
+        <View pointerEvents="none" style={styles.playPauseIndicator}>
+          <Ionicons name={paused ? "play" : "pause"} size={34} color="#fff" />
+        </View>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -640,77 +662,77 @@ export default function ShortsScreen() {
   ======================================================= */
 
   const trackView = useCallback(
-  async (item: ShortItem, currentTime: number, duration: number) => {
-    if (!duration || duration <= 0 || !item.id) {
-      return;
-    }
-
-    const percent = Math.min(100, Math.round((currentTime / duration) * 100));
-
-    const previous = viewReportedRef.current[item.id] || 0;
-
-    let checkpoint = 0;
-
-    if (percent >= 80 && previous < 80) {
-      checkpoint = 80;
-    } else if (percent >= 25 && previous < 25) {
-      checkpoint = 25;
-    } else if (percent >= 1 && previous < 1) {
-      checkpoint = 1;
-    }
-
-    if (!checkpoint) {
-      return;
-    }
-
-    viewReportedRef.current[item.id] = checkpoint;
-
-    try {
-      const token = await AsyncStorage.getItem("token");
-      const guestId = token ? null : await getGuestId();
-
-      const response = await fetch(`${API_USERVIDEO}/${item.id}/view`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token
-            ? {
-                Authorization: `Bearer ${token}`,
-              }
-            : {}),
-        },
-        body: JSON.stringify({
-          watchedPercent: checkpoint,
-          duration,
-          watchSeconds: currentTime,
-          guestId,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success && typeof data.views === "number") {
-        setShortsData((prev) =>
-          prev.map((short) =>
-            short.id === item.id
-              ? {
-                  ...short,
-                  views: data.views,
-                }
-              : short,
-          ),
-        );
-      } else {
-        // allow retry if backend rejected
-        viewReportedRef.current[item.id] = previous;
+    async (item: ShortItem, currentTime: number, duration: number) => {
+      if (!duration || duration <= 0 || !item.id) {
+        return;
       }
-    } catch (error) {
-      viewReportedRef.current[item.id] = previous;
-      console.warn("View tracking error:", error);
-    }
-  },
-  [],
-);
+
+      const percent = Math.min(100, Math.round((currentTime / duration) * 100));
+
+      const previous = viewReportedRef.current[item.id] || 0;
+
+      let checkpoint = 0;
+
+      if (percent >= 80 && previous < 80) {
+        checkpoint = 80;
+      } else if (percent >= 25 && previous < 25) {
+        checkpoint = 25;
+      } else if (percent >= 1 && previous < 1) {
+        checkpoint = 1;
+      }
+
+      if (!checkpoint) {
+        return;
+      }
+
+      viewReportedRef.current[item.id] = checkpoint;
+
+      try {
+        const token = await AsyncStorage.getItem("token");
+        const guestId = token ? null : await getGuestId();
+
+        const response = await fetch(`${API_USERVIDEO}/${item.id}/view`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token
+              ? {
+                  Authorization: `Bearer ${token}`,
+                }
+              : {}),
+          },
+          body: JSON.stringify({
+            watchedPercent: checkpoint,
+            duration,
+            watchSeconds: currentTime,
+            guestId,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success && typeof data.views === "number") {
+          setShortsData((prev) =>
+            prev.map((short) =>
+              short.id === item.id
+                ? {
+                    ...short,
+                    views: data.views,
+                  }
+                : short,
+            ),
+          );
+        } else {
+          // allow retry if backend rejected
+          viewReportedRef.current[item.id] = previous;
+        }
+      } catch (error) {
+        viewReportedRef.current[item.id] = previous;
+        console.warn("View tracking error:", error);
+      }
+    },
+    [],
+  );
 
   /* =======================================================
      SHARE
@@ -1099,7 +1121,7 @@ export default function ShortsScreen() {
                     {loadingAction === `subscribe-${item.id}`
                       ? "..."
                       : subscribed[item.id]
-                        ? "Subscribed"
+                        ? "Unsubscribe"
                         : "Subscribe"}
                   </Text>
                 </TouchableOpacity>
@@ -1452,6 +1474,24 @@ const styles = StyleSheet.create({
 
   video: {
     ...StyleSheet.absoluteFill,
+  },
+
+  videoTapArea: {
+    ...StyleSheet.absoluteFill,
+  },
+
+  playPauseIndicator: {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    width: 64,
+    height: 64,
+    marginLeft: -32,
+    marginTop: -32,
+    borderRadius: 32,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   videoError: {
