@@ -77,10 +77,13 @@ app.use(
 );
 
 // =====================================================
-// ROUTES
+// ROUTES — ORDER MATTERS.
+// More specific paths MUST be registered before the
+// generic "/api" catch-all, exactly the way the gateway
+// handles route-matching order.
 // =====================================================
-app.use("/api", route0);
 app.use("/api/support", supportRoutes);
+app.use("/api", route0);
 
 app.get("/", (req, res) => {
   res.json({
