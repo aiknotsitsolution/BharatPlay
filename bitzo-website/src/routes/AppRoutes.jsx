@@ -44,6 +44,10 @@ import HomePage from "../pages/public/HomePage";
 import AboutPage from "../pages/public/AboutPage";
 import PrivacyPolicyPage from "../pages/public/PrivacyPolicyPage";
 import TermsConditionsPage from "../pages/public/TermsConditionsPage";
+import CommunityGuidelinesPage from "../pages/public/CommunityGuidelinesPage";
+import ContentPolicyPage from "../pages/public/ContentPolicyPage";
+import CopyrightPolicyPage from "../pages/public/CopyrightPolicyPage";
+import HelpSupportPage from "../pages/public/HelpSupportPage";
 import ContactPage from "../pages/public/ContactPage";
 import DeleteAccountPage from "../pages/public/DeleteAccountPage";
 import AppsPage from "../pages/public/AppsPage";
@@ -65,6 +69,13 @@ export default function AppRoutes() {
         <Route path="about" element={<AboutPage />} />
         <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
         <Route path="terms" element={<TermsConditionsPage />} />
+        <Route
+          path="community-guidelines"
+          element={<CommunityGuidelinesPage />}
+        />
+        <Route path="content-policy" element={<ContentPolicyPage />} />
+        <Route path="copyright-policy" element={<CopyrightPolicyPage />} />
+        <Route path="help-support" element={<HelpSupportPage />} />
         <Route path="contact" element={<ContactPage />} />
         <Route path="delete-account" element={<DeleteAccountPage />} />
         <Route path="apps" element={<AppsPage />} />

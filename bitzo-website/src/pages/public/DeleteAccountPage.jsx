@@ -1,287 +1,54 @@
-import { useState } from "react";
-import { CheckCircle2, Trash2, ShieldCheck, Clock, UserX, Mail } from "lucide-react";
 import LegalPageLayout from "../../components/public/LegalPageLayout";
 import SITE from "../../config/site";
 
-const REASONS = [
-  "Not the account I want",
-  "Too many emails or notifications",
-  "Privacy concerns",
-  "No longer using BharatPlay",
-  "I want to start fresh",
-  "Other",
+const SECTIONS = [
+  {
+    title: "1. What Happens When You Delete Your Account",
+    body: "Deleting your BharatPlay account will permanently remove your profile, uploaded videos, comments, likes, subscriptions, watch history and other personal data associated with the account, subject to the exceptions described below.",
+  },
+  {
+    title: "2. Data That May Be Retained",
+    body: "Some information may be retained for a limited period where required by law, for security and fraud prevention, or for legitimate business purposes (for example, records of previous transactions or legal notices). Backups may also retain data for a short time before permanent deletion.",
+  },
+  {
+    title: "3. How to Request Account Deletion",
+    body: "You can request account deletion through the dedicated option in your account settings (if available) or by contacting us. Please use the email associated with your account so we can verify your identity.",
+  },
+  {
+    title: "4. Verification",
+    body: "To protect your account, we may ask you to verify your identity before processing a deletion request. This helps prevent unauthorised deletion by someone else.",
+  },
+  {
+    title: "5. Processing Time",
+    body: "We aim to process account deletion requests within a reasonable time after verification. You will receive confirmation once the process is complete or if we need additional information.",
+  },
+  {
+    title: "6. Contact for Deletion Requests",
+    body: SITE.supportEmail
+      ? `To request deletion of your account, email us at ${SITE.supportEmail} with the subject line \"Account Deletion Request\" and include the email address linked to your account.`
+      : "To request deletion of your account, please use the Contact page and clearly state that you wish to delete your account.",
+  },
 ];
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export default function DeleteAccountPage() {
-  const [step, setStep] = useState("form"); // form | confirm | success
-  const [form, setForm] = useState({
-    email: "",
-    accountIdentifier: "",
-    reason: "",
-  });
-  const [errors, setErrors] = useState({});
-
-  const setField = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
-
-  const validate = () => {
-    const next = {};
-    if (!form.email.trim()) next.email = "Please enter the email address on your account.";
-    else if (!EMAIL_PATTERN.test(form.email.trim())) next.email = "Please enter a valid email address.";
-    else if (form.email.trim().length > 200) next.email = "Email must be 200 characters or fewer.";
-
-    if (form.accountIdentifier && form.accountIdentifier.trim().length > 200)
-      next.accountIdentifier = "Account identifier must be 200 characters or fewer.";
-    if (form.reason && form.reason.trim().length > 1000)
-      next.reason = "Reason must be 1000 characters or fewer.";
-
-    return next;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const next = validate();
-    setErrors(next);
-    if (Object.values(next).some(Boolean)) return;
-    setStep("confirm");
-  };
-
-  const handleConfirm = () => {
-    // Frontend-only submission. Backend processing can be connected here.
-    setStep("success");
-  };
-
-  const errorText = (key) =>
-    errors[key] ? (
-      <p id={`delete-${key}-error`} className="mt-1.5 text-sm text-red-400" role="alert">
-        {errors[key]}
-      </p>
-    ) : null;
-
-  const inputClasses = (key) =>
-    `w-full rounded-xl border bg-[#121212] px-4 py-2.5 text-sm text-white placeholder-zinc-600 transition-colors focus:outline-none focus:ring-2 ${
-      errors[key]
-        ? "border-red-600/70 focus:border-red-500 focus:ring-red-500/30"
-        : "border-zinc-800 hover:border-zinc-700 focus:border-red-500 focus:ring-red-500/30"
-    }`;
-
   return (
     <LegalPageLayout
-      title="Account & Data Deletion"
-      description="Request deletion of your BharatPlay account and associated personal information through the Account & Data Deletion page."
-      intro="Your privacy matters. If you no longer wish to use BharatPlay, you can request the deletion of your account and the personal information associated with it."
+      title="Delete Account"
+      description="Learn how to permanently delete your BharatPlay account and associated data."
+      intro="This page explains what happens when you delete your account and how to submit a deletion request."
+      lastUpdated={SITE.legal.lastUpdated}
     >
-      {/* Explanation */}
-      <div className="space-y-4 text-sm leading-relaxed text-zinc-400">
-        <p>
-          Deleting your account means your profile, your uploaded content and
-          other account-related personal information associated with the
-          provided email address will be processed for removal from the
-          Service.
-        </p>
-        <p>
-          Please note that deleting an account is significant. Your uploaded
-          videos, channel information, rewards balance and access to features
-          that require a signed-in account will no longer be available after
-          deletion is completed.
-        </p>
-      </div>
-
-      {/* Deletion request form */}
-      <div className="mt-8 rounded-2xl border border-zinc-800/70 bg-[#161616] p-6 sm:p-8">
-        {step === "success" ? (
-          <div className="flex flex-col items-center py-10 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/30">
-              <CheckCircle2 size={28} className="text-emerald-400" />
-            </div>
-            <h2 className="text-lg font-semibold text-white">Deletion request received</h2>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-zinc-400">
-              We've recorded your request for{" "}
-              <span className="text-zinc-200">{form.email}</span>. This is a
-              frontend-only submission — when account deletion processing is
-              connected, our team will verify your request and process the
-              deletion of your account and associated personal information.
+      <div className="space-y-7">
+        {SECTIONS.map((section) => (
+          <section key={section.title}>
+            <h2 className="text-base font-semibold text-white sm:text-lg">
+              {section.title}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-400 sm:text-[15px]">
+              {section.body}
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                setForm({ email: "", accountIdentifier: "", reason: "" });
-                setErrors({});
-                setStep("form");
-              }}
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#272727] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#3a3a3a]"
-            >
-              Submit another request
-            </button>
-          </div>
-        ) : (
-          <>
-            {step === "form" ? (
-              <form onSubmit={handleSubmit} noValidate>
-                <h2 className="text-lg font-semibold text-white">Deletion request form</h2>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Provide the email address linked to the account you want
-                  deleted. Additional identifiers help us locate the correct
-                  account.
-                </p>
-
-                <div className="mt-6 space-y-5">
-                  <div>
-                    <label htmlFor="delete-email" className="mb-1.5 block text-sm font-medium text-zinc-300">
-                      Email Address *
-                    </label>
-                    <input
-                      id="delete-email"
-                      type="email"
-                      autoComplete="email"
-                      maxLength={200}
-                      value={form.email}
-                      onChange={(e) => setField("email", e.target.value)}
-                      aria-invalid={Boolean(errors.email)}
-                      aria-describedby={errors.email ? "delete-email-error" : undefined}
-                      className={inputClasses("email")}
-                      placeholder="you@example.com"
-                    />
-                    {errorText("email")}
-                  </div>
-
-                  <div>
-                    <label htmlFor="delete-account-id" className="mb-1.5 block text-sm font-medium text-zinc-300">
-                      Account Identifier (optional)
-                    </label>
-                    <input
-                      id="delete-account-id"
-                      type="text"
-                      maxLength={200}
-                      value={form.accountIdentifier}
-                      onChange={(e) => setField("accountIdentifier", e.target.value)}
-                      aria-invalid={Boolean(errors.accountIdentifier)}
-                      aria-describedby={errors.accountIdentifier ? "delete-accountIdentifier-error" : undefined}
-                      className={inputClasses("accountIdentifier")}
-                      placeholder="Username or channel name, if applicable"
-                    />
-                    {errorText("accountIdentifier")}
-                  </div>
-
-                  <div>
-                    <label htmlFor="delete-reason" className="mb-1.5 block text-sm font-medium text-zinc-300">
-                      Reason for deletion (optional)
-                    </label>
-                    <select
-                      id="delete-reason"
-                      value={form.reason}
-                      onChange={(e) => setField("reason", e.target.value)}
-                      className={inputClasses("reason")}
-                    >
-                      <option value="">Select a reason (optional)</option>
-                      {REASONS.map((reason) => (
-                        <option key={reason} value={reason}>
-                          {reason}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-1.5 text-xs text-zinc-600">
-                      We use reasons to improve the Service. You can leave this
-                      empty if you prefer.
-                    </p>
-                    {errorText("reason")}
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="mt-7 inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
-                >
-                  <Trash2 size={16} />
-                  Request Account Deletion
-                </button>
-              </form>
-            ) : (
-              <div className="text-center sm:text-left">
-                <h2 className="text-lg font-semibold text-white">Please confirm</h2>
-                <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-zinc-400 sm:mx-0">
-                  Are you sure you want to request deletion of the BharatPlay
-                  account associated with{" "}
-                  <span className="text-zinc-200">{form.email}</span>? This
-                  action cannot be undone once completed.
-                </p>
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={handleConfirm}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-red-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-red-500"
-                  >
-                    <Trash2 size={16} />
-                    Confirm Deletion Request
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStep("form")}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#272727] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#3a3a3a]"
-                  >
-                    Go back
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Data handling details */}
-      <div className="mt-8 space-y-5">
-        <h2 className="text-lg font-semibold text-white">What happens after you request deletion</h2>
-        <div className="space-y-4">
-          {[
-            {
-              icon: UserX,
-              title: "Account deletion",
-              body: "Your account profile and account-related personal information will be processed for deletion. Content you uploaded may also be removed from the Service.",
-            },
-            {
-              icon: ShieldCheck,
-              title: "Legally required retention",
-              body: "Some information may be retained where required by applicable law, or for legitimate purposes such as fraud prevention, dispute resolution and legal obligations.",
-            },
-            {
-              icon: Clock,
-              title: "Processing time",
-              body: "We do not advertise a fixed processing window. Our team will process your verified request as soon as possible and in line with applicable law. A status update is not guaranteed through this form.",
-            },
-            {
-              icon: Mail,
-              title: "Support contact",
-              body: SITE.supportEmail
-                ? `For help with account deletion or privacy requests, email us at ${SITE.supportEmail} or use the Contact page.`
-                : "For help with account deletion or privacy requests, use the Contact page and our team will respond.",
-            },
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.title} className="flex items-start gap-4 rounded-xl border border-zinc-800/70 bg-[#161616] p-4 sm:p-5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-800/80 ring-1 ring-zinc-700/60">
-                  <Icon size={16} className="text-red-500" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-zinc-100">{item.title}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-zinc-400">{item.body}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="rounded-xl border border-zinc-800/70 bg-[#161616] p-4 text-center">
-          <p className="text-xs text-zinc-600">
-            This form captures your request on the frontend. Actual deletion
-            processing requires backend verification and will be connected to
-            this page later.
-          </p>
-        </div>
+          </section>
+        ))}
       </div>
     </LegalPageLayout>
   );
