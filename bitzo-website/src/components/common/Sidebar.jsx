@@ -912,7 +912,7 @@ import {
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 
 const mainItems = [
-  { icon: Home, label: "Home", path: "/home" },
+  { icon: Home, label: "Home", path: "/" },
   { icon: Flame, label: "Shorts", path: "/shorts" },
   { icon: PlusCircle, label: "Upload", path: "/uploadvideo" },
   { icon: Library, label: "You", path: "/profile" },

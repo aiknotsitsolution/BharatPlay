@@ -25,6 +25,7 @@ import {
   ArrowLeft,
   X,
   Shield,
+  Globe,
 } from "lucide-react";
 import { useRewards } from "../../context/RewardContext";
 import { useSelector, useDispatch } from "react-redux";
@@ -358,7 +359,7 @@ export default function Navbar({ toggleSidebar }) {
             <Menu size={22} className="text-white" />
           </button>
 
-          <Link to="/home" className="flex items-center flex-shrink-0 gap-0 ml-1">
+          <Link to="/" className="flex items-center flex-shrink-0 gap-0 ml-1">
             <div className="w-16 h-12 rounded-md overflow-hidden flex items-center justify-center">
               <img
                 src={logo}
@@ -618,6 +619,11 @@ export default function Navbar({ toggleSidebar }) {
                             path: "/your-videos",
                             icon: Video,
                             label: "Your Videos",
+                          },
+                          {
+                            path: "/advanced-settings",
+                            icon: Globe,
+                            label: "Advanced Settings",
                           },
                         ].map((item) => (
                           <button

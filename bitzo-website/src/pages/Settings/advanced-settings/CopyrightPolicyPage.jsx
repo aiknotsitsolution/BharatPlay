@@ -1,10 +1,12 @@
-import LegalPageLayout from "../../components/public/LegalPageLayout";
-import SITE from "../../config/site";
+import { Link } from "react-router-dom";
+import LegalPageLayout from "../../../components/public/LegalPageLayout";
+import LegalContent from "../../../components/public/LegalContent";
+import SITE from "../../../config/site";
 
 const SECTIONS = [
   {
     title: "1. Respect for Copyright",
-    body: "BharatPlay respects the intellectual property rights of others and expects users to do the same. Uploading content that you do not own or have permission to use is a violation of our Terms and may lead to removal of the content and account action.",
+    body: <>BharatPlay respects the intellectual property rights of others and expects users to do the same. Uploading content that you do not own or have permission to use is a violation of our <Link to="/terms" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Terms</Link> and may lead to removal of the content and account action.</>,
   },
   {
     title: "2. What is Copyright Infringement?",
@@ -26,7 +28,7 @@ const SECTIONS = [
     title: "6. Contact for Copyright Notices",
     body: SITE.supportEmail
       ? `Please send copyright-related notices to ${SITE.supportEmail} with the subject line \"Copyright Notice\".`
-      : "Please use the Contact page and select the copyright-related option to submit a notice.",
+      : <>Please use the <Link to="/contact" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Contact page</Link> and select the copyright-related option to submit a notice.</>,
   },
 ];
 
@@ -38,18 +40,7 @@ export default function CopyrightPolicyPage() {
       intro="This Copyright Policy explains how we handle copyright claims and the process for reporting and responding to alleged infringement."
       lastUpdated={SITE.legal.lastUpdated}
     >
-      <div className="space-y-7">
-        {SECTIONS.map((section) => (
-          <section key={section.title}>
-            <h2 className="text-base font-semibold text-white sm:text-lg">
-              {section.title}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400 sm:text-[15px]">
-              {section.body}
-            </p>
-          </section>
-        ))}
-      </div>
+      <LegalContent sections={SECTIONS} />
     </LegalPageLayout>
   );
 }

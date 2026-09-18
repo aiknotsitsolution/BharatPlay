@@ -50,11 +50,11 @@ export const SITE = {
   },
 
   // Internal route the web application lives at (after authentication).
-  appPath: "/home",
+  appPath: "/",
 };
 
 export const NAV_LINKS = [
-  { label: "Home", path: "/" },
+  { label: "Home", path: "/advanced-settings" },
   { label: "Apps", path: "/apps" },
   { label: "About", path: "/about" },
   { label: "Contact", path: "/contact" },

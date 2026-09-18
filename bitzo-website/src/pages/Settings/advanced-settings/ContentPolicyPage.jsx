@@ -1,10 +1,12 @@
-import LegalPageLayout from "../../components/public/LegalPageLayout";
-import SITE from "../../config/site";
+import { Link } from "react-router-dom";
+import LegalPageLayout from "../../../components/public/LegalPageLayout";
+import LegalContent from "../../../components/public/LegalContent";
+import SITE from "../../../config/site";
 
 const SECTIONS = [
   {
     title: "1. Purpose of This Policy",
-    body: "This Content Policy sets out the types of content that are allowed and not allowed on BharatPlay. It works together with our Community Guidelines and Terms & Conditions.",
+    body: <>This Content Policy sets out the types of content that are allowed and not allowed on BharatPlay. It works together with our <Link to="/community-guidelines" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Community Guidelines</Link> and <Link to="/terms" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Terms & Conditions</Link>.</>,
   },
   {
     title: "2. Allowed Content",
@@ -42,18 +44,7 @@ export default function ContentPolicyPage() {
       intro="This Content Policy explains the standards that apply to all content uploaded or shared on BharatPlay."
       lastUpdated={SITE.legal.lastUpdated}
     >
-      <div className="space-y-7">
-        {SECTIONS.map((section) => (
-          <section key={section.title}>
-            <h2 className="text-base font-semibold text-white sm:text-lg">
-              {section.title}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400 sm:text-[15px]">
-              {section.body}
-            </p>
-          </section>
-        ))}
-      </div>
+      <LegalContent sections={SECTIONS} />
     </LegalPageLayout>
   );
 }

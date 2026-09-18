@@ -12,6 +12,7 @@ const mongoose = require("mongoose");
 const morgan = require("morgan");
 
 const route0 = require("./routes/authRoute");
+const supportRoutes = require("./routes/supportRoute");
 
 const app = express();
 const PORT = process.env.PORT || 4001;
@@ -79,6 +80,7 @@ app.use(
 // ROUTES
 // =====================================================
 app.use("/api", route0);
+app.use("/api/support", supportRoutes);
 
 app.get("/", (req, res) => {
   res.json({

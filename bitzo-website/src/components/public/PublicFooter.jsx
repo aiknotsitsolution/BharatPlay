@@ -1,118 +1,152 @@
 import { Link } from "react-router-dom";
-import { FOOTER_LINKS, SITE } from "../../config/site";
+import { Sun, Moon } from "lucide-react";
+import { SITE } from "../../config/site";
+import { useTheme } from "../../context/ThemeContext";
 import SiteLogo from "./SiteLogo";
 
-function FooterLink({ label, to }) {
-  return (
-    <Link
-      to={to}
-      className="inline-flex py-1.5 text-sm text-zinc-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 focus-visible:rounded"
-    >
-      {label}
-    </Link>
-  );
-}
+const COLUMNS = [
+  {
+    title: "Company",
+    links: [
+      { label: "About Us", path: "/about" },
+      { label: "Press", path: "/about" },
+      { label: "Jobs", path: "/about" },
+      { label: "Contact", path: "/contact" },
+    ],
+  },
+  {
+    title: "Products",
+    links: [
+      { label: "Website", path: "/apps" },
+      { label: "Mobile App", path: "/apps" },
+      { label: "Shorts", path: "/" },
+      { label: "Premium", path: "/about" },
+      { label: "Studio", path: "/studio" },
+    ],
+  },
+  {
+    title: "Creators",
+    links: [
+      { label: "Artists", path: "/about" },
+      { label: "Creators", path: "/about" },
+      { label: "Creator Academy", path: "/about" },
+      { label: "Creating for Kids", path: "/about" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { label: "Privacy", path: "/privacy-policy" },
+      { label: "Terms", path: "/terms" },
+      { label: "Account & Data Deletion", path: "/delete-account" },
+      { label: "Brand Guidelines", path: "/terms" },
+    ],
+  },
+];
 
-/**
- * Reference-style company footer:
- * dark card container, brand + short description, divider,
- * two-column navigation, divider, copyright row.
- */
+const BOTTOM_LINKS = [
+  { label: "Policy & Safety", path: "/privacy-policy" },
+  { label: "Copyright", path: "/terms" },
+  { label: "Privacy", path: "/privacy-policy" },
+  { label: "Terms", path: "/terms" },
+];
+
 export default function PublicFooter() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
+
   return (
-    <footer className="w-full border-t border-zinc-800/80 bg-[#0b0b0b]">
-      <div className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 lg:px-8">
-        <div className="rounded-[28px] border border-zinc-800/80 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.12),transparent_30%),#111111] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.2)] sm:p-8 lg:p-10">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-xl">
-              <SiteLogo to="/" />
-              <p className="mt-4 text-sm leading-relaxed text-zinc-400 sm:text-[15px]">
-                {SITE.description}
-              </p>
-            </div>
+    <footer
+      className={`w-full border-t transition-colors duration-300 ${
+        isDark
+          ? "border-zinc-800/70 bg-[#111111]"
+          : "border-gray-200 bg-white"
+      }`}
+    >
+      <div className="mx-auto max-w-7xl px-5 pt-10 pb-6 sm:px-8">
+        {/* Brand */}
+        <div className="mb-8">
+          <SiteLogo to="/" className="[&_span]:text-base [&_img]:h-6 [&_img]:w-6" />
+          <p className={`mt-2 text-sm ${isDark ? "text-zinc-500" : "text-gray-500"}`}>
+            Entertainment that connects.
+          </p>
+        </div>
 
-            {SITE.supportEmail && (
-              <a
-                href={`mailto:${SITE.supportEmail}`}
-                className="inline-flex w-fit items-center justify-center rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:border-red-500/60 hover:bg-red-500/20"
-              >
-                Contact Support
-              </a>
-            )}
+        {/* Columns */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
+          {COLUMNS.map((col) => (
+            <div key={col.title}>
+              <p className={`mb-3 text-xs font-semibold uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-gray-500"}`}>
+                {col.title}
+              </p>
+              <ul className="space-y-1.5">
+                {col.links.map((link) => (
+                  <li key={`${col.title}-${link.label}`}>
+                    <Link
+                      to={link.path}
+                      className={`text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 focus-visible:rounded ${
+                        isDark
+                          ? "text-zinc-500 hover:text-zinc-200"
+                          : "text-gray-500 hover:text-gray-900"
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom bar */}
+      <div className={`border-t ${isDark ? "border-zinc-800/50" : "border-gray-200"}`}>
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-5 py-4 sm:flex-row sm:justify-between sm:px-8">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className={`text-xs ${isDark ? "text-zinc-600" : "text-gray-400"}`}>
+              &copy; {new Date().getFullYear()} {SITE.brandName}
+            </span>
+            {BOTTOM_LINKS.map((link) => (
+              <span key={link.label} className="flex items-center gap-3">
+                <span className={isDark ? "text-zinc-800" : "text-gray-300"} aria-hidden="true">/</span>
+                <Link
+                  to={link.path}
+                  className={`text-xs transition-colors ${
+                    isDark
+                      ? "text-zinc-600 hover:text-zinc-300"
+                      : "text-gray-400 hover:text-gray-700"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              </span>
+            ))}
           </div>
-
-          <div className="my-8 h-px bg-zinc-800" aria-hidden="true" />
-
-          <nav
-            aria-label="Footer"
-            className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Company
-              </p>
-              <ul className="space-y-1">
-                {FOOTER_LINKS.company.map((link) => (
-                  <li key={link.path}>
-                    <FooterLink label={link.label} to={link.path} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Product
-              </p>
-              <ul className="space-y-1">
-                {FOOTER_LINKS.product.map((link) => (
-                  <li key={link.path}>
-                    <FooterLink label={link.label} to={link.path} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Platform
-              </p>
-              <ul className="space-y-1">
-                <li>
-                  <FooterLink label="Home" to="/" />
-                </li>
-                <li>
-                  <FooterLink label="About Us" to="/about" />
-                </li>
-                <li>
-                  <FooterLink label="Apps" to="/apps" />
-                </li>
-              </ul>
-            </div>
-          </nav>
-
-          <div className="mt-8 flex flex-col gap-3 border-t border-zinc-800 pt-6 text-sm text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              © {new Date().getFullYear()} {SITE.brandName}. All rights
-              reserved.
-            </p>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <Link to="/terms" className="transition-colors hover:text-white">
-                Terms
-              </Link>
-              <Link
-                to="/privacy-policy"
-                className="transition-colors hover:text-white"
-              >
-                Privacy
-              </Link>
-              <Link
-                to="/help-support"
-                className="transition-colors hover:text-white"
-              >
-                Help
-              </Link>
-            </div>
+          <div className="flex items-center gap-4">
+            <a
+              href={SITE.supportEmail ? `mailto:${SITE.supportEmail}` : "/contact"}
+              className={`text-xs transition-colors ${
+                isDark
+                  ? "text-zinc-600 hover:text-zinc-300"
+                  : "text-gray-400 hover:text-gray-700"
+              }`}
+            >
+              Help
+            </a>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
+                isDark
+                  ? "border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white"
+                  : "border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-900"
+              }`}
+              aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
+            >
+              {isDark ? <Sun size={13} /> : <Moon size={13} />}
+              {isDark ? "Light" : "Dark"}
+            </button>
           </div>
         </div>
       </div>

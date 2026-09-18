@@ -1,4 +1,4 @@
-import { Routes, Route, useParams } from "react-router-dom";
+import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 
 import MainLayout from "../components/layout/MainLayout";
@@ -35,22 +35,21 @@ import CopyrightClaimPage from "../pages/CopyrightClaimPage";
 import MyClaimsPage from "../pages/MyClaimsPage";
 import FAQPage from "../pages/FAQPage";
 import FeedbackPage from "../pages/FeedbackPage";
-import SupportPage from "../pages/SupportPage";
 import BharatPlayStudio from "../pages/Studio/BharatPlayStudio";
 
 // Public company website
 import PublicLayout from "../components/public/PublicLayout";
-import HomePage from "../pages/public/HomePage";
-import AboutPage from "../pages/public/AboutPage";
-import PrivacyPolicyPage from "../pages/public/PrivacyPolicyPage";
-import TermsConditionsPage from "../pages/public/TermsConditionsPage";
-import CommunityGuidelinesPage from "../pages/public/CommunityGuidelinesPage";
-import ContentPolicyPage from "../pages/public/ContentPolicyPage";
-import CopyrightPolicyPage from "../pages/public/CopyrightPolicyPage";
-import HelpSupportPage from "../pages/public/HelpSupportPage";
-import ContactPage from "../pages/public/ContactPage";
-import DeleteAccountPage from "../pages/public/DeleteAccountPage";
-import AppsPage from "../pages/public/AppsPage";
+import HomePage from "../pages/Settings/advanced-settings/HomePage";
+import AboutPage from "../pages/Settings/advanced-settings/AboutPage";
+import PrivacyPolicyPage from "../pages/Settings/advanced-settings/PrivacyPolicyPage";
+import TermsConditionsPage from "../pages/Settings/advanced-settings/TermsConditionsPage";
+import ContactPage from "../pages/Settings/advanced-settings/ContactPage";
+import DeleteAccountPage from "../pages/Settings/advanced-settings/DeleteAccountPage";
+import AppsPage from "../pages/Settings/advanced-settings/AppsPage";
+import CommunityGuidelinesPage from "../pages/Settings/advanced-settings/CommunityGuidelinesPage";
+import ContentPolicyPage from "../pages/Settings/advanced-settings/ContentPolicyPage";
+import CopyrightPolicyPage from "../pages/Settings/advanced-settings/CopyrightPolicyPage";
+import HelpSupportPage from "../pages/Settings/advanced-settings/HelpSupportPage";
 
 function ViewAllRoute() {
   const { type } = useParams();
@@ -65,20 +64,17 @@ export default function AppRoutes() {
     <Routes>
       {/* PUBLIC COMPANY SITE — no authentication required */}
       <Route element={<PublicLayout />}>
-        <Route index element={<HomePage />} />
+        <Route path="advanced-settings" element={<HomePage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
         <Route path="terms" element={<TermsConditionsPage />} />
-        <Route
-          path="community-guidelines"
-          element={<CommunityGuidelinesPage />}
-        />
-        <Route path="content-policy" element={<ContentPolicyPage />} />
-        <Route path="copyright-policy" element={<CopyrightPolicyPage />} />
-        <Route path="help-support" element={<HelpSupportPage />} />
         <Route path="contact" element={<ContactPage />} />
         <Route path="delete-account" element={<DeleteAccountPage />} />
         <Route path="apps" element={<AppsPage />} />
+        <Route path="community-guidelines" element={<CommunityGuidelinesPage />} />
+        <Route path="content-policy" element={<ContentPolicyPage />} />
+        <Route path="copyright-policy" element={<CopyrightPolicyPage />} />
+        <Route path="help-support" element={<HelpSupportPage />} />
         {/* Kept for backwards compatibility */}
         <Route path="terms-and-conditions" element={<TermsConditionsPage />} />
       </Route>
@@ -92,6 +88,7 @@ export default function AppRoutes() {
 
       <Route element={<ProtectedLayout />}>
         <Route element={<MainLayout />}>
+          <Route index element={<Home />} />
           <Route path="home" element={<Home />} />
           <Route path="shorts" element={<Shorts />} />
           <Route path="shorts/:id" element={<Shorts />} />
@@ -118,7 +115,10 @@ export default function AppRoutes() {
           <Route path="copyright/my-claims" element={<MyClaimsPage />} />
           <Route path="faq" element={<FAQPage />} />
           <Route path="feedback" element={<FeedbackPage />} />
-          <Route path="customer-support" element={<SupportPage />} />
+          <Route
+            path="customer-support"
+            element={<Navigate to="/contact" replace />}
+          />
           <Route path="studio" element={<BharatPlayStudio />} />
         </Route>
       </Route>

@@ -1,5 +1,7 @@
-import LegalPageLayout from "../../components/public/LegalPageLayout";
-import SITE from "../../config/site";
+import { Link } from "react-router-dom";
+import LegalPageLayout from "../../../components/public/LegalPageLayout";
+import LegalContent from "../../../components/public/LegalContent";
+import SITE from "../../../config/site";
 
 const SECTIONS = [
   {
@@ -20,7 +22,7 @@ const SECTIONS = [
   },
   {
     title: "5. Respect Intellectual Property",
-    body: "Only upload content that you own or have permission to use. Do not upload copyrighted videos, music or other material without proper rights. Repeated copyright violations may lead to account termination.",
+    body: <>Only upload content that you own or have permission to use. Do not upload copyrighted videos, music or other material without proper rights. Repeated <Link to="/copyright-policy" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">copyright violations</Link> may lead to account termination.</>,
   },
   {
     title: "6. No Spam or Scams",
@@ -58,18 +60,7 @@ export default function CommunityGuidelinesPage() {
       intro="These Community Guidelines explain what is and is not allowed on BharatPlay so that everyone can have a positive experience."
       lastUpdated={SITE.legal.lastUpdated}
     >
-      <div className="space-y-7">
-        {SECTIONS.map((section) => (
-          <section key={section.title}>
-            <h2 className="text-base font-semibold text-white sm:text-lg">
-              {section.title}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400 sm:text-[15px]">
-              {section.body}
-            </p>
-          </section>
-        ))}
-      </div>
+      <LegalContent sections={SECTIONS} />
     </LegalPageLayout>
   );
 }

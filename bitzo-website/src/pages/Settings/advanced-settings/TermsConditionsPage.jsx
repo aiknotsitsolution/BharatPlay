@@ -1,5 +1,7 @@
-import LegalPageLayout from "../../components/public/LegalPageLayout";
-import SITE from "../../config/site";
+import { Link } from "react-router-dom";
+import LegalPageLayout from "../../../components/public/LegalPageLayout";
+import LegalContent from "../../../components/public/LegalContent";
+import SITE from "../../../config/site";
 
 const SECTIONS = [
   {
@@ -24,7 +26,7 @@ const SECTIONS = [
   },
   {
     title: "6. Prohibited Content and Conduct",
-    body: "Prohibited content includes, but is not limited to: copyrighted material without permission, hate speech, violence, child sexual exploitation material, spam, scams, and content that promotes illegal activities. We may remove such content and suspend or terminate accounts that violate these rules.",
+    body: <>Prohibited content includes, but is not limited to: copyrighted material without permission, hate speech, violence, child sexual exploitation material, spam, scams, and content that promotes illegal activities. We may remove such content and suspend or terminate accounts that violate these rules. Please refer to our <Link to="/community-guidelines" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Community Guidelines</Link> for more details.</>,
   },
   {
     title: "7. Intellectual Property",
@@ -32,7 +34,7 @@ const SECTIONS = [
   },
   {
     title: "8. Copyright and DMCA",
-    body: "We respect intellectual property rights. If you believe your copyrighted work has been uploaded without authorisation, please follow the process described in our Copyright Policy. We may remove infringing content and, in appropriate cases, terminate repeat infringers.",
+    body: <>We respect intellectual property rights. If you believe your copyrighted work has been uploaded without authorisation, please follow the process described in our <Link to="/copyright-policy" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Copyright Policy</Link>. We may remove infringing content and, in appropriate cases, terminate repeat infringers.</>,
   },
   {
     title: "9. Termination",
@@ -67,21 +69,10 @@ export default function TermsPage() {
     <LegalPageLayout
       title="BharatPlay Terms & Conditions"
       description="Read the Terms & Conditions that govern your use of the BharatPlay website and mobile application."
-      intro="These Terms & Conditions set out the rules for using BharatPlay. Please read them carefully."
+      intro={<>These <Link to="/terms" className="font-medium text-blue-500 underline underline-offset-2 transition-colors hover:text-blue-400">Terms & Conditions</Link> set out the rules for using BharatPlay. Please read them carefully.</>}
       lastUpdated={SITE.legal.lastUpdated}
     >
-      <div className="space-y-7">
-        {SECTIONS.map((section) => (
-          <section key={section.title}>
-            <h2 className="text-base font-semibold text-white sm:text-lg">
-              {section.title}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400 sm:text-[15px]">
-              {section.body}
-            </p>
-          </section>
-        ))}
-      </div>
+      <LegalContent sections={SECTIONS} />
     </LegalPageLayout>
   );
 }

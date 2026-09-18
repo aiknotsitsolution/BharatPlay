@@ -156,6 +156,9 @@ app.use("/v1/player", proxy(SERVICES.playerAd, "/v1/player"));
 app.use("/test-vpn", proxy(SERVICES.security, "/test-vpn"));
 app.use("/internal/security", proxy(SERVICES.security, "/internal/security"));
 
+// Support: contact form + deletion requests (public + admin)
+app.use("/api/support", proxy(SERVICES.auth, "/api/support"));
+
 // Auth — generic "/api" fallback, MUST stay last.
 app.use("/api", proxy(SERVICES.auth, "/api"));
 
