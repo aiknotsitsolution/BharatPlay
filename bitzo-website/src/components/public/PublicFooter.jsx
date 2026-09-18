@@ -34,6 +34,14 @@ const COLUMNS = [
     ],
   },
   {
+    title: "Business",
+    links: [
+      { label: "For Business", path: "/for-business" },
+      { label: "Developers", path: "/developers" },
+      { label: "BharatPlay Advertising", path: "/advertising" },
+    ],
+  },
+  {
     title: "Legal",
     links: [
       { label: "Privacy", path: "/privacy-policy" },
@@ -73,7 +81,7 @@ export default function PublicFooter() {
         </div>
 
         {/* Columns */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-5">
           {COLUMNS.map((col) => (
             <div key={col.title}>
               <p className={`mb-3 text-xs font-semibold uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-gray-500"}`}>
