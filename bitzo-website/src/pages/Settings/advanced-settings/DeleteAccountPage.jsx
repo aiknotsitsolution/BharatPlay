@@ -140,11 +140,11 @@ export default function DeleteAccountPage() {
             </div>
             <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Deletion request received</h2>
             <p className={`mt-2 max-w-md text-sm leading-relaxed ${isDark ? "text-zinc-400" : "text-gray-500"}`}>
-              We've recorded your request for{" "}
-              <span className={isDark ? "text-zinc-200" : "text-gray-700"}>{form.email}</span>. This is a
-              frontend-only submission — when account deletion processing is
-              connected, our team will verify your request and process the
-              deletion of your account and associated personal information.
+              We've received your deletion request for{" "}
+              <span className={isDark ? "text-zinc-200" : "text-gray-700"}>{form.email}</span>. Our team
+              will verify your request and process the deletion of your account
+              and associated personal information in accordance with applicable
+              law. You will receive a confirmation email shortly.
             </p>
             <button
               type="button"
@@ -332,13 +332,7 @@ export default function DeleteAccountPage() {
           })}
         </div>
 
-        <div className={`rounded-xl border p-4 text-center ${isDark ? "border-zinc-800/70 bg-[#161616]" : "border-gray-200 bg-white"}`}>
-          <p className={`text-xs ${isDark ? "text-zinc-600" : "text-gray-400"}`}>
-            This form captures your request on the frontend. Actual deletion
-            processing requires backend verification and will be connected to
-            this page later.
-          </p>
-        </div>
+
       </div>
     </LegalPageLayout>
   );

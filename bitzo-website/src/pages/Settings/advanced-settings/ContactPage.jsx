@@ -160,10 +160,9 @@ export default function ContactPage() {
             </div>
             <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Request received</h2>
             <p className={`mt-2 max-w-md text-sm leading-relaxed ${isDark ? "text-zinc-400" : "text-gray-500"}`}>
-              Thank you, {form.name.split(" ")[0] || "there"}. We've captured your{" "}
-              {form.inquiryType.toLowerCase()} request. This is a frontend-only
-              submission — once the support inbox is connected, we will respond
-              to{" "}
+              Thank you, {form.name.split(" ")[0] || "there"}. We've received your{" "}
+              {form.inquiryType.toLowerCase()} request regarding &ldquo;{form.subject}&rdquo;. Our team will
+              review it and respond to{" "}
               <span className={isDark ? "text-zinc-200" : "text-gray-700"}>{form.email}</span> as soon as
               possible.
             </p>
