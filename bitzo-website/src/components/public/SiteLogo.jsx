@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import logo from "../../../public/Bharatplay-Cb3qGLyP-Cb3qGLyP-DSDLqCtA.png";
+const logo = "/Bharatplay-Cb3qGLyP-Cb3qGLyP-DSDLqCtA.png";
 import SITE from "../../config/site";
 import { useTheme } from "../../context/ThemeContext";
 
@@ -21,7 +21,9 @@ export default function SiteLogo({ to = "/", className = "" }) {
         alt={`${SITE.brandName} logo`}
         className="h-9 w-9 rounded-xl object-contain"
       />
-      <span className={`text-xl font-bold tracking-tight ${isDark ? "text-white" : "text-gray-900"}`}>
+      <span
+        className={`text-xl font-bold tracking-tight ${isDark ? "text-white" : "text-gray-900"}`}
+      >
         {SITE.brandName}
       </span>
     </Link>
