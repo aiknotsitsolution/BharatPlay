@@ -45,13 +45,15 @@ app.use(
 // =====================================================
 // MONGODB
 // =====================================================
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ [player-ad-service] MongoDB Connected"))
-  .catch((err) => {
-    console.error("❌ [player-ad-service] MongoDB Connection Error:", err);
-    process.exit(1);
-  });
+if (require.main === module) {
+  mongoose
+    .connect(process.env.MONGO_URI)
+    .then(() => console.log("✅ [player-ad-service] MongoDB Connected"))
+    .catch((err) => {
+      console.error("❌ [player-ad-service] MongoDB Connection Error:", err);
+      process.exit(1);
+    });
+}
 
 // =====================================================
 // MIDDLEWARES
@@ -108,6 +110,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: "Internal Server Error" });
 });
 
-app.listen(PORT, () => {
-  console.log(`🌐 player-ad-service running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🌐 player-ad-service running on port ${PORT}`);
+  });
+}
+
+module.exports = app;

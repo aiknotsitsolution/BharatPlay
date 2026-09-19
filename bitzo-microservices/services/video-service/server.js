@@ -50,13 +50,15 @@ app.use(
 // =====================================================
 // MONGODB
 // =====================================================
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ [video-service] MongoDB Connected"))
-  .catch((err) => {
-    console.error("❌ [video-service] MongoDB Connection Error:", err);
-    process.exit(1);
-  });
+if (require.main === module) {
+  mongoose
+    .connect(process.env.MONGO_URI)
+    .then(() => console.log("✅ [video-service] MongoDB Connected"))
+    .catch((err) => {
+      console.error("❌ [video-service] MongoDB Connection Error:", err);
+      process.exit(1);
+    });
+}
 
 // =====================================================
 // MIDDLEWARES
@@ -114,25 +116,28 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: "Internal Server Error" });
 });
 
-const httpServer = http.createServer(app);
-const socketServer = new SocketIOServer(httpServer, {
-  cors: { origin: true, credentials: true },
-});
+if (require.main === module) {
+  const httpServer = http.createServer(app);
+  const socketServer = new SocketIOServer(httpServer, {
+    cors: { origin: true, credentials: true },
+  });
 
-socketServer.use((socket, next) => {
-  try {
-    const token = socket.handshake.auth?.token;
-    if (!token) return next();
-    const decoded = verifyAccessToken(token);
-    socket.authenticatedUserId = decoded.sub || decoded.userId || decoded.id;
-    next();
-  } catch (_) {
-    next();
-  }
-});
+  socketServer.use((socket, next) => {
+    try {
+      const token = socket.handshake.auth?.token;
+      if (!token) return next();
+      const decoded = verifyAccessToken(token);
+      socket.authenticatedUserId = decoded.sub || decoded.userId || decoded.id;
+      next();
+    } catch (_) {
+      next();
+    }
+  });
 
-attachSocketServer(socketServer);
+  attachSocketServer(socketServer);
+  httpServer.listen(PORT, () => {
+    console.log(`🌐 video-service running on port ${PORT}`);
+  });
+}
 
-httpServer.listen(PORT, () => {
-  console.log(`🌐 video-service running on port ${PORT}`);
-});
+module.exports = app;

@@ -45,13 +45,15 @@ app.use(
 // =====================================================
 // MONGODB
 // =====================================================
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ [notification-service] MongoDB Connected"))
-  .catch((err) => {
-    console.error("❌ [notification-service] MongoDB Connection Error:", err);
-    process.exit(1);
-  });
+if (require.main === module) {
+  mongoose
+    .connect(process.env.MONGO_URI)
+    .then(() => console.log("✅ [notification-service] MongoDB Connected"))
+    .catch((err) => {
+      console.error("❌ [notification-service] MongoDB Connection Error:", err);
+      process.exit(1);
+    });
+}
 
 // =====================================================
 // MIDDLEWARES
@@ -113,27 +115,31 @@ const { Server: SocketIOServer } = require("socket.io");
 const { verifyAccessToken } = require("./utils/tokenService");
 const { attachSocketServer } = require("./services/socketService");
 
-const httpServer = http.createServer(app);
-const socketServer = new SocketIOServer(httpServer, {
-  cors: { origin: true, credentials: true },
-});
+if (require.main === module) {
+  const httpServer = http.createServer(app);
+  const socketServer = new SocketIOServer(httpServer, {
+    cors: { origin: true, credentials: true },
+  });
 
-socketServer.use((socket, next) => {
-  try {
-    const token = socket.handshake.auth?.token;
-    if (!token) return next(new Error("Unauthorized"));
-    const decoded = verifyAccessToken(token);
-    socket.authenticatedUserId = decoded.sub || decoded.userId || decoded.id;
-    if (!socket.authenticatedUserId) return next(new Error("Unauthorized"));
-    next();
-  } catch (_) {
-    next(new Error("Unauthorized"));
-  }
-});
-attachSocketServer(socketServer);
+  socketServer.use((socket, next) => {
+    try {
+      const token = socket.handshake.auth?.token;
+      if (!token) return next(new Error("Unauthorized"));
+      const decoded = verifyAccessToken(token);
+      socket.authenticatedUserId = decoded.sub || decoded.userId || decoded.id;
+      if (!socket.authenticatedUserId) return next(new Error("Unauthorized"));
+      next();
+    } catch (_) {
+      next(new Error("Unauthorized"));
+    }
+  });
+  attachSocketServer(socketServer);
 
-httpServer.listen(PORT, () => {
-  console.log(
-    `🌐 notification-service (with realtime socket.io) running on port ${PORT}`,
-  );
-});
+  httpServer.listen(PORT, () => {
+    console.log(
+      `🌐 notification-service (with realtime socket.io) running on port ${PORT}`,
+    );
+  });
+}
+
+module.exports = app;

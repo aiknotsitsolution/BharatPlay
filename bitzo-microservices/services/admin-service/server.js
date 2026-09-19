@@ -22,7 +22,15 @@ const PORT = process.env.PORT || 4002;
 morgan.token("body", (req) => {
   try {
     const body = { ...(req.body || {}) };
-    for (const key of ["password", "newPassword", "oldPassword", "token", "resetToken", "credential", "registerKey"]) {
+    for (const key of [
+      "password",
+      "newPassword",
+      "oldPassword",
+      "token",
+      "resetToken",
+      "credential",
+      "registerKey",
+    ]) {
       if (body[key] !== undefined) body[key] = "[REDACTED]";
     }
     return JSON.stringify(body);
@@ -30,18 +38,22 @@ morgan.token("body", (req) => {
     return "{}";
   }
 });
-app.use(morgan(":method :url :status :res[content-length] - :response-time ms :body"));
+app.use(
+  morgan(":method :url :status :res[content-length] - :response-time ms :body"),
+);
 
 // =====================================================
 // MONGODB
 // =====================================================
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ [admin-service] MongoDB Connected"))
-  .catch((err) => {
-    console.error("❌ [admin-service] MongoDB Connection Error:", err);
-    process.exit(1);
-  });
+if (require.main === module) {
+  mongoose
+    .connect(process.env.MONGO_URI)
+    .then(() => console.log("✅ [admin-service] MongoDB Connected"))
+    .catch((err) => {
+      console.error("❌ [admin-service] MongoDB Connection Error:", err);
+      process.exit(1);
+    });
+}
 
 // =====================================================
 // MIDDLEWARES
@@ -54,7 +66,13 @@ app.use(
     origin: true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+    ],
     exposedHeaders: ["Content-Type", "Authorization"],
   }),
 );
@@ -65,11 +83,19 @@ app.use(
 app.use("/api/admin", route0);
 
 app.get("/", (req, res) => {
-  res.json({ success: true, service: "admin-service", message: "🚀 admin-service is running" });
+  res.json({
+    success: true,
+    service: "admin-service",
+    message: "🚀 admin-service is running",
+  });
 });
 
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", service: "admin-service", uptime: process.uptime() });
+  res.json({
+    status: "ok",
+    service: "admin-service",
+    uptime: process.uptime(),
+  });
 });
 
 // =====================================================
@@ -84,7 +110,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: "Internal Server Error" });
 });
 
-app.listen(PORT, () => {
-  console.log(`🌐 admin-service running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🌐 admin-service running on port ${PORT}`);
+  });
+}
 
+module.exports = app;

@@ -49,13 +49,15 @@ app.use(
 // =====================================================
 // MONGODB
 // =====================================================
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ [security-service] MongoDB Connected"))
-  .catch((err) => {
-    console.error("❌ [security-service] MongoDB Connection Error:", err);
-    process.exit(1);
-  });
+if (require.main === module) {
+  mongoose
+    .connect(process.env.MONGO_URI)
+    .then(() => console.log("✅ [security-service] MongoDB Connected"))
+    .catch((err) => {
+      console.error("❌ [security-service] MongoDB Connection Error:", err);
+      process.exit(1);
+    });
+}
 
 // =====================================================
 // MIDDLEWARES
@@ -84,8 +86,10 @@ app.use(
 // =====================================================
 
 // Background cron jobs owned by security-service
-startTrustScoreJob();
-startStrikeExpiryJob();
+if (require.main === module) {
+  startTrustScoreJob();
+  startStrikeExpiryJob();
+}
 
 // VPN / fraud detection endpoint (used by ops/testing or other services)
 const vpnCheckHandler = async (req, res) => {
@@ -138,6 +142,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: "Internal Server Error" });
 });
 
-app.listen(PORT, () => {
-  console.log(`🌐 security-service running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🌐 security-service running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
