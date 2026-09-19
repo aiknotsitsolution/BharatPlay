@@ -15,6 +15,7 @@ const route0 = require("./routes/AdminRoute/AdminRoute");
 
 const app = express();
 const PORT = process.env.PORT || 4002;
+app.set("trust proxy", 1);
 
 // =====================================================
 // LOGGING
@@ -28,6 +29,7 @@ morgan.token("body", (req) => {
       "oldPassword",
       "token",
       "resetToken",
+      "otp",
       "credential",
       "registerKey",
     ]) {

@@ -64,7 +64,7 @@ exports.getDashboard = async (req, res) => {
       totalUsers,
       totalVideos,
       totalShorts,
-      activeUsersAgg,
+      activeUsers,
       usersThisWeek,
       videosThisWeek,
       newUsersToday,
@@ -78,11 +78,7 @@ exports.getDashboard = async (req, res) => {
       User.estimatedDocumentCount(),
       Video.estimatedDocumentCount(),
       Video.countDocuments({ videoType: "short" }),
-      WatchSession.aggregate([
-        { $match: { lastActiveAt: { $gte: sevenDaysAgo } } },
-        { $group: { _id: "$userId" } },
-        { $count: "count" },
-      ]),
+      User.countDocuments({ status: "active" }),
       User.find({ createdAt: { $gte: weekStart } }, { createdAt: 1 }).lean(),
       Video.find({ createdAt: { $gte: weekStart } }, { createdAt: 1 }).lean(),
       User.countDocuments({ createdAt: { $gte: startOfToday } }),
@@ -114,10 +110,10 @@ exports.getDashboard = async (req, res) => {
     const weekly = weekDays.map(({ day, start, end }) => ({
       day,
       users: usersThisWeek.filter(
-        (user) => user.createdAt >= start && user.createdAt < end
+        (user) => user.createdAt >= start && user.createdAt < end,
       ).length,
       videos: videosThisWeek.filter(
-        (video) => video.createdAt >= start && video.createdAt < end
+        (video) => video.createdAt >= start && video.createdAt < end,
       ).length,
     }));
 
@@ -144,7 +140,7 @@ exports.getDashboard = async (req, res) => {
       totalVideos,
       totalShorts,
       totalLongVideos: totalVideos - totalShorts,
-      activeUsers: activeUsersAgg[0]?.count || 0,
+      activeUsers,
       newUsersThisWeek: usersThisWeek.length,
     };
 

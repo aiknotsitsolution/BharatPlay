@@ -70,6 +70,57 @@ const sendMailSafely = async (mailOptions) => {
   }
 };
 
+const LOGIN_OTP_TTL_MS = 10 * 60 * 1000;
+const MAX_LOGIN_OTP_ATTEMPTS = 5;
+
+const issueLoginOtp = async (user) => {
+  const otp = crypto.randomInt(100000, 1000000).toString();
+  const mailResult = await sendMailSafely(
+    getLoginMailOptions(user.email, user.name, otp),
+  );
+
+  if (!mailResult.sent) {
+    return { sent: false };
+  }
+
+  user.loginOtpHash = await bcrypt.hash(otp, 10);
+  user.loginOtpExpires = new Date(Date.now() + LOGIN_OTP_TTL_MS);
+  user.loginOtpAttempts = 0;
+  await user.save();
+  return { sent: true };
+};
+
+const verifyLoginOtp = async (user, otp) => {
+  if (!/^\d{6}$/.test(String(otp || ""))) {
+    return { ok: false, message: "Enter the 6-digit OTP sent to your email." };
+  }
+
+  if (user.loginOtpAttempts >= MAX_LOGIN_OTP_ATTEMPTS) {
+    return {
+      ok: false,
+      message: "Too many incorrect attempts. Please log in again.",
+    };
+  }
+
+  const isValid =
+    user.loginOtpHash &&
+    user.loginOtpExpires &&
+    user.loginOtpExpires.getTime() > Date.now() &&
+    (await bcrypt.compare(String(otp), user.loginOtpHash));
+
+  if (!isValid) {
+    user.loginOtpAttempts += 1;
+    await user.save();
+    return { ok: false, message: "Invalid or expired OTP." };
+  }
+
+  user.loginOtpHash = null;
+  user.loginOtpExpires = null;
+  user.loginOtpAttempts = 0;
+  await user.save();
+  return { ok: true };
+};
+
 exports.registrationStatus = async (_req, res) => {
   try {
     const envKey = process.env.ADMIN_REGISTER_KEY;
@@ -1491,19 +1542,19 @@ exports.getAdminUserShorts = async (req, res) => {
 // ================== ADMIN LOGIN ==================
 exports.loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, otp } = req.body;
 
-    if (!email || !password) {
+    if (!email || (!password && !otp)) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required",
+        message: "Email, password, and OTP are required",
       });
     }
 
     const user = await User.findOne({
       email: email.toLowerCase().trim(),
       role: "admin",
-    }).select("+password");
+    }).select("+password +loginOtpHash");
 
     if (!user) {
       return res.status(401).json({
@@ -1519,12 +1570,37 @@ exports.loginUser = async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
+    if (!otp) {
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid credentials",
+        });
+      }
+
+      const otpDelivery = await issueLoginOtp(user);
+      if (!otpDelivery.sent) {
+        return res.status(503).json({
+          success: false,
+          code: "LOGIN_OTP_UNAVAILABLE",
+          message:
+            "Login OTP could not be sent. Please contact the administrator.",
+        });
+      }
+      return res.status(200).json({
+        success: true,
+        requiresOtp: true,
+        message:
+          "OTP has been sent to your email. Verify it to complete login.",
       });
+    }
+
+    const otpResult = await verifyLoginOtp(user, otp);
+    if (!otpResult.ok) {
+      return res
+        .status(401)
+        .json({ success: false, message: otpResult.message });
     }
 
     const token = signAccessToken({ userId: user._id, role: user.role });
@@ -1549,8 +1625,6 @@ exports.loginUser = async (req, res) => {
       expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
     });
     setRefreshCookie(res, refreshTokenValue, "admin");
-
-    await sendMailSafely(getLoginMailOptions(user.email, user.name));
 
     return res.status(200).json({
       success: true,
@@ -1985,7 +2059,11 @@ exports.getUserNotifications = async (req, res) => {
       Notification.find(filter)
         .populate({ path: "actor", select: "name avatar", model: AllUser })
         .populate({ path: "video", select: "title thumbnail", model: Video })
-        .populate({ path: "channel", select: "name channelImage", model: Channel })
+        .populate({
+          path: "channel",
+          select: "name channelImage",
+          model: Channel,
+        })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
@@ -3265,12 +3343,12 @@ exports.registerEmployee = async (req, res) => {
 
 exports.loginEmployee = async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password, role, otp } = req.body;
 
-    if (!email || !password) {
+    if (!email || (!password && !otp)) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required",
+        message: "Email, password, and OTP are required",
       });
     }
 
@@ -3285,7 +3363,7 @@ exports.loginEmployee = async (req, res) => {
 
     const user = await User.findOne({
       email: email.toLowerCase().trim(),
-    }).select("+password");
+    }).select("+password +loginOtpHash");
 
     if (!user) {
       return res.status(401).json({
@@ -3309,12 +3387,37 @@ exports.loginEmployee = async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
+    if (!otp) {
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid credentials",
+        });
+      }
+
+      const otpDelivery = await issueLoginOtp(user);
+      if (!otpDelivery.sent) {
+        return res.status(503).json({
+          success: false,
+          code: "LOGIN_OTP_UNAVAILABLE",
+          message:
+            "Login OTP could not be sent. Please contact the administrator.",
+        });
+      }
+      return res.status(200).json({
+        success: true,
+        requiresOtp: true,
+        message:
+          "OTP has been sent to your email. Verify it to complete login.",
       });
+    }
+
+    const otpResult = await verifyLoginOtp(user, otp);
+    if (!otpResult.ok) {
+      return res
+        .status(401)
+        .json({ success: false, message: otpResult.message });
     }
 
     const token = signAccessToken({
@@ -3342,8 +3445,6 @@ exports.loginEmployee = async (req, res) => {
     });
 
     setRefreshCookie(res, refreshTokenValue, "admin");
-
-    await sendMailSafely(getLoginMailOptions(user.email, user.name));
 
     return res.status(200).json({
       success: true,
@@ -3499,7 +3600,10 @@ exports.updateAdminProfile = async (req, res) => {
     if (typeof req.body.countryCode === "string") {
       update.countryCode = req.body.countryCode.trim();
     }
-    if (req.body.experienceYears !== undefined && req.body.experienceYears !== "") {
+    if (
+      req.body.experienceYears !== undefined &&
+      req.body.experienceYears !== ""
+    ) {
       const yrs = parseInt(req.body.experienceYears, 10);
       if (!Number.isNaN(yrs) && yrs >= 0) update.experienceYears = yrs;
     }
@@ -3512,7 +3616,12 @@ exports.updateAdminProfile = async (req, res) => {
     if (req.files && req.files.profilePhoto) {
       const file = req.files.profilePhoto;
 
-      const allowedMimes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+      const allowedMimes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+      ];
       if (!allowedMimes.includes(file.mimetype)) {
         return res.status(400).json({
           success: false,
@@ -3552,10 +3661,13 @@ exports.updateAdminProfile = async (req, res) => {
       });
     }
 
-    const admin = await User.findByIdAndUpdate(adminId, { $set: update }, { new: true })
-      .select(
-        "name email role contactNumber countryCode dateOfJoining experienceYears profilePhoto isActive createdAt",
-      );
+    const admin = await User.findByIdAndUpdate(
+      adminId,
+      { $set: update },
+      { new: true },
+    ).select(
+      "name email role contactNumber countryCode dateOfJoining experienceYears profilePhoto isActive createdAt",
+    );
 
     if (!admin) {
       return res.status(404).json({
@@ -3673,7 +3785,8 @@ exports.adminVerifyResetOtp = async (req, res) => {
       );
       return res.status(400).json({
         success: false,
-        message: "This verification code has expired. Please request a new one.",
+        message:
+          "This verification code has expired. Please request a new one.",
       });
     }
 
