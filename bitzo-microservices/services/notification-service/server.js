@@ -15,6 +15,7 @@ const route0 = require("./routes/notificationRoute");
 
 const app = express();
 const PORT = process.env.PORT || 4006;
+const MONGO_RETRY_DELAY_MS = Number(process.env.MONGO_RETRY_DELAY_MS || 5000);
 
 // =====================================================
 // LOGGING
@@ -46,13 +47,31 @@ app.use(
 // MONGODB
 // =====================================================
 if (require.main === module) {
-  mongoose
-    .connect(process.env.MONGO_URI)
-    .then(() => console.log("✅ [notification-service] MongoDB Connected"))
-    .catch((err) => {
-      console.error("❌ [notification-service] MongoDB Connection Error:", err);
-      process.exit(1);
-    });
+  const connectToMongo = async () => {
+    while (true) {
+      try {
+        await mongoose.connect(process.env.MONGO_URI, {
+          serverSelectionTimeoutMS: 5000,
+        });
+        console.log("✅ [notification-service] MongoDB Connected");
+        return;
+      } catch (err) {
+        console.error(
+          `❌ [notification-service] MongoDB Connection Error: ${err.message}`,
+        );
+        console.log(
+          `⏳ [notification-service] Retrying MongoDB connection in ${MONGO_RETRY_DELAY_MS}ms`,
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, MONGO_RETRY_DELAY_MS),
+        );
+      }
+    }
+  };
+
+  connectToMongo().catch((err) => {
+    console.error("❌ [notification-service] MongoDB retry loop stopped:", err);
+  });
 }
 
 // =====================================================
