@@ -44,6 +44,19 @@ const deletionRequestSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    assignedTo: {
+      type: String, // "assoc_1" … "assoc_5"
+      default: null,
+      index: true,
+    },
+    assignedAt: {
+      type: Date,
+      default: null,
+    },
+    assignedBy: {
+      type: String, // "system" | adminId
+      default: null,
+    },
   },
   { timestamps: true }
 );
@@ -51,5 +64,7 @@ const deletionRequestSchema = new mongoose.Schema(
 deletionRequestSchema.index({ email: 1 });
 deletionRequestSchema.index({ status: 1 });
 deletionRequestSchema.index({ createdAt: -1 });
+deletionRequestSchema.index({ assignedTo: 1, status: 1, createdAt: -1 });
+deletionRequestSchema.index({ inquiryType: 1, assignedTo: 1 });
 
 module.exports = mongoose.model("DeletionRequest", deletionRequestSchema);

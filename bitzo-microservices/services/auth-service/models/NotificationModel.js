@@ -31,6 +31,9 @@ const notificationSchema = new mongoose.Schema(
         "copyright_dispute_resolved",
         "copyright_case_assigned",
         "copyright_case_resolved",
+        // Support notifications
+        "support_reply",
+        "support_status",
       ],
       required: true,
     },
