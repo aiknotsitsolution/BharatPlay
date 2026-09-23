@@ -65,4 +65,6 @@ const adminSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-module.exports = require("../../config/connections").adminDB().model("Admin", adminSchema);
+module.exports = require("../../config/connections")
+  .authDB()
+  .model("Admin", adminSchema);
