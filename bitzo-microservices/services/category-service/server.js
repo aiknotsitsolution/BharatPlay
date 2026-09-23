@@ -9,6 +9,7 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const Category = require("./models/CategoryModel/category.model");
 const morgan = require("morgan");
 
 const route0 = require("./routes/categoryRoute/category.route");
@@ -48,7 +49,22 @@ app.use(
 if (require.main === module) {
   mongoose
     .connect(process.env.MONGO_URI)
-    .then(() => console.log("✅ [category-service] MongoDB Connected"))
+    .then(async () => {
+      console.log("✅ [category-service] MongoDB Connected");
+      if ((await Category.estimatedDocumentCount()) === 0) {
+        await Category.insertMany([
+          { name: "Gaming" },
+          { name: "Education" },
+          { name: "Entertainment" },
+          { name: "Music" },
+          { name: "Technology" },
+          { name: "Sports" },
+          { name: "Cooking" },
+          { name: "Travel" },
+        ]);
+        console.log("✅ [category-service] Default categories seeded");
+      }
+    })
     .catch((err) => {
       console.error("❌ [category-service] MongoDB Connection Error:", err);
       process.exit(1);

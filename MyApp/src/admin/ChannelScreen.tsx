@@ -104,6 +104,11 @@ export default function ChannelScreen({ navigation }) {
 
   const getToken = async () => await AsyncStorage.getItem("token");
 
+  const handleSessionExpired = async () => {
+    await AsyncStorage.multiRemove(["token", "user"]);
+    navigation.replace("Login");
+  };
+
   const getImageUrl = (path) => {
     if (!path) return null;
     if (path.startsWith("http")) return path;
@@ -143,6 +148,10 @@ export default function ChannelScreen({ navigation }) {
           headers: { Authorization: `Bearer ${token}` },
         });
 
+        if (res.status === 401) {
+          await handleSessionExpired();
+          return;
+        }
         if (!res.ok) throw new Error("Failed to fetch channels");
 
         const data = await res.json();
@@ -300,7 +309,11 @@ export default function ChannelScreen({ navigation }) {
             if (xhr.status >= 200 && xhr.status < 300) {
               resolve(response);
             } else {
-              reject(new Error(response.message || `Error ${xhr.status}`));
+              const requestError: any = new Error(
+                response.message || `Error ${xhr.status}`,
+              );
+              requestError.status = xhr.status;
+              reject(requestError);
             }
           } catch (e) {
             reject(new Error("Invalid server response"));
@@ -347,6 +360,10 @@ export default function ChannelScreen({ navigation }) {
       Alert.alert("Success", "Channel created successfully!");
     } catch (error) {
       console.log("Create channel error →", error);
+      if (error.status === 401) {
+        await handleSessionExpired();
+        return;
+      }
       setCreateError(error.message || "Failed to create channel");
     } finally {
       setCreating(false);
