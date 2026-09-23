@@ -87,6 +87,20 @@ const adminSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    loginOtpHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    loginOtpExpires: {
+      type: Date,
+      default: null,
+    },
+    loginOtpAttempts: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true },
 );

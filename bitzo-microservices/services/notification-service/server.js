@@ -15,6 +15,7 @@ const route0 = require("./routes/notificationRoute");
 
 const app = express();
 const PORT = process.env.PORT || 4006;
+const MONGO_RETRY_DELAY_MS = Number(process.env.MONGO_RETRY_DELAY_MS || 5000);
 
 // =====================================================
 // LOGGING
@@ -45,13 +46,33 @@ app.use(
 // =====================================================
 // MONGODB
 // =====================================================
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ [notification-service] MongoDB Connected"))
-  .catch((err) => {
-    console.error("❌ [notification-service] MongoDB Connection Error:", err);
-    process.exit(1);
+if (require.main === module) {
+  const connectToMongo = async () => {
+    while (true) {
+      try {
+        await mongoose.connect(process.env.MONGO_URI, {
+          serverSelectionTimeoutMS: 5000,
+        });
+        console.log("✅ [notification-service] MongoDB Connected");
+        return;
+      } catch (err) {
+        console.error(
+          `❌ [notification-service] MongoDB Connection Error: ${err.message}`,
+        );
+        console.log(
+          `⏳ [notification-service] Retrying MongoDB connection in ${MONGO_RETRY_DELAY_MS}ms`,
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, MONGO_RETRY_DELAY_MS),
+        );
+      }
+    }
+  };
+
+  connectToMongo().catch((err) => {
+    console.error("❌ [notification-service] MongoDB retry loop stopped:", err);
   });
+}
 
 // =====================================================
 // MIDDLEWARES
@@ -113,27 +134,31 @@ const { Server: SocketIOServer } = require("socket.io");
 const { verifyAccessToken } = require("./utils/tokenService");
 const { attachSocketServer } = require("./services/socketService");
 
-const httpServer = http.createServer(app);
-const socketServer = new SocketIOServer(httpServer, {
-  cors: { origin: true, credentials: true },
-});
+if (require.main === module) {
+  const httpServer = http.createServer(app);
+  const socketServer = new SocketIOServer(httpServer, {
+    cors: { origin: true, credentials: true },
+  });
 
-socketServer.use((socket, next) => {
-  try {
-    const token = socket.handshake.auth?.token;
-    if (!token) return next(new Error("Unauthorized"));
-    const decoded = verifyAccessToken(token);
-    socket.authenticatedUserId = decoded.sub || decoded.userId || decoded.id;
-    if (!socket.authenticatedUserId) return next(new Error("Unauthorized"));
-    next();
-  } catch (_) {
-    next(new Error("Unauthorized"));
-  }
-});
-attachSocketServer(socketServer);
+  socketServer.use((socket, next) => {
+    try {
+      const token = socket.handshake.auth?.token;
+      if (!token) return next(new Error("Unauthorized"));
+      const decoded = verifyAccessToken(token);
+      socket.authenticatedUserId = decoded.sub || decoded.userId || decoded.id;
+      if (!socket.authenticatedUserId) return next(new Error("Unauthorized"));
+      next();
+    } catch (_) {
+      next(new Error("Unauthorized"));
+    }
+  });
+  attachSocketServer(socketServer);
 
-httpServer.listen(PORT, () => {
-  console.log(
-    `🌐 notification-service (with realtime socket.io) running on port ${PORT}`,
-  );
-});
+  httpServer.listen(PORT, () => {
+    console.log(
+      `🌐 notification-service (with realtime socket.io) running on port ${PORT}`,
+    );
+  });
+}
+
+module.exports = app;

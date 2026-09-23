@@ -181,18 +181,22 @@ app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚪 Gateway running on port ${PORT}`);
-  console.log("Routing table:");
-  console.log("  /api/admin/copyright  ->", SERVICES.copyright);
-  console.log("  /api/admin            ->", SERVICES.admin);
-  console.log("  /api/adminvideo       ->", SERVICES.video);
-  console.log("  /api/uservideo        ->", SERVICES.video);
-  console.log("  /api/category         ->", SERVICES.category);
-  console.log("  /api/copyright        ->", SERVICES.copyright);
-  console.log("  /api/leaderboard      ->", SERVICES.leaderboard);
-  console.log("  /api/notifications    ->", SERVICES.notification);
-  console.log("  /v1/player            ->", SERVICES.playerAd);
-  console.log("  /test-vpn             ->", SERVICES.security);
-  console.log("  /api (fallback: auth) ->", SERVICES.auth);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚪 Gateway running on port ${PORT}`);
+    console.log("Routing table:");
+    console.log("  /api/admin/copyright  ->", SERVICES.copyright);
+    console.log("  /api/admin            ->", SERVICES.admin);
+    console.log("  /api/adminvideo       ->", SERVICES.video);
+    console.log("  /api/uservideo        ->", SERVICES.video);
+    console.log("  /api/category         ->", SERVICES.category);
+    console.log("  /api/copyright        ->", SERVICES.copyright);
+    console.log("  /api/leaderboard      ->", SERVICES.leaderboard);
+    console.log("  /api/notifications    ->", SERVICES.notification);
+    console.log("  /v1/player            ->", SERVICES.playerAd);
+    console.log("  /test-vpn             ->", SERVICES.security);
+    console.log("  /api (fallback: auth) ->", SERVICES.auth);
+  });
+}
+
+module.exports = app;
