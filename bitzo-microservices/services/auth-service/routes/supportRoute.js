@@ -1,18 +1,25 @@
 const express = require("express");
 const router = express.Router();
-const { submitContactRequest, getContactRequests, updateContactStatus } = require("../controller/contactController");
-const { submitDeletionRequest, getDeletionRequests, updateDeletionStatus } = require("../controller/deletionController");
-const authMiddleware = require("../middlewares/isAuthenticated");
+const { submitContactRequest, getContactRequests, getMyContactRequests, getContactRequestById, updateContactStatus } = require("../controller/contactController");
+const { submitDeletionRequest, getDeletionRequests, getMyDeletionRequests, getDeletionRequestById, updateDeletionStatus } = require("../controller/deletionController");
 const requireAdmin = require("../middlewares/requireAdmin");
+const optionalAuth = require("../middlewares/optionalAuth");
+const isAuthenticated = require("../middlewares/isAuthenticated");
 
-// Public routes (no auth required)
-router.post("/contact", submitContactRequest);
-router.post("/deletion-request", submitDeletionRequest);
+// Public routes (optional auth attaches the logged-in userId)
+router.post("/contact", optionalAuth, submitContactRequest);
+router.post("/deletion-request", optionalAuth, submitDeletionRequest);
 
-// Admin routes (auth + admin required)
-router.get("/contact", authMiddleware, requireAdmin, getContactRequests);
-router.patch("/contact/:id", authMiddleware, requireAdmin, updateContactStatus);
-router.get("/deletion-request", authMiddleware, requireAdmin, getDeletionRequests);
-router.patch("/deletion-request/:id", authMiddleware, requireAdmin, updateDeletionStatus);
+// User routes (must come before admin /:id routes)
+router.get("/contact/mine", isAuthenticated, getMyContactRequests);
+router.get("/deletion-request/mine", isAuthenticated, getMyDeletionRequests);
+
+// Admin routes (admin auth required)
+router.get("/contact", requireAdmin, getContactRequests);
+router.get("/contact/:id", requireAdmin, getContactRequestById);
+router.patch("/contact/:id", requireAdmin, updateContactStatus);
+router.get("/deletion-request", requireAdmin, getDeletionRequests);
+router.get("/deletion-request/:id", requireAdmin, getDeletionRequestById);
+router.patch("/deletion-request/:id", requireAdmin, updateDeletionStatus);
 
 module.exports = router;

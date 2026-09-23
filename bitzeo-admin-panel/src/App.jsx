@@ -40,6 +40,10 @@ import CopyrightCaseDetail from "./Admin/pages/Copyright/CopyrightCaseDetail";
 import CopyrightStrikeList from "./Admin/pages/Copyright/CopyrightStrikeList";
 import CopyrightCreateCase from "./Admin/pages/Copyright/CopyrightCreateCase";
 import CopyrightStrikeDetail from "./Admin/pages/Copyright/CopyrightStrikeDetail";
+import ContactRequestList from "./Admin/pages/Support/ContactRequestList";
+import ContactRequestDetail from "./Admin/pages/Support/ContactRequestDetail";
+import DeletionRequestList from "./Admin/pages/Support/DeletionRequestList";
+import DeletionRequestDetail from "./Admin/pages/Support/DeletionRequestDetail";
 import { getCurrentRole, getDashboardRoute } from "./config/roleConfig";
 
 const isAuthenticated = () => {
@@ -157,6 +161,14 @@ function App() {
               {/* ── Copyright Create (admin + support only) ── */}
               <Route element={<RoleGuard requiredFeature="canCreateCopyrightCase" />}>
                 <Route path="copyright/cases/new" element={<CopyrightCreateCase />} />
+              </Route>
+
+              {/* ── Support Routes (admin + support) ── */}
+              <Route element={<RoleGuard />}>
+                <Route path="support/contact" element={<ContactRequestList />} />
+                <Route path="support/contact/:id" element={<ContactRequestDetail />} />
+                <Route path="support/deletion" element={<DeletionRequestList />} />
+                <Route path="support/deletion/:id" element={<DeletionRequestDetail />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

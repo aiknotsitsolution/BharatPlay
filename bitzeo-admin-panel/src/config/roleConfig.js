@@ -11,6 +11,8 @@ import {
   DollarSign,
   Headphones,
   Eye,
+  MessageSquare,
+  Trash2,
 } from "lucide-react";
 
 /**
@@ -28,6 +30,8 @@ const ALL_NAV_ITEMS = [
   { to: "/video", icon: Video, label: "Video", roles: ["admin", "support", "read-only"] },
   { to: "/shorts", icon: Clapperboard, label: "Shorts", roles: ["admin", "support", "read-only"] },
   { to: "/copyright", icon: Shield, label: "Copyright", roles: ["admin", "finance", "support", "read-only"] },
+  { to: "/support/contact", icon: MessageSquare, label: "Contact Requests", roles: ["admin", "support"] },
+  { to: "/support/deletion", icon: Trash2, label: "Deletion Requests", roles: ["admin", "support"] },
 ];
 
 // ─── ROUTE OVERRIDES ──────────────────────────────────────────
@@ -39,6 +43,9 @@ const ROUTE_OVERRIDES = [
   { prefix: "/users/", roles: ["admin", "finance", "support", "read-only"] },
   // Uploads: has no sidebar nav item but is a valid content viewing route
   { prefix: "/uploads", roles: ["admin", "finance", "support", "read-only"] },
+  // Support detail routes
+  { prefix: "/support/contact/", roles: ["admin", "support"] },
+  { prefix: "/support/deletion/", roles: ["admin", "support"] },
 ];
 
 // ─── DASHBOARD ROUTES ─────────────────────────────────────────

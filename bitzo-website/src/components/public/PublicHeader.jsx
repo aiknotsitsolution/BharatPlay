@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Menu, X, ArrowRight } from "lucide-react";
+import { Menu, X, ArrowRight, Sun, Moon } from "lucide-react";
 import { NAV_LINKS, SITE } from "../../config/site";
 import { useTheme } from "../../context/ThemeContext";
 import SiteLogo from "./SiteLogo";
 
 export default function PublicHeader() {
   const navigate = useNavigate();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -98,14 +98,30 @@ export default function PublicHeader() {
           ))}
         </nav>
 
-        <button
-          type="button"
-          onClick={handleAction}
-          className="hidden items-center gap-1.5 rounded-full bg-red-600 px-4 py-1.5 text-[13px] font-medium text-white transition-all hover:bg-red-500 hover:shadow-[0_0_12px_rgba(220,38,38,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 sm:inline-flex"
-        >
-          {isLoggedIn ? "Open App" : "Sign in"}
-          <ArrowRight size={14} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={`hidden items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-all sm:inline-flex ${
+              isDark
+                ? "border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white"
+                : "border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-900"
+            }`}
+            aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
+          >
+            {isDark ? <Sun size={14} /> : <Moon size={14} />}
+            {isDark ? "Light" : "Dark"}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleAction}
+            className="hidden items-center gap-1.5 rounded-full bg-red-600 px-4 py-1.5 text-[13px] font-medium text-white transition-all hover:bg-red-500 hover:shadow-[0_0_12px_rgba(220,38,38,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 sm:inline-flex"
+          >
+            {isLoggedIn ? "Open App" : "Sign in"}
+            <ArrowRight size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu */}
@@ -141,14 +157,28 @@ export default function PublicHeader() {
                 {link.label}
               </NavLink>
             ))}
-            <button
-              type="button"
-              onClick={handleAction}
-              className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-500"
-            >
-              {isLoggedIn ? "Open App" : "Sign in"}
-              <ArrowRight size={15} />
-            </button>
+            <div className="mt-2 flex items-stretch gap-2">
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+                  isDark
+                    ? "border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-white"
+                    : "border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-900"
+                }`}
+              >
+                {isDark ? <Sun size={15} /> : <Moon size={15} />}
+                {isDark ? "Light Mode" : "Dark Mode"}
+              </button>
+              <button
+                type="button"
+                onClick={handleAction}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-500"
+              >
+                {isLoggedIn ? "Open App" : "Sign in"}
+                <ArrowRight size={15} />
+              </button>
+            </div>
           </div>
         </nav>
       )}

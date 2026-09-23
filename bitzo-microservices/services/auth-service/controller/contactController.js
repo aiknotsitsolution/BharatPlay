@@ -1,4 +1,5 @@
 const ContactRequest = require("../models/ContactRequest");
+const User = require("../models/usermodel");
 const transporter = require("../Email/nodemailer");
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || process.env.EMAIL;
@@ -111,11 +112,72 @@ exports.getContactRequests = async (req, res) => {
     return res.status(200).json({
       success: true,
       requests,
-      pagination: { page: Number(page), limit: Number(limit), total },
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit)) || 1,
+      },
     });
   } catch (err) {
     console.error("[contact] Fetch error:", err);
     return res.status(500).json({ success: false, message: "Failed to fetch requests." });
+  }
+};
+
+exports.getMyContactRequests = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const user = await User.findById(userId).select("email").lean();
+    const { status, page = 1, limit = 20 } = req.query;
+
+    const filter = {
+      $or: [
+        { userId },
+        ...(user?.email ? [{ email: String(user.email).toLowerCase() }] : []),
+      ],
+    };
+    if (status) filter.status = status;
+
+    const requests = await ContactRequest.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+      .lean();
+
+    const total = await ContactRequest.countDocuments(filter);
+
+    return res.status(200).json({
+      success: true,
+      requests,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit)) || 1,
+      },
+    });
+  } catch (err) {
+    console.error("[contact] My requests error:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch your requests." });
+  }
+};
+
+exports.getContactRequestById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const request = await ContactRequest.findById(id).lean();
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Request not found." });
+    }
+    return res.status(200).json({ success: true, request });
+  } catch (err) {
+    console.error("[contact] Fetch by ID error:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch request." });
   }
 };
 

@@ -1,23 +1,22 @@
 import { Link } from "react-router-dom";
-import { Sun, Moon } from "lucide-react";
 import { SITE } from "../../config/site";
 import { useTheme } from "../../context/ThemeContext";
 import SiteLogo from "./SiteLogo";
 
 const COLUMNS = [
   {
-    title: "Company",
+    title: "BharatPlay",
     links: [
       { label: "About Us", path: "/about" },
-      { label: "Press", path: "/about" },
-      { label: "Jobs", path: "/about" },
       { label: "Contact", path: "/contact" },
+      { label: "Careers", path: "/about" },
+      { label: "Press", path: "/about" },
     ],
   },
   {
     title: "Products",
     links: [
-      { label: "Website", path: "/apps" },
+      { label: "BharatPlay Website", path: "/apps" },
       { label: "Mobile App", path: "/apps" },
       { label: "Shorts", path: "/" },
       { label: "Premium", path: "/about" },
@@ -34,12 +33,19 @@ const COLUMNS = [
     ],
   },
   {
+    title: "For Business",
+    links: [
+      { label: "Advertising", path: "/advertising" },
+      { label: "Developers", path: "/developers" },
+      { label: "Partnerships", path: "/for-business" },
+    ],
+  },
+  {
     title: "Legal",
     links: [
       { label: "Privacy", path: "/privacy-policy" },
       { label: "Terms", path: "/terms" },
       { label: "Account & Data Deletion", path: "/delete-account" },
-      { label: "Brand Guidelines", path: "/terms" },
     ],
   },
 ];
@@ -52,7 +58,7 @@ const BOTTOM_LINKS = [
 ];
 
 export default function PublicFooter() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const isDark = theme === "dark";
 
   return (
@@ -73,7 +79,7 @@ export default function PublicFooter() {
         </div>
 
         {/* Columns */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-5">
           {COLUMNS.map((col) => (
             <div key={col.title}>
               <p className={`mb-3 text-xs font-semibold uppercase tracking-wider ${isDark ? "text-zinc-400" : "text-gray-500"}`}>
@@ -134,19 +140,6 @@ export default function PublicFooter() {
             >
               Help
             </a>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
-                isDark
-                  ? "border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white"
-                  : "border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-900"
-              }`}
-              aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
-            >
-              {isDark ? <Sun size={13} /> : <Moon size={13} />}
-              {isDark ? "Light" : "Dark"}
-            </button>
           </div>
         </div>
       </div>

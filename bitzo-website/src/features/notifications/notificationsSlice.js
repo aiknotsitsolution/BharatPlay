@@ -86,6 +86,30 @@ export const markAllNotificationsRead = createAsyncThunk(
   },
 );
 
+export const clearAllNotifications = createAsyncThunk(
+  "notifications/clearAllNotifications",
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = getToken();
+      if (!token) throw new Error("No token found. Please login first.");
+
+      const res = await fetch(`${BACKEND_URL}/api/notifications/clear-all`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+      const data = await res.json();
+      if (!data.success) throw new Error("Invalid response");
+
+      return { unreadCount: Number(data.unreadCount || 0) };
+    } catch (error) {
+      return rejectWithValue(error.message || "Failed to clear notifications");
+    }
+  },
+);
+
 export const deleteNotification = createAsyncThunk(
   "notifications/deleteNotification",
   async (id, { rejectWithValue }) => {
@@ -192,6 +216,10 @@ const notificationsSlice = createSlice({
         state.notifications = state.notifications.filter(
           (n) => n._id !== action.payload.id,
         );
+        state.unreadCount = action.payload.unreadCount;
+      })
+      .addCase(clearAllNotifications.fulfilled, (state, action) => {
+        state.notifications = [];
         state.unreadCount = action.payload.unreadCount;
       });
   },

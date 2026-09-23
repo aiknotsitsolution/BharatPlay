@@ -26,6 +26,7 @@ import {
   X,
   Shield,
   Globe,
+  LifeBuoy,
 } from "lucide-react";
 import { useRewards } from "../../context/RewardContext";
 import { useSelector, useDispatch } from "react-redux";
@@ -620,12 +621,17 @@ export default function Navbar({ toggleSidebar }) {
                             icon: Video,
                             label: "Your Videos",
                           },
-                          {
-                            path: "/advanced-settings",
-                            icon: Globe,
-                            label: "Advanced Settings",
-                          },
-                        ].map((item) => (
+{
+          path: "/advanced-settings",
+          icon: Globe,
+          label: "Advanced Settings",
+        },
+        {
+          path: "/my-support-requests",
+          icon: LifeBuoy,
+          label: "My Support Requests",
+        },
+      ].map((item) => (
                           <button
                             key={item.path}
                             onClick={() => {

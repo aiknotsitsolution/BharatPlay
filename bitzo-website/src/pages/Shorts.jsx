@@ -65,6 +65,7 @@ const normalizeShort = (v) => ({
     : Number(v.comments) || 0,
   isLiked: v.userReaction === "like" || v.isLiked === true,
   reaction: v.userReaction || v.reaction || null,
+  isSubscribed: Boolean(v.isSubscribed),
   thumbnail: toMediaUrl(v.thumbnail || v.thumb || ""),
   raw: v.raw || v,
 });
@@ -125,6 +126,7 @@ export default function Shorts() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [liked, setLiked] = useState({});
   const [pendingLike, setPendingLike] = useState({});
+  const [subscribed, setSubscribed] = useState({});
   const [commentOpenForId, setCommentOpenForId] = useState(null);
   const [commentsById, setCommentsById] = useState({});
   const [commentTextById, setCommentTextById] = useState({});
@@ -198,7 +200,16 @@ export default function Shorts() {
   const handleSubscribe = async (short) => {
     const channelId = getChannelId(short);
     const token = localStorage.getItem("token");
-    if (!channelId || !token) return;
+    if (!channelId) return;
+    if (!token) {
+      toast.error("Please login to subscribe");
+      return;
+    }
+    const wasSubscribed = Boolean(subscribed[channelId]);
+    setSubscribed((prev) => ({
+      ...prev,
+      [channelId]: !prev[channelId],
+    }));
     try {
       const response = await fetch(`${API_BASE}/subscribe/${channelId}`, {
         method: "POST",
@@ -206,13 +217,18 @@ export default function Shorts() {
       });
       const data = await response.json();
       if (data.success) {
-        toast.success(data.message || "Subscribed");
+        toast.success(
+          data.message ||
+            (data.subscribed ? "Subscribed" : "Unsubscribed"),
+        );
       } else {
         toast.error(data.message || "Failed to subscribe");
+        setSubscribed((prev) => ({ ...prev, [channelId]: wasSubscribed }));
       }
     } catch (error) {
       console.error("Subscribe error:", error);
       toast.error("Something went wrong");
+      setSubscribed((prev) => ({ ...prev, [channelId]: wasSubscribed }));
     }
   };
 
@@ -399,10 +415,17 @@ export default function Shorts() {
     const likedMap = Object.fromEntries(
       queue.map((short) => [short.id, Boolean(short.isLiked)]),
     );
+    const subscribedMap = Object.fromEntries(
+      queue.map((short) => {
+        const channelId = getChannelId(short);
+        return [channelId, Boolean(channelId && short.isSubscribed)];
+      }),
+    );
 
     if (!cancelled) {
       setShorts(queue);
       setLiked(likedMap);
+      setSubscribed(subscribedMap);
       setCurrentIndex(startIndex);
       setLoadingState(false);
 
@@ -896,15 +919,16 @@ export default function Shorts() {
                               onToggleMute={() => setMuted((m) => !m)}
                             />
 
-                            <BottomInfo
-                              short={short}
-                              formattedViews={formatViews(short.views)}
-                              onSubscribe={
-                                getChannelId(short)
-                                  ? () => handleSubscribe(short)
-                                  : undefined
-                              }
-                            />
+<BottomInfo
+  short={short}
+  formattedViews={formatViews(short.views)}
+  isSubscribed={Boolean(subscribed[getChannelId(short)])}
+  onSubscribe={
+    getChannelId(short)
+      ? () => handleSubscribe(short)
+      : undefined
+  }
+/>
 
                             {commentOpenForId === short.id && (
                               <CommentsSheet

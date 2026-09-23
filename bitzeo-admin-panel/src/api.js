@@ -212,3 +212,19 @@ export const fetchDeletedUsers = (params) =>
   API.get("/admin/deleted-users", { params });
 export const hardDeleteUser = (id) =>
   API.delete(`/admin/users/${id}/permanent`);
+
+// Support — Contact Requests
+export const fetchContactRequests = (params) =>
+  API.get("/support/contact", { params });
+export const fetchContactRequestById = (id) =>
+  API.get(`/support/contact/${id}`);
+export const updateContactRequest = (id, data) =>
+  API.patch(`/support/contact/${id}`, data);
+
+// Support — Deletion Requests
+export const fetchDeletionRequests = (params) =>
+  API.get("/support/deletion-request", { params });
+export const fetchDeletionRequestById = (id) =>
+  API.get(`/support/deletion-request/${id}`);
+export const updateDeletionRequest = (id, data) =>
+  API.patch(`/support/deletion-request/${id}`, data);

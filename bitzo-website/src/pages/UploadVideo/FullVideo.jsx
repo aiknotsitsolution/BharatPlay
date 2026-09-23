@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
 import { fetchProfileData } from "../../features/profile/profileSlice";
 import { getWatchSession } from "../../utils/watchSession";
 import VideoPlayer from "../../components/player/VideoPlayer";
@@ -180,7 +181,6 @@ export default function YouTubeLikeVideoPage() {
   const [commentLoading, setCommentLoading] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscribersCount, setSubscribersCount] = useState(0);
-  const [subscribeLoading, setSubscribeLoading] = useState(false);
   const [theaterMode, setTheaterMode] = useState(false);
   const [autoplay, setAutoplay] = useState(() => {
     try {
@@ -537,15 +537,21 @@ export default function YouTubeLikeVideoPage() {
     const channelId = videoDetails?.channel?._id || videoDetails?.channel?.id;
     if (!channelId) return;
 
-    setSubscribeLoading(true);
     const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Please login to subscribe");
+      return;
+    }
+
+    const wasSubscribed = isSubscribed;
+    setIsSubscribed((prev) => !prev);
 
     try {
       const response = await fetch(`${API_BASE}/subscribe/${channelId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
       });
       const data = await response.json();
@@ -555,11 +561,17 @@ export default function YouTubeLikeVideoPage() {
         if (typeof data.subscribersCount === "number") {
           setSubscribersCount(data.subscribersCount);
         }
+        toast.success(
+          data.message || (data.subscribed ? "Subscribed" : "Unsubscribed"),
+        );
+      } else {
+        toast.error(data.message || "Failed to subscribe");
+        setIsSubscribed(wasSubscribed);
       }
     } catch (error) {
-      console.error("Error subscribing to channel:", error);
-    } finally {
-      setSubscribeLoading(false);
+      console.error("Subscribe error:", error);
+      toast.error("Something went wrong");
+      setIsSubscribed(wasSubscribed);
     }
   };
 
@@ -956,18 +968,13 @@ export default function YouTubeLikeVideoPage() {
               <button
                 type="button"
                 onClick={handleSubscribe}
-                disabled={subscribeLoading}
                 className={`h-11 w-full md:w-auto px-5 rounded-full font-semibold flex items-center justify-center gap-2 transition-colors ${
                   isSubscribed
                     ? "bg-white/15 text-white hover:bg-white/20"
                     : "bg-white text-black hover:bg-gray-200"
-                } ${subscribeLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+                }`}
               >
-                {subscribeLoading
-                  ? "Please wait..."
-                  : isSubscribed
-                    ? "Subscribed"
-                    : "Subscribe"}
+                {isSubscribed ? "Unsubscribe" : "Subscribe"}
               </button>
             </div>
 

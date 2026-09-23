@@ -7,7 +7,12 @@ const resolveImage = (value) => {
   return `${BACKEND_URL}/${String(value).replace(/^\/+/, "").replace(/\\/g, "/")}`;
 };
 
-export default function BottomInfo({ short, formattedViews, onSubscribe }) {
+export default function BottomInfo({
+  short,
+  formattedViews,
+  onSubscribe,
+  isSubscribed,
+}) {
   const raw = short.raw || {};
   const channel = typeof raw.channel === "string" ? null : raw.channel || null;
   const uploadedBy =
@@ -72,9 +77,13 @@ export default function BottomInfo({ short, formattedViews, onSubscribe }) {
           <button
             type="button"
             onClick={onSubscribe}
-            className="pointer-events-auto shrink-0 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-black transition duration-200 hover:bg-white/90 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/60"
+            className={`pointer-events-auto shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition duration-200 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/60 ${
+              isSubscribed
+                ? "bg-white/10 text-white hover:bg-white/20"
+                : "bg-white text-black hover:bg-white/90"
+            }`}
           >
-            Subscribe
+            {isSubscribed ? "Unsubscribe" : "Subscribe"}
           </button>
         ) : null}
       </div>

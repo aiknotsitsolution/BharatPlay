@@ -36,6 +36,7 @@ import MyClaimsPage from "../pages/MyClaimsPage";
 import FAQPage from "../pages/FAQPage";
 import FeedbackPage from "../pages/FeedbackPage";
 import BharatPlayStudio from "../pages/Studio/BharatPlayStudio";
+import MySupportRequests from "../pages/MySupportRequests";
 
 // Public company website
 import PublicLayout from "../components/public/PublicLayout";
@@ -50,6 +51,9 @@ import CommunityGuidelinesPage from "../pages/Settings/advanced-settings/Communi
 import ContentPolicyPage from "../pages/Settings/advanced-settings/ContentPolicyPage";
 import CopyrightPolicyPage from "../pages/Settings/advanced-settings/CopyrightPolicyPage";
 import HelpSupportPage from "../pages/Settings/advanced-settings/HelpSupportPage";
+import ForBusinessPage from "../pages/Settings/advanced-settings/ForBusinessPage";
+import DevelopersPage from "../pages/Settings/advanced-settings/DevelopersPage";
+import AdvertisingPage from "../pages/Settings/advanced-settings/AdvertisingPage";
 
 function ViewAllRoute() {
   const { type } = useParams();
@@ -75,6 +79,9 @@ export default function AppRoutes() {
         <Route path="content-policy" element={<ContentPolicyPage />} />
         <Route path="copyright-policy" element={<CopyrightPolicyPage />} />
         <Route path="help-support" element={<HelpSupportPage />} />
+        <Route path="for-business" element={<ForBusinessPage />} />
+        <Route path="developers" element={<DevelopersPage />} />
+        <Route path="advertising" element={<AdvertisingPage />} />
         {/* Kept for backwards compatibility */}
         <Route path="terms-and-conditions" element={<TermsConditionsPage />} />
       </Route>
@@ -120,6 +127,7 @@ export default function AppRoutes() {
             element={<Navigate to="/contact" replace />}
           />
           <Route path="studio" element={<BharatPlayStudio />} />
+    <Route path="my-support-requests" element={<MySupportRequests />} />
         </Route>
       </Route>
 

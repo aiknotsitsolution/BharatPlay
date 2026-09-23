@@ -56,6 +56,7 @@ export const SITE = {
 export const NAV_LINKS = [
   { label: "Home", path: "/advanced-settings" },
   { label: "Apps", path: "/apps" },
+  { label: "Advertising", path: "/advertising" },
   { label: "About", path: "/about" },
   { label: "Contact", path: "/contact" },
 ];

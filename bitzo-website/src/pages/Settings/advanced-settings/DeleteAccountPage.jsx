@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { CheckCircle2, Trash2, ShieldCheck, Clock, UserX, Mail, Loader2 } from "lucide-react";
 import LegalPageLayout from "../../../components/public/LegalPageLayout";
 import { useTheme } from "../../../context/ThemeContext";
@@ -16,15 +17,28 @@ const REASONS = [
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const getLoggedInUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    return null;
+  }
+};
+
+const getInitialDeletionForm = () => {
+  const user = getLoggedInUser();
+  return {
+    email: user?.email || "",
+    accountIdentifier: "",
+    reason: "",
+  };
+};
+
 export default function DeleteAccountPage() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [step, setStep] = useState("form"); // form | confirm | success
-  const [form, setForm] = useState({
-    email: "",
-    accountIdentifier: "",
-    reason: "",
-  });
+  const [form, setForm] = useState(getInitialDeletionForm);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
@@ -140,16 +154,16 @@ export default function DeleteAccountPage() {
             </div>
             <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Deletion request received</h2>
             <p className={`mt-2 max-w-md text-sm leading-relaxed ${isDark ? "text-zinc-400" : "text-gray-500"}`}>
-              We've recorded your request for{" "}
-              <span className={isDark ? "text-zinc-200" : "text-gray-700"}>{form.email}</span>. This is a
-              frontend-only submission — when account deletion processing is
-              connected, our team will verify your request and process the
-              deletion of your account and associated personal information.
+              We've received your deletion request for{" "}
+              <span className={isDark ? "text-zinc-200" : "text-gray-700"}>{form.email}</span>. Our team
+              will verify your request and process the deletion of your account
+              and associated personal information in accordance with applicable
+              law. You will receive a confirmation email shortly.
             </p>
             <button
               type="button"
               onClick={() => {
-                setForm({ email: "", accountIdentifier: "", reason: "" });
+                setForm(getInitialDeletionForm());
                 setErrors({});
                 setStep("form");
               }}
@@ -161,6 +175,12 @@ export default function DeleteAccountPage() {
             >
               Submit another request
             </button>
+            <Link
+              to="/my-support-requests"
+              className="mt-3 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium text-red-500 hover:text-red-400 transition-colors"
+            >
+              Track your request status
+            </Link>
           </div>
         ) : (
           <>
@@ -332,13 +352,7 @@ export default function DeleteAccountPage() {
           })}
         </div>
 
-        <div className={`rounded-xl border p-4 text-center ${isDark ? "border-zinc-800/70 bg-[#161616]" : "border-gray-200 bg-white"}`}>
-          <p className={`text-xs ${isDark ? "text-zinc-600" : "text-gray-400"}`}>
-            This form captures your request on the frontend. Actual deletion
-            processing requires backend verification and will be connected to
-            this page later.
-          </p>
-        </div>
+
       </div>
     </LegalPageLayout>
   );
