@@ -44,7 +44,7 @@ function getConnection(envVarName, label) {
 }
 
 module.exports = {
-  authDB: () => mongoose.connection,
+  authDB: () => getConnection("AUTH_DB_URI", "auth-service"),
   adminDB: () => getConnection("ADMIN_DB_URI", "admin-service"),
   videoDB: () => getConnection("VIDEO_DB_URI", "video-service"),
   categoryDB: () => getConnection("CATEGORY_DB_URI", "category-service"),
