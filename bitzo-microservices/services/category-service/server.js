@@ -11,7 +11,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const Category = require("./models/CategoryModel/category.model");
 const morgan = require("morgan");
-
+const startHashtagCron = require("./cron/checkHashtags");
 const route0 = require("./routes/categoryRoute/category.route");
 
 const app = express();
@@ -20,6 +20,9 @@ const PORT = process.env.PORT || 4004;
 // =====================================================
 // LOGGING
 // =====================================================
+
+startHashtagCron();
+
 morgan.token("body", (req) => {
   try {
     const body = { ...(req.body || {}) };
@@ -53,17 +56,35 @@ if (require.main === module) {
       console.log("✅ [category-service] MongoDB Connected");
       if ((await Category.estimatedDocumentCount()) === 0) {
         await Category.insertMany([
-          { name: "Gaming" },
-          { name: "Education" },
-          { name: "Entertainment" },
-          { name: "Music" },
-          { name: "Technology" },
-          { name: "Sports" },
-          { name: "Cooking" },
-          { name: "Travel" },
+          { name: "Gaming", slug: "gaming", isMain: true },
+          { name: "Education", slug: "education", isMain: true },
+          { name: "Entertainment", slug: "entertainment", isMain: true },
+          { name: "Music", slug: "music", isMain: true },
+          { name: "Technology", slug: "technology", isMain: true },
+          { name: "Sports", slug: "sports", isMain: true },
+          { name: "Cooking", slug: "cooking", isMain: true },
+          { name: "Travel", slug: "travel", isMain: true },
+          {
+            name: "Creative Corner",
+            slug: "creative-corner",
+            isCreativeCorner: true,
+          },
         ]);
         console.log("✅ [category-service] Default categories seeded");
       }
+
+      await Category.findOneAndUpdate(
+        { $or: [{ slug: "creative-corner" }, { name: "Creative Corner" }] },
+        {
+          $set: {
+            name: "Creative Corner",
+            slug: "creative-corner",
+            isCreativeCorner: true,
+            isMain: false,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
     })
     .catch((err) => {
       console.error("❌ [category-service] MongoDB Connection Error:", err);

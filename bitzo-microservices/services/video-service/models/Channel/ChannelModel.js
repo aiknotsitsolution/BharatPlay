@@ -20,6 +20,8 @@ const channelSchema = new mongoose.Schema(
       required: true,
     },
 
+    hashtags: [{ type: String, lowercase: true, trim: true }],
+
     channelImage: {
       type: String,
       default: "",
@@ -73,15 +75,27 @@ const channelSchema = new mongoose.Schema(
     },
 
     disabledAt: { type: Date, default: null },
-    disabledBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", default: null },
+    disabledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      default: null,
+    },
     disableReason: { type: String, default: null },
 
     bannedAt: { type: Date, default: null },
-    bannedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", default: null },
+    bannedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      default: null,
+    },
     banReason: { type: String, default: null },
 
     deletedAt: { type: Date, default: null },
-    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", default: null },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      default: null,
+    },
     deleteReason: { type: String, default: null },
   },
   { timestamps: true },

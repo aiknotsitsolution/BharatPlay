@@ -49,6 +49,12 @@ const STATIC_CATEGORIES = [
   { _id: "6", name: "Sports" },
   { _id: "7", name: "Cooking" },
   { _id: "8", name: "Travel" },
+  {
+    _id: "creative-corner",
+    name: "Creative Corner",
+    slug: "creative-corner",
+    isCreativeCorner: true,
+  },
 ];
 
 export default function ChannelScreen({ navigation }) {
@@ -68,6 +74,7 @@ export default function ChannelScreen({ navigation }) {
     name: "",
     channelDescription: "",
     category: "",
+    hashtags: "",
     channelImageUri: null,
     channelBannerUri: null,
     channelImageAsset: null, // ← add this
@@ -84,6 +91,7 @@ export default function ChannelScreen({ navigation }) {
   const [videoName, setVideoName] = useState("");
   const [videoDescription, setVideoDescription] = useState("");
   const [videoCategory, setVideoCategory] = useState("");
+  const [videoHashtags, setVideoHashtags] = useState("");
   const [thumbnailUri, setThumbnailUri] = useState(null);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -122,8 +130,24 @@ export default function ChannelScreen({ navigation }) {
         const res = await fetch(API_CATEGORY);
         if (!res.ok) throw new Error("Failed");
         const data = await res.json();
+        const apiCategories = Array.isArray(data) ? data : [];
+        const hasCreativeCorner = apiCategories.some(
+          (category) =>
+            category.isCreativeCorner ||
+            category.slug === "creative-corner" ||
+            category.name?.toLowerCase() === "creative corner",
+        );
         setCategories(
-          Array.isArray(data) && data.length > 0 ? data : STATIC_CATEGORIES,
+          apiCategories.length > 0
+            ? hasCreativeCorner
+              ? apiCategories
+              : [
+                  ...apiCategories,
+                  STATIC_CATEGORIES.find(
+                    (category) => category.isCreativeCorner,
+                  ),
+                ]
+            : STATIC_CATEGORIES,
         );
       } catch (e) {
         setCategories(STATIC_CATEGORIES);
@@ -259,6 +283,20 @@ export default function ChannelScreen({ navigation }) {
       return;
     }
 
+    const selectedCategory = categories.find(
+      (category) =>
+        String(category._id) === String(newChannel.category) ||
+        category.slug === newChannel.category,
+    );
+    const isCreativeCornerCategory =
+      selectedCategory?.isCreativeCorner ||
+      selectedCategory?.slug === "creative-corner" ||
+      selectedCategory?.name?.toLowerCase() === "creative corner";
+    if (isCreativeCornerCategory && !newChannel.hashtags.trim()) {
+      setCreateError("Add at least one hashtag for Other (Creative Corner)");
+      return;
+    }
+
     try {
       setCreating(true);
       setCreateError("");
@@ -271,6 +309,7 @@ export default function ChannelScreen({ navigation }) {
         newChannel.channelDescription || "",
       );
       formData.append("category", newChannel.category);
+      formData.append("hashtags", newChannel.hashtags);
       formData.append("contactemail", newChannel.contactemail || "");
 
       // Avatar
@@ -346,6 +385,7 @@ export default function ChannelScreen({ navigation }) {
         name: "",
         channelDescription: "",
         category: "",
+        hashtags: "",
         channelImageUri: null,
         channelBannerUri: null,
         channelImageAsset: null,
@@ -393,6 +433,19 @@ export default function ChannelScreen({ navigation }) {
       setUploadError("Please select a category");
       return;
     }
+    const selectedVideoCategory = categories.find(
+      (category) =>
+        String(category._id) === String(videoCategory) ||
+        category.slug === videoCategory,
+    );
+    const isCreativeCornerVideo =
+      selectedVideoCategory?.isCreativeCorner ||
+      selectedVideoCategory?.slug === "creative-corner" ||
+      selectedVideoCategory?.name?.toLowerCase() === "creative corner";
+    if (isCreativeCornerVideo && !videoHashtags.trim()) {
+      setUploadError("Add at least one hashtag for Creative Corner videos");
+      return;
+    }
     if (!agreeTerms) {
       setUploadError("Please agree to the terms");
       return;
@@ -407,6 +460,8 @@ export default function ChannelScreen({ navigation }) {
       formData.append("description", videoDescription || "");
       formData.append("category", videoCategory);
       formData.append("videoType", videoType); // ← Web jaisa important field
+      formData.append("isCreativeCorner", String(isCreativeCornerVideo));
+      formData.append("hashtags", videoHashtags);
 
       // Video file
       formData.append("video", {
@@ -468,6 +523,7 @@ export default function ChannelScreen({ navigation }) {
       setVideoName("");
       setVideoDescription("");
       setVideoCategory("");
+      setVideoHashtags("");
       setVideoType("short");
       setThumbnailUri(null);
       setAgreeTerms(false);
@@ -496,6 +552,25 @@ export default function ChannelScreen({ navigation }) {
     channeldescription: "Create your channel to get started.",
     subscribers: 0,
   };
+
+  const selectedChannelCategory = categories.find(
+    (category) =>
+      String(category._id) === String(newChannel.category) ||
+      category.slug === newChannel.category,
+  );
+  const isCreativeCornerChannel =
+    selectedChannelCategory?.isCreativeCorner ||
+    selectedChannelCategory?.slug === "creative-corner" ||
+    selectedChannelCategory?.name?.toLowerCase() === "creative corner";
+  const selectedVideoCategory = categories.find(
+    (category) =>
+      String(category._id) === String(videoCategory) ||
+      category.slug === videoCategory,
+  );
+  const isCreativeCornerVideo =
+    selectedVideoCategory?.isCreativeCorner ||
+    selectedVideoCategory?.slug === "creative-corner" ||
+    selectedVideoCategory?.name?.toLowerCase() === "creative corner";
 
   const bannerUrl =
     getImageUrl(currentChannel.channelBanner) ||
@@ -791,25 +866,49 @@ export default function ChannelScreen({ navigation }) {
                     key={cat._id}
                     style={[
                       styles.categoryChip,
-                      newChannel.category === cat._id &&
+                      (newChannel.category === cat._id ||
+                        newChannel.category === cat.slug) &&
                         styles.categoryChipActive,
                     ]}
                     onPress={() =>
-                      setNewChannel({ ...newChannel, category: cat._id })
+                      setNewChannel({
+                        ...newChannel,
+                        category: cat.slug || cat._id,
+                      })
                     }
                   >
                     <Text
                       style={[
                         styles.categoryText,
-                        newChannel.category === cat._id &&
+                        (newChannel.category === cat._id ||
+                          newChannel.category === cat.slug) &&
                           styles.categoryTextActive,
                       ]}
                     >
-                      {cat.name}
+                      {cat.isCreativeCorner ||
+                      cat.slug === "creative-corner" ||
+                      cat.name?.toLowerCase() === "creative corner"
+                        ? "Other (Creative Corner)"
+                        : cat.name}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {isCreativeCornerChannel && (
+                <>
+                  <Text style={styles.label}>Hashtags *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="#Cooking, #Vlog"
+                    placeholderTextColor="#71717a"
+                    value={newChannel.hashtags}
+                    onChangeText={(t) =>
+                      setNewChannel({ ...newChannel, hashtags: t })
+                    }
+                  />
+                </>
+              )}
 
               <Text style={styles.label}>Channel Image (avatar)</Text>
               <TouchableOpacity
@@ -1019,21 +1118,42 @@ export default function ChannelScreen({ navigation }) {
                     key={cat._id}
                     style={[
                       styles.categoryChip,
-                      videoCategory === cat._id && styles.categoryChipActive,
+                      (videoCategory === cat._id ||
+                        videoCategory === cat.slug) &&
+                        styles.categoryChipActive,
                     ]}
-                    onPress={() => setVideoCategory(cat._id)}
+                    onPress={() => setVideoCategory(cat.slug || cat._id)}
                   >
                     <Text
                       style={[
                         styles.categoryText,
-                        videoCategory === cat._id && styles.categoryTextActive,
+                        (videoCategory === cat._id ||
+                          videoCategory === cat.slug) &&
+                          styles.categoryTextActive,
                       ]}
                     >
-                      {cat.name}
+                      {cat.isCreativeCorner ||
+                      cat.slug === "creative-corner" ||
+                      cat.name?.toLowerCase() === "creative corner"
+                        ? "Other (Creative Corner)"
+                        : cat.name}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {isCreativeCornerVideo && (
+                <>
+                  <Text style={styles.label}>Hashtags *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="#Cooking, #Vlog"
+                    placeholderTextColor="#71717a"
+                    value={videoHashtags}
+                    onChangeText={setVideoHashtags}
+                  />
+                </>
+              )}
 
               <Text style={styles.label}>Description</Text>
               <TextInput

@@ -68,6 +68,16 @@ const videoSchema = new mongoose.Schema(
       default: 0,
     },
 
+    hashtags: [{ type: String, lowercase: true, trim: true }],
+    isCreativeCorner: {
+      type: Boolean,
+      default: false,
+    },
+    isMonetized: {
+      type: Boolean,
+      default: true,
+    },
+
     viewers: [
       {
         userId: {

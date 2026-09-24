@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const path = require("path");
 const imagekit = require("../utils/imagekit");
 const categoryModel = require("../models/CategoryModel/category.model");
+const HashtagStats = require("../models/CategoryModel/HashtagStats");
 const ChannelModel = require("../models/Channel/ChannelModel");
 const User = require("../models/usermodel"); // ✅ Import User model
 const WatchSession = require("../models/WatchSession");
@@ -24,10 +25,49 @@ const {
 
 const ABS_WATCH_SECONDS_CAP = 12 * 60 * 60; // 43200s hard cap per session
 
+const resolveCategory = async (categoryValue) => {
+  const value = String(categoryValue || "").trim();
+  if (!value) return null;
+
+  if (mongoose.Types.ObjectId.isValid(value)) {
+    return categoryModel.findById(value);
+  }
+
+  const slug = value.toLowerCase();
+  const existingCategory = await categoryModel.findOne({
+    $or: [{ slug }, { name: value }],
+  });
+  if (existingCategory) return existingCategory;
+
+  const name = slug
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+  return categoryModel.findOneAndUpdate(
+    { slug },
+    {
+      $setOnInsert: {
+        name,
+        slug,
+        isMain: slug !== "creative-corner",
+        isCreativeCorner: slug === "creative-corner",
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+};
+
 const createChannel = async (req, res) => {
   try {
-    const { name, channeldescription, category, contactemail, videoUrl } =
-      req.body;
+    const {
+      name,
+      channeldescription,
+      category,
+      contactemail,
+      videoUrl,
+      hashtags: rawHashtags,
+    } = req.body;
 
     const userId = req.user.id;
 
@@ -39,11 +79,29 @@ const createChannel = async (req, res) => {
     }
 
     // Check category exists
-    const categoryData = await categoryModel.findById(category);
+    const categoryData = await resolveCategory(category);
     if (!categoryData) {
       return res.status(404).json({
         success: false,
         message: "Category not found",
+      });
+    }
+
+    const hashtags = (Array.isArray(rawHashtags) ? rawHashtags : [rawHashtags])
+      .flatMap((value) => String(value || "").split(/[\s,]+/))
+      .map((tag) => tag.replace(/^#+/, "").trim().toLowerCase())
+      .filter(Boolean);
+
+    const isCreativeCornerCategory =
+      categoryData.isCreativeCorner ||
+      categoryData.slug === "creative-corner" ||
+      categoryData.name?.toLowerCase() === "creative corner";
+
+    if (isCreativeCornerCategory && hashtags.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "At least one hashtag is required for Creative Corner channels",
       });
     }
 
@@ -104,6 +162,7 @@ const createChannel = async (req, res) => {
       name,
       channeldescription,
       category: categoryData._id,
+      hashtags: [...new Set(hashtags)],
       contactemail,
       videoUrl: videoUrl || "",
       channelImage: channelImageUrl,
@@ -148,7 +207,29 @@ const createChannel = async (req, res) => {
 const uploadVideo = async (req, res) => {
   try {
     const { channelId } = req.params;
-    const { name, description, category, videoType, duration } = req.body;
+    const {
+      name,
+      description,
+      category,
+      videoType,
+      duration,
+      hashtags: rawHashtags,
+      isCreativeCorner: rawIsCreativeCorner,
+    } = req.body;
+
+    const isCreativeCorner =
+      rawIsCreativeCorner === true || rawIsCreativeCorner === "true";
+    const hashtags = (Array.isArray(rawHashtags) ? rawHashtags : [rawHashtags])
+      .flatMap((value) => String(value || "").split(/[\s,]+/))
+      .map((tag) => tag.replace(/^#+/, "").trim().toLowerCase())
+      .filter(Boolean);
+
+    if (isCreativeCorner && hashtags.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one hashtag is required for Creative Corner videos",
+      });
+    }
 
     const channel = await ChannelModel.findById(channelId);
     if (!channel) {
@@ -162,6 +243,21 @@ const uploadVideo = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "You are not authorized to upload to this channel",
+      });
+    }
+
+    const categoryData = await resolveCategory(category);
+    if (!categoryData) {
+      return res.status(400).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    if (isCreativeCorner && !categoryData.isCreativeCorner) {
+      return res.status(400).json({
+        success: false,
+        message: "Creative Corner videos must use the Creative Corner category",
       });
     }
 
@@ -229,6 +325,9 @@ const uploadVideo = async (req, res) => {
       videoUrl: videoPath,
       thumbnail: thumbnailPath,
       videoType: videoType ? [videoType] : undefined,
+      hashtags: [...new Set(hashtags)],
+      isCreativeCorner,
+      isMonetized: true,
       duration:
         authoritativeDuration ||
         (Number(duration) > 0 ? Number(duration) : undefined),
@@ -236,6 +335,23 @@ const uploadVideo = async (req, res) => {
     });
 
     await newVideo.save();
+
+    if (isCreativeCorner && hashtags.length > 0) {
+      await HashtagStats.bulkWrite(
+        hashtags.map((hashtag) => ({
+          updateOne: {
+            filter: { hashtag },
+            update: {
+              $setOnInsert: { hashtag },
+              $inc: { videoCount: 1 },
+              $addToSet: { uniqueCreators: req.user?.userId },
+              $set: { updatedAt: new Date() },
+            },
+            upsert: true,
+          },
+        })),
+      );
+    }
 
     // ✅ Push video ID into Channel's videos array
     channel.videos.push(newVideo._id);
