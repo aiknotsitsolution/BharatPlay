@@ -146,6 +146,24 @@ const claimLookupLimiter = rateLimit({
   message: jsonMessage("Too many requests. Please try again later."),
 });
 
+// Public contact form submission (unauthenticated, strict limit — send emails)
+const contactLimiter = rateLimit({
+  windowMs: 1 * HOUR,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: jsonMessage("Too many support requests. Please try again later."),
+});
+
+// Public account deletion request (unauthenticated, strict limit — send emails)
+const deletionLimiter = rateLimit({
+  windowMs: 1 * HOUR,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: jsonMessage("Too many deletion requests. Please try again later."),
+});
+
 module.exports = {
   loginLimiter,
   adminLoginLimiter,
@@ -163,4 +181,6 @@ module.exports = {
   adminDestructiveLimiter,
   publicClaimLimiter,
   claimLookupLimiter,
+  contactLimiter,
+  deletionLimiter,
 };

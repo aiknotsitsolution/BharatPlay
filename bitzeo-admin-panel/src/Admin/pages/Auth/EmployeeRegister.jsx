@@ -1004,6 +1004,7 @@ import {
   Mail,
   Shield,
   Eye,
+  Pencil,
   Trash2,
   X,
   User,
@@ -1030,6 +1031,7 @@ import API from "../../../api";
 import toast from "react-hot-toast";
 import { hasFeature } from "../../../config/roleConfig";
 import tableCustomStyles from "../../../utils/tableStyles";
+import PageHeader from "../../../components/layout/PageHeader";
 
 // Country list
 const countries = [
@@ -1105,6 +1107,7 @@ export default function UsersManagement() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -1321,6 +1324,7 @@ export default function UsersManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const isEdit = !!editingUser;
 
     if (!isValidEmail(formData.email)) {
       toast.error("Please enter a valid email address");
@@ -1342,10 +1346,15 @@ export default function UsersManagement() {
       return;
     }
 
-    const passwordErrors = validatePassword(formData.password);
-    if (passwordErrors.length > 0) {
-      toast.error(passwordErrors[0]);
-      return;
+    const isChangingPassword = isEdit
+      ? formData.password.trim() !== ""
+      : true;
+    if (isChangingPassword) {
+      const passwordErrors = validatePassword(formData.password);
+      if (passwordErrors.length > 0) {
+        toast.error(passwordErrors[0]);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -1354,7 +1363,7 @@ export default function UsersManagement() {
       const data = new FormData();
       data.append("name", formData.name);
       data.append("email", formData.email);
-      data.append("password", formData.password);
+      if (isChangingPassword) data.append("password", formData.password);
       data.append("role", formData.role);
       data.append("contactNumber", fullContact);
       data.append("countryCode", selectedCountry.dial);
@@ -1362,21 +1371,29 @@ export default function UsersManagement() {
       data.append("experienceYears", formData.experienceYears);
       if (profilePhoto) data.append("profilePhoto", profilePhoto);
 
-      const res = await API.post("/admin/employee/register", data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const options = { headers: { "Content-Type": "multipart/form-data" } };
+
+      const res = isEdit
+        ? await API.put(`/admin/employee/${editingUser._id}`, data, options)
+        : await API.post("/admin/employee/register", data, options);
 
       if (!res.data.success) {
-        throw new Error(res.data.message || "Registration failed");
+        throw new Error(res.data.message || "Save failed");
       }
 
-      toast.success(res.data.message || "Employee created successfully!");
+      toast.success(
+        res.data.message ||
+          (isEdit
+            ? "Employee updated successfully!"
+            : "Employee created successfully!"),
+      );
       setShowAddModal(false);
+      setEditingUser(null);
       resetForm();
       fetchUsers();
     } catch (err) {
       toast.error(
-        err.response?.data?.message || err.message || "Registration failed"
+        err.response?.data?.message || err.message || "Save failed"
       );
     } finally {
       setIsSubmitting(false);
@@ -1424,6 +1441,48 @@ export default function UsersManagement() {
   const handleView = (user) => {
     setSelectedUser(user);
     setShowViewModal(true);
+  };
+
+  const handleEdit = (user) => {
+    setEditingUser(user);
+
+    let dial = user.countryCode || "";
+    let numberRaw = user.contactNumber || "";
+
+    if (dial && numberRaw.startsWith(dial)) {
+      numberRaw = numberRaw.slice(dial.length);
+    } else if (numberRaw) {
+      const match = countries.find((c) => numberRaw.startsWith(c.dial));
+      if (match) {
+        dial = match.dial;
+        numberRaw = numberRaw.slice(match.dial.length);
+      }
+    }
+
+    const resolvedCountry =
+      countries.find((c) => c.dial === dial) || countries[0];
+
+    setSelectedCountry(resolvedCountry);
+    setFormData({
+      name: user.name || "",
+      email: user.email || "",
+      password: "",
+      confirmPassword: "",
+      role: user.role || "admin",
+      contactNumber: numberRaw.replace(/\D/g, ""),
+      dateOfJoining: user.dateOfJoining
+        ? new Date(user.dateOfJoining).toISOString().slice(0, 10)
+        : "",
+      experienceYears:
+        user.experienceYears != null ? String(user.experienceYears) : "",
+    });
+    setProfilePhoto(null);
+    setPhotoPreview(user.profilePhoto || null);
+    setShowPassword(false);
+    setShowCountryList(false);
+    setShowRoleList(false);
+    setShowCalendar(false);
+    setShowAddModal(true);
   };
 
   // ========== DataTable Columns ==========
@@ -1577,6 +1636,14 @@ export default function UsersManagement() {
           </button>
 
           <button
+            onClick={() => handleEdit(row)}
+            className="p-2 text-bp-text-secondary hover:text-bp-cyan hover:bg-bp-cyan/10 rounded-lg transition"
+            title="Edit Employee"
+          >
+            <Pencil size={16} />
+          </button>
+
+          <button
             onClick={() => handleDelete(row._id)}
             className="p-2 text-bp-text-secondary hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"
             title="Delete Employee"
@@ -1595,26 +1662,21 @@ export default function UsersManagement() {
   return (
     <div>
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-bp-text">
-              All Employee users
-            </h1>
-            <p className="text-[13px] text-bp-text-secondary mt-1">
-              Manage users & create new employees
-            </p>
-          </div>
-
+        <PageHeader title="All Employee users" subtitle="Manage users & create new employees" className="mb-6">
           {hasFeature("canCreateEmployee") && (
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => {
+                setEditingUser(null);
+                resetForm();
+                setShowAddModal(true);
+              }}
               className="inline-flex items-center gap-2 bg-bp-elevated border border-bp-border text-bp-text-secondary hover:text-bp-text hover:bg-bp-hover px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
             >
               <UserPlus size={18} />
               Add Employee
             </button>
           )}
-        </div>
+        </PageHeader>
 
         {/* Search + Filters */}
         <div className="mb-6 flex flex-col lg:flex-row gap-4">
@@ -1814,6 +1876,7 @@ className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 t
             <button
               onClick={() => {
                 setShowAddModal(false);
+                setEditingUser(null);
                 resetForm();
               }}
               className="absolute top-4 right-4 z-20 p-2 rounded-xl bg-bp-elevated/60 border border-bp-border/50 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated hover:border-bp-border transition-all duration-200"
@@ -1852,8 +1915,8 @@ className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 t
                   </label>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-bp-text">Add New Employee</h2>
-                  <p className="text-sm text-bp-text-muted mt-1">Create a new team member account <span className="text-bp-text-muted/70">• Max 5MB photo</span></p>
+                  <h2 className="text-xl font-bold text-bp-text">{editingUser ? "Edit Employee" : "Add New Employee"}</h2>
+                  <p className="text-sm text-bp-text-muted mt-1">{editingUser ? `Update details for ${editingUser.name || "this employee"} ` : "Create a new team member account "}<span className="text-bp-text-muted/70">• Max 5MB photo</span></p>
                 </div>
               </div>
 
@@ -2128,9 +2191,9 @@ className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 t
                         onChange={handleChange}
                         onCopy={preventCopyPaste}
                         onPaste={preventCopyPaste}
-                        required
+                        required={!editingUser}
                         autoComplete="new-password"
-                        placeholder="••••••••"
+                        placeholder={editingUser ? "Leave blank to keep current" : "••••••••"}
                       className="w-full pl-9 pr-10 py-2.5 bg-bp-surface/60 border border-bp-border/50 text-white rounded-xl text-sm focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border outline-none transition-colors duration-200"
                     />
                     <button
@@ -2142,7 +2205,12 @@ className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 t
                     </button>
                   </div>
 
-                  {formData.password && (
+                  {editingUser ? (
+                    <p className="text-xs text-bp-text-muted mt-1.5">
+                      Leave blank to keep the current password.
+                    </p>
+                  ) : (
+                    formData.password && (
                     <div className="mt-2">
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="text-bp-text-secondary">Password Strength</span>
@@ -2175,6 +2243,7 @@ className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 t
                         special character
                       </p>
                     </div>
+                    )
                   )}
                 </div>
 
@@ -2191,9 +2260,9 @@ className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 t
                         onChange={handleChange}
                         onCopy={preventCopyPaste}
                         onPaste={preventCopyPaste}
-                        required
+                        required={!editingUser}
                         autoComplete="new-password"
-                        placeholder="••••••••"
+                        placeholder={editingUser ? "Leave blank to keep current" : "••••••••"}
                       className="w-full pl-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 text-white rounded-xl text-sm focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border outline-none transition-colors duration-200"
                     />
                   </div>
@@ -2206,6 +2275,7 @@ className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 t
                   type="button"
                   onClick={() => {
                     setShowAddModal(false);
+                    setEditingUser(null);
                     resetForm();
                   }}
                   className="flex-1 py-2.5 bg-bp-elevated hover:bg-bp-elevated/80 text-bp-text-secondary hover:text-bp-text border border-bp-border hover:border-bp-border/80 rounded-xl text-sm font-semibold transition-all duration-200"
@@ -2218,7 +2288,13 @@ className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 t
                     disabled={isSubmitting}
                     className="flex-1 py-2.5 bg-bp-blue hover:bg-bp-blue/90 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-all duration-200"
                   >
-                    {isSubmitting ? "Creating..." : "Create Employee"}
+                    {isSubmitting
+                      ? editingUser
+                        ? "Saving..."
+                        : "Creating..."
+                      : editingUser
+                      ? "Save Changes"
+                      : "Create Employee"}
                   </button>
                 )}
               </div>

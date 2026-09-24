@@ -7,11 +7,11 @@ import {
   CheckCircle,
   FileText,
   ArrowUpRight,
-  RefreshCw,
   Plus,
 } from "lucide-react";
 import { fetchCopyrightStats, fetchCopyrightCases } from "../../../api";
 import { hasFeature } from "../../../config/roleConfig";
+import PageHeader from "../../../components/layout/PageHeader";
 
 const StatCard = ({ title, value, icon: Icon, color, bg }) => (
   <div className="stat-card">
@@ -47,7 +47,7 @@ const priorityColors = {
   urgent: "text-red-400",
 };
 
-export default function CopyrightDashboard() {
+export default function CopyrightDashboard({ hideHeader = false }) {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [recentCases, setRecentCases] = useState([]);
@@ -98,16 +98,9 @@ export default function CopyrightDashboard() {
 
   return (
     <div className="space-y-7">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-bp-text">Copyright Management</h1>
-          <p className="text-[13px] text-bp-text-secondary mt-1">Manage copyright cases, strikes, and disputes</p>
-        </div>
-        <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 text-sm bg-bp-card hover:bg-bp-elevated text-white rounded-lg border border-bp-border transition-colors">
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
-      </div>
+      {!hideHeader && (
+        <PageHeader title="Copyright Management" subtitle="Manage copyright cases, strikes, and disputes" />
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard title="Total Cases" value={stats?.cases?.total ?? 0} icon={FileText} color="text-bp-blue" bg="bg-bp-blue/15" />

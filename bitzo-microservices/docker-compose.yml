@@ -61,11 +61,11 @@ services:
     container_name: bitzo-auth-service
     env_file: ./services/auth-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/authservice?appName=Cluster0&compressors=zlib
-      - ADMIN_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0&compressors=zlib
-      - NOTIFICATION_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0&compressors=zlib
-      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0&compressors=zlib
-      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0&compressors=zlib
+      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - ADMIN_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - NOTIFICATION_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
     ports:
       - "4001:4001"
     depends_on:
@@ -77,12 +77,12 @@ services:
     container_name: bitzo-admin-service
     env_file: ./services/admin-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/admin?appName=Cluster0&compressors=zlib
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0&compressors=zlib
-      - NOTIFICATION_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - CATEGORY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0&compressors=zlib
+      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - NOTIFICATION_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - CATEGORY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
     ports:
       - "4002:4002"
     depends_on:
@@ -94,12 +94,12 @@ services:
     container_name: bitzo-video-service
     env_file: ./services/video-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/video?appName=Cluster0&compressors=zlib
-      - ADMIN_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - NOTIFICATION_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - CATEGORY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - ADMIN_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - NOTIFICATION_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - CATEGORY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
     ports:
       - "4003:4003"
     depends_on:
@@ -111,8 +111,8 @@ services:
     container_name: bitzo-category-service
     env_file: ./services/category-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - ADMIN_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - ADMIN_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
     ports:
       - "4004:4004"
     depends_on:
@@ -124,9 +124,9 @@ services:
     container_name: bitzo-leaderboard-service
     env_file: ./services/leaderboard-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
     ports:
       - "4005:4005"
     depends_on:
@@ -138,9 +138,9 @@ services:
     container_name: bitzo-notification-service
     env_file: ./services/notification-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
     ports:
       - "4006:4006"
     depends_on:
@@ -152,9 +152,9 @@ services:
     container_name: bitzo-player-ad-service
     env_file: ./services/player-ad-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
     ports:
       - "4007:4007"
     depends_on:
@@ -166,12 +166,12 @@ services:
     container_name: bitzo-copyright-service
     env_file: ./services/copyright-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - ADMIN_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - NOTIFICATION_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - ADMIN_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - NOTIFICATION_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
     ports:
       - "4008:4008"
     depends_on:
@@ -183,9 +183,9 @@ services:
     container_name: bitzo-security-service
     env_file: ./services/security-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
-      - COPYRIGHT_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?Auth=Cluster0&compressors=zlib
+      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
+      - COPYRIGHT_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/?appName=Cluster0
     ports:
       - "4009:4009"
     depends_on:

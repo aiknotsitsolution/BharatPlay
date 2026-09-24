@@ -18,6 +18,7 @@ import {
 import { hasFeature } from "../../config/roleConfig";
 import { API_BASE_URL, fetchDeletedUsers, hardDeleteUser, restoreAdminUser } from "../../api";
 import tableCustomStyles from "../../utils/tableStyles";
+import PageHeader from "../../components/layout/PageHeader";
 
 const BASE_URL = API_BASE_URL;
 const LIMIT = 15;
@@ -263,16 +264,10 @@ export default function DeletedUsers() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-bp-text">
-            Deleted Users
-          </h1>
-          <p className="text-[13px] text-bp-text-secondary mt-1">
-            {totalRows} deleted user{totalRows !== 1 ? "s" : ""} found
-          </p>
-        </div>
-
+      <PageHeader
+        title="Deleted Users"
+        subtitle={`${totalRows} deleted user${totalRows !== 1 ? "s" : ""} found`}
+      >
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-bp-text-muted pointer-events-none" />
           <input
@@ -292,7 +287,7 @@ export default function DeletedUsers() {
             </button>
           )}
         </div>
-      </div>
+      </PageHeader>
 
       {/* Info Banner */}
       <div className="flex items-center gap-3 p-3 bg-red-500/5 border border-red-500/20 rounded-lg">

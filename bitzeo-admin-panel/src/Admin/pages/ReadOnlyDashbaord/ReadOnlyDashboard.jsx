@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { Eye, Users, Video, TrendingUp, Clock, Shield, ArrowUpRight } from "lucide-react";
 import useDashboardData from "../../../hooks/useDashboardData";
+import PageHeader from "../../../components/layout/PageHeader";
 
 const StatCard = ({ title, value, icon: Icon, color, bg }) => (
   <div className="stat-card">
@@ -52,16 +53,12 @@ export default function ReadOnlyDashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-bp-text tracking-tight">Read-Only Dashboard</h1>
-          <p className="text-[13px] text-bp-text-secondary mt-1">View-only access — no modifications allowed</p>
-        </div>
+      <PageHeader title="Read-Only Dashboard" subtitle="View-only access — no modifications allowed">
         <div className="flex items-center gap-2 text-sm text-bp-text-secondary bg-bp-card border border-bp-border px-3 py-1.5 rounded-lg">
           <Eye className="w-4 h-4" />
           <span>Read-Only Mode</span>
         </div>
-      </div>
+      </PageHeader>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard title="Total Users" value={stats.activeUsers.toLocaleString()} icon={Users} color="text-bp-blue" bg="bg-bp-blue/10" />

@@ -120,7 +120,7 @@ export default function Register() {
 
           <div className="mt-4 pt-3 border-t border-bp-border">
             <p className="text-center text-sm text-bp-text-secondary">
-              Already have an account? <Link to="/login" style={{ color: "#FFFFFF" }} className="font-medium hover:opacity-80 transition">Sign In</Link>
+              Already have an account? <Link to="/login" className="font-medium text-bp-blue hover:opacity-80 transition">Sign In</Link>
             </p>
           </div>
         </div>

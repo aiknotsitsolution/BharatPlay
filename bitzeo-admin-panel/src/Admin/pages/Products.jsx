@@ -1,5 +1,6 @@
 ﻿import { Search, Plus, Edit, Trash2, MoreVertical } from 'lucide-react'
 import { hasFeature } from "../../config/roleConfig";
+import PageHeader from "../../components/layout/PageHeader";
 
 const fakeProducts = [
   { id: 1, name: "Wireless Earbuds Pro", category: "Electronics", price: "₹2,499", stock: 84, status: "Active" },
@@ -19,9 +20,7 @@ export default function Products() {
   return (
     <div className="space-y-6">
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-bp-text">Products</h1>
-        
+<PageHeader title="Products">
         <div className="flex items-center gap-3">
           <div className="relative">
             <input
@@ -31,7 +30,7 @@ export default function Products() {
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-bp-text-muted pointer-events-none" />
           </div>
-          
+
           {hasFeature("canManageProducts") && (
             <button className="flex items-center gap-2 px-4 py-2 bg-bp-blue text-white rounded-lg hover:bg-bp-blue/90 transition-colors">
               <Plus size={18} />
@@ -39,7 +38,7 @@ export default function Products() {
             </button>
           )}
         </div>
-      </div>
+      </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {fakeProducts.map(product => (

@@ -21,6 +21,7 @@ import {
 import { hasFeature } from "../../config/roleConfig";
 import { API_BASE_URL } from "../../api";
 import tableCustomStyles from "../../utils/tableStyles";
+import PageHeader from "../../components/layout/PageHeader";
 
 const allUserTableStyles = {
   ...tableCustomStyles,
@@ -346,12 +347,7 @@ export default function Users() {
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-bp-text">Users</h1>
-          <p className="text-[13px] text-bp-text-secondary mt-1">{totalRows} total users</p>
-        </div>
-
+      <PageHeader title="Users" subtitle={`${totalRows} total users`}>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-bp-text-muted pointer-events-none" />
           <input
@@ -371,7 +367,7 @@ export default function Users() {
             </button>
           )}
         </div>
-      </div>
+      </PageHeader>
 
       {/* DataTable */}
       <div className="bg-bp-card rounded-2xl overflow-hidden">

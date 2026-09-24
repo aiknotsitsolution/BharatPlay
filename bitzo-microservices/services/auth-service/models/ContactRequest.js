@@ -26,6 +26,9 @@ const contactRequestSchema = new mongoose.Schema(
         "Complaint",
         "Business Inquiry",
         "Other",
+        "Copyright",
+        "Account",
+        "Billing",
       ],
     },
     subject: {
@@ -59,6 +62,19 @@ const contactRequestSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    assignedTo: {
+      type: String, // support employee _id (Admin role=support)
+      default: null,
+      index: true,
+    },
+    assignedAt: {
+      type: Date,
+      default: null,
+    },
+    assignedBy: {
+      type: String, // "system" | adminId
+      default: null,
+    },
   },
   { timestamps: true }
 );
@@ -66,5 +82,7 @@ const contactRequestSchema = new mongoose.Schema(
 contactRequestSchema.index({ email: 1 });
 contactRequestSchema.index({ status: 1 });
 contactRequestSchema.index({ createdAt: -1 });
+contactRequestSchema.index({ assignedTo: 1, status: 1, createdAt: -1 });
+contactRequestSchema.index({ inquiryType: 1, assignedTo: 1 });
 
 module.exports = mongoose.model("ContactRequest", contactRequestSchema);

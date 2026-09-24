@@ -10,6 +10,7 @@ import {
 } from "../../api";
 import { getAdminDisplayName, getInitials, getAdminPhoto, getAdminEmail, isLoginCelebrationEnabled, setLoginCelebrationEnabled } from "../../utils/helpers";
 import { getCurrentRole, getRoleMeta } from "../../config/roleConfig";
+import PageHeader from "../../components/layout/PageHeader";
 
 export default function Profile() {
   const fileRef = useRef(null);
@@ -225,12 +226,7 @@ export default function Profile() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-bp-text">Profile</h1>
-        <p className="text-[13px] text-bp-text-secondary mt-1">
-          Your account details and session
-        </p>
-      </div>
+      <PageHeader title="Profile" subtitle="Your account details and session" />
 
       {/* Profile card */}
       <div className="bp-card p-6 md:p-8">

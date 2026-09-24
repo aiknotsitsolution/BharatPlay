@@ -228,8 +228,7 @@ export default function EmployeeLogin() {
             <div className="flex justify-end">
               <Link
                 to="/forgot-password"
-                className="text-sm font-medium hover:opacity-80 transition"
-                style={{ color: "#FFFFFF" }}
+                className="text-sm font-medium text-bp-blue hover:opacity-80 transition"
               >
                 Forgot Password?
               </Link>
@@ -264,8 +263,7 @@ export default function EmployeeLogin() {
               Admin login?{" "}
               <Link
                 to="/admin-login"
-                style={{ color: "#FFFFFF" }}
-                className="font-medium hover:opacity-80 transition"
+                className="font-medium text-bp-blue hover:opacity-80 transition"
               >
                 Admin Panel
               </Link>

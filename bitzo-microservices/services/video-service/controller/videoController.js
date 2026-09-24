@@ -174,7 +174,7 @@ exports.getAllVideos = async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get("host")}`;
 
     // Add full video URL for frontend consumption
-    const updatedVideos = videos.map((video) => {
+    const updatedVideos = assertEnrichedVideos.map((video) => {
       const videoObj = video.toObject();
       return {
         ...videoObj,

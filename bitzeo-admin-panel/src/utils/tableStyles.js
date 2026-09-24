@@ -10,7 +10,7 @@ const tableCustomStyles = {
   },
   headRow: {
     style: {
-      backgroundColor: "transparent",
+      backgroundColor: "color-mix(in srgb, var(--bp-elevated) 50%, transparent)",
       borderBottom: "none",
       minHeight: "44px",
     },

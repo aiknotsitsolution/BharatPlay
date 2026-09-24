@@ -955,6 +955,249 @@ exports.deleteEmployee = async (req, res) => {
   }
 };
 
+// ================== UPDATE EMPLOYEE (team members / admins) ==================
+exports.updateEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.admin && req.admin._id;
+
+    // Validate user ID format
+    if (!id || !isValidObjectId(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid user ID format" });
+    }
+
+    // Prevent admin from editing themselves from the employee list
+    if (adminId && adminId.toString() === id) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot edit your own account here. Use Profile settings.",
+      });
+    }
+
+    const employee = await User.findById(id);
+    if (!employee) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Employee not found" });
+    }
+
+    // Prevent editing the primary owner account (role admin with lowest createdAt)
+    const primaryOwner = await User.findOne({ role: "admin" }).sort({
+      createdAt: 1,
+    });
+    if (primaryOwner && primaryOwner._id.toString() === id) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot edit the primary owner account",
+      });
+    }
+
+    const update = {};
+
+    // ---- Name ----
+    if (typeof req.body.name === "string" && req.body.name.trim()) {
+      update.name = req.body.name.trim();
+    }
+
+    // ---- Email (with uniqueness check) ----
+    if (typeof req.body.email === "string" && req.body.email.trim()) {
+      const normalizedEmail = req.body.email.toLowerCase().trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalizedEmail)) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter a valid email address",
+        });
+      }
+      const existing = await User.findOne({ email: normalizedEmail });
+      if (existing && existing._id.toString() !== id) {
+        return res.status(409).json({
+          success: false,
+          message: "Email already registered",
+        });
+      }
+      update.email = normalizedEmail;
+    }
+
+    // ---- Contact + country ----
+    if (
+      typeof req.body.contactNumber === "string" &&
+      req.body.contactNumber.trim()
+    ) {
+      const normalizedContact = req.body.contactNumber.trim();
+      if (normalizedContact.length < 7 || normalizedContact.length > 20) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter a valid contact number",
+        });
+      }
+      update.contactNumber = normalizedContact;
+    }
+    if (typeof req.body.countryCode === "string") {
+      update.countryCode = req.body.countryCode.trim();
+    }
+
+    // ---- Role ----
+    const allowedRoles = ["admin", "finance", "support", "read-only"];
+    if (req.body.role !== undefined && req.body.role !== "") {
+      if (!allowedRoles.includes(req.body.role)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid role. Allowed: ${allowedRoles.join(", ")}`,
+        });
+      }
+      // Prevent demoting the last remaining admin
+      if (req.body.role !== "admin" && employee.role === "admin") {
+        const adminCount = await User.countDocuments({ role: "admin" });
+        if (adminCount <= 1) {
+          return res.status(400).json({
+            success: false,
+            message: "Cannot demote the last admin account",
+          });
+        }
+      }
+      update.role = req.body.role;
+    }
+
+    // ---- Date of joining ----
+    if (req.body.dateOfJoining && req.body.dateOfJoining !== "") {
+      const d = new Date(req.body.dateOfJoining);
+      if (Number.isNaN(d.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date of joining",
+        });
+      }
+      update.dateOfJoining = d;
+    }
+
+    // ---- Experience years ----
+    if (
+      req.body.experienceYears !== undefined &&
+      req.body.experienceYears !== ""
+    ) {
+      const yrs = Number(req.body.experienceYears);
+      if (Number.isNaN(yrs) || yrs < 0 || yrs > 50) {
+        return res.status(400).json({
+          success: false,
+          message: "Experience years must be a valid number between 0 and 50",
+        });
+      }
+      update.experienceYears = yrs;
+    }
+
+    // ---- Password (optional; only when provided) ----
+    if (
+      typeof req.body.password === "string" &&
+      req.body.password.trim() !== ""
+    ) {
+      const password = req.body.password;
+      if (password.length < 8)
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 8 characters",
+        });
+      if (!/[A-Z]/.test(password))
+        return res.status(400).json({
+          success: false,
+          message: "Password must contain at least one uppercase letter",
+        });
+      if (!/[a-z]/.test(password))
+        return res.status(400).json({
+          success: false,
+          message: "Password must contain at least one lowercase letter",
+        });
+      if (!/[0-9]/.test(password))
+        return res.status(400).json({
+          success: false,
+          message: "Password must contain at least one number",
+        });
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(password))
+        return res.status(400).json({
+          success: false,
+          message: "Password must contain at least one special character",
+        });
+      update.password = await bcrypt.hash(password, 12);
+    }
+
+    // ---- Profile photo → ImageKit (multipart file field "profilePhoto") ----
+    if (req.files && req.files.profilePhoto) {
+      const file = req.files.profilePhoto;
+      const allowedMimes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+      ];
+      if (!allowedMimes.includes(file.mimetype)) {
+        return res.status(400).json({
+          success: false,
+          message: "Only JPG, PNG or WEBP images are allowed",
+        });
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({
+          success: false,
+          message: "Image size should be less than 5MB",
+        });
+      }
+      try {
+        const uploadResponse = await imagekit.upload({
+          file: file.data,
+          fileName: `admin_${Date.now()}_${file.name.replace(/\s+/g, "-")}`,
+          folder: "/admin-profiles",
+        });
+        update.profilePhoto = uploadResponse.url;
+      } catch (uploadErr) {
+        console.error("ImageKit upload error:", uploadErr);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload profile photo",
+        });
+      }
+    } else if (req.body.removePhoto === "1") {
+      update.profilePhoto = "";
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Nothing to update",
+      });
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      id,
+      { $set: update },
+      { new: true },
+    ).select(
+      "name email role contactNumber countryCode dateOfJoining experienceYears profilePhoto isActive createdAt",
+    );
+
+    logAuditEvent({
+      userId: id,
+      eventType: "ADMIN_EMPLOYEE_UPDATE",
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+      metadata: { adminId, role: updated.role, email: updated.email },
+    }).catch(() => {});
+
+    return res.status(200).json({
+      success: true,
+      message: "Employee updated successfully",
+      user: updated,
+    });
+  } catch (err) {
+    console.error("updateEmployee error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update employee",
+    });
+  }
+};
+
 // ================== USER OVERVIEW (360┬░) ==================
 exports.getUserOverview = async (req, res) => {
   try {

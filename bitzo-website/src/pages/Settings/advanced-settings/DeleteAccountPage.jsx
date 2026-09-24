@@ -4,6 +4,7 @@ import { CheckCircle2, Trash2, ShieldCheck, Clock, UserX, Mail, Loader2 } from "
 import LegalPageLayout from "../../../components/public/LegalPageLayout";
 import { useTheme } from "../../../context/ThemeContext";
 import { submitDeletionRequest } from "../../../api/support";
+import { formatTicketId } from "../../../utils/ticketId";
 import SITE from "../../../config/site";
 
 const REASONS = [
@@ -42,6 +43,7 @@ export default function DeleteAccountPage() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [ticketId, setTicketId] = useState("");
 
   const setField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -99,6 +101,7 @@ export default function DeleteAccountPage() {
     setSubmitting(false);
 
     if (result.success) {
+      setTicketId(formatTicketId(result.requestId));
       setStep("success");
     } else {
       setServerError(result.message || "Failed to submit. Please try again.");
@@ -160,11 +163,23 @@ export default function DeleteAccountPage() {
               and associated personal information in accordance with applicable
               law. You will receive a confirmation email shortly.
             </p>
+            <div className={`mt-5 w-full max-w-md rounded-xl border px-5 py-4 ${isDark ? "border-zinc-700/70 bg-[#121212]" : "border-gray-300 bg-gray-50"}`}>
+              <p className={`text-xs font-medium uppercase tracking-wide ${isDark ? "text-zinc-500" : "text-gray-500"}`}>
+                Your Ticket ID
+              </p>
+              <p className={`mt-1 font-mono text-lg font-semibold tracking-wider ${isDark ? "text-red-400" : "text-red-600"}`}>
+                {ticketId}
+              </p>
+              <p className={`mt-1 text-xs ${isDark ? "text-zinc-500" : "text-gray-400"}`}>
+                Save this ID and include it if you contact us about this request.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => {
                 setForm(getInitialDeletionForm());
                 setErrors({});
+                setTicketId("");
                 setStep("form");
               }}
               className={`mt-6 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors ${

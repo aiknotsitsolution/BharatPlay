@@ -11,7 +11,23 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { fetchContactRequestById, updateContactRequest } from "../../../api";
+import useSupportEmployees from "../../../hooks/useSupportEmployees";
+import { hasFeature } from "../../../config/roleConfig";
 import toast from "react-hot-toast";
+import { formatTicketId } from "../../../utils/ticketId";
+import PageHeader from "../../../components/layout/PageHeader";
+
+function assignedByLabel(id) {
+  if (!id) return "-";
+  if (id === "system") return "System (auto-assigned)";
+  try {
+    const admin = JSON.parse(localStorage.getItem("adminUser") || "null");
+    if (admin && String(admin.id) === String(id)) return admin.name;
+  } catch {
+    /* ignore */
+  }
+  return id;
+}
 
 const statusOptions = [
   { value: "pending", label: "Pending", color: "bg-bp-yellow/15 text-bp-yellow" },
@@ -28,17 +44,22 @@ const inquiryTypeColors = {
   Complaint: "bg-bp-yellow/15 text-bp-yellow border-bp-yellow/30",
   "Business Inquiry": "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   Other: "bg-bp-text-muted/15 text-bp-text-secondary border-bp-text-muted/30",
+  Copyright: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+  Account: "bg-bp-blue/15 text-bp-blue border-bp-blue/30",
+  Billing: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
 };
 
 export default function ContactRequestDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { employees } = useSupportEmployees();
 
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updating, setUpdating] = useState(false);
   const [adminReply, setAdminReply] = useState("");
+  const [assignee, setAssignee] = useState("");
 
   const fetchRequest = async () => {
     setLoading(true);
@@ -47,6 +68,7 @@ export default function ContactRequestDetail() {
       const res = await fetchContactRequestById(id);
       if (res.data?.success) {
         setRequest(res.data.request);
+        setAssignee(res.data.request.assignedTo || "");
       } else {
         setError(res.data?.message || "Request not found");
       }
@@ -104,6 +126,40 @@ export default function ContactRequestDetail() {
     }
   };
 
+  const handleReassign = async (e) => {
+    const value = e.target.value;
+    const previous = assignee;
+    setAssignee(value);
+    setUpdating(true);
+    try {
+      const res = await updateContactRequest(id, { assignedTo: value || null });
+      if (res.data?.success) {
+        setRequest((prev) => ({
+          ...prev,
+          assignedTo: value || null,
+          assignedAt: res.data.request.assignedAt,
+          assignedBy: res.data.request.assignedBy,
+        }));
+        toast.success(
+          value
+            ? `Assigned to ${
+                employees.find((e) => String(e.id) === String(value))?.name ||
+                "support employee"
+              }`
+            : "Ticket marked as unassigned"
+        );
+      } else {
+        setAssignee(previous);
+        toast.error(res.data?.message || "Failed to update assignee");
+      }
+    } catch (err) {
+      setAssignee(previous);
+      toast.error(err.response?.data?.message || "Failed to update assignee");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const formatDate = (date) => {
     if (!date) return "-";
     return new Date(date).toLocaleDateString("en-US", {
@@ -154,19 +210,18 @@ export default function ContactRequestDetail() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <PageHeader
+        title="Contact Request"
+        subtitle={`${request.name} — ${request.inquiryType} · ${formatTicketId(request._id)}`}
+        className="mb-6"
+      >
         <button
           onClick={() => navigate("/support/contact")}
-          className="p-2 hover:bg-bp-elevated rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 bg-bp-elevated border border-bp-border text-bp-text-secondary hover:text-bp-text hover:bg-bp-hover px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
         >
-          <ArrowLeft size={20} className="text-bp-text-secondary" />
+          <ArrowLeft size={18} />
+          Back to List
         </button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-bp-text">Contact Request</h1>
-          <p className="text-[13px] text-bp-text-secondary mt-1">
-            {request.name} &mdash; {request.inquiryType}
-          </p>
-        </div>
         <span
           className={`px-3 py-1 text-xs font-medium rounded-full border ${
             inquiryTypeColors[request.inquiryType] || "bg-bp-text-muted/15 text-bp-text-secondary border-bp-text-muted/30"
@@ -174,7 +229,7 @@ export default function ContactRequestDetail() {
         >
           {request.inquiryType}
         </span>
-      </div>
+      </PageHeader>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Main content */}
@@ -287,13 +342,60 @@ export default function ContactRequestDetail() {
             </div>
           </div>
 
+          {/* Assignment */}
+          <div className="bg-bp-card rounded-2xl p-6">
+            <h2 className="text-base font-semibold text-bp-text mb-4">Assign To</h2>
+            {hasFeature("canAssignTicket") ? (
+              <select
+                value={assignee}
+                onChange={handleReassign}
+                disabled={updating}
+                className="w-full px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-bp-blue disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <option value="">Unassigned</option>
+                {employees.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-sm text-bp-text">
+                {assignee
+                  ? employees.find(
+                      (e) =>
+                        String(e.id) === String(assignee) ||
+                        e.username === assignee ||
+                        e.name === assignee
+                    )?.name || assignee
+                  : "Unassigned"}
+              </p>
+            )}
+            <div className="mt-4 space-y-3">
+              <div>
+                <p className="text-xs text-bp-text-muted mb-0.5">Assigned At</p>
+                <p className="text-sm text-bp-text">
+                  {request.assignedAt ? formatDate(request.assignedAt) : "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-bp-text-muted mb-0.5">Assigned By</p>
+                <p className="text-sm text-bp-text break-all">
+                  {request.assignedByName || assignedByLabel(request.assignedBy)}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Metadata */}
           <div className="bg-bp-card rounded-2xl p-6">
             <h2 className="text-base font-semibold text-bp-text mb-4">Details</h2>
             <div className="space-y-4">
               <div>
-                <p className="text-xs text-bp-text-muted mb-1">Request ID</p>
-                <p className="text-sm text-bp-text font-mono break-all">{request._id}</p>
+                <p className="text-xs text-bp-text-muted mb-1">Ticket ID</p>
+                <p className="text-sm text-bp-text font-mono font-semibold break-all">
+                  {formatTicketId(request._id)}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-bp-text-muted mb-1">Created</p>
@@ -303,12 +405,6 @@ export default function ContactRequestDetail() {
                 <p className="text-xs text-bp-text-muted mb-1">Last Updated</p>
                 <p className="text-sm text-bp-text">{formatDate(request.updatedAt)}</p>
               </div>
-              {request.userId && (
-                <div>
-                  <p className="text-xs text-bp-text-muted mb-1">User ID</p>
-                  <p className="text-sm text-bp-text font-mono break-all">{request.userId}</p>
-                </div>
-              )}
             </div>
           </div>
         </div>

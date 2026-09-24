@@ -4,6 +4,7 @@ import { Mail, HelpCircle, ShieldCheck, UserX, AlertTriangle, Briefcase, CheckCi
 import LegalPageLayout from "../../../components/public/LegalPageLayout";
 import { useTheme } from "../../../context/ThemeContext";
 import { submitContactForm } from "../../../api/support";
+import { formatTicketId } from "../../../utils/ticketId";
 import SITE from "../../../config/site";
 
 const INQUIRY_TYPES = [
@@ -14,6 +15,9 @@ const INQUIRY_TYPES = [
   "Complaint",
   "Business Inquiry",
   "Other",
+  "Copyright",
+  "Account",
+  "Billing",
 ];
 
 const CONTACT_CHANNELS = [
@@ -54,6 +58,7 @@ export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [ticketId, setTicketId] = useState("");
 
   const setField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -99,6 +104,7 @@ export default function ContactPage() {
     setSubmitting(false);
 
     if (result.success) {
+      setTicketId(formatTicketId(result.requestId));
       setSubmitted(true);
     } else {
       setServerError(result.message || "Failed to submit. Please try again.");
@@ -180,11 +186,23 @@ export default function ContactPage() {
               <span className={isDark ? "text-zinc-200" : "text-gray-700"}>{form.email}</span> as soon as
               possible.
             </p>
+            <div className={`mt-5 rounded-xl border px-5 py-4 ${isDark ? "border-zinc-700/70 bg-[#121212]" : "border-gray-300 bg-gray-50"}`}>
+              <p className={`text-xs font-medium uppercase tracking-wide ${isDark ? "text-zinc-500" : "text-gray-500"}`}>
+                Your Ticket ID
+              </p>
+              <p className={`mt-1 font-mono text-lg font-semibold tracking-wider ${isDark ? "text-red-400" : "text-red-600"}`}>
+                {ticketId}
+              </p>
+              <p className={`mt-1 text-xs ${isDark ? "text-zinc-500" : "text-gray-400"}`}>
+                Save this ID and include it if you contact us about this request.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => {
                 setForm(getInitialContactForm());
                 setErrors({});
+                setTicketId("");
                 setSubmitted(false);
               }}
               className={`mt-6 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors ${

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { fetchCopyrightCases } from "../../../api";
 import { hasFeature } from "../../../config/roleConfig";
+import PageHeader from "../../../components/layout/PageHeader";
 
 const statusColors = {
   pending: "bg-bp-yellow/15 text-bp-yellow border-bp-yellow/30",
@@ -106,13 +107,7 @@ export default function CopyrightCaseList() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-bp-text">Copyright Cases</h1>
-          <p className="text-[13px] text-bp-text-secondary mt-1">
-            {pagination.total} total cases
-          </p>
-        </div>
+      <PageHeader title="Copyright Issues" subtitle={`${pagination.total} total cases`}>
         {hasFeature("canCreateCopyrightCase") && (
           <button
             onClick={() => navigate("/copyright/cases/new")}
@@ -122,7 +117,7 @@ export default function CopyrightCaseList() {
             New Case
           </button>
         )}
-      </div>
+      </PageHeader>
 
       {/* Filters */}
       <div className="bg-bp-card rounded-2xl p-4">
