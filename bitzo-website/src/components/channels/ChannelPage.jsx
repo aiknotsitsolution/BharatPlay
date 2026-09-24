@@ -26,13 +26,13 @@ const getUserId = () => {
 // Static fallback categories
 const STATIC_CATEGORIES = [
   { _id: "1", name: "Gaming" },
-  { _id: "2", name: "Education" },
-  { _id: "3", name: "Entertainment" },
-  { _id: "4", name: "Music" },
-  { _id: "5", name: "Technology" },
-  { _id: "6", name: "Sports" },
-  { _id: "7", name: "Cooking" },
-  { _id: "8", name: "Travel" },
+
+  {
+    _id: "creative-corner",
+    name: "Creative Corner",
+    slug: "creative-corner",
+    isCreativeCorner: true,
+  },
 ];
 
 export default function ChannelPage() {
@@ -57,6 +57,7 @@ export default function ChannelPage() {
     name: "",
     channelDescription: "",
     category: "",
+    hashtags: "",
     channelImageFile: null,
     channelImagePreview: "",
     channelBannerFile: null,
@@ -75,6 +76,8 @@ export default function ChannelPage() {
   const [videoname, setVideoname] = useState("");
   const [videoDescription, setVideoDescription] = useState("");
   const [videoCategory, setVideoCategory] = useState("");
+  const [videoHashtags, setVideoHashtags] = useState("");
+  const [isCreativeCorner, setIsCreativeCorner] = useState(false);
   const [videoType, setVideoType] = useState("short"); // short or long
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -173,8 +176,24 @@ export default function ChannelPage() {
         const res = await fetch(API_CATEGORY);
         if (!res.ok) throw new Error("Failed to fetch categories");
         const data = await res.json();
+        const apiCategories = Array.isArray(data) ? data : [];
+        const hasCreativeCorner = apiCategories.some(
+          (category) =>
+            category.isCreativeCorner ||
+            category.slug === "creative-corner" ||
+            category.name?.toLowerCase() === "creative corner",
+        );
         setCategories(
-          Array.isArray(data) && data.length > 0 ? data : STATIC_CATEGORIES,
+          apiCategories.length > 0
+            ? hasCreativeCorner
+              ? apiCategories
+              : [
+                  ...apiCategories,
+                  STATIC_CATEGORIES.find(
+                    (category) => category.isCreativeCorner,
+                  ),
+                ]
+            : STATIC_CATEGORIES,
         );
       } catch (error) {
         console.error("Error fetching categories:", error);
@@ -310,9 +329,7 @@ export default function ChannelPage() {
 
     const wasSubscribed = isSubscribed;
     setIsSubscribed((prev) => !prev);
-    setSubscribersCount((prev) =>
-      Math.max(0, prev + (wasSubscribed ? -1 : 1)),
-    );
+    setSubscribersCount((prev) => Math.max(0, prev + (wasSubscribed ? -1 : 1)));
 
     try {
       const res = await fetch(
@@ -365,90 +382,108 @@ export default function ChannelPage() {
     }
   };
 
- const handleCreateChannel = async (e) => {
-  e.preventDefault();
-  const token = getToken();
+  const handleCreateChannel = async (e) => {
+    e.preventDefault();
+    const token = getToken();
 
-  if (!token) {
-    setCreateError("Please login first.");
-    return;
-  }
+    if (!token) {
+      setCreateError("Please login first.");
+      return;
+    }
 
-  if (!newChannel.name.trim()) {
-    setCreateError("Channel name is required");
-    return;
-  }
+    if (!newChannel.name.trim()) {
+      setCreateError("Channel name is required");
+      return;
+    }
 
-  if (!newChannel.category) {
-    setCreateError("Please select a category");
-    return;
-  }
+    if (!newChannel.category) {
+      setCreateError("Please select a category");
+      return;
+    }
 
-  try {
-    setCreateError("");
-
-    const formData = new FormData();
-    formData.append("name", newChannel.name.trim());
-    formData.append(
-      "channeldescription",
-      newChannel.channelDescription || ""
+    const selectedCategory = categories.find(
+      (cat) =>
+        String(cat._id) === String(newChannel.category) ||
+        cat.slug === newChannel.category,
     );
-    formData.append("category", newChannel.category);
-    formData.append("contactemail", newChannel.contactemail || "");
-
-    if (newChannel.channelImageFile) {
-      formData.append("channelImage", newChannel.channelImageFile);
-    }
-    if (newChannel.channelBannerFile) {
-      formData.append("channelBanner", newChannel.channelBannerFile);
-    }
-
-    const response = await fetch(`${API_BASE}/uservideo/createchannel`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        // Do NOT set Content-Type — browser will set it with boundary
-      },
-      body: formData,
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || result.error || "Failed to create channel");
+    const isCreativeCornerCategory =
+      selectedCategory?.isCreativeCorner ||
+      selectedCategory?.slug === "creative-corner" ||
+      selectedCategory?.name?.toLowerCase() === "creative corner";
+    if (isCreativeCornerCategory && !newChannel.hashtags.trim()) {
+      setCreateError("Add at least one hashtag for Other (Creative Corner)");
+      return;
     }
 
-    // Refetch channels
-    const channelsRes = await fetch(`${API_BASE}/uservideo/channel`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    try {
+      setCreateError("");
 
-    if (channelsRes.ok) {
-      const data = await channelsRes.json();
-      setChannels(data.channels || []);
-      if (result.channel?._id) {
-        setSelectedChannelId(result.channel._id);
+      const formData = new FormData();
+      formData.append("name", newChannel.name.trim());
+      formData.append(
+        "channeldescription",
+        newChannel.channelDescription || "",
+      );
+      formData.append("category", newChannel.category);
+      formData.append("hashtags", newChannel.hashtags);
+      formData.append("contactemail", newChannel.contactemail || "");
+
+      if (newChannel.channelImageFile) {
+        formData.append("channelImage", newChannel.channelImageFile);
       }
+      if (newChannel.channelBannerFile) {
+        formData.append("channelBanner", newChannel.channelBannerFile);
+      }
+
+      const response = await fetch(`${API_BASE}/uservideo/createchannel`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Do NOT set Content-Type — browser will set it with boundary
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message || result.error || "Failed to create channel",
+        );
+      }
+
+      // Refetch channels
+      const channelsRes = await fetch(`${API_BASE}/uservideo/channel`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (channelsRes.ok) {
+        const data = await channelsRes.json();
+        setChannels(data.channels || []);
+        if (result.channel?._id) {
+          setSelectedChannelId(result.channel._id);
+        }
+      }
+
+      setShowCreateModal(false);
+      setNewChannel({
+        name: "",
+        channelDescription: "",
+        category: "",
+        hashtags: "",
+        channelImageFile: null,
+        channelImagePreview: "",
+        channelBannerFile: null,
+        channelBannerPreview: "",
+        contactemail: "",
+      });
+
+      alert("Channel created successfully!");
+    } catch (error) {
+      console.error("Channel creation error:", error);
+      setCreateError(error.message || "Failed to create channel.");
     }
-
-    setShowCreateModal(false);
-    setNewChannel({
-      name: "",
-      channelDescription: "",
-      category: "",
-      channelImageFile: null,
-      channelImagePreview: "",
-      channelBannerFile: null,
-      channelBannerPreview: "",
-      contactemail: "",
-    });
-
-    alert("Channel created successfully!");
-  } catch (error) {
-    console.error("Channel creation error:", error);
-    setCreateError(error.message || "Failed to create channel.");
-  }
-};
+  };
 
   // Generate thumbnail from video if user didn't upload one
   const generateVideoThumbnail = (file) => {
@@ -499,6 +534,11 @@ export default function ChannelPage() {
       return;
     }
 
+    if (isCreativeCorner && !videoHashtags.trim()) {
+      setUploadError("Add at least one hashtag for Creative Corner videos");
+      return;
+    }
+
     if (!agreeTerms) {
       setUploadError("Please agree to the terms");
       return;
@@ -513,6 +553,8 @@ export default function ChannelPage() {
       formData.append("description", videoDescription || "");
       formData.append("category", videoCategory);
       formData.append("videoType", videoType);
+      formData.append("isCreativeCorner", String(isCreativeCorner));
+      formData.append("hashtags", videoHashtags);
       formData.append("video", videoFile);
 
       // Thumbnail: use uploaded or generate
@@ -572,6 +614,8 @@ export default function ChannelPage() {
       setVideoname("");
       setVideoDescription("");
       setVideoCategory("");
+      setVideoHashtags("");
+      setIsCreativeCorner(false);
       setVideoType("short");
       setAgreeTerms(false);
       setSelectedUploadChannelId("");
@@ -924,12 +968,41 @@ export default function ChannelPage() {
                 >
                   <option value="">Select category</option>
                   {categories.map((cat) => (
-                    <option key={cat._id} value={cat._id}>
-                      {cat.name}
+                    <option key={cat._id} value={cat.slug || cat._id}>
+                      {cat.isCreativeCorner ||
+                      cat.slug === "creative-corner" ||
+                      cat.name?.toLowerCase() === "creative corner"
+                        ? "Other (Creative Corner)"
+                        : cat.name}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {categories.some(
+                (cat) =>
+                  (String(cat._id) === String(newChannel.category) ||
+                    cat.slug === newChannel.category) &&
+                  (cat.isCreativeCorner ||
+                    cat.slug === "creative-corner" ||
+                    cat.name?.toLowerCase() === "creative corner"),
+              ) && (
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">
+                    Hashtags *
+                  </label>
+                  <input
+                    type="text"
+                    value={newChannel.hashtags}
+                    onChange={(e) =>
+                      setNewChannel({ ...newChannel, hashtags: e.target.value })
+                    }
+                    className="w-full px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 text-sm"
+                    placeholder="#Cooking, #Vlog"
+                    required
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm text-gray-300 mb-1">
@@ -1162,7 +1235,7 @@ export default function ChannelPage() {
                 >
                   <option value="">Select category</option>
                   {categories.map((cat) => (
-                    <option key={cat._id} value={cat._id}>
+                    <option key={cat._id} value={cat.slug || cat._id}>
                       {cat.name}
                     </option>
                   ))}
@@ -1179,6 +1252,42 @@ export default function ChannelPage() {
                   className="w-full px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 h-20 text-sm resize-none"
                   placeholder="Describe your video..."
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={isCreativeCorner}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setIsCreativeCorner(checked);
+                      if (checked) {
+                        const creativeCategory = categories.find(
+                          (cat) =>
+                            cat.isCreativeCorner ||
+                            cat.slug === "creative-corner",
+                        );
+                        if (creativeCategory)
+                          setVideoCategory(
+                            creativeCategory.slug || creativeCategory._id,
+                          );
+                      }
+                    }}
+                    className="w-4 h-4"
+                  />
+                  Creative Corner (Others)
+                </label>
+                {isCreativeCorner && (
+                  <input
+                    type="text"
+                    value={videoHashtags}
+                    onChange={(e) => setVideoHashtags(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 text-sm"
+                    placeholder="#Cooking, #Vlog"
+                    required
+                  />
+                )}
               </div>
 
               <div className="space-y-2">

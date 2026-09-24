@@ -77,7 +77,6 @@
 // // module.exports.uploadAny = uploadAny;
 // // module.exports.imageUpload = imageUpload;
 
-
 // const multer = require("multer");
 // const path = require("path");
 
@@ -263,7 +262,7 @@ const fileFilter = (req, file, cb) => {
 const videoAndThumbnailUpload = multer({
   storage: cloudinaryStorage,
   fileFilter: fileFilter,
-  limits: { fileSize: 500 * 1024 * 1024 } // 500 MB
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
 });
 
 // For channel images (avatar/banner) — memory storage
@@ -276,10 +275,10 @@ const imageUpload = multer({
       cb(new Error("Only images allowed"), false);
     }
   },
-  limits: { fileSize: 5 * 1024 * 1024 } // 5 MB
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB for channel images/banners
 });
 
 module.exports = {
   videoAndThumbnailUpload,
-  imageUpload
+  imageUpload,
 };

@@ -6,6 +6,7 @@ dns.setServers(["8.8.8.8", "1.1.1.1", "0.0.0.0"]);
 require("./config/validateEnv")();
 
 const express = require("express");
+const multer = require("multer");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const mongoose = require("mongoose");
@@ -113,6 +114,13 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({
+      success: false,
+      message:
+        "Image is too large. Channel images and banners must be 20 MB or smaller.",
+    });
+  }
   res.status(500).json({ success: false, message: "Internal Server Error" });
 });
 
