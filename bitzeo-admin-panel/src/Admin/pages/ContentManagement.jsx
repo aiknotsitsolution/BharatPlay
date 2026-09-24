@@ -18,6 +18,7 @@ import API, { API_BASE_URL } from "../../api";
 import { hasFeature } from "../../config/roleConfig";
 import { formatDateTime } from "../../utils/helpers";
 import tableCustomStyles from "../../utils/tableStyles";
+import PageHeader from "../../components/layout/PageHeader";
 
 
 
@@ -630,53 +631,44 @@ export default function ContentManagement({ type = "long" }) {
 
       <div className="max-w-7xl mx-auto">
         {/* Header with Title and Search */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
-          {/* Title - Centered on left */}
-          <div className="flex-1 text-center md:text-left">
-            <h1 className="text-2xl font-bold text-bp-text">
-              {isShorts ? "Shorts Management" : "Video Management"}
-            </h1>
-            <p className="text-[13px] text-bp-text-secondary mt-1">
-              {videos.length} {isShorts ? "shorts" : "videos"} total
-            </p>
-          </div>
-
-          {/* Search + Upload Button - Right side */}
-          <div className="flex flex-col md:flex-row gap-3 md:items-center w-full md:w-auto">
-            <div className="flex-1 md:flex-none relative w-full md:w-80">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-bp-text-muted pointer-events-none"
-              />
-              <input
-                type="text"
-                placeholder="Search by title, user, email, channel..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl
-                           text-bp-text text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-bp-text hover:bg-bp-elevated transition-colors duration-150"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-            {hasFeature("canUploadVideo") && (
+        <PageHeader
+          title={isShorts ? "Shorts Management" : "Video Management"}
+          subtitle={`${videos.length} ${isShorts ? "shorts" : "videos"} total`}
+          className="mb-8"
+        >
+          <div className="relative w-full md:w-80">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-bp-text-muted pointer-events-none"
+            />
+            <input
+              type="text"
+              placeholder="Search by title, user, email, channel..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl
+                         text-bp-text text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
+            />
+            {search && (
               <button
-                onClick={() => setView("upload")}
-                className="flex items-center justify-center gap-2 bg-bp-elevated border border-bp-border text-bp-text-secondary hover:text-bp-text hover:bg-bp-hover px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap"
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-bp-text hover:bg-bp-elevated transition-colors duration-150"
               >
-                <Plus size={18} />
-                {isShorts ? "Upload Short" : "Upload Video"}
+                <X size={14} />
               </button>
             )}
           </div>
-        </div>
+          {hasFeature("canUploadVideo") && (
+            <button
+              onClick={() => setView("upload")}
+              className="flex items-center justify-center gap-2 bg-bp-elevated border border-bp-border text-bp-text-secondary hover:text-bp-text hover:bg-bp-hover px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap"
+            >
+              <Plus size={18} />
+              {isShorts ? "Upload Short" : "Upload Video"}
+            </button>
+          )}
+        </PageHeader>
 
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-6">

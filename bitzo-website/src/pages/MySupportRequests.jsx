@@ -19,6 +19,7 @@ import {
   getMyContactRequests,
   getMyDeletionRequests,
 } from "../api/support";
+import { formatTicketId } from "../utils/ticketId";
 
 const contactStatusConfig = {
   pending: {
@@ -103,6 +104,9 @@ function RequestCard({ request, statusConfig, type }) {
               </span>
               <span className="text-xs text-zinc-500">
                 {formatDate(request.createdAt)}
+              </span>
+              <span className="px-2 py-0.5 text-xs font-mono font-semibold text-red-400 bg-red-500/10 border border-red-500/30 rounded-md">
+                {formatTicketId(request._id)}
               </span>
             </div>
 

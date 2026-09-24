@@ -1,22 +1,32 @@
 const ContactRequest = require("../models/ContactRequest");
 const User = require("../models/usermodel");
+const mongoose = require("mongoose");
+const AdminModel = require("../models/admin/AdminModel");
 const transporter = require("../Email/nodemailer");
 const {
   assignTicket,
   categoryOfContactRequest,
-  isValidAssociateId,
+  isAssignableEmployeeId,
 } = require("../services/assignmentService");
 const {
   escapeHtml,
   cleanSubjectFragment,
   notifyTicketUser,
 } = require("../utils/supportNotification");
+const { ticketIdFromMongoId } = require("../utils/ticketId");
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || process.env.EMAIL;
 
 const CONTACT_STATUSES = ["pending", "in-progress", "resolved", "closed"];
 
 const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const resolveAssignedByName = async (assignedBy) => {
+  if (!assignedBy || assignedBy === "system") return null;
+  if (!mongoose.isValidObjectId(assignedBy)) return null;
+  const admin = await AdminModel.findById(assignedBy).select("name").lean();
+  return admin?.name || null;
+};
 
 exports.submitContactRequest = async (req, res) => {
   try {
@@ -33,7 +43,7 @@ exports.submitContactRequest = async (req, res) => {
     if (!message?.trim() || message.trim().length < 10)
       return res.status(400).json({ success: false, message: "Message must be at least 10 characters." });
 
-    const associate = await assignTicket(categoryOfContactRequest(inquiryType));
+    const employee = await assignTicket(categoryOfContactRequest(inquiryType));
 
     const contactRequest = await ContactRequest.create({
       name: name.trim(),
@@ -42,10 +52,12 @@ exports.submitContactRequest = async (req, res) => {
       subject: subject.trim(),
       message: message.trim(),
       userId: req.user?.id || null,
-      assignedTo: associate.id,
-      assignedAt: new Date(),
-      assignedBy: "system",
+      assignedTo: employee ? String(employee._id) : null,
+      assignedAt: employee ? new Date() : null,
+      assignedBy: employee ? "system" : null,
     });
+
+    const ticketId = ticketIdFromMongoId(contactRequest._id);
 
     // Send notification email to support team
     if (SUPPORT_EMAIL) {
@@ -63,14 +75,18 @@ exports.submitContactRequest = async (req, res) => {
                 <tr><td style="padding: 8px; font-weight: bold; color: #555;">Email:</td><td style="padding: 8px;">${escapeHtml(email)}</td></tr>
                 <tr><td style="padding: 8px; font-weight: bold; color: #555;">Type:</td><td style="padding: 8px;">${escapeHtml(inquiryType)}</td></tr>
                 <tr><td style="padding: 8px; font-weight: bold; color: #555;">Subject:</td><td style="padding: 8px;">${escapeHtml(subject)}</td></tr>
-                <tr><td style="padding: 8px; font-weight: bold; color: #555;">Assigned To:</td><td style="padding: 8px;">${escapeHtml(associate.name)}</td></tr>
+                ${
+                  employee
+                    ? `<tr><td style="padding: 8px; font-weight: bold; color: #555;">Assigned To:</td><td style="padding: 8px;">${escapeHtml(employee.name)}</td></tr>`
+                    : ""
+                }
               </table>
               <div style="margin-top: 16px; padding: 16px; background: #f9f9f9; border-radius: 8px;">
                 <p style="font-weight: bold; color: #555;">Message:</p>
                 <p style="white-space: pre-wrap;">${escapeHtml(message)}</p>
               </div>
               <p style="margin-top: 16px; color: #999; font-size: 12px;">
-                Request ID: ${contactRequest._id} | Submitted: ${new Date().toISOString()}
+                Ticket ID: ${ticketId} | Request ID: ${contactRequest._id} | Submitted: ${new Date().toISOString()}
               </p>
             </div>
           `,
@@ -93,6 +109,8 @@ exports.submitContactRequest = async (req, res) => {
             <p>We've received your <strong>${escapeHtml(inquiryType)}</strong> request regarding "<strong>${escapeHtml(subject)}</strong>".</p>
             <p>Our team will review your request and get back to you as soon as possible.</p>
             <p style="margin-top: 16px; padding: 12px; background: #f9f9f9; border-radius: 8px; color: #666;">
+              <strong>Your Ticket ID:</strong> ${ticketId}<br/>
+              <span style="color: #999; font-size: 12px;">Use this ID when you contact us about this request.</span><br/><br/>
               <strong>Request ID:</strong> ${contactRequest._id}<br/>
               <strong>Status:</strong> Pending
             </p>
@@ -123,12 +141,26 @@ exports.getContactRequests = async (req, res) => {
     if (assignedTo === "unassigned") filter.assignedTo = null;
     else if (assignedTo) filter.assignedTo = assignedTo;
     if (search?.trim()) {
-      const searchRegex = new RegExp(escapeRegex(search.trim()), "i");
-      filter.$or = [
+      const rawSearch = search.trim();
+      const searchRegex = new RegExp(escapeRegex(rawSearch), "i");
+      const or = [
         { name: searchRegex },
         { email: searchRegex },
         { subject: searchRegex },
       ];
+      const ticketSuffix = /^(?:BP-)?([0-9a-f]{8,24})$/i.exec(rawSearch);
+      if (ticketSuffix) {
+        or.push({
+          $expr: {
+            $regexMatch: {
+              input: { $toString: "$_id" },
+              regex: `${ticketSuffix[1]}$`,
+              options: "i",
+            },
+          },
+        });
+      }
+      filter.$or = or;
     }
 
     const requests = await ContactRequest.find(filter)
@@ -205,7 +237,8 @@ exports.getContactRequestById = async (req, res) => {
     if (!request) {
       return res.status(404).json({ success: false, message: "Request not found." });
     }
-    return res.status(200).json({ success: true, request });
+    const assignedByName = await resolveAssignedByName(request.assignedBy);
+    return res.status(200).json({ success: true, request: { ...request, assignedByName } });
   } catch (err) {
     console.error("[contact] Fetch by ID error:", err);
     return res.status(500).json({ success: false, message: "Failed to fetch request." });
@@ -220,7 +253,7 @@ exports.updateContactStatus = async (req, res) => {
     if (status !== undefined && status !== null && !CONTACT_STATUSES.includes(status)) {
       return res.status(400).json({ success: false, message: "Invalid status." });
     }
-    if (assignedTo !== undefined && !isValidAssociateId(assignedTo)) {
+    if (assignedTo !== undefined && !(await isAssignableEmployeeId(assignedTo))) {
       return res.status(400).json({ success: false, message: "Invalid assignee." });
     }
 
@@ -265,7 +298,8 @@ exports.updateContactStatus = async (req, res) => {
       });
     }
 
-    return res.status(200).json({ success: true, request });
+    const assignedByName = await resolveAssignedByName(request.assignedBy);
+    return res.status(200).json({ success: true, request: { ...request.toObject(), assignedByName } });
   } catch (err) {
     console.error("[contact] Update error:", err);
     return res.status(500).json({ success: false, message: "Failed to update request." });

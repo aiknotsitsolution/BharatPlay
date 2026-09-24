@@ -45,7 +45,7 @@ const deletionRequestSchema = new mongoose.Schema(
       default: "",
     },
     assignedTo: {
-      type: String, // "assoc_1" … "assoc_5"
+      type: String, // support employee _id (Admin role=support)
       default: null,
       index: true,
     },

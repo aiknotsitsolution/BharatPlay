@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Video, Clapperboard, Shield, UserPlus, CheckCheck } from "lucide-react";
 import { getAdminUploads, fetchCopyrightCases, fetchAdminUsers } from "../../api";
+import PageHeader from "../../components/layout/PageHeader";
 
 const SEEN_KEY = "bp-notif-seen";
 
@@ -128,13 +129,16 @@ export default function Notifications() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-bp-text">Notifications</h1>
-          <p className="text-[13px] text-bp-text-secondary mt-1">
-            {loading ? "Checking for updates..." : newCount > 0 ? `${newCount} new update${newCount !== 1 ? "s" : ""}` : "You're all caught up"}
-          </p>
-        </div>
+      <PageHeader
+        title="Notifications"
+        subtitle={
+          loading
+            ? "Checking for updates..."
+            : newCount > 0
+              ? `${newCount} new update${newCount !== 1 ? "s" : ""}`
+              : "You're all caught up"
+        }
+      >
         {!loading && items.length > 0 && newCount > 0 && (
           <button
             onClick={markAllRead}
@@ -144,7 +148,7 @@ export default function Notifications() {
             Mark all as read
           </button>
         )}
-      </div>
+      </PageHeader>
 
       {/* List */}
       <div className="bp-card overflow-hidden">

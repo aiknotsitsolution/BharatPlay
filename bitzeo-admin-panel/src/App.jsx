@@ -4,6 +4,7 @@ import {
   Route,
   Navigate,
   Outlet,
+  useSearchParams,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -34,16 +35,16 @@ import EditUser from "./Admin/Users/EditUser";
 import AllUploads from "./Admin/pages/AllUploads";
 import Notifications from "./Admin/pages/Notifications";
 import Profile from "./Admin/pages/Profile";
-import CopyrightDashboard from "./Admin/pages/Copyright/CopyrightDashboard";
 import CopyrightCaseList from "./Admin/pages/Copyright/CopyrightCaseList";
 import CopyrightCaseDetail from "./Admin/pages/Copyright/CopyrightCaseDetail";
 import CopyrightStrikeList from "./Admin/pages/Copyright/CopyrightStrikeList";
 import CopyrightCreateCase from "./Admin/pages/Copyright/CopyrightCreateCase";
 import CopyrightStrikeDetail from "./Admin/pages/Copyright/CopyrightStrikeDetail";
-import ContactRequestList from "./Admin/pages/Support/ContactRequestList";
 import ContactRequestDetail from "./Admin/pages/Support/ContactRequestDetail";
-import DeletionRequestList from "./Admin/pages/Support/DeletionRequestList";
 import DeletionRequestDetail from "./Admin/pages/Support/DeletionRequestDetail";
+import ContactRequestList from "./Admin/pages/Support/ContactRequestList";
+import DeletionRequestList from "./Admin/pages/Support/DeletionRequestList";
+import MyTickets from "./Admin/pages/Support/MyTickets";
 import { getCurrentRole, getDashboardRoute } from "./config/roleConfig";
 
 const isAuthenticated = () => {
@@ -71,6 +72,29 @@ function RoleDashboard() {
     return <Navigate to={dashboard} replace />;
   }
   return <Dashboard />;
+}
+
+// Legacy URLs (old sidebar paths) now open the corresponding Support
+// Management tab while preserving any existing query params (e.g. status).
+function TabRedirect({ tab }) {
+  const [searchParams] = useSearchParams();
+  const next = new URLSearchParams(searchParams);
+  next.set("tab", tab);
+  return <Navigate to={`/support-dashboard?${next.toString()}`} replace />;
+}
+
+// Support employees get these as full pages (their sidebar links here);
+// other roles keep the legacy tab-redirect behaviour.
+function SupportContactPage() {
+  const role = getCurrentRole();
+  if (role === "support" || role === "admin") return <ContactRequestList />;
+  return <TabRedirect tab="contact" />;
+}
+
+function SupportDeletionPage() {
+  const role = getCurrentRole();
+  if (role === "support" || role === "admin") return <DeletionRequestList />;
+  return <TabRedirect tab="deletion" />;
 }
 
 function App() {
@@ -149,9 +173,9 @@ function App() {
                 <Route path="/create-employee" element={<EmployeeRegister />} />
               </Route>
 
-              {/* ── Copyright Routes (all roles) ── */}
+              {/* ── Copyright + Support tabs redirect into Support Management ── */}
               <Route element={<RoleGuard />}>
-                <Route path="copyright" element={<CopyrightDashboard />} />
+                <Route path="copyright" element={<TabRedirect tab="copyright" />} />
                 <Route path="copyright/cases" element={<CopyrightCaseList />} />
                 <Route path="copyright/cases/:id" element={<CopyrightCaseDetail />} />
                 <Route path="copyright/strikes" element={<CopyrightStrikeList />} />
@@ -163,12 +187,17 @@ function App() {
                 <Route path="copyright/cases/new" element={<CopyrightCreateCase />} />
               </Route>
 
-              {/* ── Support Routes (admin + support) ── */}
+              {/* ── Support detail routes (admin + support) ── */}
               <Route element={<RoleGuard />}>
-                <Route path="support/contact" element={<ContactRequestList />} />
+                <Route path="support/contact" element={<SupportContactPage />} />
                 <Route path="support/contact/:id" element={<ContactRequestDetail />} />
-                <Route path="support/deletion" element={<DeletionRequestList />} />
+                <Route path="support/deletion" element={<SupportDeletionPage />} />
                 <Route path="support/deletion/:id" element={<DeletionRequestDetail />} />
+              </Route>
+
+              {/* ── Support employee: personal ticket queue ── */}
+              <Route element={<RoleGuard />}>
+                <Route path="my-tickets" element={<MyTickets />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

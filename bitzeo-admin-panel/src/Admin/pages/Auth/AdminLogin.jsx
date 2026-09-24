@@ -180,8 +180,7 @@ export default function AdminLogin() {
             <div className="flex justify-end">
               <Link
                 to="/forgot-password"
-                className="text-sm font-medium hover:opacity-80 transition"
-                style={{ color: "#FFFFFF" }}
+                className="text-sm font-medium text-bp-blue hover:opacity-80 transition"
               >
                 Forgot Password?
               </Link>
@@ -216,8 +215,7 @@ export default function AdminLogin() {
               New admin?{" "}
               <Link
                 to="/register"
-                className="font-semibold underline underline-offset-2 hover:opacity-80 transition"
-                style={{ color: "#FFFFFF" }}
+                className="font-semibold text-bp-blue underline underline-offset-2 hover:opacity-80 transition"
               >
                 Register
               </Link>
@@ -226,8 +224,7 @@ export default function AdminLogin() {
               Employee login?{" "}
               <Link
                 to="/employee-login"
-                className="font-semibold underline underline-offset-2 hover:opacity-80 transition"
-                style={{ color: "#FFFFFF" }}
+                className="font-semibold text-bp-blue underline underline-offset-2 hover:opacity-80 transition"
               >
                 Staff Portal
               </Link>

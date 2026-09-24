@@ -1,4 +1,5 @@
 ﻿import { Search, Eye, MoreVertical } from 'lucide-react'
+import PageHeader from "../../components/layout/PageHeader";
 
 const fakeOrders = [
   { id: "ORD-7842", customer: "Aarav Sharma", date: "Jul 10, 2025", status: "Delivered", total: "₹2,899" },
@@ -20,8 +21,7 @@ export default function Orders() {
   return (
     <div className="space-y-6">
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-bp-text">Orders</h1>
+      <PageHeader title="Orders">
         <div className="relative w-full sm:w-64">
           <input
             type="text"
@@ -30,7 +30,7 @@ export default function Orders() {
           />
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-bp-text-muted pointer-events-none" />
         </div>
-      </div>
+      </PageHeader>
 
       <div className="bg-bp-card rounded-xl overflow-hidden">
         <div className="overflow-x-auto">

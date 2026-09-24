@@ -15,6 +15,7 @@ import {
   fetchcategory,
   updateCategory,
 } from "../../api.js"
+import PageHeader from "../../components/layout/PageHeader"
 
 const CategoryManagement = () => {
   const [categories, setCategories] = useState([])
@@ -137,16 +138,11 @@ const CategoryManagement = () => {
     <div>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-bp-text">
-              Category Management
-            </h1>
-            <p className="text-[13px] text-bp-text-secondary mt-1">
-              Manage all your product categories
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Category Management"
+          subtitle="Manage all your product categories"
+          className="mb-6"
+        />
 
         {/* Add New Category */}
         <div className="bp-card p-6 mb-6">

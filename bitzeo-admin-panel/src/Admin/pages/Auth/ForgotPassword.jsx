@@ -47,7 +47,7 @@ export default function ForgotPassword() {
                 <h2 className="text-lg font-semibold text-bp-text">Check your email</h2>
                 <p className="text-bp-text-secondary text-sm mt-1">We have sent a password reset link to <span className="text-bp-text font-medium">{email}</span></p>
               </div>
-              <Link to="/admin-login" className="inline-flex items-center gap-2 text-sm font-medium hover:opacity-80 transition mt-4" style={{ color: "#FFFFFF" }}>
+              <Link to="/admin-login" className="inline-flex items-center gap-2 text-sm font-medium text-bp-blue hover:opacity-80 transition mt-4">
                 <ArrowLeft size={16} /> Back to Login
               </Link>
             </div>
@@ -69,7 +69,7 @@ export default function ForgotPassword() {
                 </button>
               </form>
               <div className="text-center mt-5">
-                <Link to="/admin-login" className="inline-flex items-center gap-2 text-sm font-medium hover:opacity-80 transition" style={{ color: "#FFFFFF" }}>
+                <Link to="/admin-login" className="inline-flex items-center gap-2 text-sm font-medium text-bp-blue hover:opacity-80 transition">
                   <ArrowLeft size={16} /> Back to Login
                 </Link>
               </div>

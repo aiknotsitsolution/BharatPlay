@@ -11,6 +11,7 @@ import {
   Clock,
 } from "lucide-react";
 import { fetchCopyrightStrikes } from "../../../api";
+import PageHeader from "../../../components/layout/PageHeader";
 
 const statusColors = {
   active: "bg-red-500/15 text-red-400 border-red-500/30",
@@ -87,12 +88,7 @@ export default function CopyrightStrikeList() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-bp-text">Copyright Strikes</h1>
-        <p className="text-[13px] text-bp-text-secondary mt-1">
-          {pagination.total} total strikes
-        </p>
-      </div>
+      <PageHeader title="Copyright Strikes" subtitle={`${pagination.total} total strikes`} />
 
       {/* Filters */}
       <div className="bg-bp-card rounded-2xl border border-bp-border p-4">

@@ -13,6 +13,7 @@ import {
   Eye,
   MessageSquare,
   Trash2,
+  Inbox,
 } from "lucide-react";
 
 /**
@@ -22,16 +23,34 @@ import {
 
 // ─── NAV ITEMS ────────────────────────────────────────────────
 const ALL_NAV_ITEMS = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "finance", "support", "read-only"] },
+  { to: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "finance", "read-only"] },
   { to: "/category", icon: FolderOpen, label: "Category", roles: ["admin"] },
   { to: "/create-employee", icon: Package, label: "Add Employee", roles: ["admin"] },
   { to: "/alluser", icon: Users, label: "Users", roles: ["admin", "finance", "support", "read-only"] },
   { to: "/deleted-users", icon: Users, label: "Deleted Users", roles: ["admin"] },
   { to: "/video", icon: Video, label: "Video", roles: ["admin", "support", "read-only"] },
   { to: "/shorts", icon: Clapperboard, label: "Shorts", roles: ["admin", "support", "read-only"] },
-  { to: "/copyright", icon: Shield, label: "Copyright", roles: ["admin", "finance", "support", "read-only"] },
-  { to: "/support/contact", icon: MessageSquare, label: "Contact Requests", roles: ["admin", "support"] },
-  { to: "/support/deletion", icon: Trash2, label: "Deletion Requests", roles: ["admin", "support"] },
+  { to: "/support-dashboard", icon: Headphones, label: "Support Management", roles: ["finance", "read-only"] },
+  // Admin sees Support Management as 4 flat sidebar pages (Overview first)
+  { to: "/support-dashboard", icon: Headphones, label: "Support Dashboard", roles: ["admin"] },
+  { to: "/copyright/cases", icon: Shield, label: "Copyright Issues", roles: ["admin"] },
+  { to: "/support/contact", icon: MessageSquare, label: "General Queries", roles: ["admin"] },
+  { to: "/support/deletion", icon: Trash2, label: "Deletions Requests", roles: ["admin"] },
+];
+
+// ─── SUPPORT-ROLE NAV OVERRIDES ───────────────────────────────
+// The support employee's sidebar shows only these items, in this
+// order. The support-management areas are full sidebar pages instead
+// of tabs inside the Support Dashboard.
+const SUPPORT_NAV = [
+  { to: "/support-dashboard", icon: Headphones, label: "Support Dashboard" },
+  { to: "/my-tickets", icon: Inbox, label: "My Tickets" },
+  { to: "/alluser", icon: Users, label: "Users" },
+  { to: "/video", icon: Video, label: "Videos" },
+  { to: "/shorts", icon: Clapperboard, label: "Shorts" },
+  { to: "/copyright/cases", icon: Shield, label: "Copyright Issues" },
+  { to: "/support/contact", icon: MessageSquare, label: "General Queries" },
+  { to: "/support/deletion", icon: Trash2, label: "Deletions Requests" },
 ];
 
 // ─── ROUTE OVERRIDES ──────────────────────────────────────────
@@ -43,9 +62,11 @@ const ROUTE_OVERRIDES = [
   { prefix: "/users/", roles: ["admin", "finance", "support", "read-only"] },
   // Uploads: has no sidebar nav item but is a valid content viewing route
   { prefix: "/uploads", roles: ["admin", "finance", "support", "read-only"] },
-  // Support detail routes
-  { prefix: "/support/contact/", roles: ["admin", "support"] },
-  { prefix: "/support/deletion/", roles: ["admin", "support"] },
+  // Copyright + support tabs live inside Support Management (/support-dashboard)
+  { prefix: "/copyright", roles: ["admin", "finance", "support", "read-only"] },
+  { prefix: "/support/contact", roles: ["admin", "support"] },
+  { prefix: "/support/deletion", roles: ["admin", "support"] },
+  { prefix: "/my-tickets", roles: ["support"] },
 ];
 
 // ─── DASHBOARD ROUTES ─────────────────────────────────────────
@@ -109,12 +130,14 @@ const FEATURE_FLAGS = {
     canManageCategory: true,
     canUploadVideo: true,
     canModerateContent: true,
+    canAssignTicket: true,
     // canManageOrders: true,
     // canManageProducts: true,
     canCreateCopyrightCase: true,
     canUpdateCopyrightStatus: true,
     canDeleteCopyright: true,
     canManageSettings: true,
+    canAssignTicket: true,
     showActionButtons: true,
     showQuickActions: true,
   },
@@ -192,6 +215,9 @@ export const getCurrentRole = () => {
  */
 export const getNavItems = () => {
   const role = getCurrentRole();
+  if (role === "support") {
+    return SUPPORT_NAV;
+  }
   return ALL_NAV_ITEMS.filter((item) => item.roles.includes(role));
 };
 

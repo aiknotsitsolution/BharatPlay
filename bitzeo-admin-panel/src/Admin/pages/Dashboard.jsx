@@ -4,6 +4,7 @@
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useDashboardData from "../../hooks/useDashboardData";
+import PageHeader from "../../components/layout/PageHeader";
 
 const getAdminDisplayName = () => {
   try {
@@ -272,19 +273,17 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-1">
-        <div>
-          <p className="text-[12.5px] font-semibold text-bp-cyan mb-1">Overview</p>
-          <h1 className="font-display text-2xl font-bold text-bp-text tracking-tight">Dashboard</h1>
-          <p className="text-bp-text-secondary text-[13.5px] mt-1">
-            Welcome back, <span className="font-medium text-bp-text">{getAdminDisplayName()}</span>. Here's what's happening today.
-          </p>
-        </div>
+      <PageHeader
+        title="Dashboard"
+        subtitle={
+          <>Welcome back, <span className="font-medium text-bp-text">{getAdminDisplayName()}</span>. Here's what's happening today.</>
+        }
+      >
         <div className="flex items-center gap-1.5 text-[12px] text-bp-text-muted bg-bp-elevated px-3 py-1.5 rounded-full shrink-0">
           <Clock className="w-3.5 h-3.5" />
           <span>Updated {lastUpdated}</span>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Stat Cards */}
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">

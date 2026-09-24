@@ -228,3 +228,6 @@ export const fetchDeletionRequestById = (id) =>
   API.get(`/support/deletion-request/${id}`);
 export const updateDeletionRequest = (id, data) =>
   API.patch(`/support/deletion-request/${id}`, data);
+
+// Support — Associates
+export const fetchSupportAssociates = () => API.get("/support/associates");

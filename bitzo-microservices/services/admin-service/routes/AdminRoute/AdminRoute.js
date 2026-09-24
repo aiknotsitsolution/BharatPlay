@@ -10,6 +10,7 @@ const {
   getAllUsers,
   updateUser,
   deleteEmployee,
+  updateEmployee,
   getUserById,
   getUserOverview,
   getAdminUserChannels,
@@ -142,6 +143,11 @@ router.put("/users/:id", requireAdmin, requirePermission("users:write"), adminUs
 // ====================== PROTECTED: USER DELETE ======================
 router.delete("/users/:id/permanent", requireAdmin, requirePermission("users:delete"), adminDestructiveLimiter, hardDeleteUser);
 router.delete("/employee/:id", requireAdmin, requirePermission("users:delete"), adminDestructiveLimiter, deleteEmployee);
+router.put("/employee/:id", fileUpload({
+  limits: { fileSize: 5 * 1024 * 1024 },
+  abortOnLimit: true,
+  useTempFiles: false,
+}), requireAdmin, requirePermission("users:write"), adminUserLimiter, updateEmployee);
 
 // ====================== DELETED USERS ======================
 router.get("/deleted-users", requireAdmin, requirePermission("users:read"), adminUserListLimiter, getDeletedUsers);

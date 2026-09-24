@@ -8,11 +8,11 @@ import {
   Clock,
   Users,
   ArrowUpRight,
-  RefreshCw,
   Eye,
   BarChart3,
 } from "lucide-react";
 import useDashboardData from "../../hooks/useDashboardData";
+import PageHeader from "../../components/layout/PageHeader";
 
 const StatCard = ({ title, value, change, icon: Icon, color, bg }) => (
   <div className="stat-card">
@@ -80,16 +80,7 @@ export default function FinanceDashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-bp-text tracking-tight">Finance Dashboard</h1>
-          <p className="text-[13px] text-bp-text-secondary mt-1">Financial overview and transaction analytics</p>
-        </div>
-        <button onClick={refetch} className="flex items-center gap-2 px-4 py-2 text-sm bg-bp-card hover:bg-bp-elevated text-bp-text rounded-lg border border-bp-border transition-colors">
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
-      </div>
+      <PageHeader title="Finance Dashboard" subtitle="Financial overview and transaction analytics" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard title="Total Revenue" value={stats.totalRevenue} change="+12.5%" icon={DollarSign} color="text-bp-yellow" bg="bg-bp-yellow/10" />

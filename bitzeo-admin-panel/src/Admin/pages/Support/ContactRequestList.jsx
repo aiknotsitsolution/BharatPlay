@@ -1,15 +1,19 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import DataTable from "react-data-table-component";
 import {
   Search,
   Eye,
   ChevronLeft,
   ChevronRight,
-  Mail,
   MessageSquare,
   X,
 } from "lucide-react";
 import { fetchContactRequests } from "../../../api";
+import useSupportEmployees from "../../../hooks/useSupportEmployees";
+import PageHeader from "../../../components/layout/PageHeader";
+import { formatTicketId } from "../../../utils/ticketId";
+import tableCustomStyles from "../../../utils/tableStyles";
 
 const statusColors = {
   pending: "bg-bp-yellow/15 text-bp-yellow border-bp-yellow/30",
@@ -34,14 +38,22 @@ const inquiryTypeColors = {
   Complaint: "text-bp-yellow",
   "Business Inquiry": "text-emerald-400",
   Other: "text-bp-text-muted",
+  Copyright: "text-rose-400",
+  Account: "text-bp-blue",
+  Billing: "text-emerald-400",
 };
 
-export default function ContactRequestList() {
+export default function ContactRequestList({ hideHeader = false }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { employees } = useSupportEmployees();
+
+  const employeeName = (id) =>
+    employees.find((e) => String(e.id) === String(id))?.name || null;
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState("");
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -51,14 +63,17 @@ export default function ContactRequestList() {
 
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [status, setStatus] = useState(searchParams.get("status") || "");
+  const [assignedTo, setAssignedTo] = useState(searchParams.get("assignedTo") || "");
   const [page, setPage] = useState(parseInt(searchParams.get("page")) || 1);
 
   const fetchData = async () => {
     setLoading(true);
+    setFetchError("");
     try {
       const params = { page, limit: 20 };
       if (search) params.search = search;
       if (status) params.status = status;
+      if (assignedTo) params.assignedTo = assignedTo;
 
       const res = await fetchContactRequests(params);
       setRequests(res.data?.requests || []);
@@ -67,6 +82,7 @@ export default function ContactRequestList() {
       );
     } catch (err) {
       console.error("Failed to fetch contact requests:", err);
+      setFetchError(err.response?.data?.message || "Failed to load contact requests.");
     } finally {
       setLoading(false);
     }
@@ -74,7 +90,7 @@ export default function ContactRequestList() {
 
   useEffect(() => {
     fetchData();
-  }, [page, status]);
+  }, [page, status, assignedTo]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -93,17 +109,99 @@ export default function ContactRequestList() {
     });
   };
 
+  const columns = [
+    {
+      name: "Sr. No.",
+      width: "80px",
+      selector: (row, index) =>
+        (pagination.page - 1) * pagination.limit + index + 1,
+    },
+    {
+      name: "Ticket ID",
+      width: "130px",
+      cell: (row) => (
+        <span className="font-mono text-xs font-semibold text-bp-cyan">
+          {formatTicketId(row._id)}
+        </span>
+      ),
+    },
+    {
+      name: "Type",
+      minWidth: "130px",
+      cell: (row) => (
+        <span
+          className={`text-xs font-medium ${
+            inquiryTypeColors[row.inquiryType] || "text-bp-text-muted"
+          }`}
+        >
+          {row.inquiryType}
+        </span>
+      ),
+    },
+    {
+      name: "Subject",
+      minWidth: "200px",
+      grow: 2,
+      cell: (row) => (
+        <p className="text-sm text-white truncate max-w-[200px]">{row.subject}</p>
+      ),
+    },
+    {
+      name: "Status",
+      minWidth: "120px",
+      cell: (row) => (
+        <span
+          className={`px-2.5 py-0.5 text-xs font-medium rounded-full border ${
+            statusColors[row.status] ||
+            "bg-bp-text-muted/15 text-bp-text-secondary border-bp-text-muted/30"
+          }`}
+        >
+          {row.status}
+        </span>
+      ),
+    },
+    {
+      name: "Assigned To",
+      minWidth: "140px",
+      cell: (row) => (
+        <span
+          className={`px-2.5 py-0.5 text-xs font-medium rounded-full border ${
+            row.assignedTo
+              ? "bg-bp-blue/10 text-bp-blue border-bp-blue/30"
+              : "bg-bp-text-muted/10 text-bp-text-secondary border-bp-text-muted/30"
+          }`}
+        >
+          {employeeName(row.assignedTo) || "Unassigned"}
+        </span>
+      ),
+    },
+    {
+      name: "Date",
+      width: "170px",
+      cell: (row) => (
+        <span className="text-sm text-bp-text-muted">{formatDate(row.createdAt)}</span>
+      ),
+    },
+    {
+      name: "Actions",
+      minWidth: "110px",
+      cell: (row) => (
+        <button
+          onClick={() => navigate(`/support/contact/${row._id}`)}
+          className="p-1.5 text-bp-blue hover:text-bp-cyan hover:bg-bp-blue/10 rounded-lg transition-colors"
+        >
+          <Eye size={18} />
+        </button>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-bp-text">Contact Requests</h1>
-          <p className="text-[13px] text-bp-text-secondary mt-1">
-            {pagination.total} total requests
-          </p>
-        </div>
-      </div>
+      {!hideHeader && (
+        <PageHeader title="General Queries" subtitle={`${pagination.total} total requests`} />
+      )}
 
       {/* Filters */}
       <div className="bg-bp-card rounded-2xl p-4">
@@ -115,7 +213,7 @@ export default function ContactRequestList() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, email, or subject..."
+                placeholder="Search by name, email, subject, or ticket ID (BP-...)"
                 className="w-full pl-9 pr-9 py-2 bg-bp-surface/60 border border-bp-border/50 rounded-xl text-bp-text text-sm placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
               />
               {search && (
@@ -130,6 +228,22 @@ export default function ContactRequestList() {
             </div>
           </form>
           <div className="flex gap-3">
+            <select
+              value={assignedTo}
+              onChange={(e) => {
+                setAssignedTo(e.target.value);
+                setPage(1);
+              }}
+              className="px-3 py-2 bg-bp-elevated border border-bp-border rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-bp-blue"
+            >
+              <option value="">All Assignees</option>
+              <option value="unassigned">Unassigned</option>
+              {employees.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
             <select
               value={status}
               onChange={(e) => {
@@ -150,112 +264,47 @@ export default function ContactRequestList() {
 
       {/* Table */}
       <div className="bg-bp-card rounded-2xl overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-bp-blue border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-sm text-bp-text-secondary">
-                Loading contact requests...
-              </p>
-            </div>
-          </div>
-        ) : requests.length === 0 ? (
+        {fetchError ? (
           <div className="text-center py-16">
-            <MessageSquare className="w-12 h-12 text-bp-text-muted mx-auto mb-3" />
-            <p className="text-bp-text-muted">No contact requests found</p>
+            <MessageSquare className="w-12 h-12 text-bp-orange mx-auto mb-3" />
+            <p className="text-bp-text font-medium">{fetchError}</p>
+            <button
+              onClick={fetchData}
+              className="mt-4 px-4 py-2 text-sm bg-bp-card hover:bg-bp-elevated text-bp-text rounded-lg border border-bp-border"
+            >
+              Retry
+            </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-bp-border">
-              <thead className="bg-bp-elevated/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-bp-text-secondary uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-bp-text-secondary uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-bp-text-secondary uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-bp-text-secondary uppercase tracking-wider">
-                    Subject
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-bp-text-secondary uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-bp-text-secondary uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-bp-text-secondary uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-bp-border">
-                {requests.map((r) => (
-                  <tr
-                    key={r._id}
-                    className="hover:bg-bp-elevated/50 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <p className="text-sm font-medium text-white">{r.name}</p>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Mail size={14} className="text-bp-text-muted" />
-                        <p className="text-sm text-bp-text-secondary">
-                          {r.email}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`text-xs font-medium ${
-                          inquiryTypeColors[r.inquiryType] ||
-                          "text-bp-text-muted"
-                        }`}
-                      >
-                        {r.inquiryType}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-white truncate max-w-[200px]">
-                        {r.subject}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2.5 py-0.5 text-xs font-medium rounded-full border ${
-                          statusColors[r.status] ||
-                          "bg-bp-text-muted/15 text-bp-text-secondary border-bp-text-muted/30"
-                        }`}
-                      >
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-bp-text-muted">
-                      {formatDate(r.createdAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <button
-                        onClick={() =>
-                          navigate(`/support/contact/${r._id}`)
-                        }
-                        className="p-1.5 text-bp-blue hover:text-bp-cyan hover:bg-bp-blue/10 rounded-lg transition-colors"
-                      >
-                        <Eye size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={columns}
+            data={requests}
+            customStyles={tableCustomStyles}
+            progressPending={loading}
+            progressComponent={
+              <div className="flex items-center justify-center py-16">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-8 h-8 border-4 border-bp-blue border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-sm text-bp-text-secondary">
+                    Loading contact requests...
+                  </p>
+                </div>
+              </div>
+            }
+            noDataComponent={
+              <div className="text-center py-16">
+                <MessageSquare className="w-12 h-12 text-bp-text-muted mx-auto mb-3" />
+                <p className="text-bp-text-muted">No contact requests found</p>
+              </div>
+            }
+            highlightOnHover
+            pointerOnHover
+            onRowClicked={(row) => navigate(`/support/contact/${row._id}`)}
+          />
         )}
 
         {/* Pagination */}
-        {pagination.pages > 1 && (
+        {!fetchError && pagination.pages > 1 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-bp-border">
             <p className="text-sm text-bp-text-muted">
               Page {pagination.page} of {pagination.pages} ({pagination.total}{" "}

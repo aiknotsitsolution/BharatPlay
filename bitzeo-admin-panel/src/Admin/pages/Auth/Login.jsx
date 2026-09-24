@@ -118,7 +118,7 @@ export default function Login() {
             </div>
 
             <div className="flex justify-end">
-              <Link to="/forgot-password" className="text-sm font-medium hover:opacity-80 transition" style={{ color: "#FFFFFF" }}>Forgot Password?</Link>
+              <Link to="/forgot-password" className="text-sm font-medium text-bp-blue hover:opacity-80 transition">Forgot Password?</Link>
             </div>
 
             <RocketButton loading={isLoading}>
@@ -128,7 +128,7 @@ export default function Login() {
 
           <div className="mt-5 pt-4 border-t border-bp-border">
             <p className="text-center text-sm text-bp-text-secondary">
-              Don't have an account? <Link to="/register" style={{ color: "#FFFFFF" }} className="font-medium hover:opacity-80 transition">Register</Link>
+              Don't have an account? <Link to="/register" className="font-medium text-bp-blue hover:opacity-80 transition">Register</Link>
             </p>
           </div>
         </div>

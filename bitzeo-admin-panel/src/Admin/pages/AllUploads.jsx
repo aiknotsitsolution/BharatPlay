@@ -12,6 +12,7 @@ import {
 import { fetchUploads, setSearch } from "../../redux/slices/adminUploadsSlice";
 import { API_BASE_URL } from "../../api";
 import tableCustomStyles from "../../utils/tableStyles";
+import PageHeader from "../../components/layout/PageHeader";
 
 const MEDIA_BASE = API_BASE_URL.replace(/\/api\/?$/, "");
 const TYPE_MAP = { all: "all", videos: "long", shorts: "short" };
@@ -248,12 +249,7 @@ export default function AllUploads() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-bp-text">
-          Uploads
-        </h1>
-        <p className="text-[13px] text-bp-text-secondary mt-1">Manage all videos and shorts</p>
-      </div>
+      <PageHeader title="Uploads" subtitle="Manage all videos and shorts" />
 
       {/* Tabs */}
       <div className="flex items-center gap-1 bg-bp-card rounded-xl p-1 w-fit">

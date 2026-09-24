@@ -1,15 +1,13 @@
 const AssignmentCounter = require("../models/AssignmentCounter");
 const ContactRequest = require("../models/ContactRequest");
 const DeletionRequest = require("../models/DeletionRequest");
-const {
-  SUPPORT_ASSOCIATES,
-  VALID_ASSOCIATE_IDS,
-  getAssociateById,
-} = require("../constants/supportAssociates");
-
-const ASSOCIATE_COUNT = SUPPORT_ASSOCIATES.length;
+const AdminModel = require("../models/admin/AdminModel");
 
 // Assignment is done PER CATEGORY so round-robin is independent per category.
+// The candidate pool is the set of admin-created support employees (Admin
+// documents with role "support" and isActive true), so tickets are distributed
+// fairly across however many support employees exist at any point in time.
+
 const INQUIRY_CATEGORIES = {
   "General Inquiry": "general",
   "Technical Support": "technical-support",
@@ -35,63 +33,76 @@ const slugifyCategory = (value = "") =>
 const categoryOfContactRequest = (inquiryType) =>
   INQUIRY_CATEGORIES[inquiryType] || slugifyCategory(inquiryType);
 
-const isValidAssociateId = (id) =>
-  id === null ||
-  id === undefined ||
-  id === "" ||
-  VALID_ASSOCIATE_IDS.includes(id);
+// Current, stable list of assignable support employees.
+const getSupportEmployees = async () =>
+  AdminModel.find({ role: "support", isActive: true })
+    .select("_id name email")
+    .sort({ createdAt: 1 })
+    .lean();
 
-const leastLoadedAssociate = async () => {
-  let best = SUPPORT_ASSOCIATES[0];
+// Public shape used by the /associates endpoint and the admin panel.
+const getAssociates = async () =>
+  (await getSupportEmployees()).map((employee) => ({
+    id: String(employee._id),
+    name: employee.name,
+    email: employee.email,
+  }));
+
+const leastLoadedEmployee = async (employees) => {
+  let best = employees[0];
   let minLoad = Infinity;
 
-  for (const associate of SUPPORT_ASSOCIATES) {
+  for (const employee of employees) {
+    const id = String(employee._id);
     const [contactCount, deletionCount] = await Promise.all([
-      ContactRequest.countDocuments({ assignedTo: associate.id }),
-      DeletionRequest.countDocuments({ assignedTo: associate.id }),
+      ContactRequest.countDocuments({ assignedTo: id }),
+      DeletionRequest.countDocuments({ assignedTo: id }),
     ]);
     const load = contactCount + deletionCount;
     if (load < minLoad) {
       minLoad = load;
-      best = associate;
+      best = employee;
     }
   }
 
   return best;
 };
 
-// Atomically advance the per-category round-robin counter. Falls back to the
-// least-loaded associate if the counter write fails for any reason.
+// Atomically advance the per-category round-robin counter across the current
+// support-employee pool. Falls back to least-loaded if the counter fails.
 const assignTicket = async (category) => {
+  const employees = await getSupportEmployees();
+  if (employees.length === 0) return null;
+
   try {
     const counter = await AssignmentCounter.findOneAndUpdate(
       { category: String(category) },
       { $inc: { lastAssignedIndex: 1 } },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { returnDocument: "after", upsert: true, setDefaultsOnInsert: true }
     );
-    return SUPPORT_ASSOCIATES[counter.lastAssignedIndex % ASSOCIATE_COUNT];
+    return employees[counter.lastAssignedIndex % employees.length];
   } catch (error) {
     console.error(
       "[assignment] Counter failed, falling back to least-loaded:",
       error.message
     );
-    return leastLoadedAssociate();
+    return leastLoadedEmployee(employees);
   }
 };
 
-const getAssociates = async () =>
-  SUPPORT_ASSOCIATES.map((associate) => ({
-    id: associate.id,
-    name: associate.name,
-    email: associate.email,
-  }));
+// Manual-assignment validation: empty means unassign; otherwise the value must
+// be the _id of an existing active support employee.
+const isAssignableEmployeeId = async (id) => {
+  if (id === null || id === undefined || id === "") return true;
+  const employees = await getSupportEmployees();
+  return employees.some((employee) => String(employee._id) === String(id));
+};
 
 module.exports = {
-  SUPPORT_ASSOCIATES,
   DELETION_CATEGORY,
   categoryOfContactRequest,
-  isValidAssociateId,
-  assignTicket,
+  getSupportEmployees,
   getAssociates,
-  getAssociateById,
+  assignTicket,
+  isAssignableEmployeeId,
 };
