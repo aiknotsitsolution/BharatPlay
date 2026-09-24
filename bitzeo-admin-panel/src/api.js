@@ -55,6 +55,8 @@ export const addCategory = (name) => API.post("/category", { name });
 export const updateCategory = (id, name) =>
   API.put(`/category/${id}`, { name });
 export const deleteCategory = (id) => API.delete(`/category/${id}`);
+export const fetchCreativeCornerHashtagStats = () =>
+  API.get("/uservideo/admin/creative-corner/hashtag-stats");
 
 // Subcategory
 export const fetchSubcategory = (categoryId) =>
@@ -126,8 +128,7 @@ export const updateAdminProfile = (formData) =>
   API.patch("/admin/profile", formData);
 
 // Admin password reset (OTP)
-export const requestAdminPasswordOtp = () =>
-  API.post("/admin/forgot-password");
+export const requestAdminPasswordOtp = () => API.post("/admin/forgot-password");
 export const verifyAdminResetOtp = (otp) =>
   API.post("/admin/verify-reset-otp", { otp });
 export const resetAdminPassword = (token, newPassword) =>

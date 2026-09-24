@@ -39,6 +39,7 @@ const {
   addToWatchLater,
   searchVideos,
   getSearchHints,
+  getCreativeCornerHashtagStats,
 } = require("../controller/userVideoController");
 const { imageUpload } = require("../middlewares/multer");
 const isAuthenticated = require("../middlewares/isAuthenticated");
@@ -46,6 +47,7 @@ const optionalAuth = require("../middlewares/optionalAuth");
 const { viewLimiter } = require("../middlewares/rateLimit");
 const upload = require("../middlewares/multer");
 const uploadToBackblaze = require("../middlewares/blazerMiddlware");
+const requireAdmin = require("../middlewares/requireAdmin");
 router.post(
   "/createchannel",
   isAuthenticated,
@@ -72,6 +74,11 @@ router.delete("/history/:videoId", isAuthenticated, removeFromWatchHistory);
 router.get("/liked-videos", isAuthenticated, getUserLikedVideos);
 router.get("/watch-later", isAuthenticated, getUserWatchLaterVideos);
 router.get("/my-videos", isAuthenticated, getUserUploadedVideos);
+router.get(
+  "/admin/creative-corner/hashtag-stats",
+  requireAdmin,
+  getCreativeCornerHashtagStats,
+);
 router.get("/channel/:id", isAuthenticated, getChannelById);
 router.get("/channel/:id/videos", isAuthenticated, getvideosByChannel);
 router.delete("/channel/:id", isAuthenticated, deleteChannel);

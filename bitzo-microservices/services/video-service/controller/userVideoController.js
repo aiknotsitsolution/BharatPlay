@@ -246,6 +246,7 @@ const uploadVideo = async (req, res) => {
       });
     }
 
+    // Resolve category (find or create)
     const categoryData = await resolveCategory(category);
     if (!categoryData) {
       return res.status(400).json({
@@ -300,8 +301,7 @@ const uploadVideo = async (req, res) => {
       thumbnailPath = normalizeMediaPath(thumbnailFile?.path || null);
     }
 
-    // Authoritative duration from the media file; falls back to the client
-    // value. Never throws/fails the upload when extraction is not possible.
+    // Authoritative duration from the media file
     let authoritativeDuration = null;
     try {
       if (videoPath && !/^https?:\/\//i.test(videoPath)) {
@@ -317,9 +317,10 @@ const uploadVideo = async (req, res) => {
       console.error("[mediaDuration] Duration extraction failed:", err.message);
     }
 
+    // ✅ FIXED: categoryData._id use karo, raw "category" mat use karo
     const newVideo = new Video({
       channel: channelId,
-      category,
+      category: categoryData._id,          // ← YEH LINE FIX HAI
       title: name?.trim() || "Untitled",
       description,
       videoUrl: videoPath,
@@ -353,16 +354,16 @@ const uploadVideo = async (req, res) => {
       );
     }
 
-    // ✅ Push video ID into Channel's videos array
+    // Push video ID into Channel's videos array
     channel.videos.push(newVideo._id);
     await channel.save();
 
-    // ✅ Push video ID into User's videos array
+    // Push video ID into User's videos array
     await User.findByIdAndUpdate(req.user?.userId, {
       $push: { videos: newVideo._id },
     });
 
-    // ✅ Notify all subscribers of the channel
+    // Notify all subscribers of the channel
     await createBulkNotifications({
       recipients: channel.subscribedBy || [],
       actor: req.user?.userId,
@@ -391,10 +392,6 @@ const uploadVideo = async (req, res) => {
       video: newVideo,
     });
   } catch (err) {
-    // console.error("========== VIDEO UPLOAD ERROR ==========");
-    // console.error(error);
-    // console.error("Message:", error.message);
-    // console.error("Stack:", error.stack);
     console.error(err);
     res.status(500).json({
       success: false,
@@ -2654,6 +2651,43 @@ const getSearchHints = async (req, res) => {
   }
 };
 
+const getCreativeCornerHashtagStats = async (req, res) => {
+  try {
+    const threshold = parseInt(process.env.HASHTAG_THRESHOLD, 10) || 50;
+    const days = parseInt(process.env.HASHTAG_DAYS, 10) || 15;
+    const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const stats = await HashtagStats.find({}).sort({ videoCount: -1 }).lean();
+
+    const data = await Promise.all(
+      stats.map(async (stat) => {
+        const filter = {
+          hashtags: stat.hashtag,
+          isCreativeCorner: true,
+        };
+        const [totalVideos, recentVideos] = await Promise.all([
+          Video.countDocuments(filter),
+          Video.countDocuments({ ...filter, createdAt: { $gte: cutoffDate } }),
+        ]);
+
+        return {
+          ...stat,
+          videoCount: totalVideos,
+          last15DaysCount: recentVideos,
+          threshold,
+          days,
+          remaining: Math.max(0, threshold - recentVideos),
+          isFlagged: stat.isFlagged || recentVideos >= threshold,
+        };
+      }),
+    );
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Creative Corner hashtag stats error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAllVideos,
   getVideoById,
@@ -2693,4 +2727,5 @@ module.exports = {
   addToWatchLater,
   searchVideos,
   getSearchHints,
+  getCreativeCornerHashtagStats,
 };
