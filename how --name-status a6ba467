@@ -1,0 +1,34 @@
+[33mcommit a6ba4670a51af63aac478f5a262457f82c63b97d[m[33m ([m[1;36mHEAD[m[33m)[m
+Author: Aditya Jain <157593512+AdityaJainghetal@users.noreply.github.com>
+Date:   Thu Sep 24 11:11:54 2026 +0530
+
+    task
+
+ MyApp/src/admin/ChannelScreen.tsx                  | 138 [32m+++++++++[m[31m-[m
+ .../Admin/CategoryManagement/CreativeCorner.jsx    |  48 [32m++++[m
+ bitzo-microservices/services/admin-service/.env    |   4 [32m+[m[31m-[m
+ bitzo-microservices/services/auth-service/.env     |   4 [32m+[m[31m-[m
+ bitzo-microservices/services/category-service/.env |   8 [32m+[m[31m-[m
+ .../category-service/config/categoryConverter.js   |  72 [32m++++++[m
+ .../category-service/cron/checkHashtags.js         |  13 [32m+[m
+ .../models/CategoryModel/HashtagStats.js           |  15 [32m++[m
+ .../models/CategoryModel/category.model.js         |  23 [32m+[m[31m-[m
+ .../services/category-service/models/Video.js      |  13 [32m+[m
+ .../category-service/routes/categoryRoute/admin.js |  46 [32m++++[m
+ .../services/category-service/server.js            |  39 [32m++[m[31m-[m
+ .../services/copyright-service/.env                |   4 [32m+[m[31m-[m
+ .../services/leaderboard-service/.env              |   4 [32m+[m[31m-[m
+ .../services/notification-service/.env             |   4 [32m+[m[31m-[m
+ .../services/player-ad-service/.env                |   4 [32m+[m[31m-[m
+ bitzo-microservices/services/security-service/.env |   4 [32m+[m[31m-[m
+ bitzo-microservices/services/video-service/.env    |   4 [32m+[m[31m-[m
+ .../video-service/config/categoryConverter.js      |  72 [32m++++++[m
+ .../controller/userVideoController.js              | 124 [32m++++++++[m[31m-[m
+ .../services/video-service/middlewares/multer.js   |   9 [32m+[m[31m-[m
+ .../models/CategoryModel/HashtagStats.js           |  15 [32m++[m
+ .../models/CategoryModel/category.model.js         |  26 [32m+[m[31m-[m
+ .../video-service/models/Channel/ChannelModel.js   |  20 [32m+[m[31m-[m
+ .../services/video-service/models/Videomodel.js    |  10 [32m+[m
+ .../services/video-service/server.js               |   8 [32m+[m
+ .../src/components/channels/ChannelPage.jsx        | 277 [32m++++++++++++++[m[31m-------[m
+ 27 files changed, 865 insertions(+), 143 deletions(-)

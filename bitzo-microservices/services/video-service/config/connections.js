@@ -28,11 +28,16 @@ function getConnection(envVarName, label) {
     );
   }
   if (!cache[envVarName]) {
-    const conn = mongoose.createConnection(uri);
-    conn.on("connected", () =>
+    const baseConnection = mongoose.createConnection(uri);
+    const dbName =
+      envVarName === "AUTH_DB_URI" && process.env.AUTH_DB_NAME
+        ? process.env.AUTH_DB_NAME
+        : null;
+    const conn = dbName ? baseConnection.useDb(dbName) : baseConnection;
+    baseConnection.on("connected", () =>
       console.log(`✅ [secondary-db] connected -> ${label} (${envVarName})`),
     );
-    conn.on("error", (err) =>
+    baseConnection.on("error", (err) =>
       console.error(
         `❌ [secondary-db] ${label} (${envVarName}) error:`,
         err.message,
