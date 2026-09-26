@@ -12,7 +12,7 @@ const jsonMessage = (message) => ({
 // Upgrade path: swap the default MemoryStore for a Redis adapter when the
 // service is horizontally scaled (per Phase 4 audit §8).
 const loginLimiter = rateLimit({
-  windowMs: 15 * MINUTE,
+  windowMs: 5 * MINUTE,
   limit: 10,
   standardHeaders: "draft-8",
   legacyHeaders: false,
@@ -32,7 +32,9 @@ const registerLimiter = rateLimit({
   limit: 5,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: jsonMessage("Too many registration attempts. Please try again later."),
+  message: jsonMessage(
+    "Too many registration attempts. Please try again later.",
+  ),
 });
 
 const adminRegisterLimiter = rateLimit({
@@ -40,7 +42,9 @@ const adminRegisterLimiter = rateLimit({
   limit: 5,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: jsonMessage("Too many registration attempts. Please try again later."),
+  message: jsonMessage(
+    "Too many registration attempts. Please try again later.",
+  ),
 });
 
 const passwordLimiter = rateLimit({
@@ -48,7 +52,9 @@ const passwordLimiter = rateLimit({
   limit: 5,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: jsonMessage("Too many password change attempts. Please try again later."),
+  message: jsonMessage(
+    "Too many password change attempts. Please try again later.",
+  ),
 });
 
 const googleLimiter = rateLimit({
@@ -88,7 +94,9 @@ const verifyResetOtpLimiter = rateLimit({
   limit: 10,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: jsonMessage("Too many verification attempts. Please try again later."),
+  message: jsonMessage(
+    "Too many verification attempts. Please try again later.",
+  ),
 });
 
 // Generous limit: watchSession.js flushes view events periodically
@@ -125,7 +133,9 @@ const adminDestructiveLimiter = rateLimit({
   limit: 30,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: jsonMessage("Too many destructive operations. Please try again later."),
+  message: jsonMessage(
+    "Too many destructive operations. Please try again later.",
+  ),
 });
 
 // Public copyright claim submission (unauthenticated, strict limit)
@@ -134,7 +144,9 @@ const publicClaimLimiter = rateLimit({
   limit: 5,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: jsonMessage("Too many copyright claim submissions. Please try again later."),
+  message: jsonMessage(
+    "Too many copyright claim submissions. Please try again later.",
+  ),
 });
 
 // Public copyright claim status lookup (unauthenticated, generous)

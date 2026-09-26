@@ -288,7 +288,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
   };
 
   const handleChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData((previous) => ({ ...previous, [field]: value }));
     if (error) setError("");
     if (field === "email" || field === "password" || field === "name") {
       setOtpRequired(false);
@@ -816,6 +816,8 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                               handleChange("password", text)
                             }
                             secureTextEntry={!showPassword}
+                            autoCapitalize="none"
+                            autoCorrect={false}
                             style={styles.input}
                             placeholderTextColor="#6b7280"
                           />

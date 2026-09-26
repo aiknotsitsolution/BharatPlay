@@ -24,6 +24,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
+import * as Crypto from "expo-crypto";
+import * as Device from "expo-device";
 import { fetch as expoFetch } from "expo/fetch";
 import { File } from "expo-file-system";
 import { API_ORIGIN } from "../../config/api";
@@ -51,6 +53,8 @@ import {
   User,
   Users,
   HelpCircle,
+  ShieldCheck,
+  Phone,
 } from "lucide-react-native";
 import Navbar from "./Navbar";
 import { getViewSocket } from "../utils/viewSocket";
@@ -58,6 +62,32 @@ const { width } = Dimensions.get("window");
 
 const API_BASE = `${API_ORIGIN}/api`;
 const BACKEND_URL = API_ORIGIN;
+const COUNTRY_MCC: Record<string, string> = {
+  IN: "404",
+  US: "310",
+  CA: "302",
+  GB: "234",
+  AU: "505",
+  AE: "424",
+  SA: "420",
+  SG: "525",
+  MY: "502",
+  BD: "470",
+  PK: "410",
+  NP: "429",
+  LK: "413",
+};
+
+const getMccForCountry = (country?: string) =>
+  COUNTRY_MCC[country?.toUpperCase() || ""] || "";
+
+const getLocalTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  } catch {
+    return "";
+  }
+};
 
 export function ProfileScreen() {
   const navigation = useNavigation<any>();
@@ -90,11 +120,23 @@ export function ProfileScreen() {
   const [historyError, setHistoryError] = useState(null);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", email: "" });
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    advertisingId: "",
+    deviceFingerprint: "",
+    country: "",
+    timezone: "",
+    simMcc: "",
+  });
   const [avatarUri, setAvatarUri] = useState(null);
   const [avatarBase64, setAvatarBase64] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState(null);
+  const [phoneOtp, setPhoneOtp] = useState("");
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+  const [phoneVerifyLoading, setPhoneVerifyLoading] = useState(false);
 
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
@@ -237,11 +279,24 @@ export function ProfileScreen() {
           likedCount: profile.likedVideos?.length || 0,
           watchLaterCount: profile.watchLaterVideos?.length || 0,
           channelsCount: profile.channels?.length || 0,
+          phone: profile.phone || "",
+          phoneVerified: Boolean(profile.phoneVerified),
+          advertisingId: profile.advertisingId || "",
+          deviceFingerprint: profile.deviceFingerprint || "",
+          country: profile.country || "",
+          timezone: profile.timezone || "",
+          simMcc: profile.simMcc || "",
         });
 
         setEditForm({
           name: profile.name || "",
           email: profile.email || "",
+          phone: profile.phone || "",
+          advertisingId: profile.advertisingId || "",
+          deviceFingerprint: profile.deviceFingerprint || "",
+          country: profile.country || "",
+          timezone: profile.timezone || getLocalTimezone(),
+          simMcc: profile.simMcc || getMccForCountry(profile.country),
         });
       } catch (err) {
         setError(err.message);
@@ -595,7 +650,167 @@ export function ProfileScreen() {
     }
   };
 
-  // ========== FIXED HANDLE EDIT SUBMIT ==========
+  const openEditProfile = () => {
+    const timezone = user?.timezone || getLocalTimezone();
+    setEditForm({
+      name: user?.name || "",
+      email: user?.email || "",
+      phone: user?.phone || "",
+      advertisingId: user?.advertisingId || "",
+      deviceFingerprint: user?.deviceFingerprint || "",
+      country: user?.country || "",
+      timezone: user?.timezone || getLocalTimezone(),
+      simMcc: user?.simMcc || getMccForCountry(user?.country),
+    });
+    setAvatarUri(null);
+    setPhoneOtp("");
+    setPhoneOtpSent(false);
+    setEditError(null);
+    setIsEditOpen(true);
+    void hydrateDeviceInformation(timezone);
+  };
+
+  const hydrateDeviceInformation = async (timezone: string) => {
+    try {
+      let advertisingId =
+        user?.advertisingId || (await AsyncStorage.getItem("advertisingId"));
+      if (!advertisingId) {
+        advertisingId = Crypto.randomUUID();
+        await AsyncStorage.setItem("advertisingId", advertisingId);
+      }
+
+      const fingerprintSource = [
+        Device.brand,
+        Device.modelName,
+        Device.osName,
+        Device.osVersion,
+        timezone,
+        `${width}x${Dimensions.get("screen").height}`,
+      ]
+        .filter(Boolean)
+        .join("|");
+      const deviceFingerprint =
+        user?.deviceFingerprint ||
+        (await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
+          fingerprintSource,
+        ));
+
+      let country =
+        user?.country || (await AsyncStorage.getItem("profileCountry")) || "";
+      if (!country) {
+        try {
+          const response = await fetch("https://ipwho.is/");
+          if (response.ok) {
+            const location = await response.json();
+            country = String(location.country_code || "").toUpperCase();
+            if (country) await AsyncStorage.setItem("profileCountry", country);
+          }
+        } catch {
+          // Device information stays usable when the location lookup is offline.
+        }
+      }
+
+      setEditForm((previous) => ({
+        ...previous,
+        advertisingId: previous.advertisingId || advertisingId,
+        deviceFingerprint: previous.deviceFingerprint || deviceFingerprint,
+        country: previous.country || country,
+        timezone: previous.timezone || timezone,
+        simMcc: previous.simMcc || user?.simMcc || getMccForCountry(country),
+      }));
+    } catch (err) {
+      console.warn("Could not load device information:", err);
+    }
+  };
+
+  const requestPhoneOtp = async () => {
+    const phone = editForm.phone.trim().replace(/[\s()-]/g, "");
+    if (!/^\+?[1-9]\d{7,14}$/.test(phone)) {
+      setEditError("Enter a valid phone number with country code.");
+      return;
+    }
+
+    try {
+      setPhoneVerifyLoading(true);
+      setEditError(null);
+      const token = await AsyncStorage.getItem("token");
+      if (!token) throw new Error("Please login again.");
+
+      const response = await fetch(`${API_BASE}/phone/request-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Could not send verification code.");
+      }
+
+      setPhoneOtpSent(true);
+      setPhoneOtp("");
+      Alert.alert(
+        "Verification code sent",
+        data.otpCode
+          ? `Development OTP: ${data.otpCode}`
+          : "Check your account email for the 6-digit code.",
+      );
+    } catch (err: any) {
+      setEditError(err.message || "Could not send verification code.");
+    } finally {
+      setPhoneVerifyLoading(false);
+    }
+  };
+
+  const verifyPhoneOtp = async () => {
+    const phone = editForm.phone.trim().replace(/[\s()-]/g, "");
+    if (!/^\d{6}$/.test(phoneOtp)) {
+      setEditError("Enter the 6-digit verification code.");
+      return;
+    }
+
+    try {
+      setPhoneVerifyLoading(true);
+      setEditError(null);
+      const token = await AsyncStorage.getItem("token");
+      if (!token) throw new Error("Please login again.");
+
+      const response = await fetch(`${API_BASE}/phone/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ phone, otp: phoneOtp }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Invalid verification code.");
+      }
+
+      setUser((previous) => ({
+        ...previous,
+        phone: data.user?.phone || phone,
+        phoneVerified: true,
+      }));
+      setEditForm((previous) => ({
+        ...previous,
+        phone: data.user?.phone || phone,
+      }));
+      setPhoneOtp("");
+      setPhoneOtpSent(false);
+      Alert.alert("Verified", "Phone number verified successfully.");
+    } catch (err: any) {
+      setEditError(err.message || "Could not verify phone number.");
+    } finally {
+      setPhoneVerifyLoading(false);
+    }
+  };
+
+  // ========== EDIT PROFILE ==========
   const handleEditSubmit = async () => {
     setEditLoading(true);
     setEditError(null);
@@ -607,6 +822,11 @@ export function ProfileScreen() {
       const formData = new FormData();
       const trimmedName = editForm.name?.trim();
       const trimmedEmail = editForm.email?.trim().toLowerCase();
+      const normalizedPhone = editForm.phone.trim().replace(/[\s()-]/g, "");
+      const previousPhone = String(user.phone || "").replace(/[\s()-]/g, "");
+      const phoneChanged = Boolean(
+        normalizedPhone && normalizedPhone !== previousPhone,
+      );
       let hasChanges = false;
 
       if (!trimmedName) {
@@ -625,6 +845,29 @@ export function ProfileScreen() {
       if (trimmedEmail && trimmedEmail !== (user.email || "").toLowerCase()) {
         formData.append("email", trimmedEmail);
         hasChanges = true;
+      }
+
+      if (phoneChanged) {
+        if (!/^\+?[1-9]\d{7,14}$/.test(normalizedPhone)) {
+          throw new Error("Enter a valid phone number with country code.");
+        }
+        formData.append("phone", normalizedPhone);
+        hasChanges = true;
+      }
+
+      const profileFields = [
+        "advertisingId",
+        "deviceFingerprint",
+        "country",
+        "timezone",
+        "simMcc",
+      ] as const;
+      for (const field of profileFields) {
+        const value = editForm[field]?.trim();
+        if (value && value !== String(user[field] || "")) {
+          formData.append(field, value);
+          hasChanges = true;
+        }
       }
 
       if (avatarUri) {
@@ -672,6 +915,16 @@ export function ProfileScreen() {
         name: data.user?.name || prev.name,
         email: data.user?.email || prev.email,
         avatar: getMediaUrl(savedAvatar) || avatarUri || prev.avatar,
+        phone: data.user?.phone ?? prev.phone,
+        phoneVerified:
+          data.user?.phoneVerified ??
+          (phoneChanged ? false : prev.phoneVerified),
+        advertisingId: data.user?.advertisingId ?? prev.advertisingId,
+        deviceFingerprint:
+          data.user?.deviceFingerprint ?? prev.deviceFingerprint,
+        country: data.user?.country ?? prev.country,
+        timezone: data.user?.timezone ?? prev.timezone,
+        simMcc: data.user?.simMcc ?? prev.simMcc,
         handle: data.user?.name
           ? `@${data.user.name.toLowerCase().replace(/\s+/g, "")}`
           : prev.handle,
@@ -680,12 +933,28 @@ export function ProfileScreen() {
       setEditForm({
         name: data.user?.name || editForm.name,
         email: data.user?.email || editForm.email,
+        phone: data.user?.phone ?? editForm.phone,
+        advertisingId: data.user?.advertisingId ?? editForm.advertisingId,
+        deviceFingerprint:
+          data.user?.deviceFingerprint ?? editForm.deviceFingerprint,
+        country: data.user?.country ?? editForm.country,
+        timezone: data.user?.timezone ?? editForm.timezone,
+        simMcc: data.user?.simMcc ?? editForm.simMcc,
       });
 
       setAvatarUri(null);
       setAvatarBase64(null);
-      setIsEditOpen(false);
-      Alert.alert("Success", "Profile updated successfully!");
+      if (phoneChanged) {
+        setPhoneOtp("");
+        setPhoneOtpSent(false);
+        Alert.alert(
+          "Profile updated",
+          "Send a verification code to verify your new phone number.",
+        );
+      } else {
+        setIsEditOpen(false);
+        Alert.alert("Success", "Profile updated successfully!");
+      }
     } catch (err: any) {
       console.log("Upload Error →", err);
       setEditError(err.message || "Something went wrong");
@@ -699,6 +968,8 @@ export function ProfileScreen() {
     setEditError(null);
     setAvatarUri(null);
     setAvatarBase64(null);
+    setPhoneOtp("");
+    setPhoneOtpSent(false);
   };
 
   const handlePasswordSubmit = async () => {
@@ -1306,7 +1577,7 @@ export function ProfileScreen() {
               style={styles.editMenuItem}
               onPress={() => {
                 setShowEditMenu(false);
-                setIsEditOpen(true);
+                openEditProfile();
               }}
               activeOpacity={0.7}
             >
@@ -1437,7 +1708,7 @@ export function ProfileScreen() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.modalOverlay}
         >
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, styles.editModalContent]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Profile</Text>
               <TouchableOpacity onPress={closeEdit}>
@@ -1445,7 +1716,12 @@ export function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.editModalScroll}
+              contentContainerStyle={styles.editModalScrollContent}
+              showsVerticalScrollIndicator
+              keyboardShouldPersistTaps="handled"
+            >
               {editError ? (
                 <View style={styles.errorBox}>
                   <Text style={styles.errorBoxText}>{editError}</Text>
@@ -1491,6 +1767,102 @@ export function ProfileScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
+
+              <View style={styles.phoneLabelRow}>
+                <Text style={styles.label}>Phone number</Text>
+                {user.phoneVerified && editForm.phone === user.phone ? (
+                  <View style={styles.verifiedBadge}>
+                    <ShieldCheck size={14} color="#4ade80" />
+                    <Text style={styles.verifiedText}>Verified</Text>
+                  </View>
+                ) : null}
+              </View>
+              <View style={styles.phoneInputRow}>
+                <View style={styles.phoneInputWrap}>
+                  <Phone size={16} color="#71717a" />
+                  <TextInput
+                    style={styles.phoneInput}
+                    value={editForm.phone}
+                    onChangeText={(phone) => {
+                      setEditForm((previous) => ({ ...previous, phone }));
+                      setPhoneOtpSent(false);
+                      setPhoneOtp("");
+                      setEditError(null);
+                    }}
+                    placeholder="+919876543210"
+                    placeholderTextColor="#71717a"
+                    keyboardType="phone-pad"
+                    autoCapitalize="none"
+                    editable={!editLoading && !phoneVerifyLoading}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={styles.verifyPhoneBtn}
+                  onPress={requestPhoneOtp}
+                  disabled={
+                    phoneVerifyLoading || editLoading || !editForm.phone.trim()
+                  }
+                >
+                  {phoneVerifyLoading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.verifyPhoneText}>Verify</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+              {phoneOtpSent && (
+                <View style={styles.phoneOtpRow}>
+                  <TextInput
+                    style={[styles.input, styles.phoneOtpInput]}
+                    value={phoneOtp}
+                    onChangeText={(value) =>
+                      setPhoneOtp(value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    placeholder="6-digit code"
+                    placeholderTextColor="#71717a"
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    editable={!phoneVerifyLoading}
+                  />
+                  <TouchableOpacity
+                    style={styles.confirmPhoneBtn}
+                    onPress={verifyPhoneOtp}
+                    disabled={phoneVerifyLoading || phoneOtp.length !== 6}
+                  >
+                    {phoneVerifyLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.verifyPhoneText}>Confirm</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+              <Text style={styles.metadataHint}>
+                Verification code is sent to your account email.
+              </Text>
+
+              <Text style={styles.metadataHeading}>Device information</Text>
+              <View style={styles.metadataGrid}>
+                {[
+                  ["Country", editForm.country],
+                  ["Timezone", editForm.timezone],
+                  ["SIM MCC", editForm.simMcc],
+                  ["Advertising ID", editForm.advertisingId],
+                ].map(([label, value]) => (
+                  <View key={label} style={styles.metadataField}>
+                    <Text style={styles.metadataLabel}>{label}</Text>
+                    <Text style={styles.metadataValue} numberOfLines={2}>
+                      {value || "Not set"}
+                    </Text>
+                  </View>
+                ))}
+                <View style={[styles.metadataField, styles.fingerprintField]}>
+                  <Text style={styles.metadataLabel}>Device fingerprint</Text>
+                  <Text style={styles.metadataValue} numberOfLines={2}>
+                    {editForm.deviceFingerprint || "Not available"}
+                  </Text>
+                </View>
+              </View>
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
@@ -2159,6 +2531,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#272727",
   },
+  editModalContent: {
+    height: "90%",
+  },
+  editModalScroll: {
+    flexShrink: 1,
+  },
+  editModalScrollContent: {
+    paddingBottom: 12,
+  },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -2225,6 +2606,117 @@ const styles = StyleSheet.create({
     borderColor: "#3f3f46",
   },
   pickAvatarText: { color: "#fff", fontSize: 13 },
+  phoneLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  verifiedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 12,
+  },
+  verifiedText: {
+    color: "#4ade80",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  phoneInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  phoneInputWrap: {
+    flex: 1,
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#3f3f46",
+    borderRadius: 10,
+  },
+  phoneInput: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 15,
+    paddingVertical: 10,
+  },
+  verifyPhoneBtn: {
+    minWidth: 74,
+    height: 44,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#272727",
+    borderRadius: 10,
+  },
+  verifyPhoneText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  phoneOtpRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  phoneOtpInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  confirmPhoneBtn: {
+    minWidth: 84,
+    height: 44,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#166534",
+    borderRadius: 10,
+  },
+  metadataHint: {
+    color: "#71717a",
+    fontSize: 12,
+    marginTop: 6,
+  },
+  metadataHeading: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 18,
+    marginBottom: 8,
+  },
+  metadataGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  metadataField: {
+    flexBasis: "48%",
+    flexGrow: 1,
+    minWidth: "46%",
+    padding: 10,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#272727",
+    borderRadius: 10,
+  },
+  fingerprintField: {
+    flexBasis: "100%",
+  },
+  metadataLabel: {
+    color: "#71717a",
+    fontSize: 11,
+    marginBottom: 4,
+  },
+  metadataValue: {
+    color: "#d4d4d8",
+    fontSize: 12,
+  },
   passwordRow: {
     flexDirection: "row",
     alignItems: "center",
