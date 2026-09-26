@@ -15,13 +15,11 @@ import {
   deleteCategory,
   fetchcategory,
   updateCategory,
-<<<<<<< HEAD
+
   fetchCreativeCornerHashtagStats,
 } from "../../api.js";
-=======
-} from "../../api.js"
+
 import PageHeader from "../../components/layout/PageHeader"
->>>>>>> 2c5f92f398c5bce37ddd46cada34b43dcafd1ec3
 
 const CategoryManagement = () => {
   const [categories, setCategories] = useState([]);
