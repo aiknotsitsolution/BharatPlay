@@ -859,6 +859,24 @@ export default function VideoDetailScreen() {
     }
   };
 
+  const handleCopyrightReport = () => {
+    Alert.alert(
+      "Copyright",
+      "Do you want to report a copyright issue for this video?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Report copyright",
+          onPress: () =>
+            navigation.navigate("CopyrightClaim", {
+              videoId: String(routeId),
+              title: videoDetails?.title || FALLBACK_VIDEO.title,
+            }),
+        },
+      ],
+    );
+  };
+
   const handleCommentSubmit = async () => {
     if (!commentText.trim() || !routeId) return;
     const token = await AsyncStorage.getItem("token");
@@ -1298,6 +1316,14 @@ export default function VideoDetailScreen() {
               <TouchableOpacity style={styles.actionBtn}>
                 <Ionicons name="share-outline" size={18} color="#fff" />
                 <Text style={styles.actionText}>Share</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={handleCopyrightReport}
+              >
+                <Ionicons name="shield-outline" size={18} color="#fff" />
+                <Text style={styles.actionText}>Report</Text>
               </TouchableOpacity>
             </ScrollView>
 
