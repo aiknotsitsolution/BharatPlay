@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Modal,
   StyleSheet,
   Animated,
   Easing,
@@ -87,6 +88,12 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [resetResending, setResetResending] = useState(false);
+  const [deviceLocked, setDeviceLocked] = useState(false);
+  const [deviceLockEmail, setDeviceLockEmail] = useState("");
+  const [claimPassword, setClaimPassword] = useState("");
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState("");
 
   // ========== Animations ==========
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -188,23 +195,6 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     }).start();
   };
 
-  // ========== Device ID ==========
-  const getDeviceId = async () => {
-    try {
-      let deviceId = await AsyncStorage.getItem("deviceId");
-      if (!deviceId) {
-        deviceId =
-          "rn-" +
-          Math.random().toString(36).substring(2) +
-          Date.now().toString(36);
-        await AsyncStorage.setItem("deviceId", deviceId);
-      }
-      return deviceId;
-    } catch {
-      return "rn-fallback-" + Date.now();
-    }
-  };
-
   // ========== Google Auth ==========
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
@@ -266,6 +256,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
       const res = await fetch(`${API_BASE}/auth/google`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential: idToken }),
       });
@@ -290,6 +281,10 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
   const handleChange = (field, value) => {
     setFormData((previous) => ({ ...previous, [field]: value }));
     if (error) setError("");
+    setDeviceLocked(false);
+    setDeviceLockEmail("");
+    setShowClaimModal(false);
+    setClaimError("");
     if (field === "email" || field === "password" || field === "name") {
       setOtpRequired(false);
       setDevelopmentOtp("");
@@ -543,26 +538,24 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     setError("");
 
     try {
-      const deviceId = await getDeviceId();
       const endpoint = isLogin ? "/login" : "/register";
 
       const body = isLogin
         ? {
-            email: formData.email.trim().toLowerCase(),
+            email: formData.email,
             password: formData.password,
-            deviceId,
             ...(otpRequired ? { otp } : {}),
           }
         : {
             name: formData.name.trim(),
-            email: formData.email.trim().toLowerCase(),
+            email: formData.email,
             password: formData.password,
-            deviceId,
             ...(otpRequired ? { otp } : {}),
           };
 
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
@@ -570,6 +563,14 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 403 && data.code === "DEVICE_LOCKED") {
+          setDeviceLocked(true);
+          setDeviceLockEmail(formData.email);
+          setClaimPassword(formData.password);
+          throw new Error(
+            data.message || "Account is active on another device.",
+          );
+        }
         if (data.code === "VPN_OR_PROXY_DETECTED") {
           throw new Error(
             "Login/Register not allowed over VPN or Proxy. Please disable it.",
@@ -610,24 +611,22 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     setError("");
 
     try {
-      const deviceId = await getDeviceId();
       const endpoint = isLogin ? "/login" : "/register";
 
       const body = isLogin
         ? {
-            email: formData.email.trim().toLowerCase(),
+            email: formData.email,
             password: formData.password,
-            deviceId,
           }
         : {
             name: formData.name.trim(),
-            email: formData.email.trim().toLowerCase(),
+            email: formData.email,
             password: formData.password,
-            deviceId,
           };
 
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
@@ -658,9 +657,69 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     }
   };
 
+  const handleClaimDevice = async () => {
+    const email = deviceLockEmail;
+    const password = claimPassword;
+    if (!email || !password || claiming) return;
+
+    setClaiming(true);
+    setClaimError("");
+    try {
+      const claimResponse = await fetch(`${API_BASE}/claim-device`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const claimData = await claimResponse.json().catch(() => ({}));
+      if (!claimResponse.ok) {
+        throw new Error(
+          claimData.message || "Could not continue on this device.",
+        );
+      }
+
+      const loginResponse = await fetch(`${API_BASE}/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const loginData = await loginResponse.json().catch(() => ({}));
+      if (!loginResponse.ok) {
+        throw new Error(
+          loginData.message || "Could not sign in on this device.",
+        );
+      }
+
+      setShowClaimModal(false);
+      setDeviceLocked(false);
+      setClaimError("");
+      if (loginData.requiresOtp) {
+        setFormData((previous) => ({ ...previous, email }));
+        setOtpRequired(true);
+        setOtp("");
+        setOtpCountdown(60);
+        setError("OTP sent to your email. Enter the 6-digit code to continue.");
+        return;
+      }
+
+      await handleAuthSuccess(loginData);
+    } catch (err: any) {
+      setClaimError(
+        err.message || "Could not continue on this device. Please try again.",
+      );
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   const toggleMode = () => {
     animateFormSwitch(() => {
       setIsLogin(!isLogin);
+      setDeviceLocked(false);
+      setDeviceLockEmail("");
+      setShowClaimModal(false);
+      setClaimError("");
       setOtpRequired(false);
       setOtp("");
       setOtpCountdown(0);
@@ -761,6 +820,28 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                     <Text style={styles.errorText}>{error}</Text>
                   </Animated.View>
                 ) : null}
+                {deviceLocked && (
+                  <View style={styles.deviceLockedBox}>
+                    <Text style={styles.deviceLockedTitle}>
+                      Account active on another device
+                    </Text>
+                    <Text style={styles.deviceLockedText}>
+                      Sign out other sessions to continue on this device.
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setClaimError("");
+                        setShowClaimModal(true);
+                      }}
+                      disabled={claiming}
+                      style={styles.deviceLockedButton}
+                    >
+                      <Text style={styles.deviceLockedButtonText}>
+                        Continue on this device
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
                 <Animated.View
                   style={[
@@ -1294,6 +1375,65 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      <Modal
+        visible={showClaimModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowClaimModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.claimModalOverlay}
+        >
+          <View style={styles.claimModal}>
+            <Text style={styles.claimModalTitle}>Continue on this device?</Text>
+            <Text style={styles.claimModalDescription}>
+              This will sign out other devices using this account.
+            </Text>
+            <Text style={styles.claimModalEmail}>
+              Account: {deviceLockEmail || "your account"}
+            </Text>
+            <TextInput
+              value={claimPassword}
+              onChangeText={setClaimPassword}
+              placeholder="Confirm your password"
+              placeholderTextColor="#6b7280"
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!claiming}
+              style={styles.claimPasswordInput}
+            />
+            {claimError ? (
+              <Text style={styles.claimErrorText}>{claimError}</Text>
+            ) : null}
+            <View style={styles.claimModalActions}>
+              <TouchableOpacity
+                onPress={() => setShowClaimModal(false)}
+                disabled={claiming}
+                style={styles.claimCancelButton}
+              >
+                <Text style={styles.claimCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleClaimDevice}
+                disabled={claiming || !claimPassword}
+                style={[
+                  styles.claimContinueButton,
+                  (claiming || !claimPassword) && styles.buttonDisabled,
+                ]}
+              >
+                {claiming ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.claimContinueText}>Continue</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <Toast />
     </SafeAreaView>
   );
@@ -1390,6 +1530,37 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 13.5,
     lineHeight: 19,
+  },
+  deviceLockedBox: {
+    backgroundColor: "rgba(127, 29, 29, 0.25)",
+    borderWidth: 1,
+    borderColor: "#7f1d1d",
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 18,
+    gap: 8,
+  },
+  deviceLockedTitle: {
+    color: "#fecaca",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  deviceLockedText: {
+    color: "#fca5a5",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  deviceLockedButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#dc2626",
+    borderRadius: 8,
+  },
+  deviceLockedButtonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
   },
   form: {
     gap: 16,
@@ -1579,5 +1750,84 @@ const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: "700",
     textAlign: "center",
+  },
+  claimModalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    backgroundColor: "rgba(0,0,0,0.75)",
+  },
+  claimModal: {
+    width: "100%",
+    maxWidth: 400,
+    padding: 22,
+    gap: 14,
+    backgroundColor: "#181818",
+    borderWidth: 1,
+    borderColor: "#333",
+    borderRadius: 18,
+  },
+  claimModalTitle: {
+    color: "#fff",
+    fontSize: 19,
+    fontWeight: "700",
+  },
+  claimModalDescription: {
+    color: "#a1a1aa",
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  claimModalEmail: {
+    color: "#d4d4d8",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  claimPasswordInput: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    backgroundColor: "#0f0f0f",
+    borderWidth: 1,
+    borderColor: "#3f3f46",
+    borderRadius: 10,
+    color: "#fff",
+  },
+  claimErrorText: {
+    color: "#fca5a5",
+    fontSize: 12,
+  },
+  claimModalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 4,
+  },
+  claimCancelButton: {
+    minWidth: 86,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    backgroundColor: "#272727",
+    borderRadius: 10,
+  },
+  claimCancelText: {
+    color: "#d4d4d8",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  claimContinueButton: {
+    minWidth: 100,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    backgroundColor: "#dc2626",
+    borderRadius: 10,
+  },
+  claimContinueText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
   },
 });
