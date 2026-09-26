@@ -24,13 +24,25 @@ function getConnection(envVarName, label) {
   const uri = process.env[envVarName];
   if (!uri) {
     throw new Error(
-      `${envVarName} is not set. This service needs read/write access to the ${label} database - set ${envVarName} in your .env (see .env.example).`
+      `${envVarName} is not set. This service needs read/write access to the ${label} database - set ${envVarName} in your .env (see .env.example).`,
     );
   }
   if (!cache[envVarName]) {
-    const conn = mongoose.createConnection(uri);
-    conn.on("connected", () => console.log(`✅ [secondary-db] connected -> ${label} (${envVarName})`));
-    conn.on("error", (err) => console.error(`❌ [secondary-db] ${label} (${envVarName}) error:`, err.message));
+    const baseConnection = mongoose.createConnection(uri);
+    const dbName =
+      envVarName === "AUTH_DB_URI" && process.env.AUTH_DB_NAME
+        ? process.env.AUTH_DB_NAME
+        : null;
+    const conn = dbName ? baseConnection.useDb(dbName) : baseConnection;
+    baseConnection.on("connected", () =>
+      console.log(`✅ [secondary-db] connected -> ${label} (${envVarName})`),
+    );
+    baseConnection.on("error", (err) =>
+      console.error(
+        `❌ [secondary-db] ${label} (${envVarName}) error:`,
+        err.message,
+      ),
+    );
     cache[envVarName] = conn;
   }
   return cache[envVarName];
@@ -41,7 +53,8 @@ module.exports = {
   adminDB: () => getConnection("ADMIN_DB_URI", "admin-service"),
   videoDB: () => getConnection("VIDEO_DB_URI", "video-service"),
   categoryDB: () => getConnection("CATEGORY_DB_URI", "category-service"),
-  notificationDB: () => getConnection("NOTIFICATION_DB_URI", "notification-service"),
+  notificationDB: () =>
+    getConnection("NOTIFICATION_DB_URI", "notification-service"),
   copyrightDB: () => getConnection("COPYRIGHT_DB_URI", "copyright-service"),
   playerAdDB: () => getConnection("PLAYERAD_DB_URI", "player-ad-service"),
   securityDB: () => getConnection("SECURITY_DB_URI", "security-service"),
