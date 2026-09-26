@@ -357,7 +357,7 @@ export default function CopyrightClaimPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
+    <div className="min-h-screen bg-zinc-950 text-white">
       <div className="max-w-4xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-10">
@@ -383,7 +383,7 @@ export default function CopyrightClaimPage() {
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
               activeTab === "submit"
                 ? "bg-indigo-600 text-white"
-                : "bg-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-700"
+                : "bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700"
             }`}
           >
             <Send className="w-4 h-4" />
@@ -394,7 +394,7 @@ export default function CopyrightClaimPage() {
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
               activeTab === "lookup"
                 ? "bg-indigo-600 text-white"
-                : "bg-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-700"
+                : "bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700"
             }`}
           >
             <Search className="w-4 h-4" />
@@ -458,7 +458,7 @@ export default function CopyrightClaimPage() {
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Claimant Info */}
-              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 space-y-4">
+              <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-6 space-y-4">
                 <div>
                   <h2 className="text-lg font-semibold text-white">
                     Your Information
@@ -478,7 +478,7 @@ export default function CopyrightClaimPage() {
                       value={form.claimantName}
                       onChange={handleChange}
                       placeholder="Enter your full name"
-                      className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                      className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
                     />
                   </div>
                   <div>
@@ -491,7 +491,7 @@ export default function CopyrightClaimPage() {
                       value={form.claimantEmail}
                       onChange={handleChange}
                       placeholder="Enter your email address"
-                      className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                      className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
                     />
                   </div>
                   <div>
@@ -504,7 +504,7 @@ export default function CopyrightClaimPage() {
                       value={form.claimantPhone}
                       onChange={handleChange}
                       placeholder="Enter your phone number"
-                      className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                      className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
                     />
                   </div>
                   <div>
@@ -517,14 +517,14 @@ export default function CopyrightClaimPage() {
                       value={form.claimantOrganization}
                       onChange={handleChange}
                       placeholder="Company, creator name, or organization"
-                      className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                      className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Content You Want to Report */}
-              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 space-y-4">
+              <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-6 space-y-4">
                 <div>
                   <h2 className="text-lg font-semibold text-white">
                     Content You Want to Report
@@ -533,7 +533,6 @@ export default function CopyrightClaimPage() {
                     Tell us which video uses your copyrighted work.
                   </p>
                 </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-400 mb-1.5">
@@ -572,6 +571,7 @@ export default function CopyrightClaimPage() {
                       value={form.claimType}
                       onChange={handleChange}
                       className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                      
                     >
                       {claimTypes.map((t) => (
                         <option key={t.value} value={t.value}>
@@ -581,85 +581,85 @@ export default function CopyrightClaimPage() {
                     </select>
                   </div>
                 </div>
+                className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700
+                rounded-xl text-white text-sm focus:outline-none
+                focus:border-indigo-500 transition-colors"
+                <label className="block text-sm text-gray-400 mb-1.5">
+                  Tell us what happened *
+                </label>
+                <textarea
+                  name="claimDescription"
+                  value={form.claimDescription}
+                  onChange={handleChange}
+                  rows={4}
+                  placeholder="Explain how your copyrighted work was used without your permission. Include any details that can help us review your claim."
+                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+                />
+              </div>
 
+              {/* Original Work - Free text + optional search */}
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm text-gray-400 mb-1.5">
-                    Tell us what happened *
+                    Title of Your Original Work *
                   </label>
-                  <textarea
-                    name="claimDescription"
-                    value={form.claimDescription}
+                  <input
+                    type="text"
+                    name="originalWork"
+                    value={form.originalWork}
                     onChange={handleChange}
-                    rows={4}
-                    placeholder="Explain how your copyrighted work was used without your permission. Include any details that can help us review your claim."
-                    className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+                    placeholder="Enter the title of your original copyrighted work"
+                    className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
                   />
                 </div>
 
-                {/* Original Work - Free text + optional search */}
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1.5">
-                      Title of Your Original Work *
-                    </label>
-                    <input
-                      type="text"
-                      name="originalWork"
-                      value={form.originalWork}
-                      onChange={handleChange}
-                      placeholder="Enter the title of your original copyrighted work"
-                      className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                    <VideoSearchSelect
+                      label="Or search your videos to auto-fill (optional)"
+                      placeholder="Search your videos by title..."
+                      selectedVideo={selectedOriginalWork}
+                      onSelect={(video) => {
+                        setSelectedOriginalWork(video);
+                        setForm((prev) => ({
+                          ...prev,
+                          originalWork: video.title || "",
+                          originalWorkUrl: video.videoUrl || "",
+                        }));
+                      }}
+                      onClear={() => {
+                        setSelectedOriginalWork(null);
+                        // Do not clear originalWork / originalWorkUrl so user can keep typed values
+                      }}
                     />
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <VideoSearchSelect
-                        label="Or search your videos to auto-fill (optional)"
-                        placeholder="Search your videos by title..."
-                        selectedVideo={selectedOriginalWork}
-                        onSelect={(video) => {
-                          setSelectedOriginalWork(video);
-                          setForm((prev) => ({
-                            ...prev,
-                            originalWork: video.title || "",
-                            originalWorkUrl: video.videoUrl || "",
-                          }));
-                        }}
-                        onClear={() => {
-                          setSelectedOriginalWork(null);
-                          // Do not clear originalWork / originalWorkUrl so user can keep typed values
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-1.5">
-                        Link to Your Original Work (optional)
-                      </label>
-                      <input
-                        type="url"
-                        name="originalWorkUrl"
-                        value={form.originalWorkUrl}
-                        onChange={handleChange}
-                        placeholder="https://... (auto-filled if you select a video)"
-                        className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1.5">
+                      Link to Your Original Work (optional)
+                    </label>
+                    <input
+                      type="url"
+                      name="originalWorkUrl"
+                      value={form.originalWorkUrl}
+                      onChange={handleChange}
+                      placeholder="https://... (auto-filled if you select a video)"
+                      className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                    />
                   </div>
                 </div>
               </div>
 
               {/* Declaration */}
-              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+              <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-6">
                 <div className="flex items-start gap-3">
-                  <FileText className="w-5 h-5 text-gray-500 mt-0.5 shrink-0" />
+                  <FileText className="w-5 h-5 text-zinc-500 mt-0.5 shrink-0" />
                   <div className="space-y-2">
-                    <p className="text-sm text-gray-300">
+                    <p className="text-sm text-zinc-300">
                       I confirm that I am the copyright owner or authorized to
                       submit this claim. I confirm that the information I
                       provided is accurate and complete.
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-zinc-500">
                       I understand that submitting a false copyright claim may
                       have legal consequences.
                     </p>
@@ -691,11 +691,10 @@ export default function CopyrightClaimPage() {
           <div className="space-y-6">
             <form onSubmit={handleLookup} className="flex gap-3">
               <input
-                type="text"
                 value={lookupRef}
                 onChange={(e) => setLookupRef(e.target.value)}
                 placeholder="Enter your reference number (e.g. PUB-260101-0001)"
-                className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                className="flex-1 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
               />
               <button
                 type="submit"
@@ -718,7 +717,7 @@ export default function CopyrightClaimPage() {
             )}
 
             {lookupResult && (
-              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 space-y-5">
+              <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-6 space-y-5">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-white">
                     Claim Status
