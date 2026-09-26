@@ -26,11 +26,13 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { useEvent } from "expo";
 import Slider from "@react-native-community/slider";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ScreenOrientation from "expo-screen-orientation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getViewSocket } from "../utils/viewSocket";
 import { API_ORIGIN } from "../../config/api";
+import Navbar from "./Navbar";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const BACKEND_URL = API_ORIGIN;
@@ -102,6 +104,7 @@ const getGuestId = async () => {
 export default function VideoDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const insets = useSafeAreaInsets();
   const routeId = route?.params?.id ?? route?.params?.videoId ?? 1;
   const routeVideo = route?.params?.item ?? route?.params?.video ?? null;
 
@@ -1182,251 +1185,268 @@ export default function VideoDetailScreen() {
 
       {/* ===== NORMAL (portrait) PLAYER ===== */}
       {!isFullscreen && (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          nestedScrollEnabled
-        >
-          <View style={styles.videoWrapper}>
-            <VideoView
-              player={player}
-              style={styles.videoPlayer}
-              contentFit="contain"
-              nativeControls={false}
-              allowsPictureInPicture={false}
-            />
-            {renderPlayerControls(false)}
-          </View>
-
-          {/* INFO */}
-          <View style={styles.infoSection}>
-            <Text style={styles.title} numberOfLines={2}>
-              {videoDetails?.title || FALLBACK_VIDEO.title}
-            </Text>
-
-            <Text style={styles.meta}>
-              {formatCount(videoDetails?.views ?? videoDetails?.viewCount ?? 0)}{" "}
-              views
-              {videoDetails?.createdAt
-                ? `  •  ${new Date(videoDetails.createdAt).toLocaleDateString()}`
-                : ""}
-            </Text>
-
-            <View style={styles.channelRow}>
-              <Image
-                source={{
-                  uri:
-                    resolveMediaUrl(videoDetails?.channel?.channelImage) ||
-                    resolvedThumbnail,
-                }}
-                style={styles.channelAvatar}
+        <>
+          <Navbar onMenuPress={() => {}} points={0} />
+          <ScrollView
+            style={styles.detailScroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            nestedScrollEnabled
+          >
+            <View style={styles.videoWrapper}>
+              <VideoView
+                player={player}
+                style={styles.videoPlayer}
+                contentFit="contain"
+                nativeControls={false}
+                allowsPictureInPicture={false}
               />
-              <View style={styles.channelInfo}>
-                <Text style={styles.channelName} numberOfLines={1}>
-                  {videoDetails?.channel?.name ||
-                    videoDetails?.channel ||
-                    "Channel"}
-                </Text>
-                <Text style={styles.subscribersText}>
-                  {formatCount(subscribersCount)} subscribers
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.subscribeBtn,
-                  isSubscribed && styles.subscribedBtn,
-                ]}
-                onPress={handleSubscribe}
-                disabled={subscribeLoading}
-              >
-                {subscribeLoading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={isSubscribed ? "#fff" : "#0f0f0f"}
-                  />
-                ) : (
-                  <Text
-                    style={[
-                      styles.subscribeText,
-                      isSubscribed && styles.subscribedText,
-                    ]}
-                  >
-                    {isSubscribed ? "Subscribed" : "Subscribe"}
-                  </Text>
-                )}
-              </TouchableOpacity>
+              {renderPlayerControls(false)}
             </View>
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.actionRow}
-            >
-              <TouchableOpacity
-                style={[styles.actionBtn, liked && styles.actionBtnActive]}
-                onPress={handleLike}
-              >
-                <Ionicons
-                  name={liked ? "thumbs-up" : "thumbs-up-outline"}
-                  size={18}
-                  color="#fff"
-                />
-                <Text style={styles.actionText}>{formatCount(likesCount)}</Text>
-              </TouchableOpacity>
+            {/* INFO */}
+            <View style={styles.infoSection}>
+              <Text style={styles.title} numberOfLines={2}>
+                {videoDetails?.title || FALLBACK_VIDEO.title}
+              </Text>
 
-              <TouchableOpacity
-                style={[styles.actionBtn, disliked && styles.actionBtnActive]}
-                onPress={handleDislike}
-              >
-                <Ionicons
-                  name={disliked ? "thumbs-down" : "thumbs-down-outline"}
-                  size={18}
-                  color="#fff"
-                />
-                <Text style={styles.actionText}>
-                  {formatCount(dislikesCount)}
-                </Text>
-              </TouchableOpacity>
+              <Text style={styles.meta}>
+                {formatCount(
+                  videoDetails?.views ?? videoDetails?.viewCount ?? 0,
+                )}{" "}
+                views
+                {videoDetails?.createdAt
+                  ? `  •  ${new Date(videoDetails.createdAt).toLocaleDateString()}`
+                  : ""}
+              </Text>
 
-              <TouchableOpacity
-                style={[
-                  styles.actionBtn,
-                  isWatchLater && styles.actionBtnActive,
-                ]}
-                onPress={handleWatchLater}
-                disabled={watchLaterLoading}
+              <View style={styles.channelRow}>
+                <Image
+                  source={{
+                    uri:
+                      resolveMediaUrl(videoDetails?.channel?.channelImage) ||
+                      resolvedThumbnail,
+                  }}
+                  style={styles.channelAvatar}
+                />
+                <View style={styles.channelInfo}>
+                  <Text style={styles.channelName} numberOfLines={1}>
+                    {videoDetails?.channel?.name ||
+                      videoDetails?.channel ||
+                      "Channel"}
+                  </Text>
+                  <Text style={styles.subscribersText}>
+                    {formatCount(subscribersCount)} subscribers
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.subscribeBtn,
+                    isSubscribed && styles.subscribedBtn,
+                  ]}
+                  onPress={handleSubscribe}
+                  disabled={subscribeLoading}
+                >
+                  {subscribeLoading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={isSubscribed ? "#fff" : "#0f0f0f"}
+                    />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.subscribeText,
+                        isSubscribed && styles.subscribedText,
+                      ]}
+                    >
+                      {isSubscribed ? "Subscribed" : "Subscribe"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.actionRow}
               >
-                {watchLaterLoading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
+                <TouchableOpacity
+                  style={[styles.actionBtn, liked && styles.actionBtnActive]}
+                  onPress={handleLike}
+                >
                   <Ionicons
-                    name={isWatchLater ? "bookmark" : "bookmark-outline"}
+                    name={liked ? "thumbs-up" : "thumbs-up-outline"}
                     size={18}
                     color="#fff"
                   />
-                )}
-                <Text style={styles.actionText}>
-                  {isWatchLater
-                    ? "Remove from Watch Later"
-                    : "Save to Watch Later"}
-                </Text>
-              </TouchableOpacity>
+                  <Text style={styles.actionText}>
+                    {formatCount(likesCount)}
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity style={styles.actionBtn}>
-                <Ionicons name="share-outline" size={18} color="#fff" />
-                <Text style={styles.actionText}>Share</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, disliked && styles.actionBtnActive]}
+                  onPress={handleDislike}
+                >
+                  <Ionicons
+                    name={disliked ? "thumbs-down" : "thumbs-down-outline"}
+                    size={18}
+                    color="#fff"
+                  />
+                  <Text style={styles.actionText}>
+                    {formatCount(dislikesCount)}
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.actionBtn}
-                onPress={handleCopyrightReport}
-              >
-                <Ionicons name="shield-outline" size={18} color="#fff" />
-                <Text style={styles.actionText}>Report</Text>
-              </TouchableOpacity>
-            </ScrollView>
-
-            <View style={styles.descriptionBox}>
-              <Text style={styles.description} numberOfLines={3}>
-                {videoDetails?.description || FALLBACK_VIDEO.description}
-              </Text>
-            </View>
-          </View>
-
-          {/* UP NEXT */}
-          <View style={styles.suggestedSection}>
-            <View style={styles.suggestedHeader}>
-              <Text style={styles.sectionTitle}>Up next</Text>
-              <View style={styles.autoplayRow}>
-                <Text style={styles.autoplayLabel}>Autoplay</Text>
                 <TouchableOpacity
                   style={[
-                    styles.switch,
-                    autoplay ? styles.switchOn : styles.switchOff,
+                    styles.actionBtn,
+                    isWatchLater && styles.actionBtnActive,
                   ]}
-                  onPress={() => setAutoplay((p) => !p)}
+                  onPress={handleWatchLater}
+                  disabled={watchLaterLoading}
                 >
-                  <View
-                    style={[
-                      styles.switchThumb,
-                      autoplay && styles.switchThumbOn,
-                    ]}
-                  />
+                  {watchLaterLoading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons
+                      name={isWatchLater ? "bookmark" : "bookmark-outline"}
+                      size={18}
+                      color="#fff"
+                    />
+                  )}
+                  <Text style={styles.actionText}>
+                    {isWatchLater
+                      ? "Remove from Watch Later"
+                      : "Save to Watch Later"}
+                  </Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity style={styles.actionBtn}>
+                  <Ionicons name="share-outline" size={18} color="#fff" />
+                  <Text style={styles.actionText}>Share</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={handleCopyrightReport}
+                >
+                  <Ionicons name="shield-outline" size={18} color="#fff" />
+                  <Text style={styles.actionText}>Report</Text>
+                </TouchableOpacity>
+              </ScrollView>
+
+              <View style={styles.descriptionBox}>
+                <Text style={styles.description} numberOfLines={3}>
+                  {videoDetails?.description || FALLBACK_VIDEO.description}
+                </Text>
               </View>
             </View>
 
-            {suggestedLoading ? (
-              <ActivityIndicator color="#fff" style={{ marginVertical: 24 }} />
-            ) : suggestedVideos.length > 0 ? (
-              <FlatList
-                data={suggestedVideos}
-                keyExtractor={(item) => String(item._id || item.id)}
-                renderItem={renderSuggestedItem}
-                scrollEnabled={false}
-                ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-              />
-            ) : (
-              <Text style={styles.emptyText}>No suggestions available</Text>
-            )}
-          </View>
-
-          {/* COMMENTS */}
-          <View style={styles.commentsCard}>
-            <Text style={styles.sectionTitle}>
-              Comments • {comments.length}
-            </Text>
-
-            <View style={styles.commentInputRow}>
-              <TextInput
-                value={commentText}
-                onChangeText={setCommentText}
-                style={styles.commentInput}
-                placeholder="Add a comment..."
-                placeholderTextColor="#888"
-                multiline
-              />
-              <TouchableOpacity
-                style={[
-                  styles.postBtn,
-                  (!commentText.trim() || commentLoading) && { opacity: 0.5 },
-                ]}
-                onPress={handleCommentSubmit}
-                disabled={!commentText.trim() || commentLoading}
-              >
-                {commentLoading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.postBtnText}>Post</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {commentsLoading ? (
-              <ActivityIndicator color="#fff" style={{ marginVertical: 14 }} />
-            ) : comments.length > 0 ? (
-              comments.map((c) => (
-                <View key={c._id || c.id} style={styles.commentItem}>
-                  <Text style={styles.commentText}>{c.text || c.comment}</Text>
-                  <Text style={styles.commentMeta}>
-                    {c.createdAt
-                      ? new Date(c.createdAt).toLocaleDateString()
-                      : "Just now"}
-                  </Text>
+            {/* UP NEXT */}
+            <View style={styles.suggestedSection}>
+              <View style={styles.suggestedHeader}>
+                <Text style={styles.sectionTitle}>Up next</Text>
+                <View style={styles.autoplayRow}>
+                  <Text style={styles.autoplayLabel}>Autoplay</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.switch,
+                      autoplay ? styles.switchOn : styles.switchOff,
+                    ]}
+                    onPress={() => setAutoplay((p) => !p)}
+                  >
+                    <View
+                      style={[
+                        styles.switchThumb,
+                        autoplay && styles.switchThumbOn,
+                      ]}
+                    />
+                  </TouchableOpacity>
                 </View>
-              ))
-            ) : (
-              <Text style={styles.emptyText}>No comments yet.</Text>
-            )}
-          </View>
+              </View>
 
-          {loading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#fff" />
+              {suggestedLoading ? (
+                <ActivityIndicator
+                  color="#fff"
+                  style={{ marginVertical: 24 }}
+                />
+              ) : suggestedVideos.length > 0 ? (
+                <FlatList
+                  data={suggestedVideos}
+                  keyExtractor={(item) => String(item._id || item.id)}
+                  renderItem={renderSuggestedItem}
+                  scrollEnabled={false}
+                  ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+                />
+              ) : (
+                <Text style={styles.emptyText}>No suggestions available</Text>
+              )}
             </View>
-          )}
-        </ScrollView>
+
+            {/* COMMENTS */}
+            <View style={styles.commentsCard}>
+              <Text style={styles.sectionTitle}>
+                Comments • {comments.length}
+              </Text>
+
+              <View style={styles.commentInputRow}>
+                <TextInput
+                  value={commentText}
+                  onChangeText={setCommentText}
+                  style={styles.commentInput}
+                  placeholder="Add a comment..."
+                  placeholderTextColor="#888"
+                  multiline
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.postBtn,
+                    (!commentText.trim() || commentLoading) && { opacity: 0.5 },
+                  ]}
+                  onPress={handleCommentSubmit}
+                  disabled={!commentText.trim() || commentLoading}
+                >
+                  {commentLoading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.postBtnText}>Post</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {commentsLoading ? (
+                <ActivityIndicator
+                  color="#fff"
+                  style={{ marginVertical: 14 }}
+                />
+              ) : comments.length > 0 ? (
+                comments.map((c) => (
+                  <View key={c._id || c.id} style={styles.commentItem}>
+                    <Text style={styles.commentText}>
+                      {c.text || c.comment}
+                    </Text>
+                    <Text style={styles.commentMeta}>
+                      {c.createdAt
+                        ? new Date(c.createdAt).toLocaleDateString()
+                        : "Just now"}
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.emptyText}>No comments yet.</Text>
+              )}
+            </View>
+
+            {loading && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </ScrollView>
+          <VideoDetailBottomTabs navigation={navigation} insets={insets} />
+        </>
       )}
 
       {/* ===== FULLSCREEN PLAYER (Modal) ===== */}
@@ -1455,13 +1475,117 @@ export default function VideoDetailScreen() {
   );
 }
 
+function VideoDetailBottomTabs({ navigation, insets }) {
+  const tabs = [
+    { label: "Home", screen: "Home" },
+    { label: "Shorts", screen: "Shorts" },
+    { label: "Create", screen: "Create" },
+    { label: "Subscribe", screen: "Subscribe" },
+    { label: "You", screen: "You" },
+  ];
+
+  const navigateToTab = (screen) => {
+    const routeNames = navigation.getState?.().routeNames || [];
+    if (routeNames.includes("MainTabs")) {
+      navigation.navigate("MainTabs", { screen });
+      return;
+    }
+
+    navigation.navigate("AdminPanel", {
+      screen: "MainTabs",
+      params: { screen },
+    });
+  };
+
+  return (
+    <View
+      style={[
+        styles.videoBottomTabs,
+        {
+          height: 56 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+        },
+      ]}
+    >
+      {tabs.map((tab) => (
+        <TouchableOpacity
+          key={tab.screen}
+          style={styles.videoBottomTab}
+          onPress={() => navigateToTab(tab.screen)}
+          activeOpacity={0.8}
+        >
+          {tab.screen === "Create" ? (
+            <View style={styles.videoCreateIcon}>
+              <Ionicons name="add" size={26} color="#fff" />
+            </View>
+          ) : tab.screen === "Home" ? (
+            <Ionicons name="home-outline" size={23} color="#e4e4e7" />
+          ) : tab.screen === "Shorts" ? (
+            <MaterialCommunityIcons
+              name="movie-open-play-outline"
+              size={25}
+              color="#e4e4e7"
+            />
+          ) : tab.screen === "Subscribe" ? (
+            <MaterialCommunityIcons
+              name="youtube-subscription"
+              size={24}
+              color="#a1a1aa"
+            />
+          ) : (
+            <Ionicons name="person-circle-outline" size={25} color="#e4e4e7" />
+          )}
+          <Text style={styles.videoBottomTabLabel}>{tab.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#0f0f0f",
   },
+  detailScroll: {
+    flex: 1,
+  },
   scrollContent: {
     paddingBottom: 40,
+  },
+  videoBottomTabs: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    backgroundColor: "#0f0f0f",
+    borderTopWidth: 0.5,
+    borderTopColor: "#333",
+    paddingTop: 6,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  videoBottomTab: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+  videoCreateIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ef4444",
+  },
+  videoBottomTabLabel: {
+    color: "#a1a1aa",
+    fontSize: 10,
+    fontWeight: "500",
+    marginBottom: 4,
   },
 
   // ========== PLAYER ==========
