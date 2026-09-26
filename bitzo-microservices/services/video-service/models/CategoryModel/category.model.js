@@ -8,8 +8,7 @@
 // //Export the model
 // module.exports = require("../../config/connections").categoryDB().model("Category", categorySchema);
 
-
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const categorySchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
@@ -17,7 +16,9 @@ const categorySchema = new mongoose.Schema({
   isMain: { type: Boolean, default: false }, // true = top-level main category
   isCreativeCorner: { type: Boolean, default: false },
   createdFromHashtag: { type: String }, // original hashtag if graduated
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model('Category', categorySchema);
+module.exports = require("../../config/connections")
+  .categoryDB()
+  .model("Category", categorySchema);
