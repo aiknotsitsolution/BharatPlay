@@ -1,4 +1,22 @@
-require("dotenv").config();
+const path = require("node:path");
+const dotenv = require("dotenv");
+
+dotenv.config();
+
+if (!process.env.EMAIL || !process.env.EMAIL_PASSWORD) {
+  const sharedEnv =
+    dotenv.config({
+      path: path.resolve(__dirname, "../../.env"),
+      processEnv: {},
+      quiet: true,
+    }).parsed || {};
+
+  if (sharedEnv.EMAIL && sharedEnv.EMAIL_PASSWORD) {
+    for (const key of ["EMAIL_HOST", "EMAIL_PORT", "EMAIL", "EMAIL_PASSWORD"]) {
+      if (sharedEnv[key]) process.env[key] = sharedEnv[key];
+    }
+  }
+}
 
 const dns = require("node:dns");
 dns.setServers(["8.8.8.8", "1.1.1.1", "0.0.0.0"]);
@@ -16,6 +34,7 @@ const supportRoutes = require("./routes/supportRoute");
 
 const app = express();
 const PORT = process.env.PORT || 4001;
+app.set("trust proxy", 1);
 
 // =====================================================
 // LOGGING

@@ -23,6 +23,7 @@ import {
   User,
   ArrowRight,
   ChevronLeft,
+  CheckCircle2,
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
@@ -37,7 +38,9 @@ const { width } = Dimensions.get("window");
 
 const googleConfig = Constants.expoConfig?.extra?.google || {};
 const GOOGLE_WEB_CLIENT_ID = googleConfig.webClientId || "";
-const GOOGLE_ANDROID_CLIENT_ID = googleConfig.androidClientId || "1043684646784-d9igjhng2cfdp006ogsi0am1i3d4djh1.apps.googleusercontent.com";
+const GOOGLE_ANDROID_CLIENT_ID =
+  googleConfig.androidClientId ||
+  "1043684646784-d9igjhng2cfdp006ogsi0am1i3d4djh1.apps.googleusercontent.com";
 const GOOGLE_IOS_CLIENT_ID = googleConfig.iosClientId || "";
 const isGoogleClientId = (value = "") => {
   const normalized = String(value).trim();
@@ -72,6 +75,18 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     email: "",
     password: "",
   });
+  const [resetStep, setResetStep] = useState(0);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetOtp, setResetOtp] = useState("");
+  const [resetOtpCountdown, setResetOtpCountdown] = useState(0);
+  const [resetToken, setResetToken] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showResetConfirmPassword, setShowResetConfirmPassword] =
+    useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetResending, setResetResending] = useState(false);
 
   // ========== Animations ==========
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -223,6 +238,14 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     return () => clearTimeout(timer);
   }, [otpRequired, otpCountdown]);
 
+  useEffect(() => {
+    if (resetStep !== 2 || resetOtpCountdown <= 0) return;
+    const timer = setTimeout(() => {
+      setResetOtpCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [resetStep, resetOtpCountdown]);
+
   const handleGoogleSuccess = async (authentication) => {
     try {
       setGoogleLoading(true);
@@ -305,6 +328,150 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
         text1: "Authentication Error",
         text2: e?.message || "Session could not be saved.",
       });
+    }
+  };
+
+  const startPasswordReset = () => {
+    setResetEmail(formData.email.trim().toLowerCase());
+    setResetOtp("");
+    setResetToken("");
+    setResetPassword("");
+    setResetConfirmPassword("");
+    setResetOtpCountdown(0);
+    setResetStep(1);
+    setError("");
+  };
+
+  const backFromPasswordReset = () => {
+    if (resetStep === 1 || resetStep === 4) {
+      setResetStep(0);
+      setResetToken("");
+      setResetOtp("");
+    } else {
+      setResetStep(1);
+      setResetOtp("");
+      setResetToken("");
+      setResetOtpCountdown(0);
+    }
+    setError("");
+  };
+
+  const handleRequestResetOtp = async () => {
+    const normalizedEmail = resetEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    setResetBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE}/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to send verification code.");
+      }
+
+      setResetEmail(normalizedEmail);
+      setResetStep(2);
+      setResetOtp("");
+      setResetOtpCountdown(60);
+      Toast.show({
+        type: "info",
+        text1: "Verification code sent",
+        text2: "If an account exists, check your email for the code.",
+      });
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setResetBusy(false);
+    }
+  };
+
+  const handleResendResetOtp = async () => {
+    if (resetOtpCountdown > 0 || resetBusy) return;
+    setResetResending(true);
+    try {
+      await handleRequestResetOtp();
+    } finally {
+      setResetResending(false);
+    }
+  };
+
+  const handleVerifyResetOtp = async () => {
+    if (!/^\d{6}$/.test(resetOtp)) {
+      setError("Please enter a valid 6-digit verification code.");
+      return;
+    }
+
+    setResetBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE}/verify-reset-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resetEmail, otp: resetOtp }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.resetToken) {
+        throw new Error(
+          data.message || "Verification failed. Please try again.",
+        );
+      }
+
+      setResetToken(data.resetToken);
+      setResetStep(3);
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setResetBusy(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (resetPassword.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (resetPassword !== resetConfirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (!resetToken) {
+      setError("Your reset session has expired. Please start again.");
+      setResetStep(1);
+      return;
+    }
+
+    setResetBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: resetToken, newPassword: resetPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to reset password.");
+      }
+
+      setResetStep(4);
+      setResetPassword("");
+      setResetConfirmPassword("");
+      Toast.show({
+        type: "success",
+        text1: "Password reset successful",
+        text2: "Sign in with your new password.",
+      });
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setResetBusy(false);
     }
   };
 
@@ -537,44 +704,56 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                   resizeMode="contain"
                 />
                 <Text style={styles.subtitle}>
-                  {isLogin ? "Sign in to continue" : "Create your account"}
+                  {resetStep === 0
+                    ? isLogin
+                      ? "Sign in to continue"
+                      : "Create your account"
+                    : resetStep === 1
+                      ? "Reset your password"
+                      : resetStep === 2
+                        ? "Verify your email"
+                        : resetStep === 3
+                          ? "Create a new password"
+                          : "Password reset successful"}
                 </Text>
               </View>
 
               {/* Tabs with animated indicator */}
-              <View style={styles.tabsContainer}>
-                <TouchableOpacity
-                  style={styles.tab}
-                  onPress={() => {
-                    if (!isLogin) toggleMode();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[styles.tabText, isLogin && styles.activeTabText]}
+              {resetStep === 0 && (
+                <View style={styles.tabsContainer}>
+                  <TouchableOpacity
+                    style={styles.tab}
+                    onPress={() => {
+                      if (!isLogin) toggleMode();
+                    }}
+                    activeOpacity={0.7}
                   >
-                    Login
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.tab}
-                  onPress={() => {
-                    if (isLogin) toggleMode();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[styles.tabText, !isLogin && styles.activeTabText]}
+                    <Text
+                      style={[styles.tabText, isLogin && styles.activeTabText]}
+                    >
+                      Login
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.tab}
+                    onPress={() => {
+                      if (isLogin) toggleMode();
+                    }}
+                    activeOpacity={0.7}
                   >
-                    Register
-                  </Text>
-                </TouchableOpacity>
+                    <Text
+                      style={[styles.tabText, !isLogin && styles.activeTabText]}
+                    >
+                      Register
+                    </Text>
+                  </TouchableOpacity>
 
-                {/* Animated underline */}
-                <Animated.View
-                  style={[styles.tabIndicator, { left: indicatorLeft }]}
-                />
-              </View>
+                  {/* Animated underline */}
+                  <Animated.View
+                    style={[styles.tabIndicator, { left: indicatorLeft }]}
+                  />
+                </View>
+              )}
 
               <View style={styles.formContainer}>
                 {error ? (
@@ -592,227 +771,510 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                     },
                   ]}
                 >
-                  {/* Name field */}
-                  {!isLogin && !otpRequired && (
-                    <View style={styles.inputWrapper}>
-                      <User size={20} color="#6b7280" style={styles.icon} />
-                      <TextInput
-                        placeholder="Full Name"
-                        value={formData.name}
-                        onChangeText={(text) => handleChange("name", text)}
-                        style={styles.input}
-                        placeholderTextColor="#6b7280"
-                        autoCapitalize="words"
-                      />
-                    </View>
-                  )}
-
-                  {/* Email */}
-                  {!otpRequired && (
-                    <View style={styles.inputWrapper}>
-                      <Mail size={20} color="#6b7280" style={styles.icon} />
-                      <TextInput
-                        placeholder="Email address"
-                        value={formData.email}
-                        onChangeText={(text) => handleChange("email", text)}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        style={styles.input}
-                        placeholderTextColor="#6b7280"
-                      />
-                    </View>
-                  )}
-
-                  {/* Password */}
-                  {!otpRequired && (
-                    <View style={styles.inputWrapper}>
-                      <Lock size={20} color="#6b7280" style={styles.icon} />
-                      <TextInput
-                        placeholder="Password"
-                        value={formData.password}
-                        onChangeText={(text) => handleChange("password", text)}
-                        secureTextEntry={!showPassword}
-                        style={styles.input}
-                        placeholderTextColor="#6b7280"
-                      />
-                      <TouchableOpacity
-                        onPress={() => setShowPassword(!showPassword)}
-                        style={styles.eyeIcon}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      >
-                        {showPassword ? (
-                          <EyeOff size={20} color="#9ca3af" />
-                        ) : (
-                          <Eye size={20} color="#9ca3af" />
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {/* ========== OTP Section ========== */}
-                  {otpRequired && (
-                    <Animated.View
-                      style={[
-                        styles.otpSection,
-                        {
-                          opacity: otpAnim,
-                          transform: [
-                            {
-                              translateY: otpAnim.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [25, 0],
-                              }),
-                            },
-                            {
-                              scale: otpAnim.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0.95, 1],
-                              }),
-                            },
-                          ],
-                        },
-                      ]}
-                    >
-                      <Text style={styles.otpTitle}>Enter OTP</Text>
-                      <Text style={styles.otpSubtitle}>
-                        We sent a 6-digit code to{"\n"}
-                        <Text style={{ color: "#ef4444", fontWeight: "600" }}>
-                          {formData.email}
-                        </Text>
-                      </Text>
-                      {developmentOtp ? (
-                        <Text style={styles.developmentOtp}>
-                          Development OTP: {developmentOtp}
-                        </Text>
-                      ) : null}
-
-                      <TextInput
-                        style={styles.otpInput}
-                        placeholder="••••••"
-                        placeholderTextColor="#4b5563"
-                        value={otp}
-                        onChangeText={(text) =>
-                          setOtp(text.replace(/\D/g, "").slice(0, 6))
-                        }
-                        keyboardType="number-pad"
-                        maxLength={6}
-                        textAlign="center"
-                        autoFocus
-                      />
-
-                      <View style={styles.otpRow}>
-                        <Text style={styles.otpHint}>
-                          {otpCountdown > 0
-                            ? `Resend OTP in ${otpCountdown}s`
-                            : "Didn't receive the code?"}
-                        </Text>
-                        <TouchableOpacity
-                          onPress={handleResendOtp}
-                          disabled={resendingOtp || otpCountdown > 0 || loading}
-                          activeOpacity={0.7}
-                        >
-                          <Text
-                            style={[
-                              styles.resendText,
-                              (resendingOtp || otpCountdown > 0 || loading) &&
-                                styles.resendDisabled,
-                            ]}
-                          >
-                            {resendingOtp ? "Sending..." : "Resend OTP"}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </Animated.View>
-                  )}
-
-                  {/* Submit Button */}
-                  <Animated.View
-                    style={{ transform: [{ scale: buttonScale }] }}
-                  >
-                    <TouchableOpacity
-                      onPress={handleSubmit}
-                      onPressIn={onPressIn}
-                      onPressOut={onPressOut}
-                      disabled={loading || googleLoading}
-                      activeOpacity={0.9}
-                      style={[
-                        styles.button,
-                        (loading || googleLoading) && styles.buttonDisabled,
-                      ]}
-                    >
-                      {loading ? (
-                        <ActivityIndicator color="#fff" size="small" />
-                      ) : (
-                        <View style={styles.buttonContent}>
-                          <Text style={styles.buttonText}>
-                            {otpRequired
-                              ? "Verify OTP & Continue"
-                              : isLogin
-                                ? "Sign In"
-                                : "Create Account"}
-                          </Text>
-                          <ArrowRight size={20} color="#fff" />
+                  {resetStep === 0 ? (
+                    <>
+                      {/* Name field */}
+                      {!isLogin && !otpRequired && (
+                        <View style={styles.inputWrapper}>
+                          <User size={20} color="#6b7280" style={styles.icon} />
+                          <TextInput
+                            placeholder="Full Name"
+                            value={formData.name}
+                            onChangeText={(text) => handleChange("name", text)}
+                            style={styles.input}
+                            placeholderTextColor="#6b7280"
+                            autoCapitalize="words"
+                          />
                         </View>
                       )}
-                    </TouchableOpacity>
-                  </Animated.View>
 
-                  {/* Back button when OTP is shown */}
-                  {otpRequired && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setOtpRequired(false);
-                        setDevelopmentOtp("");
-                        setOtp("");
-                        setOtpCountdown(0);
-                        setError("");
-                      }}
-                      style={styles.backButton}
-                      activeOpacity={0.7}
-                    >
-                      <ChevronLeft size={18} color="#9ca3af" />
-                      <Text style={styles.backButtonText}>Back</Text>
-                    </TouchableOpacity>
-                  )}
+                      {/* Email */}
+                      {!otpRequired && (
+                        <View style={styles.inputWrapper}>
+                          <Mail size={20} color="#6b7280" style={styles.icon} />
+                          <TextInput
+                            placeholder="Email address"
+                            value={formData.email}
+                            onChangeText={(text) => handleChange("email", text)}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            style={styles.input}
+                            placeholderTextColor="#6b7280"
+                          />
+                        </View>
+                      )}
 
-                  {/* Divider + Google */}
-                  {!otpRequired && (
-                    <>
-                      <View style={styles.dividerContainer}>
-                        <View style={styles.divider} />
-                        <Text style={styles.dividerText}>OR</Text>
-                        <View style={styles.divider} />
-                      </View>
+                      {/* Password */}
+                      {!otpRequired && (
+                        <View style={styles.inputWrapper}>
+                          <Lock size={20} color="#6b7280" style={styles.icon} />
+                          <TextInput
+                            placeholder="Password"
+                            value={formData.password}
+                            onChangeText={(text) =>
+                              handleChange("password", text)
+                            }
+                            secureTextEntry={!showPassword}
+                            style={styles.input}
+                            placeholderTextColor="#6b7280"
+                          />
+                          <TouchableOpacity
+                            onPress={() => setShowPassword(!showPassword)}
+                            style={styles.eyeIcon}
+                            hitSlop={{
+                              top: 10,
+                              bottom: 10,
+                              left: 10,
+                              right: 10,
+                            }}
+                          >
+                            {showPassword ? (
+                              <EyeOff size={20} color="#9ca3af" />
+                            ) : (
+                              <Eye size={20} color="#9ca3af" />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      )}
 
-                      <TouchableOpacity
-                        onPress={handleGoogleSignIn}
-                        disabled={
-                          !GOOGLE_CONFIGURED ||
-                          !request ||
-                          loading ||
-                          googleLoading
-                        }
-                        activeOpacity={0.85}
-                        style={[
-                          styles.googleButton,
-                          (loading || googleLoading) && styles.buttonDisabled,
-                        ]}
-                      >
-                        {googleLoading ? (
-                          <ActivityIndicator color="#111" size="small" />
-                        ) : (
-                          <Text style={styles.googleButtonText}>
-                            Continue with Google
+                      {!otpRequired && isLogin && (
+                        <TouchableOpacity
+                          onPress={startPasswordReset}
+                          style={styles.forgotPasswordButton}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.forgotPasswordText}>
+                            Forgot password?
                           </Text>
-                        )}
-                      </TouchableOpacity>
+                        </TouchableOpacity>
+                      )}
+
+                      {/* ========== OTP Section ========== */}
+                      {otpRequired && (
+                        <Animated.View
+                          style={[
+                            styles.otpSection,
+                            {
+                              opacity: otpAnim,
+                              transform: [
+                                {
+                                  translateY: otpAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [25, 0],
+                                  }),
+                                },
+                                {
+                                  scale: otpAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.95, 1],
+                                  }),
+                                },
+                              ],
+                            },
+                          ]}
+                        >
+                          <Text style={styles.otpTitle}>Enter OTP</Text>
+                          <Text style={styles.otpSubtitle}>
+                            We sent a 6-digit code to{"\n"}
+                            <Text
+                              style={{ color: "#ef4444", fontWeight: "600" }}
+                            >
+                              {formData.email}
+                            </Text>
+                          </Text>
+                          {developmentOtp ? (
+                            <Text style={styles.developmentOtp}>
+                              Development OTP: {developmentOtp}
+                            </Text>
+                          ) : null}
+
+                          <TextInput
+                            style={styles.otpInput}
+                            placeholder="••••••"
+                            placeholderTextColor="#4b5563"
+                            value={otp}
+                            onChangeText={(text) =>
+                              setOtp(text.replace(/\D/g, "").slice(0, 6))
+                            }
+                            keyboardType="number-pad"
+                            maxLength={6}
+                            textAlign="center"
+                            autoFocus
+                          />
+
+                          <View style={styles.otpRow}>
+                            <Text style={styles.otpHint}>
+                              {otpCountdown > 0
+                                ? `Resend OTP in ${otpCountdown}s`
+                                : "Didn't receive the code?"}
+                            </Text>
+                            <TouchableOpacity
+                              onPress={handleResendOtp}
+                              disabled={
+                                resendingOtp || otpCountdown > 0 || loading
+                              }
+                              activeOpacity={0.7}
+                            >
+                              <Text
+                                style={[
+                                  styles.resendText,
+                                  (resendingOtp ||
+                                    otpCountdown > 0 ||
+                                    loading) &&
+                                    styles.resendDisabled,
+                                ]}
+                              >
+                                {resendingOtp ? "Sending..." : "Resend OTP"}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </Animated.View>
+                      )}
+
+                      {/* Submit Button */}
+                      <Animated.View
+                        style={{ transform: [{ scale: buttonScale }] }}
+                      >
+                        <TouchableOpacity
+                          onPress={handleSubmit}
+                          onPressIn={onPressIn}
+                          onPressOut={onPressOut}
+                          disabled={loading || googleLoading}
+                          activeOpacity={0.9}
+                          style={[
+                            styles.button,
+                            (loading || googleLoading) && styles.buttonDisabled,
+                          ]}
+                        >
+                          {loading ? (
+                            <ActivityIndicator color="#fff" size="small" />
+                          ) : (
+                            <View style={styles.buttonContent}>
+                              <Text style={styles.buttonText}>
+                                {otpRequired
+                                  ? "Verify OTP & Continue"
+                                  : isLogin
+                                    ? "Sign In"
+                                    : "Create Account"}
+                              </Text>
+                              <ArrowRight size={20} color="#fff" />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      </Animated.View>
+
+                      {/* Back button when OTP is shown */}
+                      {otpRequired && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setOtpRequired(false);
+                            setDevelopmentOtp("");
+                            setOtp("");
+                            setOtpCountdown(0);
+                            setError("");
+                          }}
+                          style={styles.backButton}
+                          activeOpacity={0.7}
+                        >
+                          <ChevronLeft size={18} color="#9ca3af" />
+                          <Text style={styles.backButtonText}>Back</Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {/* Divider + Google */}
+                      {!otpRequired && (
+                        <>
+                          <View style={styles.dividerContainer}>
+                            <View style={styles.divider} />
+                            <Text style={styles.dividerText}>OR</Text>
+                            <View style={styles.divider} />
+                          </View>
+
+                          <TouchableOpacity
+                            onPress={handleGoogleSignIn}
+                            disabled={
+                              !GOOGLE_CONFIGURED ||
+                              !request ||
+                              loading ||
+                              googleLoading
+                            }
+                            activeOpacity={0.85}
+                            style={[
+                              styles.googleButton,
+                              (loading || googleLoading) &&
+                                styles.buttonDisabled,
+                            ]}
+                          >
+                            {googleLoading ? (
+                              <ActivityIndicator color="#111" size="small" />
+                            ) : (
+                              <Text style={styles.googleButtonText}>
+                                Continue with Google
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {resetStep === 1 && (
+                        <View style={[styles.resetStep, styles.resetSuccess]}>
+                          <Text style={styles.resetStepSubtitle}>
+                            Enter your account email and we'll send a
+                            verification code.
+                          </Text>
+                          <View style={styles.inputWrapper}>
+                            <Mail
+                              size={20}
+                              color="#6b7280"
+                              style={styles.icon}
+                            />
+                            <TextInput
+                              placeholder="Email address"
+                              value={resetEmail}
+                              onChangeText={setResetEmail}
+                              keyboardType="email-address"
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              editable={!resetBusy}
+                              style={styles.input}
+                              placeholderTextColor="#6b7280"
+                            />
+                          </View>
+                          <TouchableOpacity
+                            onPress={handleRequestResetOtp}
+                            disabled={resetBusy}
+                            activeOpacity={0.9}
+                            style={[
+                              styles.button,
+                              resetBusy && styles.buttonDisabled,
+                            ]}
+                          >
+                            {resetBusy ? (
+                              <ActivityIndicator color="#fff" size="small" />
+                            ) : (
+                              <View style={styles.buttonContent}>
+                                <Text style={styles.buttonText}>Send code</Text>
+                                <ArrowRight size={20} color="#fff" />
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {resetStep === 2 && (
+                        <View style={styles.resetStep}>
+                          <Text style={styles.resetStepSubtitle}>
+                            Enter the 6-digit code sent to {resetEmail}.
+                          </Text>
+                          <TextInput
+                            style={styles.otpInput}
+                            placeholder="••••••"
+                            placeholderTextColor="#4b5563"
+                            value={resetOtp}
+                            onChangeText={(text) =>
+                              setResetOtp(text.replace(/\D/g, "").slice(0, 6))
+                            }
+                            keyboardType="number-pad"
+                            maxLength={6}
+                            textAlign="center"
+                            editable={!resetBusy}
+                          />
+                          <View style={styles.otpRow}>
+                            <Text style={styles.otpHint}>
+                              {resetOtpCountdown > 0
+                                ? `Resend code in ${resetOtpCountdown}s`
+                                : "Didn't receive the code?"}
+                            </Text>
+                            <TouchableOpacity
+                              onPress={handleResendResetOtp}
+                              disabled={
+                                resetResending ||
+                                resetBusy ||
+                                resetOtpCountdown > 0
+                              }
+                              activeOpacity={0.7}
+                            >
+                              <Text
+                                style={[
+                                  styles.resendText,
+                                  (resetResending ||
+                                    resetBusy ||
+                                    resetOtpCountdown > 0) &&
+                                    styles.resendDisabled,
+                                ]}
+                              >
+                                {resetResending ? "Sending..." : "Resend code"}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                          <TouchableOpacity
+                            onPress={handleVerifyResetOtp}
+                            disabled={resetBusy}
+                            activeOpacity={0.9}
+                            style={[
+                              styles.button,
+                              resetBusy && styles.buttonDisabled,
+                            ]}
+                          >
+                            {resetBusy ? (
+                              <ActivityIndicator color="#fff" size="small" />
+                            ) : (
+                              <View style={styles.buttonContent}>
+                                <Text style={styles.buttonText}>
+                                  Verify code
+                                </Text>
+                                <ArrowRight size={20} color="#fff" />
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {resetStep === 3 && (
+                        <View style={styles.resetStep}>
+                          <Text style={styles.resetStepSubtitle}>
+                            Choose a password with at least 8 characters.
+                          </Text>
+                          <View style={styles.inputWrapper}>
+                            <Lock
+                              size={20}
+                              color="#6b7280"
+                              style={styles.icon}
+                            />
+                            <TextInput
+                              placeholder="New password"
+                              value={resetPassword}
+                              onChangeText={setResetPassword}
+                              secureTextEntry={!showResetPassword}
+                              autoCapitalize="none"
+                              style={styles.input}
+                              placeholderTextColor="#6b7280"
+                              editable={!resetBusy}
+                            />
+                            <TouchableOpacity
+                              onPress={() =>
+                                setShowResetPassword(!showResetPassword)
+                              }
+                              style={styles.eyeIcon}
+                              hitSlop={{
+                                top: 10,
+                                bottom: 10,
+                                left: 10,
+                                right: 10,
+                              }}
+                            >
+                              {showResetPassword ? (
+                                <EyeOff size={20} color="#9ca3af" />
+                              ) : (
+                                <Eye size={20} color="#9ca3af" />
+                              )}
+                            </TouchableOpacity>
+                          </View>
+                          <View style={styles.inputWrapper}>
+                            <Lock
+                              size={20}
+                              color="#6b7280"
+                              style={styles.icon}
+                            />
+                            <TextInput
+                              placeholder="Confirm new password"
+                              value={resetConfirmPassword}
+                              onChangeText={setResetConfirmPassword}
+                              secureTextEntry={!showResetConfirmPassword}
+                              autoCapitalize="none"
+                              style={styles.input}
+                              placeholderTextColor="#6b7280"
+                              editable={!resetBusy}
+                            />
+                            <TouchableOpacity
+                              onPress={() =>
+                                setShowResetConfirmPassword(
+                                  !showResetConfirmPassword,
+                                )
+                              }
+                              style={styles.eyeIcon}
+                              hitSlop={{
+                                top: 10,
+                                bottom: 10,
+                                left: 10,
+                                right: 10,
+                              }}
+                            >
+                              {showResetConfirmPassword ? (
+                                <EyeOff size={20} color="#9ca3af" />
+                              ) : (
+                                <Eye size={20} color="#9ca3af" />
+                              )}
+                            </TouchableOpacity>
+                          </View>
+                          <TouchableOpacity
+                            onPress={handleResetPassword}
+                            disabled={resetBusy}
+                            activeOpacity={0.9}
+                            style={[
+                              styles.button,
+                              resetBusy && styles.buttonDisabled,
+                            ]}
+                          >
+                            {resetBusy ? (
+                              <ActivityIndicator color="#fff" size="small" />
+                            ) : (
+                              <View style={styles.buttonContent}>
+                                <Text style={styles.buttonText}>
+                                  Reset password
+                                </Text>
+                                <ArrowRight size={20} color="#fff" />
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {resetStep === 4 && (
+                        <View style={styles.resetStep}>
+                          <CheckCircle2 size={52} color="#22c55e" />
+                          <Text style={styles.resetSuccessTitle}>
+                            Password updated
+                          </Text>
+                          <Text style={styles.resetStepSubtitle}>
+                            Sign in with your new password.
+                          </Text>
+                          <TouchableOpacity
+                            onPress={backFromPasswordReset}
+                            activeOpacity={0.9}
+                            style={styles.button}
+                          >
+                            <View style={styles.buttonContent}>
+                              <Text style={styles.buttonText}>
+                                Back to login
+                              </Text>
+                              <ArrowRight size={20} color="#fff" />
+                            </View>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {resetStep > 0 && resetStep < 4 && (
+                        <TouchableOpacity
+                          onPress={backFromPasswordReset}
+                          style={styles.backButton}
+                          activeOpacity={0.7}
+                        >
+                          <ChevronLeft size={18} color="#9ca3af" />
+                          <Text style={styles.backButtonText}>
+                            {resetStep === 1 ? "Back to login" : "Back"}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                     </>
                   )}
                 </Animated.View>
 
                 {/* Toggle Login/Register */}
-                {!otpRequired && (
+                {resetStep === 0 && !otpRequired && (
                   <View style={styles.toggleContainer}>
                     <Text style={styles.toggleText}>
                       {isLogin
@@ -1087,5 +1549,33 @@ const styles = StyleSheet.create({
   toggleLink: {
     color: "#ef4444",
     fontWeight: "700",
+  },
+  forgotPasswordButton: {
+    alignSelf: "flex-end",
+    marginTop: -10,
+  },
+  forgotPasswordText: {
+    color: "#ef4444",
+    fontSize: 13.5,
+    fontWeight: "600",
+  },
+  resetStep: {
+    width: "100%",
+    gap: 16,
+  },
+  resetStepSubtitle: {
+    color: "#9ca3af",
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
+  },
+  resetSuccess: {
+    alignItems: "center",
+  },
+  resetSuccessTitle: {
+    color: "#fff",
+    fontSize: 21,
+    fontWeight: "700",
+    textAlign: "center",
   },
 });
