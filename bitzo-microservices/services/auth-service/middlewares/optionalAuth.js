@@ -1,6 +1,7 @@
 const { verifyAccessToken } = require("../utils/tokenService");
+const User = require("../models/usermodel");
 
-const optionalAuth = (req, res, next) => {
+const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -8,6 +9,13 @@ const optionalAuth = (req, res, next) => {
       const decoded = verifyAccessToken(token);
       const userId = decoded.sub || decoded.userId || decoded.id || decoded._id;
       if (userId) {
+        const user = await User.findById(userId).select("deviceId").lean();
+        if (
+          !user ||
+          String(decoded.deviceId || "") !== String(user.deviceId || "")
+        ) {
+          return next();
+        }
         req.user = {
           ...decoded,
           userId,

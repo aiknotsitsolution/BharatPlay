@@ -105,8 +105,6 @@ router.post("/auth/google", googleLimiter, async (req, res) => {
     const { email, name, picture, sub: googleId } = payload;
 
     // Device binding (server-issued device id from HttpOnly cookie).
-    // Same security rule as email/password login: Google must NOT silently
-    // adopt/rebind an account. Any device mismatch -> DEVICE_LOCKED.
     const deviceId = resolveDeviceId(req, res);
 
     let user = await User.findOne({ email });
@@ -147,12 +145,12 @@ router.post("/auth/google", googleLimiter, async (req, res) => {
       user.deviceId = deviceId;
       await user.save();
     } else if (user.deviceId !== deviceId) {
-      return res.status(403).json({
-        success: false,
-        code: "DEVICE_LOCKED",
-        message:
-          "This account is linked to another browser or device. Sign in on the linked browser, or choose Continue on this device to sign out all other active sessions.",
-      });
+      await RefreshToken.updateMany(
+        { userId: user._id, kind: "user", revokedAt: null },
+        { $set: { revokedAt: new Date() } },
+      );
+      user.deviceId = deviceId;
+      await user.save();
     }
 
     if (!user.avatar && picture) {
@@ -160,7 +158,11 @@ router.post("/auth/google", googleLimiter, async (req, res) => {
       await user.save();
     }
 
-    const token = signAccessToken({ userId: user._id, role: user.role });
+    const token = signAccessToken({
+      userId: user._id,
+      role: user.role,
+      deviceId,
+    });
 
     // Issue a refresh session (rotated on refresh), stored httpOnly.
     const refreshTokenValue = signRefreshToken({

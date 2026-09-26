@@ -25,11 +25,20 @@ const isAuthenticated = async (req, res, next) => {
 
     // Check user account status — suspended, banned, or deleted users
     // must not access protected resources.
-    const user = await User.findById(userId).select("status").lean();
+    const user = await User.findById(userId).select("status deviceId").lean();
     if (!user) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized - User not found",
+      });
+    }
+
+    if (String(decoded.deviceId || "") !== String(user.deviceId || "")) {
+      return res.status(401).json({
+        success: false,
+        code: "SESSION_REPLACED",
+        message:
+          "Session ended because your account signed in on another device.",
       });
     }
 

@@ -1,6 +1,7 @@
 const User = require("../models/usermodel");
 const WatchSession = require("../models/WatchSession");
 const RefreshToken = require("../models/RefreshToken");
+const Device = require("../models/Device");
 const DeviceFingerprint = require("../models/DeviceFingerprintModel");
 const {
   signAccessToken,
@@ -258,7 +259,11 @@ exports.registerUser = async (req, res) => {
 
       await sendMailSafely(getRegisterMailOptions(user.email, user.name));
 
-      const token = signAccessToken({ userId: user._id, role: user.role });
+      const token = signAccessToken({
+        userId: user._id,
+        role: user.role,
+        deviceId,
+      });
       const refreshToken = await createAuthSession(user._id, "user");
       setRefreshCookie(res, refreshToken, "user");
 
@@ -690,6 +695,10 @@ exports.loginUser = async (req, res) => {
     }
 
     if (deviceChanged) {
+      await RefreshToken.updateMany(
+        { userId: user._id, kind: "user", revokedAt: null },
+        { $set: { revokedAt: new Date() } },
+      );
       await applyTrustRule(
         user._id,
         "DEVICE_CHANGE",
@@ -744,7 +753,11 @@ exports.loginUser = async (req, res) => {
 
     await sendMailSafely(getLoginMailOptions(user.email, user.name));
 
-    const token = signAccessToken({ userId: user._id, role: user.role });
+    const token = signAccessToken({
+      userId: user._id,
+      role: user.role,
+      deviceId,
+    });
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -788,11 +801,9 @@ exports.loginUser = async (req, res) => {
 };
 
 /* ===================== CLAIM DEVICE =====================
-   Recovery path for the DEVICE_LOCKED login flow.
-   After credential re-verification, this releases the account from its
-   previously bound device so the current browser/device becomes the active
-   device. All refresh-token sessions are revoked, matching the resetPassword
-   and logout revocation patterns. No tokens are issued here. */
+  After password re-verification, transfer this browser/device to the
+  requested account. Any account previously using either this device or the
+  requested account's old device is signed out. No tokens are issued here. */
 exports.claimDevice = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -822,34 +833,94 @@ exports.claimDevice = async (req, res) => {
 
     const deviceId = resolveDeviceId(req, res);
 
-    // Nothing to claim: the account is already usable on this device.
-    if (!user.deviceId || user.deviceId === deviceId) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "This device is already linked to your account. You can sign in now.",
-      });
-    }
-
-    // 1-device = 1-account hard limit: this device must not already be bound
-    // to another account, otherwise rebinding here would violate the unique
-    // deviceId constraint (E11000) and steal the device from that account.
+    const currentDevice = await Device.findOne({ device_id: deviceId }).lean();
     const deviceOwner = await User.findOne({
       deviceId,
       _id: { $ne: user._id },
-    });
-    if (deviceOwner) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "This browser or device is already linked to a different account. Sign in with that account on this device instead.",
-      });
+    })
+      .select("_id deviceId")
+      .lean();
+    const previousDeviceOwnerId =
+      currentDevice?.linked_user_id || deviceOwner?._id;
+    const previousAccountIds = new Set();
+    if (
+      previousDeviceOwnerId &&
+      String(previousDeviceOwnerId) !== String(user._id)
+    ) {
+      previousAccountIds.add(String(previousDeviceOwnerId));
     }
 
-    // Revoke every refresh session for this user so old devices cannot refresh.
+    // Release the requested account's old device so it can be used by another
+    // account, and make old access tokens fail the deviceId middleware check.
+    if (user.deviceId && user.deviceId !== deviceId) {
+      await Device.updateOne(
+        { device_id: user.deviceId, linked_user_id: user._id },
+        { $set: { linked_user_id: null } },
+      );
+      await DeviceFingerprint.updateOne(
+        { deviceId: user.deviceId, userId: user._id },
+        {
+          $unset: {
+            userId: 1,
+            pendingOtp: 1,
+            otpExpiresAt: 1,
+            otpPurpose: 1,
+          },
+        },
+      );
+    }
+
+    // Release and sign out the account which previously owned this device.
+    if (previousDeviceOwnerId) {
+      const previousOwner = await User.findById(previousDeviceOwnerId).select(
+        "deviceId",
+      );
+      if (previousOwner?.deviceId === deviceId) {
+        previousOwner.deviceId = null;
+        await previousOwner.save();
+      }
+    }
+
+    const sessionsToRevoke = [user._id, ...previousAccountIds];
     await RefreshToken.updateMany(
-      { userId: user._id, kind: "user" },
+      { userId: { $in: sessionsToRevoke }, kind: "user", revokedAt: null },
       { $set: { revokedAt: new Date() } },
+    );
+
+    // DeviceFingerprint.userId is unique, so detach the target account's old
+    // fingerprint before assigning this device's fingerprint to the target.
+    await DeviceFingerprint.updateOne(
+      { userId: user._id, deviceId: { $ne: deviceId } },
+      {
+        $unset: {
+          userId: 1,
+          pendingOtp: 1,
+          otpExpiresAt: 1,
+          otpPurpose: 1,
+        },
+      },
+    );
+    await DeviceFingerprint.findOneAndUpdate(
+      { deviceId },
+      {
+        $set: {
+          userId: user._id,
+          lastIp: getClientIp(req),
+          userAgent: req.headers["user-agent"] || "unknown",
+          lastSeen: new Date(),
+        },
+        $addToSet: { associatedUsers: user._id },
+        $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 },
+      },
+      { upsert: true, new: true },
+    );
+    await Device.findOneAndUpdate(
+      { device_id: deviceId },
+      {
+        $set: { linked_user_id: user._id, last_login: new Date() },
+        $setOnInsert: { device_id: deviceId },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
     );
 
     // Clear any auth cookies on this response (same as logout).
@@ -881,13 +952,16 @@ exports.claimDevice = async (req, res) => {
       ip: getClientIp(req),
       deviceId,
       userAgent: req.headers["user-agent"] || "unknown",
-      metadata: { email: user.email },
+      metadata: {
+        email: user.email,
+        displacedAccountIds: [...previousAccountIds],
+      },
     });
 
     return res.status(200).json({
       success: true,
       message:
-        "All other sessions have been signed out. You can now sign in on this device.",
+        "This device is now linked to your account. Sign-in will continue.",
     });
   } catch (error) {
     console.error("Γ¥î Claim device error:", error.message);
@@ -1407,7 +1481,11 @@ exports.refreshToken = async (req, res) => {
       { $set: { replacedBy: child._id, revokedAt: new Date() } },
     );
 
-    const token = signAccessToken({ userId: user._id, role: user.role });
+    const token = signAccessToken({
+      userId: user._id,
+      role: user.role,
+      deviceId: user.deviceId,
+    });
     setRefreshCookie(res, newRefreshToken, "user");
 
     return res.status(200).json({

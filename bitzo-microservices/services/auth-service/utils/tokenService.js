@@ -14,11 +14,11 @@ const REFRESH_TOKEN_SECRET = (() => {
   if (process.env.NODE_ENV === "production") return null;
   if (env) {
     console.warn(
-      "[tokenService] REFRESH_TOKEN_SECRET is weak (<32 chars). Using an ephemeral dev secret instead."
+      "[tokenService] REFRESH_TOKEN_SECRET is weak (<32 chars). Using an ephemeral dev secret instead.",
     );
   } else {
     console.warn(
-      "[tokenService] REFRESH_TOKEN_SECRET not set. Using an ephemeral dev secret (refresh sessions invalidate on restart)."
+      "[tokenService] REFRESH_TOKEN_SECRET not set. Using an ephemeral dev secret (refresh sessions invalidate on restart).",
     );
   }
   return crypto.randomBytes(48).toString("hex");
@@ -26,24 +26,25 @@ const REFRESH_TOKEN_SECRET = (() => {
 
 if (!REFRESH_TOKEN_SECRET) {
   throw new Error(
-    "REFRESH_TOKEN_SECRET is required in production (minimum 32 characters)"
+    "REFRESH_TOKEN_SECRET is required in production (minimum 32 characters)",
   );
 }
 
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 const signAccessToken = (payload = {}, options = {}) => {
-  const { userId, role } = payload;
+  const { userId, role, deviceId } = payload;
   return jwt.sign(
     {
       sub: String(userId),
       role: role || undefined,
+      deviceId: deviceId || undefined,
     },
     JWT_SECRET,
     {
       algorithm: "HS256",
       expiresIn: options.expiresIn || DEFAULT_EXPIRES_IN,
-    }
+    },
   );
 };
 
@@ -56,10 +57,14 @@ const verifyAccessToken = (token) => {
 const signRefreshToken = (payload = {}) => {
   // jti guarantees a unique token per session even within the same second,
   // which keeps tokenHash unique (two identical tokens → E11000 duplicate).
-  return jwt.sign({ ...payload, jti: crypto.randomUUID() }, REFRESH_TOKEN_SECRET, {
-    algorithm: "HS256",
-    expiresIn: "30d",
-  });
+  return jwt.sign(
+    { ...payload, jti: crypto.randomUUID() },
+    REFRESH_TOKEN_SECRET,
+    {
+      algorithm: "HS256",
+      expiresIn: "30d",
+    },
+  );
 };
 
 const verifyRefreshToken = (token) => {

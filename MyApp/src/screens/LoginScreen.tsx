@@ -89,6 +89,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
   const [resetBusy, setResetBusy] = useState(false);
   const [resetResending, setResetResending] = useState(false);
   const [deviceLocked, setDeviceLocked] = useState(false);
+  const [deviceLockCode, setDeviceLockCode] = useState("");
   const [deviceLockEmail, setDeviceLockEmail] = useState("");
   const [claimPassword, setClaimPassword] = useState("");
   const [showClaimModal, setShowClaimModal] = useState(false);
@@ -282,6 +283,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     setFormData((previous) => ({ ...previous, [field]: value }));
     if (error) setError("");
     setDeviceLocked(false);
+    setDeviceLockCode("");
     setDeviceLockEmail("");
     setShowClaimModal(false);
     setClaimError("");
@@ -563,8 +565,12 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
       const data = await res.json();
 
       if (!res.ok) {
-        if (res.status === 403 && data.code === "DEVICE_LOCKED") {
+        if (
+          res.status === 403 &&
+          ["DEVICE_LOCKED", "DEVICE_ALREADY_LINKED"].includes(data.code)
+        ) {
           setDeviceLocked(true);
+          setDeviceLockCode(data.code);
           setDeviceLockEmail(formData.email);
           setClaimPassword(formData.password);
           throw new Error(
@@ -717,6 +723,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     animateFormSwitch(() => {
       setIsLogin(!isLogin);
       setDeviceLocked(false);
+      setDeviceLockCode("");
       setDeviceLockEmail("");
       setShowClaimModal(false);
       setClaimError("");
@@ -823,10 +830,14 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                 {deviceLocked && (
                   <View style={styles.deviceLockedBox}>
                     <Text style={styles.deviceLockedTitle}>
-                      Account active on another device
+                      {deviceLockCode === "DEVICE_ALREADY_LINKED"
+                        ? "This device is already linked to another account"
+                        : "Account active on another device"}
                     </Text>
                     <Text style={styles.deviceLockedText}>
-                      Sign out other sessions to continue on this device.
+                      {deviceLockCode === "DEVICE_ALREADY_LINKED"
+                        ? "You can sign out the account currently linked here and log in with this account."
+                        : "Sign out other sessions to continue on this device."}
                     </Text>
                     <TouchableOpacity
                       onPress={() => {
@@ -837,7 +848,9 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                       style={styles.deviceLockedButton}
                     >
                       <Text style={styles.deviceLockedButtonText}>
-                        Continue on this device
+                        {deviceLockCode === "DEVICE_ALREADY_LINKED"
+                          ? "Login here"
+                          : "Continue on this device"}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1386,9 +1399,15 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
           style={styles.claimModalOverlay}
         >
           <View style={styles.claimModal}>
-            <Text style={styles.claimModalTitle}>Continue on this device?</Text>
+            <Text style={styles.claimModalTitle}>
+              {deviceLockCode === "DEVICE_ALREADY_LINKED"
+                ? "Log in on this device?"
+                : "Continue on this device?"}
+            </Text>
             <Text style={styles.claimModalDescription}>
-              This will sign out other devices using this account.
+              {deviceLockCode === "DEVICE_ALREADY_LINKED"
+                ? "This will sign out the account currently linked to this device, then continue logging in to your account."
+                : "This will sign out other devices using this account."}
             </Text>
             <Text style={styles.claimModalEmail}>
               Account: {deviceLockEmail || "your account"}

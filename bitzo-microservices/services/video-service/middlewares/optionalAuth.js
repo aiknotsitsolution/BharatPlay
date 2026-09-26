@@ -1,9 +1,10 @@
 const { verifyAccessToken } = require("../utils/tokenService");
+const User = require("../models/usermodel");
 
 // Optional authentication: if a valid Bearer token is present, populate
 // req.user (same normalization as isAuthenticated). Otherwise continue
 // anonymously — never reject the request.
-const optionalAuth = (req, res, next) => {
+const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -20,6 +21,15 @@ const optionalAuth = (req, res, next) => {
 
     // Normalize to always have both .id and .userId available
     const userId = decoded.sub || decoded.userId || decoded.id || decoded._id;
+    const user = userId
+      ? await User.findById(userId).select("deviceId").lean()
+      : null;
+    if (
+      !user ||
+      String(decoded.deviceId || "") !== String(user.deviceId || "")
+    ) {
+      return next();
+    }
     req.user = {
       ...decoded,
       userId,

@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, AppState, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
@@ -21,49 +19,67 @@ export default function AppNavigator() {
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
-    const restoreSession = async () => {
+    let active = true;
+    let validating = false;
+
+    const validateSession = async (initial = false) => {
+      if (validating) return;
+      validating = true;
+      let token = null;
       try {
-        const token = await AsyncStorage.getItem("token");
+        token = await AsyncStorage.getItem("token");
         if (!token) {
-          setHasSession(false);
+          if (active) setHasSession(false);
           return;
         }
 
         const response = await fetch(`${API_ORIGIN}/api/me`, {
+          credentials: "include",
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json().catch(() => ({}));
         const user = data?.user;
 
-        if (!response.ok || !data?.success || !user) {
+        if (response.status === 401 || response.status === 403) {
           await AsyncStorage.multiRemove(["token", "user"]);
-          setHasSession(false);
+          if (active) setHasSession(false);
+          return;
+        }
+
+        if (!response.ok) {
+          if (active && initial) setHasSession(true);
+          return;
+        }
+
+        if (!data?.success || !user) {
+          await AsyncStorage.multiRemove(["token", "user"]);
+          if (active) setHasSession(false);
           return;
         }
 
         await AsyncStorage.setItem("user", JSON.stringify(user));
-        setHasSession(true);
+        if (active) setHasSession(true);
       } catch {
-        await AsyncStorage.multiRemove(["token", "user"]);
-        setHasSession(false);
+        if (active && initial) setHasSession(Boolean(token));
       } finally {
-        setSessionLoading(false);
+        validating = false;
+        if (active && initial) setSessionLoading(false);
       }
     };
 
-    restoreSession();
-  }, []);
-
-  useEffect(() => {
+    void validateSession(true);
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state !== "active") return;
-
-      AsyncStorage.getItem("token")
-        .then((token) => setHasSession(Boolean(token)))
-        .catch(() => setHasSession(false));
+      if (state === "active") void validateSession();
     });
+    const sessionCheck = setInterval(() => {
+      if (AppState.currentState === "active") void validateSession();
+    }, 30000);
 
-    return () => subscription.remove();
+    return () => {
+      active = false;
+      clearInterval(sessionCheck);
+      subscription.remove();
+    };
   }, []);
 
   if (sessionLoading) {
@@ -103,11 +119,11 @@ export default function AppNavigator() {
 
         <Stack.Screen name="Copyright" component={CopyrightScreen} />
         <Stack.Screen name="CopyrightClaim" component={CopyrightClaimPage} />
-<Stack.Screen
-  name="LegalSidebar"
-  component={LegalSidebarScreen}
-  options={{ headerShown: false }}
-/>
+        <Stack.Screen
+          name="LegalSidebar"
+          component={LegalSidebarScreen}
+          options={{ headerShown: false }}
+        />
         {/* <Stack.Screen name="SubscribedChannels" component={SubscribedChannels} /> */}
       </Stack.Navigator>
     </NavigationContainer>
