@@ -1,5 +1,6 @@
 const Video = require("../models/Videomodel");
 const User = require("../models/usermodel");
+const Channel = require("../models/Channel/ChannelModel");
 const categoryModel = require("../models/CategoryModel/category.model");
 const { getVideoDuration } = require("../utils/mediaDuration");
 
@@ -11,14 +12,8 @@ const fs = require("fs");
 exports.updateVideoupdated = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      title,
-      description,
-      type,
-      duration,
-      category,
-      subCategory,
-    } = req.body;
+    const { title, description, type, duration, category, subCategory } =
+      req.body;
 
     const video = await Video.findById(id);
 
@@ -40,7 +35,7 @@ exports.updateVideoupdated = async (req, res) => {
     if (description !== undefined) video.description = description;
     if (type) video.videoType = [type];
     if (duration) video.duration = Number(duration);
-    if (category) video.category = category;         // ✅ update category
+    if (category) video.category = category; // ✅ update category
     if (subCategory) video.subCategory = subCategory; // ✅ update subCategory
 
     if (req.file) {
@@ -52,10 +47,16 @@ exports.updateVideoupdated = async (req, res) => {
       try {
         authoritativeDuration = await getVideoDuration(filePath);
         if (!authoritativeDuration) {
-          console.error("[mediaDuration] Could not determine duration for:", filePath);
+          console.error(
+            "[mediaDuration] Could not determine duration for:",
+            filePath,
+          );
         }
       } catch (err) {
-        console.error("[mediaDuration] Duration extraction failed:", err.message);
+        console.error(
+          "[mediaDuration] Duration extraction failed:",
+          err.message,
+        );
       }
       if (authoritativeDuration) video.duration = authoritativeDuration;
     }
@@ -82,9 +83,6 @@ exports.updateVideoupdated = async (req, res) => {
     });
   }
 };
-
-
-
 
 exports.uploadVideo = async (req, res) => {
   try {
@@ -115,7 +113,10 @@ exports.uploadVideo = async (req, res) => {
     try {
       authoritativeDuration = await getVideoDuration(filePath);
       if (!authoritativeDuration) {
-        console.error("[mediaDuration] Could not determine duration for:", filePath);
+        console.error(
+          "[mediaDuration] Could not determine duration for:",
+          filePath,
+        );
       }
     } catch (err) {
       console.error("[mediaDuration] Duration extraction failed:", err.message);
@@ -125,8 +126,9 @@ exports.uploadVideo = async (req, res) => {
       title,
       description: description || "",
       videoType,
-      duration: authoritativeDuration || (duration ? Number(duration) : undefined),
-      category,            // only category is saved now
+      duration:
+        authoritativeDuration || (duration ? Number(duration) : undefined),
+      category, // only category is saved now
       creator: req.user.id,
       uploadedBy: req.user.id,
       videoUrl: filePath,
@@ -153,34 +155,59 @@ exports.uploadVideo = async (req, res) => {
   }
 };
 
-
 exports.getAllVideos = async (req, res) => {
   try {
     // Optional videoType filter: ?videoType=short | ?videoType=long
     // No query param preserves the previous behaviour (all videos).
     const filter = {};
-    if (req.query.videoType && ["short", "long"].includes(req.query.videoType)) {
+    if (
+      req.query.videoType &&
+      ["short", "long"].includes(req.query.videoType)
+    ) {
       filter.videoType = req.query.videoType;
     }
 
-    // Fetch all videos, populate only category name, newest first
-    const videos = await Video.find(filter)
-      .populate({ path: "category", select: "name", model: categoryModel })        // only category name
-      .populate({ path: "uploadedBy", select: "name email", model: User })
-      .populate("channel", "name handle")
-      .sort({ createdAt: -1 });
+    const videos = await Video.find(filter).sort({ createdAt: -1 }).lean();
+    const getIds = (field) => [
+      ...new Set(
+        videos.map((video) => video[field]?.toString()).filter(Boolean),
+      ),
+    ];
+    const [uploaders, channels, categories] = await Promise.all([
+      User.find({ _id: { $in: getIds("uploadedBy") } })
+        .select("name email")
+        .lean(),
+      Channel.find({ _id: { $in: getIds("channel") } })
+        .select("name handle")
+        .lean(),
+      categoryModel
+        .find({ _id: { $in: getIds("category") } })
+        .select("name")
+        .lean(),
+    ]);
+    const uploadersById = new Map(
+      uploaders.map((uploader) => [String(uploader._id), uploader]),
+    );
+    const channelsById = new Map(
+      channels.map((channel) => [String(channel._id), channel]),
+    );
+    const categoriesById = new Map(
+      categories.map((category) => [String(category._id), category]),
+    );
 
     // Get the base URL for the server
     const baseUrl = `${req.protocol}://${req.get("host")}`;
 
     // Add full video URL for frontend consumption
-    const updatedVideos = assertEnrichedVideos.map((video) => {
-      const videoObj = video.toObject();
+    const updatedVideos = videos.map((video) => {
       return {
-        ...videoObj,
-        videoUrl: videoObj.videoUrl?.startsWith("http")
-          ? videoObj.videoUrl
-          : `${baseUrl}/${videoObj.videoUrl}`, // assuming videoUrl is stored as relative path
+        ...video,
+        uploadedBy: uploadersById.get(String(video.uploadedBy)) || null,
+        channel: channelsById.get(String(video.channel)) || null,
+        category: categoriesById.get(String(video.category)) || null,
+        videoUrl: video.videoUrl?.startsWith("http")
+          ? video.videoUrl
+          : `${baseUrl}/${video.videoUrl}`,
       };
     });
 
@@ -189,7 +216,6 @@ exports.getAllVideos = async (req, res) => {
       count: updatedVideos.length,
       videos: updatedVideos,
     });
-
   } catch (error) {
     console.error("Error fetching videos:", error);
     res.status(500).json({
@@ -205,14 +231,8 @@ exports.editMyVideo = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const {
-      title,
-      description,
-      type,
-      duration,
-      category,
-      subCategory,
-    } = req.body;
+    const { title, description, type, duration, category, subCategory } =
+      req.body;
 
     const video = await Video.findOne({
       _id: id,
@@ -260,8 +280,6 @@ exports.editMyVideo = async (req, res) => {
   }
 };
 
-
-
 exports.deleteMyVideo = async (req, res) => {
   try {
     const { id } = req.params;
@@ -299,13 +317,13 @@ exports.deleteMyVideo = async (req, res) => {
   }
 };
 
-
-
 exports.getMyVideos = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const videos = await Video.find({ $or: [{ uploadedBy: userId }, { creator: userId }] })
+    const videos = await Video.find({
+      $or: [{ uploadedBy: userId }, { creator: userId }],
+    })
       .populate({ path: "category", select: "name", model: categoryModel })
       .populate({ path: "subCategory", select: "name", model: categoryModel })
       .sort({ createdAt: -1 });
@@ -346,19 +364,18 @@ exports.getSingleVideo = async (req, res) => {
     if (!video) {
       return res.status(404).json({
         success: false,
-        message: "Video not found"
+        message: "Video not found",
       });
     }
 
     res.status(200).json({
       success: true,
-      video
+      video,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -373,14 +390,14 @@ exports.deleteVideo = async (req, res) => {
     if (!video) {
       return res.status(404).json({
         success: false,
-        message: "Video not found"
+        message: "Video not found",
       });
     }
 
     if (video.uploadedBy?.toString() !== String(req.user.id)) {
       return res.status(403).json({
         success: false,
-        message: "You are not authorized to delete this video"
+        message: "You are not authorized to delete this video",
       });
     }
 
@@ -388,16 +405,12 @@ exports.deleteVideo = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Video deleted successfully"
+      message: "Video deleted successfully",
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
-
-
-
