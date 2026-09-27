@@ -39,17 +39,11 @@ const { width } = Dimensions.get("window");
 
 const googleConfig = Constants.expoConfig?.extra?.google || {};
 const GOOGLE_WEB_CLIENT_ID = googleConfig.webClientId || "";
-const GOOGLE_ANDROID_CLIENT_ID =
-  googleConfig.androidClientId ||
-  "1043684646784-d9igjhng2cfdp006ogsi0am1i3d4djh1.apps.googleusercontent.com";
+const GOOGLE_ANDROID_CLIENT_ID = googleConfig.androidClientId || "";
 const GOOGLE_IOS_CLIENT_ID = googleConfig.iosClientId || "";
 const isGoogleClientId = (value = "") => {
   const normalized = String(value).trim();
-  return (
-    normalized.length > 0 &&
-    (normalized.startsWith("GOCSPX-") ||
-      normalized.endsWith(".apps.googleusercontent.com"))
-  );
+  return normalized.endsWith(".apps.googleusercontent.com");
 };
 const GOOGLE_CONFIGURED = Boolean(
   isGoogleClientId(GOOGLE_WEB_CLIENT_ID) &&
@@ -197,7 +191,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
   };
 
   // ========== Google Auth ==========
-  const [request, response, promptAsync] = Google.useAuthRequest({
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: GOOGLE_IOS_CLIENT_ID,
@@ -207,7 +201,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
   useEffect(() => {
     if (response?.type === "success") {
       const { authentication } = response;
-      handleGoogleSuccess(authentication);
+      handleGoogleSuccess(authentication, response);
     } else if (response?.type === "error") {
       setGoogleLoading(false);
       Toast.show({
@@ -237,21 +231,10 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     return () => clearTimeout(timer);
   }, [resetStep, resetOtpCountdown]);
 
-  const handleGoogleSuccess = async (authentication) => {
+  const handleGoogleSuccess = async (authentication, authResponse) => {
     try {
       setGoogleLoading(true);
-      let idToken = authentication?.idToken;
-
-      if (!idToken && authentication?.accessToken) {
-        const userInfoRes = await fetch(
-          "https://www.googleapis.com/userinfo/v2/me",
-          {
-            headers: { Authorization: `Bearer ${authentication.accessToken}` },
-          },
-        );
-        await userInfoRes.json();
-        idToken = authentication.accessToken;
-      }
+      const idToken = authentication?.idToken || authResponse?.params?.id_token;
 
       if (!idToken) throw new Error("Google token not received");
 

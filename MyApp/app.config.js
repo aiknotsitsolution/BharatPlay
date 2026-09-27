@@ -24,17 +24,16 @@ const loadLocalEnv = () => {
 const localEnv = loadLocalEnv();
 const getEnv = (name) => process.env[name] || localEnv[name] || "";
 
-const googleWebClientId = getEnv("GOOGLE_WEB_CLIENT_ID");
+const configuredGoogleWebClientId = getEnv("GOOGLE_WEB_CLIENT_ID");
 const googleAndroidClientId = getEnv("GOOGLE_ANDROID_CLIENT_ID");
 const googleIosClientId = getEnv("GOOGLE_IOS_CLIENT_ID");
 const isGoogleClientId = (value = "") => {
   const normalized = String(value).trim();
-  return (
-    normalized.length > 0 &&
-    (normalized.startsWith("GOCSPX-") ||
-      normalized.endsWith(".apps.googleusercontent.com"))
-  );
+  return normalized.endsWith(".apps.googleusercontent.com");
 };
+const googleWebClientId = isGoogleClientId(configuredGoogleWebClientId)
+  ? configuredGoogleWebClientId
+  : getEnv("GOOGLE_CLIENT_ID");
 
 const googlePlugin =
   isGoogleClientId(googleWebClientId) &&

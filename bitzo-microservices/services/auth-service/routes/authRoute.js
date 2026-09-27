@@ -50,7 +50,14 @@ const {
 const { imageUpload } = require("../middlewares/multer");
 
 // Google client ID must come from the environment. No hardcoded fallback.
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_IDS = [
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_WEB_CLIENT_ID,
+  process.env.GOOGLE_ANDROID_CLIENT_ID,
+  process.env.GOOGLE_IOS_CLIENT_ID,
+].filter(Boolean);
+const GOOGLE_CLIENT_ID =
+  process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_WEB_CLIENT_ID;
 const client = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
 router.post("/register", registerLimiter, registerUser);
@@ -74,7 +81,7 @@ router.post("/phone/verify", loginLimiter, authMiddleware, verifyPhone);
 router.post("/auth/google", googleLimiter, async (req, res) => {
   const { credential } = req.body;
 
-  if (!GOOGLE_CLIENT_ID || !client) {
+  if (!GOOGLE_CLIENT_IDS.length || !client) {
     return res
       .status(503)
       .json({ message: "Google sign-in is not configured" });
@@ -89,7 +96,7 @@ router.post("/auth/google", googleLimiter, async (req, res) => {
     try {
       const ticket = await client.verifyIdToken({
         idToken: credential,
-        audience: GOOGLE_CLIENT_ID,
+        audience: GOOGLE_CLIENT_IDS,
       });
       payload = ticket.getPayload();
     } catch (error) {
