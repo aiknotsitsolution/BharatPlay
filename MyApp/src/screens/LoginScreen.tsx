@@ -31,7 +31,7 @@ import Toast from "react-native-toast-message";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
-import { API_BASE } from "../../config/api";
+import { API_BASE, API_PLATFORM_HEADER } from "../../config/api";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -558,7 +558,10 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...API_PLATFORM_HEADER,
+        },
         body: JSON.stringify(body),
       });
 
@@ -633,7 +636,10 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...API_PLATFORM_HEADER,
+        },
         body: JSON.stringify(body),
       });
 

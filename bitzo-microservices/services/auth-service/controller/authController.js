@@ -119,6 +119,18 @@ exports.registerUser = async (req, res) => {
     const normalizedEmail =
       typeof email === "string" ? email.trim().toLowerCase() : "";
 
+    // Which client registered this user — used by the admin panel to
+    // show/filter "Website" vs "App" signups. The mobile app sends an
+    // `X-Client-Platform: app` header (see MyApp/config/api.tsx); the
+    // website sends nothing and defaults to "website". A `platform`
+    // field in the body (if a client ever sends one) wins over the header.
+    const headerPlatform = String(
+      req.headers["x-client-platform"] || "",
+    ).toLowerCase();
+    const bodyPlatform = String(req.body.platform || "").toLowerCase();
+    const platform =
+      bodyPlatform === "app" || headerPlatform === "app" ? "app" : "website";
+
     if (!name || !normalizedEmail || !password) {
       return res.status(400).json({
         success: false,
@@ -226,6 +238,7 @@ exports.registerUser = async (req, res) => {
         deviceId,
         deviceVerified: true,
         ipAddress: ip,
+        platform,
       });
 
       await registerOrVerifyDevice({ req, userId: user._id });
@@ -278,6 +291,7 @@ exports.registerUser = async (req, res) => {
           role: user.role,
           trustScore: user.trustScore,
           avatar: user.avatar || null,
+          platform: user.platform,
         },
       });
     }

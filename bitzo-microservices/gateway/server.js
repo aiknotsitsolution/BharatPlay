@@ -13,14 +13,14 @@ const PORT = process.env.PORT || 4000;
 
 morgan.token("service", (req) => {
   const path = req.originalUrl || req.url;
+  if (path.startsWith("/api/adminvideo") || path.startsWith("/api/uservideo"))
+    return "video-service";
   if (
     path.startsWith("/api/admin/copyright") ||
     path.startsWith("/api/copyright")
   )
     return "copyright-service";
   if (path.startsWith("/api/admin")) return "admin-service";
-  if (path.startsWith("/api/adminvideo") || path.startsWith("/api/uservideo"))
-    return "video-service";
   if (path.startsWith("/api/category")) return "category-service";
   if (path.startsWith("/api/leaderboard")) return "leaderboard-service";
   if (path.startsWith("/api/notifications")) return "notification-service";

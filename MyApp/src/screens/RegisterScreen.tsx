@@ -3,7 +3,7 @@ import { View, Text, Alert } from "react-native";
 import CustomInput from "../components/CustomInput";
 import CustomButton from "../components/CustomButton";
 import styles from "../styles/globalStyles";
-import { API_BASE } from "../../config/api";
+import { API_BASE, API_PLATFORM_HEADER } from "../../config/api";
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = React.useState("");
@@ -23,6 +23,7 @@ export default function RegisterScreen({ navigation }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...API_PLATFORM_HEADER,
         },
         body: JSON.stringify({
           email,

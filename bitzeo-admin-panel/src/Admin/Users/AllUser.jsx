@@ -17,6 +17,8 @@ import {
   Eye,
   Check,
   Clapperboard,
+  Globe,
+  Smartphone,
 } from "lucide-react";
 import { hasFeature } from "../../config/roleConfig";
 import { API_BASE_URL } from "../../api";
@@ -70,6 +72,8 @@ export default function Users() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [platform, setPlatform] = useState("all"); // "all" | "website" | "app"
+  const [platformCounts, setPlatformCounts] = useState({ website: 0, app: 0 });
   const [page, setPage] = useState(1);
   const [totalRows, setTotalRows] = useState(0);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -88,27 +92,38 @@ export default function Users() {
     rewardPoints: 0,
   });
 
-  const fetchUsers = useCallback(async (pageNum = 1, searchTerm = "") => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`${BASE_URL}/admin/alluser`, {
-        params: { page: pageNum, limit: LIMIT, search: searchTerm },
-      });
+  const fetchUsers = useCallback(
+    async (pageNum = 1, searchTerm = "", platformFilter = "all") => {
+      try {
+        setLoading(true);
+        const res = await axios.get(`${BASE_URL}/admin/alluser`, {
+          params: {
+            page: pageNum,
+            limit: LIMIT,
+            search: searchTerm,
+            ...(platformFilter !== "all" ? { platform: platformFilter } : {}),
+          },
+        });
 
-      setUsers(res.data?.data || []);
-      setTotalRows(res.data?.pagination?.total || 0);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load users");
-      setUsers([]);
-      setTotalRows(0);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        setUsers(res.data?.data || []);
+        setTotalRows(res.data?.pagination?.total || 0);
+        if (res.data?.platformCounts) {
+          setPlatformCounts(res.data.platformCounts);
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load users");
+        setUsers([]);
+        setTotalRows(0);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
-    fetchUsers(page, search);
+    fetchUsers(page, search, platform);
   }, [page, fetchUsers]);
 
   useEffect(() => {
@@ -116,11 +131,20 @@ export default function Users() {
       if (page !== 1) {
         setPage(1);
       } else {
-        fetchUsers(1, search);
+        fetchUsers(1, search, platform);
       }
     }, 400);
     return () => clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1);
+    } else {
+      fetchUsers(1, search, platform);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platform]);
 
   const handlePageChange = (newPage) => {
     setPage(newPage);
@@ -174,7 +198,7 @@ export default function Users() {
       await axios.put(`${BASE_URL}/admin/users/${selectedUser._id}`, formData);
       toast.success("User updated successfully");
       setEditModal(false);
-      fetchUsers(page, search);
+      fetchUsers(page, search, platform);
     } catch (err) {
       toast.error(err.response?.data?.message || "Update failed");
     } finally {
@@ -192,7 +216,7 @@ export default function Users() {
       if (users.length === 1 && page > 1) {
         setPage((p) => p - 1);
       } else {
-        fetchUsers(page, search);
+        fetchUsers(page, search, platform);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Delete failed");
@@ -278,6 +302,23 @@ export default function Users() {
         ),
       },
       {
+        name: "Platform",
+        selector: (row) => row.platform,
+        sortable: true,
+        cell: (row) =>
+          row.platform === "app" ? (
+            <span className="inline-flex items-center gap-1.5 pl-8 px-2.5 py-1 text-xs font-semibold rounded-full bg-bp-cyan/10 text-bp-cyan border border-bp-cyan/20">
+              <Smartphone size={12} />
+              App
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 pl-8 px-2.5 py-1 text-xs font-semibold rounded-full bg-bp-blue/10 text-bp-blue border border-bp-blue/20">
+              <Globe size={12} />
+              Website
+            </span>
+          ),
+      },
+      {
         name: "Trust",
         selector: (row) => row.trustScore,
         sortable: true,
@@ -347,25 +388,54 @@ export default function Users() {
     <div className="space-y-6">
 
       {/* Header */}
-      <PageHeader title="Users" subtitle={`${totalRows} total users`}>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-bp-text-muted pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search by name or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl w-72 text-sm text-bp-text placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-bp-text hover:bg-bp-elevated transition-colors duration-150"
-            >
-              <X size={14} />
-            </button>
-          )}
+      <PageHeader
+        title="Users"
+        subtitle={`${totalRows} total users · ${platformCounts.website} from Website · ${platformCounts.app} from App`}
+      >
+        <div className="flex items-center gap-3">
+          {/* Platform filter: All / Website / App — both sources always come
+              from the same users collection, this just narrows the view. */}
+          <div className="inline-flex items-center bg-bp-surface/60 border border-bp-border/50 rounded-xl p-1 text-sm">
+            {[
+              { key: "all", label: "All" },
+              { key: "website", label: "Website", icon: Globe },
+              { key: "app", label: "App", icon: Smartphone },
+            ].map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setPlatform(opt.key)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors duration-150 ${
+                  platform === opt.key
+                    ? "bg-bp-blue/20 text-bp-blue"
+                    : "text-bp-text-muted hover:text-bp-text"
+                }`}
+              >
+                {opt.icon && <opt.icon size={14} />}
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-bp-text-muted pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 pr-9 py-2.5 bg-bp-surface/60 border border-bp-border/50 rounded-xl w-72 text-sm text-bp-text placeholder:text-bp-text-muted focus:outline-none focus:ring-2 focus:ring-bp-blue/30 focus:border-bp-blue/40 hover:border-bp-border transition-colors duration-200"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-bp-text-muted hover:text-bp-text hover:bg-bp-elevated transition-colors duration-150"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
       </PageHeader>
 

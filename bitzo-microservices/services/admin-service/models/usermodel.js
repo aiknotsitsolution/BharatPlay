@@ -36,6 +36,16 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
 
+    // Where the account was created from — lets the admin panel show
+    // and filter users registered via the mobile app separately from
+    // users registered via the website.
+    platform: {
+      type: String,
+      enum: ["website", "app"],
+      default: "website",
+      index: true,
+    },
+
     phone: {
       type: String,
       trim: true,

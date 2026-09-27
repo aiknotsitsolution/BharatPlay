@@ -29,8 +29,12 @@ function getConnection(envVarName, label) {
   }
   if (!cache[envVarName]) {
     const baseConnection = mongoose.createConnection(uri);
+    const uriHasDatabase =
+      new URL(uri).pathname.replace(/^\/+|\/+$/g, "").length > 0;
     const dbName =
-      envVarName === "AUTH_DB_URI" && process.env.AUTH_DB_NAME
+      envVarName === "AUTH_DB_URI" &&
+      process.env.AUTH_DB_NAME &&
+      !uriHasDatabase
         ? process.env.AUTH_DB_NAME
         : null;
     const conn = dbName ? baseConnection.useDb(dbName) : baseConnection;

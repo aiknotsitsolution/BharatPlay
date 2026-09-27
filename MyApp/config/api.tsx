@@ -19,4 +19,17 @@ const API_SOCKET_ORIGIN =
 const API_BASE = `${API_ORIGIN}/api`;
 const API_USERVIDEO = `${API_ORIGIN}/api/uservideo`;
 
-export { API_ORIGIN, API_SOCKET_ORIGIN, API_BASE, API_USERVIDEO };
+// Sent with every request the app makes so the backend (auth-service) can
+// tag any account created from this call as `platform: "app"`. The admin
+// panel then uses this to show/filter "Website" vs "App" signups.
+// Spread this into a fetch()'s headers object, e.g.:
+//   headers: { "Content-Type": "application/json", ...API_PLATFORM_HEADER }
+const API_PLATFORM_HEADER = { "X-Client-Platform": "app" };
+
+export {
+  API_ORIGIN,
+  API_SOCKET_ORIGIN,
+  API_BASE,
+  API_USERVIDEO,
+  API_PLATFORM_HEADER,
+};

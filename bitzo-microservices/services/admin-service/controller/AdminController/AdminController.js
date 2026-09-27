@@ -234,8 +234,20 @@ exports.getAllUsers = async (req, res) => {
     const rawSearch = (req.query.search || "").slice(0, MAX_SEARCH_LENGTH);
     const search = rawSearch.trim();
 
+    // Optional ?platform=app | website — lets the admin panel show only
+    // users who signed up from the mobile app, only from the website, or
+    // (default, no param) both together.
+    const rawPlatform = String(req.query.platform || "")
+      .trim()
+      .toLowerCase();
+    const platformFilter =
+      rawPlatform === "app" || rawPlatform === "website"
+        ? { platform: rawPlatform }
+        : {};
+
     const filter = {
       status: { $ne: "deleted" },
+      ...platformFilter,
       ...(search
         ? {
             $or: [
@@ -249,7 +261,7 @@ exports.getAllUsers = async (req, res) => {
     const [users, total] = await Promise.all([
       AllUser.find(filter)
         .select(
-          "name email role avatar trustScore rewardPoints createdAt status lastLoginAt lastActivityAt channels videos",
+          "name email role avatar trustScore rewardPoints createdAt status lastLoginAt lastActivityAt channels videos platform",
         )
         .populate({
           path: "channels",
@@ -332,12 +344,20 @@ exports.getAllUsers = async (req, res) => {
         rewardPoints: user.rewardPoints ?? 0,
         createdAt: user.createdAt,
         status: user.status || "active",
+        platform: user.platform === "app" ? "app" : "website",
         totalChannels: channels.length,
         totalVideos: videos.length,
         channels,
         videos,
       };
     });
+
+    // Quick counts so the admin panel can show "X from Website / Y from
+    // App" without a second round trip, regardless of the current filter.
+    const [websiteCount, appCount] = await Promise.all([
+      AllUser.countDocuments({ status: { $ne: "deleted" }, platform: "website" }),
+      AllUser.countDocuments({ status: { $ne: "deleted" }, platform: "app" }),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -346,6 +366,10 @@ exports.getAllUsers = async (req, res) => {
         limit,
         total,
         pages: Math.ceil(total / limit),
+      },
+      platformCounts: {
+        website: websiteCount,
+        app: appCount,
       },
       data: formattedUsers,
     });
