@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  User,
+  ArrowRight,
+  ShieldAlert,
+} from "lucide-react";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { toast } from "react-toastify";
 import { AUTH_API } from "../../config/api";
@@ -357,14 +365,29 @@ export default function AuthPageV2() {
 
           <div className="space-y-3">
             {deviceLocked && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-sm space-y-1.5 backdrop-blur-sm">
-                <p className="font-semibold text-red-300 text-sm">
-                  Account already active on another device
-                </p>
-                <p className="text-red-300/70 text-xs leading-relaxed">
-                  This account is currently linked to another browser or device.
-                  Sign out all other sessions to continue here.
-                </p>
+              <div
+                role="alert"
+                className="relative overflow-hidden rounded-xl border border-amber-400/25 bg-gradient-to-br from-amber-500/[0.12] via-red-500/[0.06] to-transparent p-4 shadow-lg shadow-black/20 backdrop-blur-sm"
+              >
+                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-400/[0.08] blur-2xl" />
+                <div className="relative flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-300/10">
+                    <ShieldAlert size={20} className="text-amber-300" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-amber-200">
+                      Account already active on another device
+                    </p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-gray-300">
+                      This account is currently linked to another browser or
+                      device. Continue here to sign out its other active
+                      sessions.
+                    </p>
+                    <span className="mt-3 inline-flex items-center rounded-full border border-amber-300/20 bg-amber-300/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
+                      Secure device access
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
 

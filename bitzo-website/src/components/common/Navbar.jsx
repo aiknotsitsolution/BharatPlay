@@ -25,6 +25,7 @@ import {
   ArrowLeft,
   X,
   Shield,
+  ShieldAlert,
   Globe,
   LifeBuoy,
 } from "lucide-react";
@@ -57,6 +58,7 @@ export default function Navbar({ toggleSidebar }) {
   const [isLoggedIn, setIsLoggedIn] = useState(
     Boolean(localStorage.getItem("token")),
   );
+  const [showLogoutWarning, setShowLogoutWarning] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const trustScore = Math.max(0, Math.min(100, Number(user?.trustScore ?? 50)));
@@ -245,7 +247,7 @@ export default function Navbar({ toggleSidebar }) {
           error?.payload?.includes("Session expired") ||
           error?.status === 401
         ) {
-          handleSignOut();
+          performSignOut();
         }
       } finally {
         setLoading(false);
@@ -283,7 +285,17 @@ export default function Navbar({ toggleSidebar }) {
     setIsSettingsOpen(false);
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = () => {
+    setIsDropdownOpen(false);
+    setShowLogoutWarning(true);
+  };
+
+  const confirmSignOut = () => {
+    setShowLogoutWarning(false);
+    return performSignOut();
+  };
+
+  const performSignOut = async () => {
     try {
       const token = localStorage.getItem("token");
       if (token) {
@@ -621,17 +633,17 @@ export default function Navbar({ toggleSidebar }) {
                             icon: Video,
                             label: "Your Videos",
                           },
-{
-          path: "/advanced-settings",
-          icon: Globe,
-          label: "Advanced Settings",
-        },
-        {
-          path: "/my-support-requests",
-          icon: LifeBuoy,
-          label: "My Support Requests",
-        },
-      ].map((item) => (
+                          {
+                            path: "/advanced-settings",
+                            icon: Globe,
+                            label: "Advanced Settings",
+                          },
+                          {
+                            path: "/my-support-requests",
+                            icon: LifeBuoy,
+                            label: "My Support Requests",
+                          },
+                        ].map((item) => (
                           <button
                             key={item.path}
                             onClick={() => {
@@ -838,6 +850,55 @@ export default function Navbar({ toggleSidebar }) {
           >
             <X size={22} className="text-white" />
           </button>
+        </div>
+      )}
+
+      {showLogoutWarning && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm">
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="logout-warning-title"
+            aria-describedby="logout-warning-description"
+            className="w-full max-w-md rounded-2xl border border-amber-400/25 bg-[#151515] p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.65)]"
+          >
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-amber-400/20 bg-amber-400/10">
+              <ShieldAlert size={28} className="text-amber-300" />
+            </div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-amber-300">
+              7-day security notice
+            </p>
+            <h2
+              id="logout-warning-title"
+              className="mb-3 text-xl font-bold text-white"
+            >
+              Are you sure you want to log out?
+            </h2>
+            <p
+              id="logout-warning-description"
+              className="mb-6 text-sm leading-6 text-gray-300"
+            >
+              If you log out on this device, security rules will prevent you
+              from signing in with another account on this phone for the next
+              <span className="font-semibold text-amber-300"> 7 days.</span>
+            </p>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setShowLogoutWarning(false)}
+                className="flex-1 rounded-xl border border-gray-700 bg-[#242424] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#303030]"
+              >
+                Stay signed in
+              </button>
+              <button
+                type="button"
+                onClick={confirmSignOut}
+                className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-500"
+              >
+                Log out anyway
+              </button>
+            </div>
+          </section>
         </div>
       )}
     </header>

@@ -29,6 +29,8 @@ import * as Device from "expo-device";
 import { fetch as expoFetch } from "expo/fetch";
 import { File } from "expo-file-system";
 import { API_ORIGIN } from "../../config/api";
+// import LogoutWarningModal from "../components/LogoutWarningModal";
+import LogoutWarningModal from "../components/LogoutWarningModal";
 import {
   Eye,
   Clock,
@@ -155,6 +157,7 @@ export function ProfileScreen() {
 
   const [showMenu, setShowMenu] = useState(false);
   const [showEditMenu, setShowEditMenu] = useState(false);
+  const [showLogoutWarning, setShowLogoutWarning] = useState(false);
 
   // ========== HELPERS ==========
   const getMediaUrl = (path) => {
@@ -1033,7 +1036,10 @@ export function ProfileScreen() {
     setShowPasswords({ old: false, new: false, confirm: false });
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => setShowLogoutWarning(true);
+
+  const confirmLogout = async () => {
+    setShowLogoutWarning(false);
     try {
       await AsyncStorage.multiRemove(["token", "user"]);
     } finally {
@@ -2063,6 +2069,12 @@ export function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      <LogoutWarningModal
+        visible={showLogoutWarning}
+        onCancel={() => setShowLogoutWarning(false)}
+        onConfirm={confirmLogout}
+      />
 
       {route.name !== "You" && (
         <ProfileBottomTabs navigation={navigation} insets={insets} />

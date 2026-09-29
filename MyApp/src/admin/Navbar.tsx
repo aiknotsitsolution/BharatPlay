@@ -19,6 +19,8 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { API_ORIGIN } from "../../config/api";
+// import LogoutWarningModal from "../components/LogoutWarningModal";
+import LogoutWarningModal from "../components/LogoutWarningModal";
 
 const { width } = Dimensions.get("window");
 const API_BASE_URL = API_ORIGIN;
@@ -37,6 +39,7 @@ export default function Navbar({ onMenuPress, points = 0 }) {
   const navigation = useNavigation<any>();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showLogoutWarning, setShowLogoutWarning] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -180,7 +183,10 @@ export default function Navbar({ onMenuPress, points = 0 }) {
     );
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = () => setShowLogoutWarning(true);
+
+  const confirmSignOut = async () => {
+    setShowLogoutWarning(false);
     try {
       const token = await AsyncStorage.getItem("token");
       if (token) {
@@ -533,6 +539,11 @@ export default function Navbar({ onMenuPress, points = 0 }) {
           </View>
         </TouchableOpacity>
       </Modal>
+      <LogoutWarningModal
+        visible={showLogoutWarning}
+        onCancel={() => setShowLogoutWarning(false)}
+        onConfirm={confirmSignOut}
+      />
     </>
   );
 }
