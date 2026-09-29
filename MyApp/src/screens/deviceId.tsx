@@ -1,19 +1,30 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Application from "expo-application";
+import { Platform } from "react-native";
 import { v4 as uuidv4 } from "uuid";
 
-export const getDeviceId = async () => {
+export const getClientHardwareUuid = async () => {
   try {
-    let deviceId = await AsyncStorage.getItem("deviceId");
+    const hardwareId =
+      Platform.OS === "android"
+        ? Application.getAndroidId()
+        : Platform.OS === "ios"
+          ? await Application.getIosIdForVendorAsync()
+          : null;
 
-    if (!deviceId) {
-      deviceId = uuidv4();
-      await AsyncStorage.setItem("deviceId", deviceId);
+    if (hardwareId) {
+      return `${Platform.OS}:${hardwareId}`;
     }
 
-    return deviceId;
+    let clientHardwareUuid = await AsyncStorage.getItem("clientHardwareUuid");
+    if (!clientHardwareUuid) {
+      clientHardwareUuid = uuidv4();
+      await AsyncStorage.setItem("clientHardwareUuid", clientHardwareUuid);
+    }
+
+    return clientHardwareUuid;
   } catch (error) {
-    console.error("Error getting deviceId:", error);
-    // fallback
+    console.error("Error getting client hardware UUID:", error);
     return uuidv4();
   }
 };

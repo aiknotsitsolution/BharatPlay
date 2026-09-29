@@ -31,6 +31,10 @@ const {
 } = require("../services/vpn.service/fraud.service.js");
 const { logAuditEvent } = require("../services/auditEventService");
 const { registerOrVerifyDevice } = require("../services/deviceSecurityService");
+const {
+  checkClientHardwareBinding,
+  bindClientHardwareUuid,
+} = require("../services/clientHardwareBindingService");
 const transporter = require("../Email/nodemailer.js");
 const getRegisterMailOptions = require("../Email/register.js");
 const getLoginMailOptions = require("../Email/login.js");
@@ -149,6 +153,18 @@ exports.registerUser = async (req, res) => {
     const ip = getClientIp(req);
     const ua = req.headers["user-agent"] || "unknown";
 
+    const hardwareBindingCheck = await checkClientHardwareBinding({
+      clientHardwareUuid: req.body.clientHardwareUuid,
+      userId: null,
+    });
+    if (!hardwareBindingCheck.ok) {
+      return res.status(hardwareBindingCheck.status).json({
+        success: false,
+        code: hardwareBindingCheck.code,
+        message: hardwareBindingCheck.message,
+      });
+    }
+
     const deviceCheck = await registerOrVerifyDevice({ req });
     if (!deviceCheck.ok) {
       return res.status(deviceCheck.status).json({
@@ -240,6 +256,19 @@ exports.registerUser = async (req, res) => {
         ipAddress: ip,
         platform,
       });
+
+      const hardwareBinding = await bindClientHardwareUuid({
+        clientHardwareUuid: req.body.clientHardwareUuid,
+        userId: user._id,
+      });
+      if (!hardwareBinding.ok) {
+        await User.deleteOne({ _id: user._id });
+        return res.status(hardwareBinding.status).json({
+          success: false,
+          code: hardwareBinding.code,
+          message: hardwareBinding.message,
+        });
+      }
 
       await registerOrVerifyDevice({ req, userId: user._id });
 
@@ -556,6 +585,18 @@ exports.loginUser = async (req, res) => {
         });
       }
 
+      const hardwareBindingCheck = await checkClientHardwareBinding({
+        clientHardwareUuid: req.body.clientHardwareUuid,
+        userId: user._id,
+      });
+      if (!hardwareBindingCheck.ok) {
+        return res.status(hardwareBindingCheck.status).json({
+          success: false,
+          code: hardwareBindingCheck.code,
+          message: hardwareBindingCheck.message,
+        });
+      }
+
       const deviceCheck = await registerOrVerifyDevice({
         req,
         userId: user._id,
@@ -687,6 +728,18 @@ exports.loginUser = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: "Invalid or expired OTP.",
+      });
+    }
+
+    const hardwareBinding = await bindClientHardwareUuid({
+      clientHardwareUuid: req.body.clientHardwareUuid,
+      userId: user._id,
+    });
+    if (!hardwareBinding.ok) {
+      return res.status(hardwareBinding.status).json({
+        success: false,
+        code: hardwareBinding.code,
+        message: hardwareBinding.message,
       });
     }
 

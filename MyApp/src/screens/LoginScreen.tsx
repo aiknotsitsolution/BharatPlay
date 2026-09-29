@@ -32,6 +32,7 @@ import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import { API_BASE, API_PLATFORM_HEADER } from "../../config/api";
+import { getClientHardwareUuid } from "./deviceId";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -237,12 +238,13 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
       const idToken = authentication?.idToken || authResponse?.params?.id_token;
 
       if (!idToken) throw new Error("Google token not received");
+      const clientHardwareUuid = await getClientHardwareUuid();
 
       const res = await fetch(`${API_BASE}/auth/google`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential: idToken }),
+        body: JSON.stringify({ credential: idToken, clientHardwareUuid }),
       });
 
       const data = await res.json();
@@ -524,17 +526,20 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
     try {
       const endpoint = isLogin ? "/login" : "/register";
+      const clientHardwareUuid = await getClientHardwareUuid();
 
       const body = isLogin
         ? {
             email: formData.email,
             password: formData.password,
+            clientHardwareUuid,
             ...(otpRequired ? { otp } : {}),
           }
         : {
             name: formData.name.trim(),
             email: formData.email,
             password: formData.password,
+            clientHardwareUuid,
             ...(otpRequired ? { otp } : {}),
           };
 
@@ -604,16 +609,19 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
     try {
       const endpoint = isLogin ? "/login" : "/register";
+      const clientHardwareUuid = await getClientHardwareUuid();
 
       const body = isLogin
         ? {
             email: formData.email,
             password: formData.password,
+            clientHardwareUuid,
           }
         : {
             name: formData.name.trim(),
             email: formData.email,
             password: formData.password,
+            clientHardwareUuid,
           };
 
       const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -673,11 +681,12 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
         );
       }
 
+      const clientHardwareUuid = await getClientHardwareUuid();
       const loginResponse = await fetch(`${API_BASE}/login`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, clientHardwareUuid }),
       });
       const loginData = await loginResponse.json().catch(() => ({}));
       if (!loginResponse.ok) {

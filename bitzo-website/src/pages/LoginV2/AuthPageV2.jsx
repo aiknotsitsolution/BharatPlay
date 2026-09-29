@@ -11,9 +11,19 @@ import {
 } from "lucide-react";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { toast } from "react-toastify";
+import { v4 as uuidv4 } from "uuid";
 import { AUTH_API } from "../../config/api";
 import AnimatedBackground from "./AnimatedBackground";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
+const getClientHardwareUuid = () => {
+  let clientHardwareUuid = localStorage.getItem("clientHardwareUuid");
+  if (!clientHardwareUuid) {
+    clientHardwareUuid = uuidv4();
+    localStorage.setItem("clientHardwareUuid", clientHardwareUuid);
+  }
+  return clientHardwareUuid;
+};
 
 export default function AuthPageV2() {
   const [isLogin, setIsLogin] = useState(true);
@@ -85,7 +95,11 @@ export default function AuthPageV2() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        email,
+        password,
+        clientHardwareUuid: getClientHardwareUuid(),
+      }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Authentication failed");
@@ -124,6 +138,7 @@ export default function AuthPageV2() {
     try {
       const endpoint = isLogin ? AUTH_API.login : AUTH_API.register;
       const body = {
+        clientHardwareUuid: getClientHardwareUuid(),
         ...(isLogin
           ? { email: formData.email, password: formData.password }
           : { ...formData }),
@@ -180,11 +195,16 @@ export default function AuthPageV2() {
     try {
       const endpoint = isLogin ? AUTH_API.login : AUTH_API.register;
       const payload = isLogin
-        ? { email: formData.email, password: formData.password }
+        ? {
+            email: formData.email,
+            password: formData.password,
+            clientHardwareUuid: getClientHardwareUuid(),
+          }
         : {
             name: formData.name,
             email: formData.email,
             password: formData.password,
+            clientHardwareUuid: getClientHardwareUuid(),
           };
 
       const res = await fetch(endpoint, {
@@ -272,7 +292,10 @@ export default function AuthPageV2() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ credential: credentialResponse.credential }),
+        body: JSON.stringify({
+          credential: credentialResponse.credential,
+          clientHardwareUuid: getClientHardwareUuid(),
+        }),
       });
 
       const data = await res.json();
