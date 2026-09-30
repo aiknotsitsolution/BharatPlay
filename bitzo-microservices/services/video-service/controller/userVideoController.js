@@ -320,7 +320,7 @@ const uploadVideo = async (req, res) => {
     // ✅ FIXED: categoryData._id use karo, raw "category" mat use karo
     const newVideo = new Video({
       channel: channelId,
-      category: categoryData._id,          // ← YEH LINE FIX HAI
+      category: categoryData._id, // ← YEH LINE FIX HAI
       title: name?.trim() || "Untitled",
       description,
       videoUrl: videoPath,
@@ -559,6 +559,7 @@ const mapVideoToListItem = (video) => ({
   videoUrl: video?.videoUrl,
   views: video?.views || 0,
   likesCount: video?.likesCount || 0,
+  commentCount: video?.comments?.length || 0,
   status: video?.status || "active",
 });
 

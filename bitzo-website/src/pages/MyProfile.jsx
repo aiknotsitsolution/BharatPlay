@@ -12,6 +12,8 @@ import {
   DollarSign,
   IndianRupee,
   History,
+  Heart,
+  MessageCircle,
   Users,
   TrendingUp,
   Calendar,
@@ -554,11 +556,11 @@ export default function Profile() {
                 >
                   <div className="relative aspect-video w-full sm:w-40 md:w-48 shrink-0 overflow-hidden rounded-lg bg-zinc-800">
                     <img
-                      src={resolveMediaUrl(video.avatar)}
+                      src={resolveMediaUrl(video.thumbnail)}
                       alt={video.title}
                       className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.target.src =
+                      onError={(event) => {
+                        event.currentTarget.src =
                           "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400";
                       }}
                     />
@@ -570,17 +572,26 @@ export default function Profile() {
                     <p className="mt-1 text-sm text-zinc-400">
                       {video.channel}
                     </p>
-                    <p className="mt-2 text-sm text-zinc-500">
-                      {Number(video.views || 0).toLocaleString()} views
-                      {video.watchedAt && (
-                        <>
-                          {" • "}
-                          {new Date(video.watchedAt).toLocaleDateString(
-                            "en-IN",
-                          )}
-                        </>
-                      )}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-500">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Eye size={15} />
+                        {Number(video.views || 0).toLocaleString()}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Heart size={15} />
+                        {Number(video.likesCount || 0).toLocaleString()}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <MessageCircle size={15} />
+                        {Number(video.commentCount || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    {video.watchedAt && (
+                      <p className="mt-1 text-xs text-zinc-600">
+                        Watched{" "}
+                        {new Date(video.watchedAt).toLocaleDateString("en-IN")}
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={(e) => handleRemoveHistory(e, video.id)}
@@ -1172,14 +1183,40 @@ export default function Profile() {
               </button>
             </div>
             <div className="p-6">
-              <img
-                src={selectedVideo.thumbnail}
-                alt={selectedVideo.title}
-                className="w-full h-56 object-cover rounded-xl"
-              />
+              {selectedVideo.videoUrl ? (
+                <video
+                  key={selectedVideo.videoUrl}
+                  src={resolveMediaUrl(selectedVideo.videoUrl)}
+                  poster={resolveMediaUrl(selectedVideo.thumbnail)}
+                  controls
+                  autoPlay
+                  playsInline
+                  preload="metadata"
+                  className="w-full aspect-video object-contain rounded-xl bg-black"
+                />
+              ) : (
+                <div className="w-full aspect-video rounded-xl bg-zinc-950 flex items-center justify-center text-zinc-500">
+                  Video file is unavailable for this upload.
+                </div>
+              )}
               <h3 className="mt-5 text-2xl font-semibold">
                 {selectedVideo.title}
               </h3>
+              <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-400">
+                <span className="inline-flex items-center gap-1.5">
+                  <Eye size={16} />{" "}
+                  {Number(selectedVideo.views || 0).toLocaleString()} views
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Heart size={16} />{" "}
+                  {Number(selectedVideo.likesCount || 0).toLocaleString()} likes
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <MessageCircle size={16} />{" "}
+                  {Number(selectedVideo.commentCount || 0).toLocaleString()}{" "}
+                  comments
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -1198,9 +1235,13 @@ function VideoCard({ video, onOpen, getStatusBadge }) {
       <div className="flex flex-col sm:flex-row">
         <div className="relative w-full sm:w-40 h-48 sm:h-28 shrink-0">
           <img
-            src={video.thumbnail}
+            src={resolveMediaUrl(video.thumbnail)}
             alt={video.title}
             className="w-full h-full object-cover"
+            onError={(event) => {
+              event.currentTarget.src =
+                "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400";
+            }}
           />
         </div>
         <div className="flex-1 p-4 flex flex-col">
@@ -1211,6 +1252,13 @@ function VideoCard({ video, onOpen, getStatusBadge }) {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1">
                 <Eye size={15} /> {video.views?.toLocaleString() || 0}
+              </div>
+              <div className="flex items-center gap-1">
+                <Heart size={15} /> {video.likesCount?.toLocaleString() || 0}
+              </div>
+              <div className="flex items-center gap-1">
+                <MessageCircle size={15} />{" "}
+                {video.commentCount?.toLocaleString() || 0}
               </div>
               <div className="flex items-center gap-1">
                 <DollarSign size={15} className="text-red-500" /> ₹

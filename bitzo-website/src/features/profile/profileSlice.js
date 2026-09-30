@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { formatWatchTime } from "../../utils/watchTime";
-import { API_ORIGIN as BACKEND_URL } from "../../config/api";
+import { API_ORIGIN as BACKEND_URL, API_USERVIDEO } from "../../config/api";
 import { authFetch, clearAuthState } from "../../utils/session";
 
 const normalizeProfileVideos = (videos = []) =>
@@ -11,8 +11,15 @@ const normalizeProfileVideos = (videos = []) =>
         thumbnail:
           video.thumbnail ||
           "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400",
+        videoUrl: video.videoUrl || video.url || "",
         views: Number(video.views || 0),
         likesCount: Number(video.likesCount || 0),
+        commentCount: Number(
+          video.commentCount ??
+            video.commentsCount ??
+            video.comments?.length ??
+            0,
+        ),
         duration: video.duration || "—",
         uploadDate: video.createdAt
           ? new Date(video.createdAt).toLocaleDateString("en-IN")
@@ -32,6 +39,13 @@ const normalizeHistoryVideos = (videos = []) =>
           "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400",
         channel: video.channel?.name || video.channelName || "Unknown channel",
         views: Number(video.views || 0),
+        likesCount: Number(video.likesCount || 0),
+        commentCount: Number(
+          video.commentCount ??
+            video.commentsCount ??
+            video.comments?.length ??
+            0,
+        ),
         duration: video.duration || "—",
         watchedAt: video.watchedAt || video.updatedAt || video.createdAt,
         raw: video,
@@ -66,7 +80,21 @@ export const fetchProfileData = createAsyncThunk(
       }
 
       const profile = profileData.user;
-      const profileVideos = normalizeProfileVideos(profile.videos);
+      let profileVideos = [];
+      try {
+        const videosRes = await authFetch(`${API_USERVIDEO}/my-videos`, {
+          method: "GET",
+        });
+        if (!videosRes.ok) {
+          throw new Error(`Server error: ${videosRes.status}`);
+        }
+        const videosData = await videosRes.json();
+        if (videosData.success) {
+          profileVideos = normalizeProfileVideos(videosData.videos);
+        }
+      } catch (videosErr) {
+        console.error("Failed to load uploaded videos:", videosErr);
+      }
 
       let historyItems = [];
       try {
