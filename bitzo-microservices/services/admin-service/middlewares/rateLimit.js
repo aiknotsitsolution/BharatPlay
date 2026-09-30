@@ -78,7 +78,9 @@ const forgotPasswordLimiter = rateLimit({
   limit: 5,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: jsonMessage("Too many requests. Please try again later."),
+  message: jsonMessage(
+    "Too many verification code requests. Please wait up to 15 minutes before trying again.",
+  ),
 });
 
 const resetPasswordLimiter = rateLimit({

@@ -53,6 +53,10 @@ const {
   adminResetPassword,
 } = require("../../controller/AdminController/AdminController");
 const requireAdmin = require("../../middlewares/requireAdmin");
+const optionalAdmin = (req, res, next) => {
+  if (!req.headers.authorization || req.body?.email) return next();
+  return requireAdmin(req, res, next);
+};
 const { requirePermission } = require("../../middlewares/checkAdminPermission");
 const {
   adminLoginLimiter,
@@ -69,7 +73,7 @@ const {
   getDashboard,
 } = require("../../controller/AdminController/adminDashboardController");
 const {
-  getAdminUploads
+  getAdminUploads,
 } = require("../../controller/AdminController/adminUploadsController");
 const {
   searchVideos,
@@ -99,80 +103,329 @@ router.patch(
   updateAdminProfile,
 );
 
-// ====================== PROTECTED: ADMIN PASSWORD RESET (OTP) ======================
-router.post("/forgot-password", forgotPasswordLimiter, requireAdmin, adminForgotPassword);
-router.post("/verify-reset-otp", verifyResetOtpLimiter, requireAdmin, adminVerifyResetOtp);
-router.post("/reset-password", resetPasswordLimiter, requireAdmin, adminResetPassword);
+// ====================== ADMIN PASSWORD RESET (OTP) ======================
+router.post(
+  "/forgot-password",
+  forgotPasswordLimiter,
+  optionalAdmin,
+  adminForgotPassword,
+);
+router.post(
+  "/verify-reset-otp",
+  verifyResetOtpLimiter,
+  optionalAdmin,
+  adminVerifyResetOtp,
+);
+router.post("/reset-password", resetPasswordLimiter, adminResetPassword);
 
 // ====================== PROTECTED: EMPLOYEE MANAGEMENT ======================
-router.post("/employee/register", fileUpload({
-  limits: { fileSize: 5 * 1024 * 1024 },
-  abortOnLimit: true,
-  useTempFiles: false,
-}), requireAdmin, requirePermission("employee:create"), adminRegisterLimiter, registerEmployee);
-router.get("/roles", requireAdmin, requirePermission("employee:read"), getEmployees);
+router.post(
+  "/employee/register",
+  fileUpload({
+    limits: { fileSize: 5 * 1024 * 1024 },
+    abortOnLimit: true,
+    useTempFiles: false,
+  }),
+  requireAdmin,
+  requirePermission("employee:create"),
+  adminRegisterLimiter,
+  registerEmployee,
+);
+router.get(
+  "/roles",
+  requireAdmin,
+  requirePermission("employee:read"),
+  getEmployees,
+);
 
 // ====================== PROTECTED: DASHBOARD ======================
-router.get("/dashboard", requireAdmin, requirePermission("dashboard:read"), getDashboard);
+router.get(
+  "/dashboard",
+  requireAdmin,
+  requirePermission("dashboard:read"),
+  getDashboard,
+);
 
 // ====================== PROTECTED: USER READ ======================
-router.get("/users", requireAdmin, requirePermission("users:read"), getAllUsers);
-router.get("/alluser", requireAdmin, requirePermission("users:read"), adminUserListLimiter, getAllUsers);
-router.get("/users/:id", requireAdmin, requirePermission("users:read"), adminUserLimiter, getUserById);
-router.get("/users/:id/overview", requireAdmin, requirePermission("users:read"), adminUserLimiter, getUserOverview);
-router.get("/users/:id/channels", requireAdmin, requirePermission("users:read"), adminUserLimiter, getAdminUserChannels);
-router.get("/users/:id/videos", requireAdmin, requirePermission("users:read"), adminUserLimiter, getAdminUserVideos);
-router.get("/users/:id/shorts", requireAdmin, requirePermission("users:read"), adminUserLimiter, getAdminUserShorts);
-router.get("/users/:id/activity", requireAdmin, requirePermission("users:read"), adminUserLimiter, getUserActivity);
-router.get("/users/:id/watch-history", requireAdmin, requirePermission("users:read"), adminUserLimiter, getUserWatchHistory);
-router.get("/users/:id/subscriptions", requireAdmin, requirePermission("users:read"), adminUserLimiter, getUserSubscriptions);
-router.get("/users/:id/liked-videos", requireAdmin, requirePermission("users:read"), adminUserLimiter, getUserLikedVideos);
-router.get("/users/:id/disliked-videos", requireAdmin, requirePermission("users:read"), adminUserLimiter, getUserDislikedVideos);
-router.get("/users/:id/watch-later", requireAdmin, requirePermission("users:read"), adminUserLimiter, getUserWatchLater);
-router.get("/users/:id/notifications", requireAdmin, requirePermission("users:read"), adminUserLimiter, getUserNotifications);
-router.get("/users/:id/devices", requireAdmin, requirePermission("users:read"), adminUserLimiter, getUserDevices);
-router.get("/users/:id/fraud-events", requireAdmin, requirePermission("users:read"), adminUserLimiter, getUserFraudEvents);
-router.get("/users/:id/engagement", requireAdmin, requirePermission("users:read"), adminUserLimiter, getUserEngagement);
+router.get(
+  "/users",
+  requireAdmin,
+  requirePermission("users:read"),
+  getAllUsers,
+);
+router.get(
+  "/alluser",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserListLimiter,
+  getAllUsers,
+);
+router.get(
+  "/users/:id",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getUserById,
+);
+router.get(
+  "/users/:id/overview",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getUserOverview,
+);
+router.get(
+  "/users/:id/channels",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getAdminUserChannels,
+);
+router.get(
+  "/users/:id/videos",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getAdminUserVideos,
+);
+router.get(
+  "/users/:id/shorts",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getAdminUserShorts,
+);
+router.get(
+  "/users/:id/activity",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getUserActivity,
+);
+router.get(
+  "/users/:id/watch-history",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getUserWatchHistory,
+);
+router.get(
+  "/users/:id/subscriptions",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getUserSubscriptions,
+);
+router.get(
+  "/users/:id/liked-videos",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getUserLikedVideos,
+);
+router.get(
+  "/users/:id/disliked-videos",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getUserDislikedVideos,
+);
+router.get(
+  "/users/:id/watch-later",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getUserWatchLater,
+);
+router.get(
+  "/users/:id/notifications",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getUserNotifications,
+);
+router.get(
+  "/users/:id/devices",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getUserDevices,
+);
+router.get(
+  "/users/:id/fraud-events",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getUserFraudEvents,
+);
+router.get(
+  "/users/:id/engagement",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserLimiter,
+  getUserEngagement,
+);
 
 // ====================== PROTECTED: CONTENT READ ======================
-router.get("/uploads", requireAdmin, requirePermission("content:read"), adminUserListLimiter, getAdminUploads);
+router.get(
+  "/uploads",
+  requireAdmin,
+  requirePermission("content:read"),
+  adminUserListLimiter,
+  getAdminUploads,
+);
 
 // ====================== PROTECTED: USER WRITE ======================
-router.put("/users/:id", requireAdmin, requirePermission("users:write"), adminUserLimiter, updateUser);
+router.put(
+  "/users/:id",
+  requireAdmin,
+  requirePermission("users:write"),
+  adminUserLimiter,
+  updateUser,
+);
 
 // ====================== PROTECTED: USER DELETE ======================
-router.delete("/users/:id/permanent", requireAdmin, requirePermission("users:delete"), adminDestructiveLimiter, hardDeleteUser);
-router.delete("/employee/:id", requireAdmin, requirePermission("users:delete"), adminDestructiveLimiter, deleteEmployee);
-router.put("/employee/:id", fileUpload({
-  limits: { fileSize: 5 * 1024 * 1024 },
-  abortOnLimit: true,
-  useTempFiles: false,
-}), requireAdmin, requirePermission("users:write"), adminUserLimiter, updateEmployee);
+router.delete(
+  "/users/:id/permanent",
+  requireAdmin,
+  requirePermission("users:delete"),
+  adminDestructiveLimiter,
+  hardDeleteUser,
+);
+router.delete(
+  "/employee/:id",
+  requireAdmin,
+  requirePermission("users:delete"),
+  adminDestructiveLimiter,
+  deleteEmployee,
+);
+router.put(
+  "/employee/:id",
+  fileUpload({
+    limits: { fileSize: 5 * 1024 * 1024 },
+    abortOnLimit: true,
+    useTempFiles: false,
+  }),
+  requireAdmin,
+  requirePermission("users:write"),
+  adminUserLimiter,
+  updateEmployee,
+);
 
 // ====================== DELETED USERS ======================
-router.get("/deleted-users", requireAdmin, requirePermission("users:read"), adminUserListLimiter, getDeletedUsers);
+router.get(
+  "/deleted-users",
+  requireAdmin,
+  requirePermission("users:read"),
+  adminUserListLimiter,
+  getDeletedUsers,
+);
 
 // ====================== PROTECTED: USER MODERATION ======================
-router.post("/users/:id/suspend", requireAdmin, requirePermission("moderation:write"), adminDestructiveLimiter, suspendUser);
-router.post("/users/:id/restore", requireAdmin, requirePermission("moderation:write"), adminDestructiveLimiter, restoreUser);
-router.post("/users/:id/ban", requireAdmin, requirePermission("moderation:write"), adminDestructiveLimiter, banUser);
+router.post(
+  "/users/:id/suspend",
+  requireAdmin,
+  requirePermission("moderation:write"),
+  adminDestructiveLimiter,
+  suspendUser,
+);
+router.post(
+  "/users/:id/restore",
+  requireAdmin,
+  requirePermission("moderation:write"),
+  adminDestructiveLimiter,
+  restoreUser,
+);
+router.post(
+  "/users/:id/ban",
+  requireAdmin,
+  requirePermission("moderation:write"),
+  adminDestructiveLimiter,
+  banUser,
+);
 
 // ====================== PROTECTED: CHANNEL MODERATION ======================
-router.post("/users/:id/channels/:channelId/disable", requireAdmin, requirePermission("moderation:write"), adminUserLimiter, disableChannel);
-router.post("/users/:id/channels/:channelId/enable", requireAdmin, requirePermission("moderation:write"), adminUserLimiter, enableChannel);
-router.post("/users/:id/channels/:channelId/ban", requireAdmin, requirePermission("moderation:write"), adminDestructiveLimiter, banChannel);
-router.post("/users/:id/channels/:channelId/restore", requireAdmin, requirePermission("moderation:write"), adminUserLimiter, restoreChannel);
-router.delete("/users/:id/channels/:channelId", requireAdmin, requirePermission("moderation:delete"), adminDestructiveLimiter, deleteChannel);
+router.post(
+  "/users/:id/channels/:channelId/disable",
+  requireAdmin,
+  requirePermission("moderation:write"),
+  adminUserLimiter,
+  disableChannel,
+);
+router.post(
+  "/users/:id/channels/:channelId/enable",
+  requireAdmin,
+  requirePermission("moderation:write"),
+  adminUserLimiter,
+  enableChannel,
+);
+router.post(
+  "/users/:id/channels/:channelId/ban",
+  requireAdmin,
+  requirePermission("moderation:write"),
+  adminDestructiveLimiter,
+  banChannel,
+);
+router.post(
+  "/users/:id/channels/:channelId/restore",
+  requireAdmin,
+  requirePermission("moderation:write"),
+  adminUserLimiter,
+  restoreChannel,
+);
+router.delete(
+  "/users/:id/channels/:channelId",
+  requireAdmin,
+  requirePermission("moderation:delete"),
+  adminDestructiveLimiter,
+  deleteChannel,
+);
 
 // ====================== PROTECTED: VIDEO MODERATION ======================
-router.post("/users/:id/videos/:videoId/disable", requireAdmin, requirePermission("moderation:write"), adminUserLimiter, disableVideo);
-router.post("/users/:id/videos/:videoId/enable", requireAdmin, requirePermission("moderation:write"), adminUserLimiter, enableVideo);
-router.delete("/users/:id/videos/:videoId", requireAdmin, requirePermission("moderation:delete"), adminDestructiveLimiter, deleteVideo);
+router.post(
+  "/users/:id/videos/:videoId/disable",
+  requireAdmin,
+  requirePermission("moderation:write"),
+  adminUserLimiter,
+  disableVideo,
+);
+router.post(
+  "/users/:id/videos/:videoId/enable",
+  requireAdmin,
+  requirePermission("moderation:write"),
+  adminUserLimiter,
+  enableVideo,
+);
+router.delete(
+  "/users/:id/videos/:videoId",
+  requireAdmin,
+  requirePermission("moderation:delete"),
+  adminDestructiveLimiter,
+  deleteVideo,
+);
 
 // ====================== PROTECTED: SHORT MODERATION ======================
-router.post("/users/:id/shorts/:videoId/disable", requireAdmin, requirePermission("moderation:write"), adminUserLimiter, disableShort);
-router.post("/users/:id/shorts/:videoId/enable", requireAdmin, requirePermission("moderation:write"), adminUserLimiter, enableShort);
-router.delete("/users/:id/shorts/:videoId", requireAdmin, requirePermission("moderation:delete"), adminDestructiveLimiter, deleteShort);
+router.post(
+  "/users/:id/shorts/:videoId/disable",
+  requireAdmin,
+  requirePermission("moderation:write"),
+  adminUserLimiter,
+  disableShort,
+);
+router.post(
+  "/users/:id/shorts/:videoId/enable",
+  requireAdmin,
+  requirePermission("moderation:write"),
+  adminUserLimiter,
+  enableShort,
+);
+router.delete(
+  "/users/:id/shorts/:videoId",
+  requireAdmin,
+  requirePermission("moderation:delete"),
+  adminDestructiveLimiter,
+  deleteShort,
+);
 
 // ====================== PROTECTED: SEARCH (for copyright form etc.) ======================
 router.get("/search/videos", requireAdmin, searchVideos);

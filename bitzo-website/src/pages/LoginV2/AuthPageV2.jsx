@@ -288,12 +288,19 @@ export default function AuthPageV2() {
     setError("");
 
     try {
+      const credential = credentialResponse?.credential?.trim();
+      if (!credential) {
+        throw new Error(
+          "Google did not return an ID token. Check the OAuth client ID and authorized website origin.",
+        );
+      }
+
       const res = await fetch(AUTH_API.google, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          credential: credentialResponse.credential,
+          credential,
           clientHardwareUuid: getClientHardwareUuid(),
         }),
       });
@@ -320,7 +327,8 @@ export default function AuthPageV2() {
   };
 
   const handleGoogleError = () => {
-    const message = "Google sign-in failed. Please try again.";
+    const message =
+      "Google blocked sign-in for this account or website. Check that your account is an OAuth test user and this website origin is authorized in Google Cloud.";
     setError(message);
     toast.error(message);
   };

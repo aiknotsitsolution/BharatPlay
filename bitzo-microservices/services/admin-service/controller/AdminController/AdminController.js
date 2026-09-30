@@ -355,7 +355,10 @@ exports.getAllUsers = async (req, res) => {
     // Quick counts so the admin panel can show "X from Website / Y from
     // App" without a second round trip, regardless of the current filter.
     const [websiteCount, appCount] = await Promise.all([
-      AllUser.countDocuments({ status: { $ne: "deleted" }, platform: "website" }),
+      AllUser.countDocuments({
+        status: { $ne: "deleted" },
+        platform: "website",
+      }),
       AllUser.countDocuments({ status: { $ne: "deleted" }, platform: "app" }),
     ]);
 
@@ -3959,15 +3962,31 @@ exports.updateAdminProfile = async (req, res) => {
 
 exports.adminForgotPassword = async (req, res) => {
   try {
-    const admin = req.admin;
+    const { email } = req.body || {};
     const normalizedEmail =
-      typeof admin.email === "string" ? admin.email.trim().toLowerCase() : "";
+      typeof (req.admin?.email || email) === "string"
+        ? (req.admin?.email || email).trim().toLowerCase()
+        : "";
 
-    if (!normalizedEmail) {
+    if (
+      !normalizedEmail ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+    ) {
       return res.status(400).json({
         success: false,
-        message: "No registered email found on this account.",
+        message: "Please enter a valid email address.",
       });
+    }
+
+    const admin = req.admin || (await User.findOne({ email: normalizedEmail }));
+    const genericResponse = {
+      success: true,
+      message:
+        "If an admin account exists with this email, a verification code has been sent.",
+    };
+
+    if (!admin || admin.isActive === false) {
+      return res.status(200).json(genericResponse);
     }
 
     const otp = crypto.randomInt(100000, 1000000).toString();
@@ -3999,19 +4018,12 @@ exports.adminForgotPassword = async (req, res) => {
 
     if (!mailResult.sent) {
       console.error("OTP email send failed:", mailResult.reason);
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send verification code. Please try again.",
-      });
+      return res.status(200).json(genericResponse);
     }
 
     console.log("OTP email sent successfully to:", admin.email);
 
-    return res.status(200).json({
-      success: true,
-      message:
-        "A 6-digit verification code has been sent to your registered email.",
-    });
+    return res.status(200).json(genericResponse);
   } catch (error) {
     console.error("Admin forgot password error:", error.message);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -4020,8 +4032,19 @@ exports.adminForgotPassword = async (req, res) => {
 
 exports.adminVerifyResetOtp = async (req, res) => {
   try {
-    const adminId = req.admin._id;
-    const { otp } = req.body || {};
+    const { email, otp } = req.body || {};
+    const normalizedEmail =
+      typeof email === "string" ? email.trim().toLowerCase() : "";
+
+    if (
+      !req.admin &&
+      (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
+      });
+    }
 
     if (typeof otp !== "string" || !/^\d{6}$/.test(otp)) {
       return res.status(400).json({
@@ -4030,7 +4053,10 @@ exports.adminVerifyResetOtp = async (req, res) => {
       });
     }
 
-    const admin = await User.findById(adminId).select("+resetOtpHash");
+    const admin = req.admin
+      ? await User.findById(req.admin._id).select("+resetOtpHash")
+      : await User.findOne({ email: normalizedEmail }).select("+resetOtpHash");
+    const adminId = admin?._id;
 
     if (!admin || !admin.resetOtpHash) {
       return res.status(400).json({
@@ -4129,7 +4155,6 @@ exports.adminVerifyResetOtp = async (req, res) => {
 
 exports.adminResetPassword = async (req, res) => {
   try {
-    const adminId = req.admin._id;
     const { token, newPassword } = req.body || {};
 
     if (typeof token !== "string" || !token) {
@@ -4147,7 +4172,6 @@ exports.adminResetPassword = async (req, res) => {
 
     const tokenHash = hashToken(token);
     const admin = await User.findOne({
-      _id: adminId,
       resetTokenHash: tokenHash,
     }).select("+resetTokenHash");
 
@@ -4158,6 +4182,7 @@ exports.adminResetPassword = async (req, res) => {
       });
     }
 
+    const adminId = admin._id;
     if (
       !admin.resetTokenExpires ||
       new Date(admin.resetTokenExpires).getTime() < Date.now()

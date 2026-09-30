@@ -11,8 +11,12 @@ const API = axios.create({
 });
 
 const attachToken = (config) => {
+  const isPasswordRecoveryRequest =
+    /\/admin\/(forgot-password|verify-reset-otp|reset-password)(?:[?#]|$)/.test(
+      config.url || "",
+    );
   const token = localStorage.getItem("adminToken");
-  if (token) {
+  if (token && !isPasswordRecoveryRequest) {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }

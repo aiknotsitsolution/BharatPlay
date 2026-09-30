@@ -54,8 +54,12 @@ export const refreshAdminToken = async () => {
 // Axios interceptor: attach the access token + auto-refresh once on 401.
 export const setupAdminAxiosAuth = (axiosInstance) => {
   axiosInstance.interceptors.request.use((config) => {
+    const isPasswordRecoveryRequest =
+      /\/admin\/(forgot-password|verify-reset-otp|reset-password)(?:[?#]|$)/.test(
+        config.url || "",
+      );
     const token = getAdminToken();
-    if (token && !config.headers?.Authorization) {
+    if (token && !config.headers?.Authorization && !isPasswordRecoveryRequest) {
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -67,7 +71,17 @@ export const setupAdminAxiosAuth = (axiosInstance) => {
     (response) => response,
     async (error) => {
       const { config, response } = error;
-      if (!response || response.status !== 401 || !config || config._authRetried) {
+      const isPasswordRecoveryRequest =
+        /\/admin\/(forgot-password|verify-reset-otp|reset-password)(?:[?#]|$)/.test(
+          config?.url || "",
+        );
+      if (isPasswordRecoveryRequest) return Promise.reject(error);
+      if (
+        !response ||
+        response.status !== 401 ||
+        !config ||
+        config._authRetried
+      ) {
         return Promise.reject(error);
       }
       config._authRetried = true;
@@ -83,6 +97,6 @@ export const setupAdminAxiosAuth = (axiosInstance) => {
         window.location.assign("/login");
       }
       return Promise.reject(error);
-    }
+    },
   );
 };
