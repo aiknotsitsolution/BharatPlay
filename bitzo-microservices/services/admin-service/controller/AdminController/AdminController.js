@@ -825,43 +825,132 @@ exports.hardDeleteUser = async (req, res) => {
       deletedAt: user.deletedAt,
     };
 
-    // Clean up related references
-    const channelIds = (user.channels || []).filter(Boolean);
-    if (channelIds.length > 0) {
-      await Channel.deleteMany({ _id: { $in: channelIds } });
+    const userId = String(user._id);
+    const storedChannelIds = (user.channels || []).map(String);
+    const channelCandidates = await Channel.find({
+      $or: [
+        { creator: user._id },
+        ...(storedChannelIds.length
+          ? [{ _id: { $in: storedChannelIds } }]
+          : []),
+      ],
+    })
+      .select("creator videos")
+      .lean();
+    const ownedChannels = channelCandidates.filter(
+      (channel) =>
+        String(channel.creator || "") === userId ||
+        (!channel.creator && storedChannelIds.includes(String(channel._id))),
+    );
+    const channelIds = [
+      ...new Set(ownedChannels.map((channel) => String(channel._id))),
+    ];
+
+    const storedVideoIds = [
+      ...(user.videos || []).map(String),
+      ...ownedChannels.flatMap((channel) => (channel.videos || []).map(String)),
+    ];
+    const videoCandidates = await Video.find({
+      $or: [
+        { uploadedBy: user._id },
+        { creator: user._id },
+        ...(channelIds.length ? [{ channel: { $in: channelIds } }] : []),
+        ...(storedVideoIds.length ? [{ _id: { $in: storedVideoIds } }] : []),
+      ],
+    })
+      .select("_id uploadedBy creator channel")
+      .lean();
+    const channelIdSet = new Set(channelIds);
+    const storedVideoIdSet = new Set(storedVideoIds);
+    const videoIds = [
+      ...new Set(
+        videoCandidates
+          .filter(
+            (video) =>
+              String(video.uploadedBy || "") === userId ||
+              String(video.creator || "") === userId ||
+              channelIdSet.has(String(video.channel || "")) ||
+              (!video.uploadedBy &&
+                !video.creator &&
+                storedVideoIdSet.has(String(video._id))),
+          )
+          .map((video) => String(video._id)),
+      ),
+    ];
+
+    const userReferenceFilters = [];
+    const userReferencePull = {};
+    if (channelIds.length) {
+      userReferenceFilters.push(
+        { channels: { $in: channelIds } },
+        { subscribedChannels: { $in: channelIds } },
+      );
+      userReferencePull.channels = { $in: channelIds };
+      userReferencePull.subscribedChannels = { $in: channelIds };
+    }
+    if (videoIds.length) {
+      userReferenceFilters.push(
+        { videos: { $in: videoIds } },
+        { likedVideos: { $in: videoIds } },
+        { dislikedVideos: { $in: videoIds } },
+        { watchLaterVideos: { $in: videoIds } },
+        { viewedVideos: { $in: videoIds } },
+      );
+      userReferencePull.videos = { $in: videoIds };
+      userReferencePull.likedVideos = { $in: videoIds };
+      userReferencePull.dislikedVideos = { $in: videoIds };
+      userReferencePull.watchLaterVideos = { $in: videoIds };
+      userReferencePull.viewedVideos = { $in: videoIds };
+    }
+    if (userReferenceFilters.length) {
+      await AllUser.updateMany(
+        { _id: { $ne: user._id }, $or: userReferenceFilters },
+        { $pull: userReferencePull },
+      );
     }
 
-    const videoIds = (user.videos || []).filter(Boolean);
-    if (videoIds.length > 0) {
-      await Video.deleteMany({ _id: { $in: videoIds } });
-      // Remove video references from channels that still exist
+    await Channel.updateMany(
+      { subscribedBy: user._id },
+      { $pull: { subscribedBy: user._id } },
+    );
+    await Video.updateMany(
+      { "comments.user": user._id },
+      { $pull: { comments: { user: user._id } } },
+    );
+    await Video.updateMany(
+      { "viewers.userId": user._id },
+      { $pull: { viewers: { userId: user._id } } },
+    );
+    await WatchSession.deleteMany({
+      $or: [
+        { userId: user._id },
+        ...(videoIds.length ? [{ videoId: { $in: videoIds } }] : []),
+      ],
+    });
+    await Notification.deleteMany({
+      $or: [
+        { recipient: user._id },
+        { actor: user._id },
+        ...(videoIds.length ? [{ video: { $in: videoIds } }] : []),
+        ...(channelIds.length ? [{ channel: { $in: channelIds } }] : []),
+      ],
+    });
+    await DeviceFingerprint.updateMany(
+      { associatedUsers: user._id },
+      { $pull: { associatedUsers: user._id } },
+    );
+    await DeviceFingerprint.deleteMany({ userId: user._id });
+
+    if (videoIds.length) {
       await Channel.updateMany(
         { videos: { $in: videoIds } },
         { $pull: { videos: { $in: videoIds } } },
       );
+      await Video.deleteMany({ _id: { $in: videoIds } });
     }
-
-    // Remove user references from other users (subscriptions, likes, etc.)
-    await AllUser.updateMany(
-      { subscribedChannels: { $in: channelIds } },
-      { $pull: { subscribedChannels: { $in: channelIds } } },
-    );
-    await AllUser.updateMany(
-      { likedVideos: { $in: videoIds } },
-      { $pull: { likedVideos: { $in: videoIds } } },
-    );
-    await AllUser.updateMany(
-      { dislikedVideos: { $in: videoIds } },
-      { $pull: { dislikedVideos: { $in: videoIds } } },
-    );
-    await AllUser.updateMany(
-      { watchLaterVideos: { $in: videoIds } },
-      { $pull: { watchLaterVideos: { $in: videoIds } } },
-    );
-    await AllUser.updateMany(
-      { viewedVideos: { $in: videoIds } },
-      { $pull: { viewedVideos: { $in: videoIds } } },
-    );
+    if (channelIds.length) {
+      await Channel.deleteMany({ _id: { $in: channelIds } });
+    }
 
     // Revoke all refresh tokens
     await RefreshToken.deleteMany({ userId: user._id });
@@ -2511,6 +2600,79 @@ const VALID_TRANSITIONS = {
   deleted: ["active"],
 };
 
+const getUserRestrictionMarker = (userId) => `account-restricted:${userId}`;
+
+const restrictUserContent = async (userId, adminId) => {
+  const channelIds = await Channel.find({ creator: userId }).distinct("_id");
+  const marker = getUserRestrictionMarker(userId);
+  const now = new Date();
+  const videoOwners = [
+    { uploadedBy: userId },
+    { creator: userId },
+    ...(channelIds.length ? [{ channel: { $in: channelIds } }] : []),
+  ];
+
+  await Promise.all([
+    Channel.updateMany(
+      { creator: userId, status: "active" },
+      {
+        $set: {
+          status: "disabled",
+          disabledAt: now,
+          disabledBy: adminId || null,
+          disableReason: marker,
+        },
+      },
+    ),
+    Video.updateMany(
+      { status: "active", $or: videoOwners },
+      {
+        $set: {
+          status: "disabled",
+          disabledAt: now,
+          disabledBy: adminId || null,
+          disableReason: marker,
+        },
+      },
+    ),
+  ]);
+};
+
+const restoreUserContent = async (userId) => {
+  const channelIds = await Channel.find({ creator: userId }).distinct("_id");
+  const marker = getUserRestrictionMarker(userId);
+  const videoOwners = [
+    { uploadedBy: userId },
+    { creator: userId },
+    ...(channelIds.length ? [{ channel: { $in: channelIds } }] : []),
+  ];
+
+  await Promise.all([
+    Channel.updateMany(
+      { creator: userId, status: "disabled", disableReason: marker },
+      {
+        $set: {
+          status: "active",
+          disabledAt: null,
+          disabledBy: null,
+          disableReason: null,
+        },
+      },
+    ),
+    Video.updateMany(
+      { status: "disabled", disableReason: marker, $or: videoOwners },
+      {
+        $set: {
+          status: "active",
+          disabledAt: null,
+          disabledBy: null,
+          disableReason: null,
+        },
+      },
+    ),
+  ]);
+};
+
 // ================== MODERATION: SUSPEND ==================
 exports.suspendUser = async (req, res) => {
   try {
@@ -2561,6 +2723,7 @@ exports.suspendUser = async (req, res) => {
     user.bannedBy = null;
     user.banReason = null;
 
+    await restrictUserContent(user._id, adminId);
     await user.save();
 
     logAuditEvent({
@@ -2608,6 +2771,17 @@ exports.restoreUser = async (req, res) => {
       });
     }
 
+    try {
+      await restoreUserContent(user._id);
+    } catch (restoreError) {
+      await restrictUserContent(user._id, adminId).catch((rollbackError) =>
+        console.error(
+          "Failed to reapply user content restriction:",
+          rollbackError.message,
+        ),
+      );
+      throw restoreError;
+    }
     user.status = "active";
 
     // Clear suspension fields
@@ -2625,7 +2799,12 @@ exports.restoreUser = async (req, res) => {
     user.deletedBy = null;
     user.deleteReason = null;
 
-    await user.save();
+    try {
+      await user.save();
+    } catch (saveError) {
+      await restrictUserContent(user._id, adminId);
+      throw saveError;
+    }
 
     logAuditEvent({
       userId: user._id,
@@ -2695,6 +2874,7 @@ exports.banUser = async (req, res) => {
     user.suspendedBy = null;
     user.suspendReason = null;
 
+    await restrictUserContent(user._id, adminId);
     await user.save();
 
     logAuditEvent({

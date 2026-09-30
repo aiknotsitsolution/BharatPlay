@@ -17,10 +17,13 @@ exports.getLeaderboard = async (req, res) => {
   try {
     const { videoType } = req.query;
     const videoMatch =
-      videoType === "short" || videoType === "long" ? { videoType } : {};
+      videoType === "short" || videoType === "long"
+        ? { videoType, status: "active" }
+        : { status: "active" };
 
     // ---------- Top creators (by total subscribers) ----------
     const creatorDocs = await Channel.aggregate([
+      { $match: { status: "active" } },
       {
         $group: {
           _id: "$creator",
@@ -50,8 +53,7 @@ exports.getLeaderboard = async (req, res) => {
 
     const topCreators = creatorDocs.map((doc, index) => {
       const bestChannel = (doc.channels || []).reduce(
-        (best, channel) =>
-          !best || channel.subs > best.subs ? channel : best,
+        (best, channel) => (!best || channel.subs > best.subs ? channel : best),
         null,
       );
       const user = creatorUserMap.get(String(doc._id));

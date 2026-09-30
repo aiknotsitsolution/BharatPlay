@@ -24,6 +24,66 @@ const {
 } = require("../services/socketService");
 
 const ABS_WATCH_SECONDS_CAP = 12 * 60 * 60; // 43200s hard cap per session
+const RESTRICTED_ACCOUNT_STATUSES = ["suspended", "banned", "deleted"];
+const RESTRICTED_CONTENT_CACHE_MS = 3_000;
+let restrictedContentCache = {
+  expiresAt: 0,
+  userIds: [],
+  channelIds: [],
+};
+let restrictedContentCachePromise = null;
+
+const getRestrictedContentIds = async () => {
+  if (restrictedContentCache.expiresAt > Date.now()) {
+    return restrictedContentCache;
+  }
+  if (restrictedContentCachePromise) return restrictedContentCachePromise;
+
+  restrictedContentCachePromise = (async () => {
+    const userIds = await User.distinct("_id", {
+      status: { $in: RESTRICTED_ACCOUNT_STATUSES },
+    });
+    const channelIds = userIds.length
+      ? await Channel.distinct("_id", { creator: { $in: userIds } })
+      : [];
+
+    restrictedContentCache = {
+      expiresAt: Date.now() + RESTRICTED_CONTENT_CACHE_MS,
+      userIds,
+      channelIds,
+    };
+    return restrictedContentCache;
+  })().finally(() => {
+    restrictedContentCachePromise = null;
+  });
+
+  return restrictedContentCachePromise;
+};
+
+const withVisibleVideoFilter = async (filter = {}) => {
+  const { userIds, channelIds } = await getRestrictedContentIds();
+  return {
+    $and: [
+      filter,
+      { status: "active" },
+      ...(userIds.length
+        ? [{ uploadedBy: { $nin: userIds } }, { creator: { $nin: userIds } }]
+        : []),
+      ...(channelIds.length ? [{ channel: { $nin: channelIds } }] : []),
+    ],
+  };
+};
+
+const withVisibleChannelFilter = async (filter = {}) => {
+  const { userIds } = await getRestrictedContentIds();
+  return {
+    $and: [
+      filter,
+      { status: "active" },
+      ...(userIds.length ? [{ creator: { $nin: userIds } }] : []),
+    ],
+  };
+};
 
 const resolveCategory = async (categoryValue) => {
   const value = String(categoryValue || "").trim();
@@ -420,7 +480,7 @@ const getChannels = async (req, res) => {
   try {
     const userId = req.user.userId || req.user.id; // handle both
 
-    const channels = await Channel.find({ creator: userId }) // ✅ was "user", must be "creator"
+    const channels = await Channel.find({ creator: userId, status: "active" }) // ✅ was "user", must be "creator"
       .populate({ path: "category", select: "_id name", model: categoryModel })
       .populate({ path: "creator", model: User }); // ✅ was "owner" which doesn't exist in schema
 
@@ -450,16 +510,19 @@ const getSubscribedChannels = async (req, res) => {
 
     const user = await User.findById(userId).populate({
       path: "subscribedChannels",
-      select: "name channelImage _id",
+      select: "name channelImage _id status",
       model: Channel,
+      match: { status: "active" },
     });
 
-    const channels = (user?.subscribedChannels || []).map((channel) => ({
-      _id: channel._id,
-      name: channel.name,
-      channelImage: channel.channelImage || "",
-      path: `/channel/${channel._id}`,
-    }));
+    const channels = (user?.subscribedChannels || [])
+      .filter(Boolean)
+      .map((channel) => ({
+        _id: channel._id,
+        name: channel.name,
+        channelImage: channel.channelImage || "",
+        path: `/channel/${channel._id}`,
+      }));
 
     return res.status(200).json({
       success: true,
@@ -489,7 +552,7 @@ const getChannelById = async (req, res) => {
     }
 
     // Channel details
-    const channel = await Channel.findById(channelId)
+    const channel = await Channel.findOne({ _id: channelId, status: "active" })
       .populate({ path: "category", select: "_id name", model: categoryModel })
       .populate({ path: "creator", select: "name email", model: User })
       .lean();
@@ -502,7 +565,7 @@ const getChannelById = async (req, res) => {
     }
 
     // Videos of this channel
-    const videos = await Video.find({ channel: channelId })
+    const videos = await Video.find({ channel: channelId, status: "active" })
       .populate({ path: "uploadedBy", select: "_id name email", model: User })
       .sort({ createdAt: -1 })
       .lean();
@@ -597,7 +660,10 @@ const getUserWatchHistory = async (req, res) => {
         .json({ success: true, videos: [], total, page, limit });
     }
 
-    const videos = await Video.find({ _id: { $in: pagedIds } })
+    const videos = await Video.find({
+      _id: { $in: pagedIds },
+      status: "active",
+    })
       .populate("channel", "name channelImage subscribedBy")
       .populate({ path: "uploadedBy", select: "name email", model: User });
 
@@ -738,6 +804,7 @@ const getUserLikedVideos = async (req, res) => {
     const user = await User.findById(userId).populate({
       path: "likedVideos",
       model: Video,
+      match: { status: "active" },
       populate: {
         path: "channel",
         select: "name channelImage",
@@ -745,7 +812,9 @@ const getUserLikedVideos = async (req, res) => {
       options: { sort: { createdAt: -1 } },
     });
 
-    const videos = (user?.likedVideos || []).map(mapVideoToListItem);
+    const videos = (user?.likedVideos || [])
+      .filter(Boolean)
+      .map(mapVideoToListItem);
 
     return res.status(200).json({ success: true, videos });
   } catch (error) {
@@ -776,7 +845,10 @@ const getUserWatchLaterVideos = async (req, res) => {
         .json({ success: true, videos: [], total, page, limit });
     }
 
-    const videos = await Video.find({ _id: { $in: pagedIds } })
+    const videos = await Video.find({
+      _id: { $in: pagedIds },
+      status: "active",
+    })
       .populate("channel", "name channelImage")
       .populate({ path: "uploadedBy", select: "name email", model: User });
 
@@ -856,8 +928,17 @@ const getvideosByChannel = async (req, res) => {
       });
     }
 
-    // Find videos by channel
-    const videos = await Video.find({ channel: channelId })
+    // Only active channels and videos are publicly visible.
+    const channel = await Channel.findOne({ _id: channelId, status: "active" })
+      .select("_id")
+      .lean();
+    if (!channel) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Channel not found" });
+    }
+
+    const videos = await Video.find({ channel: channelId, status: "active" })
       .populate({ path: "uploadedBy", select: "_id name email", model: User })
       .populate({
         path: "channel",
@@ -918,7 +999,7 @@ const deleteChannel = async (req, res) => {
 
 const getAllVideos = async (req, res) => {
   try {
-    const videos = await Video.find()
+    const videos = await Video.find({ status: "active" })
       .populate("channel", "name channelImage")
       .populate({ path: "uploadedBy", select: "name email", model: User });
     res.status(200).json({ success: true, videos });
@@ -948,7 +1029,7 @@ const recommendedVideos = async (req, res) => {
     const category = getCategoryFilter(req);
     const { page, limit, skip } = getPagination(req);
 
-    const filter = { videoType: "long" };
+    const filter = await withVisibleVideoFilter({ videoType: "long" });
     if (category) filter.category = category;
 
     const videos = await Video.find(filter)
@@ -992,11 +1073,11 @@ const getRelatedVideos = async (req, res) => {
       });
     }
 
-    const currentVideo = await Video.findById(currentVideoId).select(
-      "category channel videoType",
-    );
+    const currentVideo = await Video.findOne(
+      await withVisibleVideoFilter({ _id: currentVideoId }),
+    ).select("category channel videoType");
 
-    const baseFilter = { videoType: "long" };
+    const baseFilter = await withVisibleVideoFilter({ videoType: "long" });
     if (currentVideo) {
       baseFilter._id = { $ne: currentVideoId };
     }
@@ -1077,7 +1158,7 @@ const getRelatedVideos = async (req, res) => {
 
 const trendingVideos = async (req, res) => {
   try {
-    const filter = { videoType: "long" };
+    const filter = await withVisibleVideoFilter({ videoType: "long" });
     const category = getCategoryFilter(req);
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
@@ -1109,7 +1190,7 @@ const trendingVideos = async (req, res) => {
 
 const LatestVideos = async (req, res) => {
   try {
-    const filter = { videoType: "long" };
+    const filter = await withVisibleVideoFilter({ videoType: "long" });
     const category = getCategoryFilter(req);
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
@@ -1141,7 +1222,7 @@ const LatestVideos = async (req, res) => {
 
 const trendingShorts = async (req, res) => {
   try {
-    const filter = { videoType: "short" };
+    const filter = await withVisibleVideoFilter({ videoType: "short" });
     const category = getCategoryFilter(req);
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
@@ -1210,7 +1291,7 @@ const trendingShorts = async (req, res) => {
 
 const topShorts = async (req, res) => {
   try {
-    const filter = { videoType: "short" };
+    const filter = await withVisibleVideoFilter({ videoType: "short" });
     const category = getCategoryFilter(req);
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
@@ -1243,7 +1324,7 @@ const topShorts = async (req, res) => {
 const getVideoById = async (req, res) => {
   try {
     const videoId = req.params.id || req.params.videoId;
-    const video = await Video.findById(videoId)
+    const video = await Video.findOne({ _id: videoId, status: "active" })
       .populate("channel", "name subscribersCount channelImage subscribedBy")
       .populate({ path: "uploadedBy", select: "name avatar", model: User });
 
@@ -1405,7 +1486,7 @@ const addView = async (req, res) => {
     const { videoId } = req.params;
     const { watchedPercent } = req.body || {};
 
-    const video = await Video.findById(videoId);
+    const video = await Video.findOne({ _id: videoId, status: "active" });
     if (!video) {
       return res
         .status(404)
@@ -1538,8 +1619,8 @@ const likeVideo = async (req, res) => {
 
     // Guest users (no auth) – just increment, no toggle
     if (!userId) {
-      const video = await Video.findByIdAndUpdate(
-        videoId,
+      const video = await Video.findOneAndUpdate(
+        { _id: videoId, status: "active" },
         { $inc: { likesCount: 1 } },
         { new: true },
       );
@@ -1558,7 +1639,7 @@ const likeVideo = async (req, res) => {
 
     // Authenticated user
     const [video, user] = await Promise.all([
-      Video.findById(normalizedVideoId),
+      Video.findOne({ _id: normalizedVideoId, status: "active" }),
       User.findById(userId),
     ]);
 
@@ -1646,8 +1727,8 @@ const dislikeVideo = async (req, res) => {
     const userId = req.user?.id || req.user?.userId || req.user?._id;
 
     if (!userId) {
-      const video = await Video.findByIdAndUpdate(
-        videoId,
+      const video = await Video.findOneAndUpdate(
+        { _id: videoId, status: "active" },
         { $inc: { dislikesCount: 1 } },
         { new: true },
       );
@@ -1665,7 +1746,7 @@ const dislikeVideo = async (req, res) => {
     }
 
     const [video, user] = await Promise.all([
-      Video.findById(videoId),
+      Video.findOne({ _id: videoId, status: "active" }),
       User.findById(userId),
     ]);
 
@@ -1749,7 +1830,10 @@ const subscribeChannel = async (req, res) => {
     }
 
     const user = await User.findById(userId);
-    const channel = await Channel.findById(channelId);
+    const channel = await Channel.findOne({
+      _id: channelId,
+      status: "active",
+    });
 
     if (!user || !channel) {
       return res.status(404).json({ success: false, message: "Not found" });
@@ -1837,7 +1921,7 @@ const addComment = async (req, res) => {
       });
     }
 
-    const video = await Video.findById(videoId);
+    const video = await Video.findOne({ _id: videoId, status: "active" });
     if (!video) {
       return res.status(404).json({
         success: false,
@@ -1888,7 +1972,10 @@ const getComments = async (req, res) => {
   try {
     const { videoId } = req.params;
 
-    const video = await Video.findById(videoId).select("comments");
+    const video = await Video.findOne({
+      _id: videoId,
+      status: "active",
+    }).select("comments");
     if (!video) {
       return res.status(404).json({
         success: false,
@@ -1932,7 +2019,7 @@ const deleteComment = async (req, res) => {
   try {
     const { videoId, commentId } = req.params;
     const userId = req.user.id;
-    const video = await Video.findById(videoId);
+    const video = await Video.findOne({ _id: videoId, status: "active" });
     if (!video) {
       return res
         .status(404)
@@ -1975,7 +2062,10 @@ const getVideoInteraction = async (req, res) => {
   try {
     const { videoId } = req.params;
 
-    const video = await Video.findById(videoId).lean();
+    const video = await Video.findOne({
+      _id: videoId,
+      status: "active",
+    }).lean();
 
     if (!video) {
       return res.status(404).json({
@@ -2067,9 +2157,10 @@ const getSubscribedVideos = async (req, res) => {
     const user = await User.findById(userId).select("subscribedChannels");
     const subscribedChannels = user?.subscribedChannels || [];
 
-    const channelDocs = await Channel.find({ subscribedBy: userId }).select(
-      "_id",
-    );
+    const channelDocs = await Channel.find({
+      subscribedBy: userId,
+      status: "active",
+    }).select("_id");
     const channelIds = [
       ...new Set([
         ...subscribedChannels.map((id) => id.toString()),
@@ -2081,7 +2172,9 @@ const getSubscribedVideos = async (req, res) => {
       .filter((id) => mongoose.Types.ObjectId.isValid(id))
       .map((id) => new mongoose.Types.ObjectId(id));
 
-    const filter = { channel: { $in: channelObjectIds } };
+    const filter = await withVisibleVideoFilter({
+      channel: { $in: channelObjectIds },
+    });
     const category = getCategoryFilter(req);
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
@@ -2136,6 +2229,7 @@ const HistoricalVideos = async (req, res) => {
     // Fetch all videos that the user has viewed
     const videos = await Video.find({
       _id: { $in: viewedVideoIds },
+      status: "active",
     })
       .populate("channel", "name channelImage")
       .populate({ path: "uploadedBy", select: "name email", model: User });
@@ -2244,6 +2338,7 @@ const WatchLaterVideos = async (req, res) => {
     // Fetch all watch later videos
     const videos = await Video.find({
       _id: { $in: watchLaterIds },
+      status: "active",
     })
       .populate("channel", "name channelImage")
       .populate({ path: "uploadedBy", select: "name email", model: User });
@@ -2446,7 +2541,10 @@ const searchVideos = async (req, res) => {
         .find({ name: { $in: tokensWithRegex.map((t) => t.regex) } })
         .select("_id name")
         .lean(),
-      Channel.find({ name: { $in: tokensWithRegex.map((t) => t.regex) } })
+      Channel.find({
+        name: { $in: tokensWithRegex.map((t) => t.regex) },
+        status: "active",
+      })
         .select("_id name")
         .lean(),
     ]);
@@ -2512,7 +2610,7 @@ const searchVideos = async (req, res) => {
       }
     }
 
-    const filter = { $or: orConditions };
+    const filter = { status: "active", $or: orConditions };
 
     const [videos, total] = await Promise.all([
       Video.aggregate([
@@ -2558,7 +2656,7 @@ const searchVideos = async (req, res) => {
       })),
     };
 
-    const channels = await Channel.find(channelFilter)
+    const channels = await Channel.find({ ...channelFilter, status: "active" })
       .sort({ createdAt: -1 })
       .select("_id name channelImage subscribedBy createdAt")
       .limit(8)
@@ -2603,13 +2701,14 @@ const getSearchHints = async (req, res) => {
     const regex = new RegExp(escapeRegex(q), "i");
 
     // Videos titles se hints
-    const videoHints = await Video.find({ title: regex })
+    const videoHints = await Video.find({ title: regex, status: "active" })
       .select("title")
       .limit(6)
       .lean();
 
     // Channels se hints
     const channelHints = await Channel.find({
+      status: "active",
       $or: [{ name: regex }, { handle: regex }],
     })
       .select("name handle")
