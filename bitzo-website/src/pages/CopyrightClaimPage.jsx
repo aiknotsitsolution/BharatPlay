@@ -9,6 +9,8 @@ import {
   FileText,
   Film,
   X,
+  Clock,
+  RefreshCw,
 } from "lucide-react";
 import { API_ORIGIN } from "../config/api";
 
@@ -21,8 +23,13 @@ const statusColors = {
   pending: "text-yellow-400",
   under_review: "text-blue-400",
   more_information_required: "text-orange-400",
+  action_pending: "text-orange-400",
   takedown_approved: "text-red-400",
   takedown_rejected: "text-gray-400",
+  disputed: "text-purple-400",
+  dispute_under_review: "text-blue-400",
+  dispute_upheld: "text-red-400",
+  dispute_overturned: "text-emerald-400",
   resolved: "text-emerald-400",
   withdrawn: "text-gray-400",
 };
@@ -31,11 +38,33 @@ const statusLabels = {
   pending: "Pending Review",
   under_review: "Under Review",
   more_information_required: "More Information Required",
+  action_pending: "Action Pending",
   takedown_approved: "Takedown Approved",
   takedown_rejected: "Takedown Rejected",
+  disputed: "Disputed",
+  dispute_under_review: "Dispute Under Review",
+  dispute_upheld: "Dispute Upheld",
+  dispute_overturned: "Dispute Overturned",
   resolved: "Resolved",
   withdrawn: "Withdrawn",
 };
+
+function getVideoId(value) {
+  const input = value.trim();
+  if (/^[0-9a-fA-F]{24}$/.test(input)) return input;
+
+  try {
+    const url = new URL(input, window.location.origin);
+    const queryId = url.searchParams.get("videoId");
+    const pathId = url.pathname.match(
+      /(?:^|\/)(?:video|watch)\/([0-9a-fA-F]{24})(?:\/|$)/i,
+    )?.[1];
+    const videoId = queryId || pathId;
+    return videoId && /^[0-9a-fA-F]{24}$/.test(videoId) ? videoId : "";
+  } catch {
+    return "";
+  }
+}
 
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
@@ -56,6 +85,7 @@ function VideoSearchSelect({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
   const wrapperRef = useRef(null);
@@ -71,22 +101,23 @@ function VideoSearchSelect({
       },
     );
     const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || "Failed to search videos");
+    }
     return data.data || [];
   }, []);
 
   useEffect(() => {
-    if (!debouncedQuery.trim()) {
-      setResults([]);
-      return;
-    }
+    if (!debouncedQuery.trim()) return;
     let cancelled = false;
-    setLoading(true);
     searchMyVideos(debouncedQuery)
       .then((items) => {
         if (!cancelled) setResults(items);
-      })
-      .catch(() => {
-        if (!cancelled) setResults([]);
+      }).catch((error) => {
+        if (!cancelled) {
+          setResults([]);
+          setSearchError(error.message || "Failed to search videos");
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -126,6 +157,8 @@ function VideoSearchSelect({
     onSelect(item);
     setQuery("");
     setResults([]);
+    setLoading(false);
+    setSearchError(null);
     setOpen(false);
     setHighlight(-1);
   };
@@ -134,6 +167,8 @@ function VideoSearchSelect({
     onClear();
     setQuery("");
     setResults([]);
+    setLoading(false);
+    setSearchError(null);
     setHighlight(-1);
   };
 
@@ -161,7 +196,11 @@ function VideoSearchSelect({
             type="text"
             value={query}
             onChange={(e) => {
-              setQuery(e.target.value);
+              const value = e.target.value;
+              setQuery(value);
+              setResults([]);
+              setLoading(Boolean(value.trim()));
+              setSearchError(null);
               setOpen(true);
               setHighlight(-1);
             }}
@@ -180,7 +219,7 @@ function VideoSearchSelect({
           )}
         </div>
       )}
-      {open && results.length > 0 && (
+      {open && query.trim() === debouncedQuery.trim() && results.length > 0 && (
         <div className="absolute z-50 mt-1 w-full max-h-64 overflow-y-auto bg-gray-800 border border-gray-700 rounded-xl shadow-xl">
           {results.map((item, i) => (
             <div
@@ -209,9 +248,13 @@ function VideoSearchSelect({
           ))}
         </div>
       )}
-      {open && debouncedQuery.trim() && !loading && results.length === 0 && (
+      {open &&
+        query.trim() === debouncedQuery.trim() &&
+        debouncedQuery.trim() &&
+        !loading &&
+        results.length === 0 && (
         <div className="absolute z-50 mt-1 w-full bg-gray-800 border border-gray-700 rounded-xl shadow-xl px-3 py-2.5 text-sm text-gray-500">
-          No videos found
+          {searchError || "No videos found"}
         </div>
       )}
     </div>
@@ -241,12 +284,82 @@ export default function CopyrightClaimPage() {
   });
 
   const [selectedOriginalWork, setSelectedOriginalWork] = useState(null);
+  const [declarationAccepted, setDeclarationAccepted] = useState(false);
 
   // Lookup state
   const [lookupRef, setLookupRef] = useState("");
   const [lookupResult, setLookupResult] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState(null);
+  const [myClaims, setMyClaims] = useState([]);
+  const [claimsLoading, setClaimsLoading] = useState(false);
+  const [claimsError, setClaimsError] = useState(null);
+  const [selectedClaim, setSelectedClaim] = useState(null);
+  const [selectedClaimLoading, setSelectedClaimLoading] = useState(false);
+
+  const fetchMyClaims = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setMyClaims([]);
+      setClaimsError(null);
+      return;
+    }
+
+    setClaimsLoading(true);
+    setClaimsError(null);
+    try {
+      const res = await fetch(`${API_ORIGIN}/api/copyright/my-claims`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to load your claims");
+      }
+      const claims = Array.isArray(data.data) ? data.data : [];
+      setMyClaims(claims);
+      setSelectedClaim((current) =>
+        current
+          ? claims.find((claim) => claim.caseNumber === current.caseNumber) ||
+            current
+          : null,
+      );
+    } catch (err) {
+      console.error("Failed to fetch copyright claims:", err);
+      setClaimsError(err.message || "Failed to load your claims");
+    } finally {
+      setClaimsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(fetchMyClaims, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchMyClaims]);
+
+  const handleSelectClaim = async (claim) => {
+    setSelectedClaim(claim);
+    if (!claim.caseNumber) return;
+
+    setSelectedClaimLoading(true);
+    try {
+      const res = await fetch(
+        `${API_ORIGIN}/api/copyright/claim/${encodeURIComponent(claim.caseNumber)}`,
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to fetch claim status");
+      }
+      setSelectedClaim((current) =>
+        current?.caseNumber === claim.caseNumber
+          ? { ...claim, ...data.data, createdAt: claim.createdAt }
+          : current,
+      );
+    } catch (err) {
+      console.error("Failed to refresh claim status:", err);
+    } finally {
+      setSelectedClaimLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -263,12 +376,17 @@ export default function CopyrightClaimPage() {
     ) {
       errs.push("A valid email address is required");
     }
+    const videoId = getVideoId(form.videoId);
     if (!form.videoId.trim())
       errs.push("The Video ID of the infringing content is required");
+    else if (!videoId)
+      errs.push("Enter a valid Video ID or a video link containing a valid ID");
     if (!form.claimDescription.trim())
       errs.push("A description of the copyright violation is required");
     if (!form.originalWork.trim())
       errs.push("Title of your original work is required");
+    if (!declarationAccepted)
+      errs.push("You must confirm the copyright declaration");
     return errs;
   };
 
@@ -296,33 +414,37 @@ export default function CopyrightClaimPage() {
           claimantEmail: form.claimantEmail.trim(),
           claimantPhone: form.claimantPhone.trim(),
           claimantOrganization: form.claimantOrganization.trim(),
-          videoId: form.videoId.trim(),
+          videoId: getVideoId(form.videoId),
           claimType: form.claimType,
           claimDescription: form.claimDescription.trim(),
           originalWork: form.originalWork.trim(),
           originalWorkUrl: form.originalWorkUrl.trim(),
-          declaration: true,
+          declaration: declarationAccepted,
         }),
       });
 
       const data = await res.json();
-      if (data.success) {
-        setSubmitResult(data.data);
-        setSelectedOriginalWork(null);
-        setForm({
-          claimantName: "",
-          claimantEmail: "",
-          claimantPhone: "",
-          claimantOrganization: "",
-          videoId: "",
-          claimType: "takedown",
-          claimDescription: "",
-          originalWork: "",
-          originalWorkUrl: "",
-        });
-      } else {
+      if (!res.ok || !data.success) {
         setErrors([data.message || "Failed to submit claim"]);
+        return;
       }
+
+      setSubmitResult(data.data);
+      setSelectedClaim(data.data);
+      setSelectedOriginalWork(null);
+      setDeclarationAccepted(false);
+      setForm({
+        claimantName: "",
+        claimantEmail: "",
+        claimantPhone: "",
+        claimantOrganization: "",
+        videoId: preloadedVideoId,
+        claimType: "takedown",
+        claimDescription: "",
+        originalWork: "",
+        originalWorkUrl: "",
+      });
+      await fetchMyClaims();
     } catch (err) {
       console.error("Claim submission error:", err);
       setErrors(["An error occurred. Please try again."]);
@@ -343,7 +465,7 @@ export default function CopyrightClaimPage() {
         `${API_ORIGIN}/api/copyright/claim/${encodeURIComponent(lookupRef.trim())}`,
       );
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setLookupResult(data.data);
       } else {
         setLookupError(data.message || "Claim not found");
@@ -358,7 +480,7 @@ export default function CopyrightClaimPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <div className="max-w-4xl mx-auto px-4 py-12">
+      <div className="max-w-6xl mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full mb-4">
@@ -405,6 +527,8 @@ export default function CopyrightClaimPage() {
         {/* ===== SUBMIT TAB ===== */}
         {activeTab === "submit" && (
           <>
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+              <div className="min-w-0 space-y-6">
             {/* Success */}
             {submitResult && (
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6 mb-6">
@@ -552,12 +676,12 @@ export default function CopyrightClaimPage() {
                           name="videoId"
                           value={form.videoId}
                           onChange={handleChange}
-                          placeholder="Paste the Video ID from the URL"
+                          placeholder="Paste a Video ID or video link"
                           className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
                         />
                         <p className="text-xs text-gray-600 mt-1">
-                          Find it in the video URL: /video/
-                          <span className="text-gray-500">VIDEO_ID</span>
+                          Use a 24-character video ID or a /video/ or /watch/
+                          link.
                         </p>
                       </>
                     )}
@@ -571,7 +695,7 @@ export default function CopyrightClaimPage() {
                       value={form.claimType}
                       onChange={handleChange}
                       className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                      
+
                     >
                       {claimTypes.map((t) => (
                         <option key={t.value} value={t.value}>
@@ -581,9 +705,7 @@ export default function CopyrightClaimPage() {
                     </select>
                   </div>
                 </div>
-                className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700
-                rounded-xl text-white text-sm focus:outline-none
-                focus:border-indigo-500 transition-colors"
+
                 <label className="block text-sm text-gray-400 mb-1.5">
                   Tell us what happened *
                 </label>
@@ -651,7 +773,16 @@ export default function CopyrightClaimPage() {
 
               {/* Declaration */}
               <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-6">
-                <div className="flex items-start gap-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={declarationAccepted}
+                    onChange={(e) => {
+                      setDeclarationAccepted(e.target.checked);
+                      setErrors([]);
+                    }}
+                    className="mt-1 h-4 w-4 shrink-0 accent-indigo-500"
+                  />
                   <FileText className="w-5 h-5 text-zinc-500 mt-0.5 shrink-0" />
                   <div className="space-y-2">
                     <p className="text-sm text-zinc-300">
@@ -664,7 +795,7 @@ export default function CopyrightClaimPage() {
                       have legal consequences.
                     </p>
                   </div>
-                </div>
+                </label>
               </div>
 
               {/* Submit */}
@@ -683,6 +814,139 @@ export default function CopyrightClaimPage() {
                 </button>
               </div>
             </form>
+              </div>
+
+              <aside className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-5 lg:sticky lg:top-6">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">
+                      My Claims
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {
+                        myClaims.filter((claim) => claim.status === "pending")
+                          .length
+                      }{" "}
+                      pending review
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={fetchMyClaims}
+                    disabled={claimsLoading || !localStorage.getItem("token")}
+                    aria-label="Refresh claims"
+                    className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 ${
+                        claimsLoading ? "animate-spin" : ""
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {!localStorage.getItem("token") ? (
+                  <p className="text-sm text-gray-500">
+                    Sign in to see your submitted claims here.
+                  </p>
+                ) : claimsLoading && myClaims.length === 0 ? (
+                  <p className="text-sm text-gray-500">Loading your claims...</p>
+                ) : claimsError ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-red-300">{claimsError}</p>
+                    <button
+                      type="button"
+                      onClick={fetchMyClaims}
+                      className="text-sm text-indigo-400 hover:text-indigo-300"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : myClaims.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    Your submitted claims will appear here.
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
+                    {myClaims.map((claim) => (
+                      <button
+                        key={claim._id || claim.caseNumber}
+                        type="button"
+                        onClick={() => handleSelectClaim(claim)}
+                        className={`w-full text-left p-3 rounded-xl border transition-colors ${
+                          selectedClaim?.caseNumber === claim.caseNumber
+                            ? "bg-indigo-500/10 border-indigo-500/40"
+                            : "bg-zinc-800/60 border-zinc-800 hover:border-zinc-700"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`text-xs font-medium ${
+                              statusColors[claim.status] || "text-gray-400"
+                            }`}
+                          >
+                            {statusLabels[claim.status] ||
+                              claim.status?.replace(/_/g, " ")}
+                          </span>
+                          {claim.status === "pending" && (
+                            <Clock className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-sm text-white truncate mt-2">
+                          {claim.content?.title ||
+                            claim.claim?.originalWork ||
+                            "Copyright claim"}
+                        </p>
+                        <p className="text-xs text-gray-500 font-mono mt-1">
+                          {claim.caseNumber}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {selectedClaim && (
+                  <div className="mt-5 pt-5 border-t border-zinc-800 space-y-3">
+                    <div>
+                      <p className="text-xs text-gray-500">
+                        {selectedClaimLoading ? "Refreshing status..." : "Current status"}
+                      </p>
+                      <p
+                        className={`text-sm font-semibold mt-1 ${
+                          statusColors[selectedClaim.status] || "text-gray-300"
+                        }`}
+                      >
+                        {statusLabels[selectedClaim.status] ||
+                          selectedClaim.status?.replace(/_/g, " ") ||
+                          "Submitted"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Reference number</p>
+                      <p className="text-sm text-white font-mono mt-1">
+                        {selectedClaim.caseNumber || selectedClaim.reference}
+                      </p>
+                    </div>
+                    {selectedClaim.createdAt && (
+                      <div>
+                        <p className="text-xs text-gray-500">Filed on</p>
+                        <p className="text-sm text-white mt-1">
+                          {new Date(selectedClaim.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
+                    {selectedClaim.resolution?.reason && (
+                      <div>
+                        <p className="text-xs text-gray-500">Resolution</p>
+                        <p className="text-sm text-gray-300 mt-1">
+                          {selectedClaim.resolution.reason}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </aside>
+            </div>
           </>
         )}
 
