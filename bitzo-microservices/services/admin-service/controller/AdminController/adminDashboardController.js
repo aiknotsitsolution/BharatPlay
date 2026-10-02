@@ -1,6 +1,11 @@
 const User = require("../../models/usermodel");
 const Video = require("../../models/Videomodel");
 const WatchSession = require("../../models/WatchSession");
+const {
+  getAdImpressionModel,
+  getContactRequestModel,
+  getCopyrightCaseModel,
+} = require("../../models/DashboardMetrics");
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -47,6 +52,15 @@ const buildWeekDays = () => {
     days.push({ day: DAY_NAMES[start.getDay()], start, end });
   }
   return days;
+};
+
+const getDailyMetrics = async (label, modelFactory, pipeline) => {
+  try {
+    return await modelFactory().aggregate(pipeline).exec();
+  } catch (error) {
+    console.error(`getDashboard ${label} metrics error:`, error.message);
+    return null;
+  }
 };
 
 exports.getDashboard = async (req, res) => {
@@ -105,17 +119,78 @@ exports.getDashboard = async (req, res) => {
       ]),
     ]);
 
+    const [inquiriesByDay, copyrightByDay, adsByDay] = await Promise.all([
+      getDailyMetrics("inquiry", getContactRequestModel, [
+          { $match: { createdAt: { $gte: weekStart } } },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+              },
+              total: { $sum: 1 },
+            },
+          },
+        ]),
+      getDailyMetrics("copyright", getCopyrightCaseModel, [
+          { $match: { createdAt: { $gte: weekStart } } },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+              },
+              total: { $sum: 1 },
+            },
+          },
+        ]),
+      getDailyMetrics("ad", getAdImpressionModel, [
+          {
+            $match: {
+              createdAt: { $gte: weekStart },
+              event: { $in: ["impression", "complete"] },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+              },
+              impressions: {
+                $sum: { $cond: [{ $eq: ["$event", "impression"] }, 1, 0] },
+              },
+              completed: {
+                $sum: { $cond: [{ $eq: ["$event", "complete"] }, 1, 0] },
+              },
+            },
+          },
+        ]),
+    ]);
+
+    const totalsByDay = (rows) =>
+      rows ? new Map(rows.map((row) => [row._id, row.total])) : null;
+    const inquiriesMap = totalsByDay(inquiriesByDay);
+    const copyrightMap = totalsByDay(copyrightByDay);
+    const adsMap = adsByDay
+      ? new Map(adsByDay.map((row) => [row._id, row]))
+      : null;
+
     const onlineSet = new Set(onlineIds.map((item) => String(item._id)));
 
-    const weekly = weekDays.map(({ day, start, end }) => ({
-      day,
-      users: usersThisWeek.filter(
-        (user) => user.createdAt >= start && user.createdAt < end,
-      ).length,
-      videos: videosThisWeek.filter(
-        (video) => video.createdAt >= start && video.createdAt < end,
-      ).length,
-    }));
+    const weekly = weekDays.map(({ day, start, end }) => {
+      const dateKey = start.toISOString().slice(0, 10);
+      return {
+        day,
+        users: usersThisWeek.filter(
+          (user) => user.createdAt >= start && user.createdAt < end,
+        ).length,
+        videos: videosThisWeek.filter(
+          (video) => video.createdAt >= start && video.createdAt < end,
+        ).length,
+        inquiries: inquiriesMap ? inquiriesMap.get(dateKey) || 0 : null,
+        copyrightCases: copyrightMap ? copyrightMap.get(dateKey) || 0 : null,
+        adImpressions: adsMap ? adsMap.get(dateKey)?.impressions || 0 : null,
+        adCompletions: adsMap ? adsMap.get(dateKey)?.completed || 0 : null,
+      };
+    });
 
     const recentUsers = recentUsersDocs.map((user) => ({
       id: user._id,

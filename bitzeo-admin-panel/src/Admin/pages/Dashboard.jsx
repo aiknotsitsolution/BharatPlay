@@ -1,10 +1,42 @@
-﻿import {
-  Users, ShoppingCart, DollarSign, Video, Film, UserPlus, Upload,
-  Eye, TrendingUp, TrendingDown, Clock, ArrowUpRight, Play,
+import {
+  Activity,
+  ArrowUpRight,
+  Clock3,
+  Film,
+  Inbox,
+  Play,
+  RefreshCw,
+  Upload,
+  UserRoundCheck,
+  Users,
+  Video,
+  Eye,
+  UserPlus,
+  ShieldCheck,
 } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchContactRequests, fetchCopyrightStats } from "../../api";
 import useDashboardData from "../../hooks/useDashboardData";
 import PageHeader from "../../components/layout/PageHeader";
+
+const CHART_COLORS = {
+  users: "#3b82f6",
+  uploads: "#f59e0b",
+  longVideos: "#3b82f6",
+  shorts: "#8b5cf6",
+};
 
 const getAdminDisplayName = () => {
   try {
@@ -15,360 +47,769 @@ const getAdminDisplayName = () => {
   }
 };
 
-const STAT_CONFIG = [
-  {
-    key: "revenue",
-    title: "Total Revenue",
-    value: "₹1,24,890",
-    change: "+12.5%",
-    positive: true,
-    icon: DollarSign,
-    iconBg: "bg-blue-50",
-    iconColor: "text-blue-600",
-  },
-  {
-    key: "orders",
-    title: "New Payment",
-    value: "342",
-    change: "+8.2%",
-    positive: true,
-    icon: ShoppingCart,
-    iconBg: "bg-violet-50",
-    iconColor: "text-violet-600",
-  },
-  {
-    key: "users",
-    title: "Active Users",
-    dynamic: "activeUsers",
-    icon: Users,
-    iconBg: "bg-emerald-50",
-    iconColor: "text-emerald-600",
-  },
-  {
-    key: "videos",
-    title: "Videos",
-    dynamic: "totalLongVideos",
-    icon: Video,
-    iconBg: "bg-orange-50",
-    iconColor: "text-orange-600",
-  },
-  {
-    key: "shorts",
-    title: "Shorts",
-    dynamic: "totalShorts",
-    icon: Film,
-    iconBg: "bg-pink-50",
-    iconColor: "text-pink-600",
-  },
-];
-
 const formatRelativeTime = (iso) => {
   if (!iso) return "just now";
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  const diff = Math.max(0, Date.now() - new Date(iso).getTime());
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 };
 
-const formatCount = (n) => {
-  const v = Number(n) || 0;
-  if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
-  if (v >= 1000) return `${(v / 1000).toFixed(1).replace(/\.0$/, "")}K`;
-  return v.toLocaleString();
+const formatCount = (value) => {
+  const count = Number(value) || 0;
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) {
+    return `${(count / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  }
+  return count.toLocaleString();
 };
 
-/* ═══════════════ STAT CARD ═══════════════ */
-function StatCard({ title, value, change, positive, icon: Icon, iconBg, iconColor }) {
+const formatTooltipValue = (value) => Number(value || 0).toLocaleString();
+
+function Panel({ title, subtitle, action, children, className = "" }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow p-5">
-      <div className="flex items-start justify-between gap-3">
+    <section
+      className={`min-w-0 rounded-2xl border border-bp-border/60 bg-bp-card p-5 shadow-bp-soft sm:p-6 ${className}`}
+    >
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[13px] text-slate-500 font-medium">{title}</p>
-          <p className="mt-2 text-[26px] font-bold text-slate-800 tracking-tight leading-none">
-            {value}
+          <h2 className="font-display text-base font-semibold text-bp-text">
+            {title}
+          </h2>
+          {subtitle && (
+            <p className="mt-1 text-xs text-bp-text-secondary">{subtitle}</p>
+          )}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function MetricCard({ title, value, detail, icon, accent, progress }) {
+  const MetricIcon = icon;
+
+  return (
+    <article className="relative overflow-hidden rounded-2xl border border-bp-border/60 bg-bp-card p-4 shadow-bp-soft transition duration-200 hover:-translate-y-0.5 hover:border-bp-blue/40 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-bp-text-secondary">{title}</p>
+          <p className="mt-2 truncate font-display text-2xl font-bold tracking-tight text-bp-text sm:text-[28px]">
+            {value === null || value === undefined ? "—" : formatCount(value)}
           </p>
         </div>
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
-          <Icon className={`w-5 h-5 ${iconColor}`} strokeWidth={1.8} />
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${accent}`}
+        >
+          <MetricIcon className="h-[18px] w-[18px]" strokeWidth={1.9} />
         </div>
       </div>
-
-      {change && (
-        <div className="mt-4 flex items-center gap-1.5">
-          <span
-            className={`inline-flex items-center gap-1 text-[12px] font-semibold px-2 py-0.5 rounded-full ${
-              positive
-                ? "bg-emerald-50 text-emerald-600"
-                : "bg-red-50 text-red-600"
-            }`}
-          >
-            {positive ? (
-              <TrendingUp className="w-3.5 h-3.5" />
-            ) : (
-              <TrendingDown className="w-3.5 h-3.5" />
-            )}
-            {change}
+      <div className="mt-4 flex items-center justify-between gap-2">
+        <span className="text-[11px] text-bp-text-muted">{detail}</span>
+        {progress !== undefined && (
+          <span className="text-[11px] font-semibold text-bp-text-secondary">
+            {progress}%
           </span>
-          <span className="text-[12px] text-slate-400">from last month</span>
+        )}
+      </div>
+      {progress !== undefined && (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bp-elevated">
+          <div
+            className="h-full rounded-full bg-bp-blue transition-all"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
-/* ═══════════════ WEEKLY CHART ═══════════════ */
-function WeeklyChart({ data, maxUsers }) {
-  const maxVal = Math.max(maxUsers, ...data.map((d) => d.videos), 1);
+function WeeklyUsersChart({ data }) {
+  return (
+    <Panel
+      title="User growth"
+      subtitle="New accounts created each day"
+      action={
+        <span className="rounded-lg border border-bp-border/60 bg-bp-elevated px-2.5 py-1.5 text-[11px] font-medium text-bp-text-secondary">
+          Last 7 days
+        </span>
+      }
+    >
+      {data.length === 0 ? (
+        <div className="flex h-[220px] items-center justify-center rounded-xl bg-bp-elevated/60 text-sm text-bp-text-muted">
+          No user growth data available yet
+        </div>
+      ) : (
+        <div className="h-[220px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={data}
+              margin={{ top: 8, right: 8, bottom: 0, left: -18 }}
+            >
+              <CartesianGrid
+                vertical={false}
+                stroke="var(--bp-border)"
+                strokeDasharray="3 5"
+                opacity={0.45}
+              />
+              <XAxis
+                dataKey="day"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "var(--bp-text-muted)", fontSize: 11 }}
+                dy={10}
+              />
+              <YAxis
+                yAxisId="users"
+                allowDecimals={false}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "var(--bp-text-muted)", fontSize: 10 }}
+                width={38}
+              />
+              <Tooltip
+                cursor={{ fill: "var(--bp-hover)", opacity: 0.45 }}
+                contentStyle={{
+                  background: "var(--bp-card)",
+                  border: "1px solid var(--bp-border)",
+                  borderRadius: 12,
+                  color: "var(--bp-text)",
+                  fontSize: 12,
+                }}
+                labelStyle={{ color: "var(--bp-text-secondary)", marginBottom: 4 }}
+                formatter={formatTooltipValue}
+              />
+              <Area
+                type="monotone"
+                dataKey="users"
+                name="Users"
+                stroke={CHART_COLORS.users}
+                strokeWidth={2.5}
+                fill={CHART_COLORS.users}
+                fillOpacity={0.14}
+                activeDot={{ r: 4, strokeWidth: 0, fill: CHART_COLORS.users }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function WeeklyUploadsChart({ data }) {
+  return (
+    <Panel
+      title="Upload activity"
+      subtitle="Videos published each day"
+      action={
+        <span className="rounded-lg border border-bp-border/60 bg-bp-elevated px-2.5 py-1.5 text-[11px] font-medium text-bp-text-secondary">
+          Last 7 days
+        </span>
+      }
+    >
+      {data.length === 0 ? (
+        <div className="flex h-[220px] items-center justify-center rounded-xl bg-bp-elevated/60 text-sm text-bp-text-muted">
+          No upload data available yet
+        </div>
+      ) : (
+        <div className="h-[220px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={data}
+              margin={{ top: 8, right: 8, bottom: 0, left: -18 }}
+              barCategoryGap="38%"
+            >
+              <CartesianGrid
+                vertical={false}
+                stroke="var(--bp-border)"
+                strokeDasharray="3 5"
+                opacity={0.45}
+              />
+              <XAxis
+                dataKey="day"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "var(--bp-text-muted)", fontSize: 11 }}
+                dy={10}
+              />
+              <YAxis
+                allowDecimals={false}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "var(--bp-text-muted)", fontSize: 10 }}
+                width={38}
+              />
+              <Tooltip
+                cursor={{ fill: "var(--bp-hover)", opacity: 0.45 }}
+                contentStyle={{
+                  background: "var(--bp-card)",
+                  border: "1px solid var(--bp-border)",
+                  borderRadius: 12,
+                  color: "var(--bp-text)",
+                  fontSize: 12,
+                }}
+                labelStyle={{ color: "var(--bp-text-secondary)", marginBottom: 4 }}
+                formatter={formatTooltipValue}
+              />
+              <Bar
+                dataKey="videos"
+                name="Videos uploaded"
+                fill={CHART_COLORS.uploads}
+                radius={[4, 4, 0, 0]}
+                maxBarSize={28}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function WeeklyCopyrightChart({ data }) {
+  const hasData = data.some(
+    (point) => typeof point.copyrightCases === "number",
+  );
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm h-full flex flex-col p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-[16px] font-semibold text-slate-800">Weekly Overview</h3>
-          <p className="text-[12px] text-slate-400 mt-0.5">Users & uploads this week</p>
+    <Panel
+      title="Copyright cases"
+      subtitle="New copyright cases received each day"
+      action={
+        <span className="rounded-lg border border-bp-border/60 bg-bp-elevated px-2.5 py-1.5 text-[11px] font-medium text-bp-text-secondary">
+          Last 7 days
+        </span>
+      }
+    >
+      {!hasData ? (
+        <div className="flex h-[220px] items-center justify-center rounded-xl bg-bp-elevated/60 px-4 text-center text-sm text-bp-text-muted">
+          Copyright trend is unavailable. Check the dashboard service database
+          connection.
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-            <span className="text-[12px] text-slate-500">Users</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-orange-400" />
-            <span className="text-[12px] text-slate-500">Videos</span>
-          </div>
+      ) : (
+        <div className="h-[220px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={data}
+              margin={{ top: 8, right: 8, bottom: 0, left: -18 }}
+              barCategoryGap="38%"
+            >
+              <CartesianGrid
+                vertical={false}
+                stroke="var(--bp-border)"
+                strokeDasharray="3 5"
+                opacity={0.45}
+              />
+              <XAxis
+                dataKey="day"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "var(--bp-text-muted)", fontSize: 11 }}
+                dy={10}
+              />
+              <YAxis
+                allowDecimals={false}
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: "var(--bp-text-muted)", fontSize: 10 }}
+                width={38}
+              />
+              <Tooltip
+                cursor={{ fill: "var(--bp-hover)", opacity: 0.45 }}
+                contentStyle={{
+                  background: "var(--bp-card)",
+                  border: "1px solid var(--bp-border)",
+                  borderRadius: 12,
+                  color: "var(--bp-text)",
+                  fontSize: 12,
+                }}
+                labelStyle={{ color: "var(--bp-text-secondary)", marginBottom: 4 }}
+                formatter={formatTooltipValue}
+              />
+              <Bar
+                dataKey="copyrightCases"
+                name="Copyright cases"
+                fill="#f43f5e"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={28}
+              />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-      </div>
-
-      <div className="flex items-end gap-3 flex-1 min-h-[200px]">
-        {data.map((item) => (
-          <div
-            key={item.day}
-            className="flex-1 flex flex-col items-center gap-2 h-full justify-end"
-          >
-            <div className="w-full flex items-end justify-center gap-1.5 h-[160px]">
-              <div
-                className="w-full max-w-[16px] rounded-t-md bg-blue-500/90 transition-all hover:bg-blue-600"
-                style={{ height: `${(item.users / maxVal) * 100}%` }}
-                title={`${item.users} users`}
-              />
-              <div
-                className="w-full max-w-[16px] rounded-t-md bg-orange-400/90 transition-all hover:bg-orange-500"
-                style={{ height: `${(item.videos / maxVal) * 100}%` }}
-                title={`${item.videos} videos`}
-              />
-            </div>
-            <span className="text-[12px] font-medium text-slate-400">{item.day}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+      )}
+    </Panel>
   );
 }
 
-/* ═══════════════ SNAPSHOT ═══════════════ */
+function WeeklyAdsChart({ data }) {
+  const hasData = data.some(
+    (point) =>
+      typeof point.adImpressions === "number" ||
+      typeof point.adCompletions === "number",
+  );
+
+  return (
+    <Panel
+      title="Ad performance"
+      subtitle="Ad impressions and completed views each day"
+      action={
+        <span className="rounded-lg border border-bp-border/60 bg-bp-elevated px-2.5 py-1.5 text-[11px] font-medium text-bp-text-secondary">
+          Last 7 days
+        </span>
+      }
+    >
+      {!hasData ? (
+        <div className="flex h-[220px] items-center justify-center rounded-xl bg-bp-elevated/60 px-4 text-center text-sm text-bp-text-muted">
+          Ad trend is unavailable. Check the dashboard service database
+          connection.
+        </div>
+      ) : (
+        <>
+          <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+            <span className="flex items-center gap-2 text-xs text-bp-text-secondary">
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+              Impressions
+            </span>
+            <span className="flex items-center gap-2 text-xs text-bp-text-secondary">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              Completed
+            </span>
+          </div>
+          <div className="h-[190px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={data}
+                margin={{ top: 8, right: 8, bottom: 0, left: -18 }}
+              >
+                <CartesianGrid
+                  vertical={false}
+                  stroke="var(--bp-border)"
+                  strokeDasharray="3 5"
+                  opacity={0.45}
+                />
+                <XAxis
+                  dataKey="day"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "var(--bp-text-muted)", fontSize: 11 }}
+                  dy={10}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "var(--bp-text-muted)", fontSize: 10 }}
+                  width={38}
+                />
+                <Tooltip
+                  cursor={{ fill: "var(--bp-hover)", opacity: 0.45 }}
+                  contentStyle={{
+                    background: "var(--bp-card)",
+                    border: "1px solid var(--bp-border)",
+                    borderRadius: 12,
+                    color: "var(--bp-text)",
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: "var(--bp-text-secondary)", marginBottom: 4 }}
+                  formatter={formatTooltipValue}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="adImpressions"
+                  name="Impressions"
+                  stroke="#f59e0b"
+                  fill="#f59e0b"
+                  fillOpacity={0.12}
+                  strokeWidth={2.5}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="adCompletions"
+                  name="Completed"
+                  stroke="#10b981"
+                  fill="#10b981"
+                  fillOpacity={0.08}
+                  strokeWidth={2}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
+    </Panel>
+  );
+}
+
 function TodaySnapshot({ snapshot }) {
   const items = [
     {
-      label: "New Users",
-      sub: "Joined today",
-      value: snapshot.newUsers ?? 0,
+      label: "New users",
+      value: snapshot.newUsers,
+      detail: "Joined today",
       icon: UserPlus,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
+      color: "text-blue-500",
+      bg: "bg-blue-500/10",
     },
     {
-      label: "Videos Uploaded",
-      sub: "Uploaded today",
-      value: snapshot.videosUploaded ?? 0,
+      label: "Videos uploaded",
+      value: snapshot.videosUploaded,
+      detail: "Uploaded today",
       icon: Upload,
-      color: "text-violet-600",
-      bg: "bg-violet-50",
+      color: "text-amber-500",
+      bg: "bg-amber-500/10",
     },
     {
-      label: "Total Views",
-      sub: "Across all videos",
-      value: formatCount(snapshot.totalViews),
+      label: "Total views",
+      value: snapshot.totalViews,
+      detail: "Across all videos",
       icon: Eye,
-      color: "text-emerald-600",
-      bg: "bg-emerald-50",
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
     },
     {
-      label: "Watch Time",
-      sub: "Hours watched",
-      value: `${snapshot.watchTime ?? 0}h`,
+      label: "Watch time",
+      value: `${formatCount(snapshot.watchTime)}h`,
+      detail: "Hours in the last 30 days",
       icon: Play,
-      color: "text-orange-600",
-      bg: "bg-orange-50",
+      color: "text-violet-500",
+      bg: "bg-violet-500/10",
+      raw: true,
     },
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm h-full p-6">
-      <h3 className="text-[16px] font-semibold text-slate-800 mb-5">Today's Snapshot</h3>
-      <div className="space-y-3">
-        {items.map((item) => (
-          <div
-            key={item.label}
-            className="flex items-center justify-between gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.bg}`}>
-                <item.icon className={`w-5 h-5 ${item.color}`} strokeWidth={1.8} />
+    <Panel title="Today's snapshot" subtitle="Platform activity at a glance">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1">
+        {items.map(({ label, value, detail, icon, color, bg, raw }) => {
+          const SnapshotIcon = icon;
+          return (
+            <div
+              key={label}
+              className="flex min-w-0 items-center gap-3 rounded-xl border border-transparent p-3 transition-colors hover:border-bp-border/50 hover:bg-bp-elevated/70"
+            >
+              <span
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${bg} ${color}`}
+              >
+                <SnapshotIcon className="h-[18px] w-[18px]" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-bp-text">
+                  {label}
+                </p>
+                <p className="mt-0.5 text-[11px] text-bp-text-muted">{detail}</p>
               </div>
-              <div className="min-w-0">
-                <p className="text-[13.5px] font-medium text-slate-800 truncate">{item.label}</p>
-                <p className="text-[12px] text-slate-400">{item.sub}</p>
-              </div>
+              <p className="shrink-0 font-display text-lg font-bold text-bp-text">
+                {raw ? value : formatCount(value)}
+              </p>
             </div>
-            <p className="text-[18px] font-bold text-slate-800 tracking-tight shrink-0">
-              {item.value}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
-    </div>
+    </Panel>
   );
 }
 
-/* ═══════════════ RECENT SECTIONS ═══════════════ */
+function ContentMix({ longVideos, shorts }) {
+  const total = (Number(longVideos) || 0) + (Number(shorts) || 0);
+  const longVideoShare = total
+    ? Math.round(((Number(longVideos) || 0) / total) * 100)
+    : 0;
+  const shortsShare = total
+    ? Math.round(((Number(shorts) || 0) / total) * 100)
+    : 0;
+
+  return (
+    <Panel title="Content mix" subtitle="Published videos by format">
+      {total === 0 ? (
+        <div className="flex h-[156px] items-center justify-center rounded-xl bg-bp-elevated/60 text-sm text-bp-text-muted">
+          No videos to break down yet
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-display text-3xl font-bold tracking-tight text-bp-text">
+                {formatCount(total)}
+              </p>
+              <p className="mt-1 text-xs text-bp-text-muted">Total published</p>
+            </div>
+            <div className="h-10 w-10 rounded-full border-[5px] border-violet-500/80 border-r-blue-500/80 border-b-blue-500/80 border-l-violet-500/80" />
+          </div>
+          <div className="space-y-4">
+            <div>
+              <div className="mb-2 flex items-center justify-between text-xs">
+                <span className="flex items-center gap-2 text-bp-text-secondary">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-blue-500" />
+                  Long videos
+                </span>
+                <span className="font-semibold text-bp-text">
+                  {formatCount(longVideos)}{" "}
+                  <span className="font-normal text-bp-text-muted">
+                    ({longVideoShare}%)
+                  </span>
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-bp-elevated">
+                <div
+                  className="h-full rounded-full bg-blue-500"
+                  style={{ width: `${longVideoShare}%` }}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="mb-2 flex items-center justify-between text-xs">
+                <span className="flex items-center gap-2 text-bp-text-secondary">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-violet-500" />
+                  Shorts
+                </span>
+                <span className="font-semibold text-bp-text">
+                  {formatCount(shorts)}{" "}
+                  <span className="font-normal text-bp-text-muted">
+                    ({shortsShare}%)
+                  </span>
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-bp-elevated">
+                <div
+                  className="h-full rounded-full bg-violet-500"
+                  style={{ width: `${shortsShare}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 function RecentUsers({ users, onNavigate }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-[16px] font-semibold text-slate-800">Recent Users</h3>
-          <button
-            onClick={onNavigate}
-            className="text-[13px] font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
-          >
-            View all <ArrowUpRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="space-y-1">
+    <Panel
+      title="Recent users"
+      subtitle="Latest accounts to join the platform"
+      action={
+        <button
+          type="button"
+          onClick={onNavigate}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-bp-blue transition-colors hover:text-bp-cyan"
+        >
+          View all <ArrowUpRight className="h-3.5 w-3.5" />
+        </button>
+      }
+    >
+      {users.length === 0 ? (
+        <p className="py-8 text-center text-sm text-bp-text-muted">
+          No recent users to show
+        </p>
+      ) : (
+        <div className="divide-y divide-bp-border/40">
           {users.map((user) => (
-            <div
-              key={user.id}
-              className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors"
-            >
-              <div className="relative shrink-0">
+            <div key={user.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-bp-elevated">
                 {user.avatar && /^(https?:|\/)/.test(user.avatar) ? (
                   <img
                     src={user.avatar}
-                    alt={user.name}
-                    className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm"
+                    alt=""
+                    className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-[12px] font-bold">
-                    {user.avatar}
-                  </div>
+                  <span className="flex h-full w-full items-center justify-center bg-blue-500/10 text-xs font-bold text-blue-500">
+                    {user.avatar || (user.name || "U").slice(0, 1).toUpperCase()}
+                  </span>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13.5px] font-medium text-slate-800 truncate">{user.name}</p>
-                <p className="text-[12px] text-slate-400 truncate">{user.email}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-bp-text">
+                  {user.name}
+                </p>
+                <p className="truncate text-xs text-bp-text-muted">
+                  {user.email}
+                </p>
               </div>
-              <span className="text-[12px] text-slate-400 shrink-0">{user.joined}</span>
+              <div className="shrink-0 text-right">
+                <span
+                  className={`mb-1 inline-flex items-center gap-1 text-[10px] ${
+                    user.status === "online"
+                      ? "text-emerald-500"
+                      : "text-bp-text-muted"
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      user.status === "online" ? "bg-emerald-500" : "bg-bp-border"
+                    }`}
+                  />
+                  {user.status === "online" ? "Online" : "Joined"}
+                </span>
+                <p className="text-[10px] text-bp-text-muted">{user.joined}</p>
+              </div>
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      )}
+    </Panel>
   );
 }
 
 function RecentUploads({ videos, onNavigate }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-[16px] font-semibold text-slate-800">Recent Uploads</h3>
-          <button
-            onClick={onNavigate}
-            className="text-[13px] font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
-          >
-            View all <ArrowUpRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="space-y-1">
+    <Panel
+      title="Recent uploads"
+      subtitle="Latest videos published on the platform"
+      action={
+        <button
+          type="button"
+          onClick={onNavigate}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-bp-blue transition-colors hover:text-bp-cyan"
+        >
+          View all <ArrowUpRight className="h-3.5 w-3.5" />
+        </button>
+      }
+    >
+      {videos.length === 0 ? (
+        <p className="py-8 text-center text-sm text-bp-text-muted">
+          No recent uploads to show
+        </p>
+      ) : (
+        <div className="divide-y divide-bp-border/40">
           {videos.map((video) => (
-            <div
-              key={video.id}
-              className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 transition-colors"
-            >
-              <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
-                <Play className="w-4 h-4 text-orange-500" />
+            <div key={video.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+                <Play className="h-4 w-4" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13.5px] font-medium text-slate-800 truncate">{video.title}</p>
-                <p className="text-[12px] text-slate-400 truncate">
-                  by <span className="text-slate-600 font-medium">{video.uploadedBy}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-bp-text">
+                  {video.title || "Untitled video"}
+                </p>
+                <p className="truncate text-xs text-bp-text-muted">
+                  by {video.uploadedBy || "Unknown"}
                 </p>
               </div>
-              <div className="text-right shrink-0">
-                <div className="flex items-center justify-end gap-1 text-[12px] text-slate-500">
-                  <Eye className="w-3.5 h-3.5" /> {video.views.toLocaleString()}
-                </div>
-                <span className="text-[12px] text-slate-400">{video.time}</span>
+              <div className="shrink-0 text-right">
+                <span className="inline-flex items-center gap-1 text-[11px] text-bp-text-secondary">
+                  <Eye className="h-3 w-3" />
+                  {formatCount(video.views)}
+                </span>
+                <p className="mt-1 text-[10px] text-bp-text-muted">
+                  {video.time}
+                </p>
               </div>
             </div>
           ))}
         </div>
+      )}
+    </Panel>
+  );
+}
+
+function DashboardLoading() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-bp-blue border-t-transparent" />
+        <p className="text-sm text-bp-text-secondary">Loading dashboard...</p>
       </div>
     </div>
   );
 }
 
-/* ═══════════════ MAIN DASHBOARD ═══════════════ */
 export default function Dashboard() {
   const navigate = useNavigate();
   const { data, generatedAt, loading, error, refetch } = useDashboardData();
+  const [workload, setWorkload] = useState({
+    inquiries: null,
+    pendingInquiries: null,
+    copyrightCases: null,
+    pendingCopyrightCases: null,
+    loading: true,
+  });
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-[13px] text-slate-500">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  const fetchWorkload = useCallback(async () => {
+    const [inquiriesResult, pendingInquiriesResult, copyrightResult] =
+      await Promise.allSettled([
+        fetchContactRequests({ page: 1, limit: 1 }),
+        fetchContactRequests({ status: "pending", page: 1, limit: 1 }),
+        fetchCopyrightStats(),
+      ]);
+
+    setWorkload((current) => {
+      const next = { ...current, loading: false };
+      if (inquiriesResult.status === "fulfilled") {
+        next.inquiries =
+          inquiriesResult.value.data?.pagination?.total ?? null;
+      } else {
+        console.error("Failed to load dashboard inquiries:", inquiriesResult.reason);
+      }
+      if (pendingInquiriesResult.status === "fulfilled") {
+        next.pendingInquiries =
+          pendingInquiriesResult.value.data?.pagination?.total ?? null;
+      } else {
+        console.error(
+          "Failed to load pending dashboard inquiries:",
+          pendingInquiriesResult.reason,
+        );
+      }
+      if (copyrightResult.status === "fulfilled") {
+        const cases = copyrightResult.value.data?.data?.cases;
+        next.copyrightCases = cases?.total ?? null;
+        next.pendingCopyrightCases = cases?.pending ?? null;
+      } else {
+        console.error("Failed to load dashboard copyright cases:", copyrightResult.reason);
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(fetchWorkload, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [fetchWorkload]);
+
+  if (loading && !data) return <DashboardLoading />;
 
   if (error === "unauthorized") {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <p className="text-slate-800 font-medium">Session expired</p>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="rounded-2xl border border-bp-border/60 bg-bp-card p-8 text-center shadow-bp-soft">
+          <p className="font-semibold text-bp-text">Your session has expired</p>
+          <p className="mt-2 text-sm text-bp-text-secondary">
+            Sign in again to continue to the dashboard.
+          </p>
           <button
+            type="button"
             onClick={() => {
               localStorage.removeItem("adminToken");
               localStorage.removeItem("adminUser");
               window.location.href = "/login";
             }}
-            className="px-5 py-2.5 text-[13px] bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium shadow-sm"
+            className="mt-5 rounded-xl bg-bp-blue px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
           >
-            Go to Login
+            Go to login
           </button>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !data) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <p className="text-red-600 font-medium">{error}</p>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="rounded-2xl border border-bp-border/60 bg-bp-card p-8 text-center shadow-bp-soft">
+          <p className="font-semibold text-red-500">{error}</p>
           <button
+            type="button"
             onClick={refetch}
-            className="px-5 py-2.5 text-[13px] bg-white hover:bg-slate-50 text-slate-700 rounded-xl border border-slate-200 transition-colors font-medium shadow-sm"
+            className="mt-5 rounded-xl border border-bp-border bg-bp-elevated px-5 py-2.5 text-sm font-semibold text-bp-text transition hover:bg-bp-hover"
           >
-            Retry
+            Try again
           </button>
         </div>
       </div>
@@ -380,59 +821,179 @@ export default function Dashboard() {
   const weeklyData = data?.weekly || [];
   const recentUsers = data?.recentUsers || [];
   const recentVideos = data?.recentUploads || [];
-  const maxUsers = Math.max(...weeklyData.map((d) => d.users), 1);
+  const totalVideos = Number(stats.totalVideos) || 0;
+  const totalShorts = Number(stats.totalShorts) || 0;
+  const totalLongVideos = Number(stats.totalLongVideos) || 0;
+  const activeUsers = Number(stats.activeUsers) || 0;
+  const activeRate = stats.totalUsers
+    ? Math.min(100, Math.round((activeUsers / stats.totalUsers) * 100))
+    : 0;
   const lastUpdated = generatedAt ? formatRelativeTime(generatedAt) : "just now";
+  const refreshDashboard = () => {
+    setWorkload((current) => ({ ...current, loading: true }));
+    refetch();
+    fetchWorkload();
+  };
+
+  const metrics = [
+    {
+      title: "Total users",
+      value: stats.totalUsers,
+      detail: `${formatCount(stats.newUsersThisWeek)} joined this week`,
+      icon: Users,
+      accent: "bg-blue-500/10 text-blue-500",
+    },
+    {
+      title: "Active users",
+      value: activeUsers,
+      detail: "Accounts in good standing",
+      icon: UserRoundCheck,
+      accent: "bg-emerald-500/10 text-emerald-500",
+      progress: activeRate,
+    },
+    {
+      title: "Total videos",
+      value: totalVideos,
+      detail: `${formatCount(snapshot.videosUploaded)} uploaded today`,
+      icon: Video,
+      accent: "bg-amber-500/10 text-amber-500",
+    },
+    {
+      title: "Long videos",
+      value: totalLongVideos,
+      detail: "Published long-form content",
+      icon: Play,
+      accent: "bg-violet-500/10 text-violet-500",
+    },
+    {
+      title: "Shorts",
+      value: totalShorts,
+      detail: "Published short-form content",
+      icon: Film,
+      accent: "bg-pink-500/10 text-pink-500",
+    },
+    {
+      title: "Inquiries",
+      value: workload.inquiries,
+      detail:
+        workload.pendingInquiries === null
+          ? "All contact requests"
+          : `${formatCount(workload.pendingInquiries)} pending · all requests`,
+      icon: Inbox,
+      accent: "bg-cyan-500/10 text-cyan-500",
+    },
+    {
+      title: "Copyright cases",
+      value: workload.copyrightCases,
+      detail:
+        workload.pendingCopyrightCases === null
+          ? "All submitted cases"
+          : `${formatCount(workload.pendingCopyrightCases)} pending review`,
+      icon: ShieldCheck,
+      accent: "bg-rose-500/10 text-rose-500",
+    },
+  ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Page Header */}
+    <div className="space-y-5 pb-6 animate-fade-in sm:space-y-6">
       <PageHeader
-        title="Dashboard"
+        title="Platform overview"
         subtitle={
           <>
             Welcome back,{" "}
-            <span className="font-medium text-slate-800">{getAdminDisplayName()}</span>.
-            Here's what's happening today.
+            <span className="font-medium text-bp-text">
+              {getAdminDisplayName()}
+            </span>
+            . Here&apos;s your platform at a glance.
           </>
         }
       >
-        <div className="flex items-center gap-1.5 text-[12px] text-slate-500 bg-white border border-slate-100 px-3.5 py-1.5 rounded-full shadow-sm shrink-0">
-          <Clock className="w-3.5 h-3.5" />
-          <span>Updated {lastUpdated}</span>
+        <div className="flex items-center gap-2">
+          <span className="hidden items-center gap-1.5 rounded-lg border border-bp-border/60 bg-bp-card px-3 py-2 text-xs text-bp-text-secondary sm:inline-flex">
+            <Clock3 className="h-3.5 w-3.5" />
+            Updated {lastUpdated}
+          </span>
+          <button
+            type="button"
+            onClick={refreshDashboard}
+            disabled={loading || workload.loading}
+            className="inline-flex items-center gap-2 rounded-xl border border-bp-border/70 bg-bp-card px-3.5 py-2.5 text-xs font-semibold text-bp-text transition hover:bg-bp-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${
+                loading || workload.loading ? "animate-spin" : ""
+              }`}
+            />
+            Refresh
+          </button>
         </div>
       </PageHeader>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {STAT_CONFIG.map((s) => (
-          <StatCard
-            key={s.key}
-            title={s.title}
-            value={s.dynamic ? (stats[s.dynamic] ?? 0).toLocaleString() : s.value}
-            change={s.change}
-            positive={s.positive}
-            icon={s.icon}
-            iconBg={s.iconBg}
-            iconColor={s.iconColor}
-          />
+      {error && (
+        <div
+          role="alert"
+          className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300"
+        >
+          Could not refresh the latest data. Showing the last loaded results.
+        </div>
+      )}
+
+      <section aria-label="Platform metrics">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-bp-blue" />
+            <h2 className="text-sm font-semibold text-bp-text">
+              Key performance indicators
+            </h2>
+          </div>
+        <span className="text-[11px] text-bp-text-muted">
+          {workload.loading ? "Updating..." : "Current totals"}
+        </span>
+      </div>
+      <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+        {metrics.map((metric) => (
+          <MetricCard key={metric.title} {...metric} />
         ))}
       </div>
+      </section>
 
-      {/* Chart + Snapshot */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="xl:col-span-2">
-          <WeeklyChart data={weeklyData} maxUsers={maxUsers} />
-        </div>
-        <div>
-          <TodaySnapshot snapshot={snapshot} />
-        </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <WeeklyUsersChart data={weeklyData} />
+      <WeeklyUploadsChart data={weeklyData} />
       </div>
 
-      {/* Recent */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <RecentUsers users={recentUsers} onNavigate={() => navigate("/alluser")} />
-        <RecentUploads videos={recentVideos} onNavigate={() => navigate("/uploads")} />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <WeeklyCopyrightChart data={weeklyData} />
+        <WeeklyAdsChart data={weeklyData} />
       </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <TodaySnapshot snapshot={snapshot} />
+        <ContentMix longVideos={totalLongVideos} shorts={totalShorts} />
+      </div>
+
+      <section aria-label="Recent platform activity">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-bp-text">
+              Recent platform activity
+            </h2>
+            <p className="mt-1 text-xs text-bp-text-muted">
+              The latest members and published videos
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <RecentUsers
+            users={recentUsers}
+            onNavigate={() => navigate("/alluser")}
+          />
+          <RecentUploads
+            videos={recentVideos}
+            onNavigate={() => navigate("/uploads")}
+          />
+        </div>
+      </section>
     </div>
   );
 }
