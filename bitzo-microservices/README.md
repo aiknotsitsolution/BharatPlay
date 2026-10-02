@@ -86,22 +86,16 @@ just to validate a token.
 
 ## Running locally (no Docker)
 
+Create ignored `.env` files for `gateway/` and each directory under
+`services/`, and supply the configuration required by that service. Do not
+commit these files. Use a local MongoDB or your own development database URIs.
+The same `JWT_SECRET` and `REFRESH_TOKEN_SECRET` must be used by all services.
+
 ```bash
-# 1) one-time: create a .env in every service from its .env.example
-./setup-env.sh
-# now edit each services/*/.env and gateway/.env with real secrets
-# (JWT_SECRET, REFRESH_TOKEN_SECRET, IMAGEKIT_*, CLOUDINARY_*, etc.)
-# Make sure JWT_SECRET and REFRESH_TOKEN_SECRET are IDENTICAL across all
-# services and gateway — they're independent processes but must agree on
-# how to verify tokens.
-
-# 2) make sure a local MongoDB is running on localhost:27017
-#    (each service will create/use its own database name automatically)
-
-# 3) install dependencies for every service
+# Install dependencies for every service.
 npm run install:all
 
-# 4) start everything together (needs `concurrently`, installed via root package.json)
+# Start everything together.
 npm install
 npm run dev
 ```
@@ -113,16 +107,80 @@ npm install
 npm run dev   # nodemon-style --watch on port 4003
 ```
 
-## Running with Docker
+## Production deployment with Docker Compose
+
+The production Compose setup uses an external MongoDB deployment; it does not
+start a MongoDB container or publish the individual microservice ports. Provide
+these secret files on the server before starting:
+
+- `gateway/.env`
+- `services/auth-service/.env`
+- `services/admin-service/.env`
+- `services/video-service/.env`
+- `services/category-service/.env`
+- `services/leaderboard-service/.env`
+- `services/notification-service/.env`
+- `services/player-ad-service/.env`
+- `services/copyright-service/.env`
+- `services/security-service/.env`
+
+Populate each file from your secret manager with that service's production
+configuration. Set each service's `MONGO_URI` and any required `*_DB_URI`
+values to the production databases. Use the same strong, newly generated
+`JWT_SECRET` and `REFRESH_TOKEN_SECRET` across all services. Set public
+website/admin URLs and all provider credentials to their production values.
+Set `CORS_ORIGINS` in the deployment environment to the comma-separated,
+exact HTTPS origins of the frontend and admin panel (no paths or trailing
+slashes); unlisted browser origins are denied.
+Never commit environment files; restrict them to the deployment account
+(for example, `chmod 600 path/to/.env` on Linux).
+For local development, when `CORS_ORIGINS` is unset and `NODE_ENV` is not
+`production`, browser origins are reflected to keep local login working.
+`CORS_ORIGINS=true` is also accepted only outside production for compatibility
+with existing local `.env` files. Production intentionally fails closed if
+`CORS_ORIGINS` is missing; the string `true` is not a production wildcard.
+
+Each backend service needs `MONGO_URI`, `JWT_SECRET`, and
+`REFRESH_TOKEN_SECRET` (at least 32 characters). The auth, admin, and video
+services also require `IMAGEKIT_PUBLIC_KEY`, `IMAGEKIT_PRIVATE_KEY`, and
+`IMAGEKIT_URL_ENDPOINT`. Configure these cross-service database URIs where
+used:
+
+| Service | Additional database URI keys |
+|---------|-------------------------------|
+| auth-service | `ADMIN_DB_URI`, `NOTIFICATION_DB_URI`, `SECURITY_DB_URI`, `VIDEO_DB_URI` |
+| admin-service | `AUTH_DB_URI`, `NOTIFICATION_DB_URI`, `SECURITY_DB_URI`, `VIDEO_DB_URI`, `CATEGORY_DB_URI`, `COPYRIGHT_DB_URI`, `PLAYERAD_DB_URI` |
+| video-service | `ADMIN_DB_URI`, `NOTIFICATION_DB_URI`, `AUTH_DB_URI`, `SECURITY_DB_URI`, `CATEGORY_DB_URI` |
+| category-service | `ADMIN_DB_URI` |
+| leaderboard-service | `AUTH_DB_URI`, `VIDEO_DB_URI` |
+| notification-service | `AUTH_DB_URI`, `VIDEO_DB_URI` |
+| player-ad-service | `AUTH_DB_URI`, `SECURITY_DB_URI` |
+| copyright-service | `ADMIN_DB_URI`, `NOTIFICATION_DB_URI`, `AUTH_DB_URI`, `VIDEO_DB_URI`, `SECURITY_DB_URI` |
+| security-service | `AUTH_DB_URI`, `COPYRIGHT_DB_URI` |
+
+The Compose configuration requires `CORS_ORIGINS` to be set before running
+`docker compose config` or starting the stack.
+
+The gateway is published only on `127.0.0.1:4000`. Put it behind a
+TLS-terminating reverse proxy on the host and point the frontend to that HTTPS
+domain. Configure the MongoDB provider's network allowlist for the host and
+keep database backups enabled.
 
 ```bash
-./setup-env.sh   # create .env files first, then fill in secrets
-docker compose up --build
+docker compose config --quiet
+docker compose up --build -d
+docker compose ps
 ```
 
-This starts one shared `mongo` container plus all 9 services and the
-gateway, each in its own container, each pointed at its own database name
-on that Mongo server (`bitzo_auth`, `bitzo_video`, ...).
+Compose waits for each service's `/health` endpoint before starting the
+gateway. Check `docker compose logs -f` if a container does not become healthy.
+Only the gateway is reachable from the host; internal services communicate
+over Compose's private network.
+
+Previously committed environment files and example templates contained
+credential-like values. Removing them from the current tree does not remove
+them from Git history: rotate database passwords, JWT/device secrets, mail,
+and cloud-provider credentials before deploying, and revoke the old values.
 
 ## Frontend changes needed
 
@@ -132,7 +190,7 @@ instead of the old monolith's URL — every route path is unchanged
 talks to `http://localhost:8000` directly, just change that base URL to
 `http://localhost:4000`.
 
-## What's next (optional follow-ups)
+## Operational notes
 
 - Replace admin-service's secondary-connection reads with real internal
   HTTP APIs on auth-service/video-service for a fully decoupled system.
@@ -140,5 +198,5 @@ talks to `http://localhost:8000` directly, just change that base URL to
   auth-service/notification-service/security-service beyond one instance
   each — right now each keeps its own in-process Socket.IO server, so
   real-time events only reach clients connected to that specific instance.
-- Add per-service health checks / readiness probes to `docker-compose.yml`
-  if you deploy this to k8s or a similar orchestrator later.
+- Configure host-level TLS, firewall rules, monitoring, and tested backup
+  restore procedures as part of the deployment.

@@ -16,6 +16,16 @@ const route1 = require("./routes/CopyrightRoutes/UserCopyrightRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 4008;
+const configuredOrigins = process.env.CORS_ORIGINS?.trim();
+const isProduction = process.env.NODE_ENV === "production";
+const allowedOrigins =
+  configuredOrigins?.toLowerCase() === "true" && !isProduction
+    ? true
+    : configuredOrigins
+      ? configuredOrigins.split(",").map((origin) => origin.trim()).filter(Boolean)
+      : isProduction
+        ? []
+        : true;
 
 // =====================================================
 // LOGGING
@@ -64,7 +74,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 app.use(
   cors({
-    origin: true,
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     allowedHeaders: [

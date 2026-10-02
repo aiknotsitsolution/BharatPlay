@@ -1,4 +1,5 @@
 const request = require("supertest");
+process.env.CORS_ORIGINS = "https://app.example.com,https://admin.example.com";
 const app = require("../server");
 
 describe("gateway API", () => {
@@ -29,5 +30,34 @@ describe("gateway API", () => {
       success: false,
       message: "Route not found",
     });
+  });
+
+  test("CORS allows configured origins and omits headers for other origins", async () => {
+    const allowed = await request(app)
+      .get("/health")
+      .set("Origin", "https://app.example.com");
+    const blocked = await request(app)
+      .get("/health")
+      .set("Origin", "https://untrusted.example");
+
+    expect(allowed.headers["access-control-allow-origin"]).toBe(
+      "https://app.example.com",
+    );
+    expect(blocked.headers["access-control-allow-origin"]).toBeUndefined();
+  });
+
+  test("CORS permits credentialed JSON login preflight for configured origins", async () => {
+    const response = await request(app)
+      .options("/api/login")
+      .set("Origin", "https://app.example.com")
+      .set("Access-Control-Request-Method", "POST")
+      .set("Access-Control-Request-Headers", "content-type");
+
+    expect(response.status).toBe(204);
+    expect(response.headers["access-control-allow-origin"]).toBe(
+      "https://app.example.com",
+    );
+    expect(response.headers["access-control-allow-credentials"]).toBe("true");
+    expect(response.headers["access-control-allow-methods"]).toContain("POST");
   });
 });

@@ -24,7 +24,7 @@ function getConnection(envVarName, label) {
   const uri = process.env[envVarName];
   if (!uri) {
     throw new Error(
-      `${envVarName} is not set. This service needs read/write access to the ${label} database - set ${envVarName} in your .env (see .env.example).`
+      `${envVarName} is not set. This service needs read/write access to the ${label} database - configure ${envVarName} in this service's environment.`
     );
   }
   if (!cache[envVarName]) {

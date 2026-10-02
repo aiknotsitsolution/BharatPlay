@@ -1,196 +1,139 @@
-version: "3.9"
+name: bharatplay
 
-# ---------------------------------------------------------------------------
-# Bitzo microservices - local/dev orchestration
-# ---------------------------------------------------------------------------
-# One shared MongoDB *server* (container), but every microservice connects
-# to its OWN database on that server (bitzo_auth, bitzo_video, ...), and
-# only opens extra connections to another service's database when it
-# genuinely needs cross-service data (see each service's config/connections.js).
-#
-# Copy each services/*/.env.example to services/*/.env (and gateway/.env)
-# before running `docker compose up --build`, and fill in real secrets
-# (JWT_SECRET, IMAGEKIT_*, etc). The MONGO_URI / *_DB_URI values already
-# point at the `mongo` service below and normally don't need editing for
-# local docker-compose use.
-# ---------------------------------------------------------------------------
+x-app-environment: &app-environment
+  NODE_ENV: production
+  CORS_ORIGINS: "${CORS_ORIGINS:?Set CORS_ORIGINS to the comma-separated HTTPS frontend origins}"
+
+x-app-defaults: &app-defaults
+  init: true
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+  healthcheck:
+    test:
+      - CMD
+      - node
+      - -e
+      - "fetch('http://127.0.0.1:' + process.env.PORT + '/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
 
 services:
-  mongo:
-    image: mongo:7
-    container_name: bitzo-mongo
-    ports:
-      - "27017:27017"
-    volumes:
-      - bitzo_mongo_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   gateway:
+    <<: *app-defaults
     build: ./gateway
-    container_name: bitzo-gateway
     env_file: ./gateway/.env
     environment:
-      - AUTH_SERVICE_URL=http://auth-service:4001
-      - ADMIN_SERVICE_URL=http://admin-service:4002
-      - VIDEO_SERVICE_URL=http://video-service:4003
-      - CATEGORY_SERVICE_URL=http://category-service:4004
-      - LEADERBOARD_SERVICE_URL=http://leaderboard-service:4005
-      - NOTIFICATION_SERVICE_URL=http://notification-service:4006
-      - PLAYER_AD_SERVICE_URL=http://player-ad-service:4007
-      - COPYRIGHT_SERVICE_URL=http://copyright-service:4008
-      - SECURITY_SERVICE_URL=http://security-service:4009
+      <<: *app-environment
+      PORT: "4000"
+      AUTH_SERVICE_URL: http://auth-service:4001
+      ADMIN_SERVICE_URL: http://admin-service:4002
+      VIDEO_SERVICE_URL: http://video-service:4003
+      CATEGORY_SERVICE_URL: http://category-service:4004
+      LEADERBOARD_SERVICE_URL: http://leaderboard-service:4005
+      NOTIFICATION_SERVICE_URL: http://notification-service:4006
+      PLAYER_AD_SERVICE_URL: http://player-ad-service:4007
+      COPYRIGHT_SERVICE_URL: http://copyright-service:4008
+      SECURITY_SERVICE_URL: http://security-service:4009
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
     depends_on:
-      - auth-service
-      - admin-service
-      - video-service
-      - category-service
-      - leaderboard-service
-      - notification-service
-      - player-ad-service
-      - copyright-service
-      - security-service
+      auth-service:
+        condition: service_healthy
+      admin-service:
+        condition: service_healthy
+      video-service:
+        condition: service_healthy
+      category-service:
+        condition: service_healthy
+      leaderboard-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      player-ad-service:
+        condition: service_healthy
+      copyright-service:
+        condition: service_healthy
+      security-service:
+        condition: service_healthy
 
   auth-service:
+    <<: *app-defaults
     build: ./services/auth-service
-    container_name: bitzo-auth-service
     env_file: ./services/auth-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/authservice?appName=Cluster0
-      - ADMIN_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/admin?appName=Cluster0
-      - NOTIFICATION_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/notification?appName=Cluster0
-      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/security?appName=Cluster0
-      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/video?appName=Cluster0
-    ports:
-      - "4001:4001"
-    depends_on:
-      mongo:
-        condition: service_healthy
+      <<: *app-environment
+      PORT: "4001"
 
   admin-service:
+    <<: *app-defaults
     build: ./services/admin-service
-    container_name: bitzo-admin-service
     env_file: ./services/admin-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/admin?appName=Cluster0
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/authservice?appName=Cluster0
-      - NOTIFICATION_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/notification?appName=Cluster0
-      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/security?appName=Cluster0
-      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/video?appName=Cluster0
-      - CATEGORY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/category?appName=Cluster0
-    ports:
-      - "4002:4002"
-    depends_on:
-      mongo:
-        condition: service_healthy
+      <<: *app-environment
+      PORT: "4002"
 
   video-service:
+    <<: *app-defaults
     build: ./services/video-service
-    container_name: bitzo-video-service
     env_file: ./services/video-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/video?appName=Cluster0
-      - ADMIN_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/admin?appName=Cluster0
-      - NOTIFICATION_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/notification?appName=Cluster0
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/authservice?appName=Cluster0
-      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/security?appName=Cluster0
-      - CATEGORY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/category?appName=Cluster0
-    ports:
-      - "4003:4003"
-    depends_on:
-      mongo:
-        condition: service_healthy
+      <<: *app-environment
+      PORT: "4003"
 
   category-service:
+    <<: *app-defaults
     build: ./services/category-service
-    container_name: bitzo-category-service
     env_file: ./services/category-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/category?appName=Cluster0
-      - ADMIN_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/admin?appName=Cluster0
-    ports:
-      - "4004:4004"
-    depends_on:
-      mongo:
-        condition: service_healthy
+      <<: *app-environment
+      PORT: "4004"
 
   leaderboard-service:
+    <<: *app-defaults
     build: ./services/leaderboard-service
-    container_name: bitzo-leaderboard-service
     env_file: ./services/leaderboard-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/leaderboard?appName=Cluster0
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/authservice?appName=Cluster0
-      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/video?appName=Cluster0
-    ports:
-      - "4005:4005"
-    depends_on:
-      mongo:
-        condition: service_healthy
+      <<: *app-environment
+      PORT: "4005"
 
   notification-service:
+    <<: *app-defaults
     build: ./services/notification-service
-    container_name: bitzo-notification-service
     env_file: ./services/notification-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/notification?appName=Cluster0
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/authservice?appName=Cluster0
-      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/video?appName=Cluster0
-    ports:
-      - "4006:4006"
-    depends_on:
-      mongo:
-        condition: service_healthy
+      <<: *app-environment
+      PORT: "4006"
 
   player-ad-service:
+    <<: *app-defaults
     build: ./services/player-ad-service
-    container_name: bitzo-player-ad-service
     env_file: ./services/player-ad-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/playerad?appName=Cluster0
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/authservice?appName=Cluster0
-      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/security?appName=Cluster0
-    ports:
-      - "4007:4007"
-    depends_on:
-      mongo:
-        condition: service_healthy
+      <<: *app-environment
+      PORT: "4007"
 
   copyright-service:
+    <<: *app-defaults
     build: ./services/copyright-service
-    container_name: bitzo-copyright-service
     env_file: ./services/copyright-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/copyright?appName=Cluster0
-      - ADMIN_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/admin?appName=Cluster0
-      - NOTIFICATION_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/notification?appName=Cluster0
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/authservice?appName=Cluster0
-      - VIDEO_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/video?appName=Cluster0
-      - SECURITY_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/security?appName=Cluster0
-    ports:
-      - "4008:4008"
-    depends_on:
-      mongo:
-        condition: service_healthy
+      <<: *app-environment
+      PORT: "4008"
 
   security-service:
+    <<: *app-defaults
     build: ./services/security-service
-    container_name: bitzo-security-service
     env_file: ./services/security-service/.env
     environment:
-      - MONGO_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/security?appName=Cluster0
-      - AUTH_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/authservice?appName=Cluster0
-      - COPYRIGHT_DB_URI=mongodb+srv://admin_db_user:23UPXbWUdwnno1Kp@cluster0.zqsju4b.mongodb.net/copyright?appName=Cluster0
-    ports:
-      - "4009:4009"
-    depends_on:
-      mongo:
-        condition: service_healthy
-
-volumes:
-  bitzo_mongo_data:
+      <<: *app-environment
+      PORT: "4009"

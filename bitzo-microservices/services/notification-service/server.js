@@ -15,6 +15,16 @@ const route0 = require("./routes/notificationRoute");
 
 const app = express();
 const PORT = process.env.PORT || 4006;
+const configuredOrigins = process.env.CORS_ORIGINS?.trim();
+const isProduction = process.env.NODE_ENV === "production";
+const allowedOrigins =
+  configuredOrigins?.toLowerCase() === "true" && !isProduction
+    ? true
+    : configuredOrigins
+      ? configuredOrigins.split(",").map((origin) => origin.trim()).filter(Boolean)
+      : isProduction
+        ? []
+        : true;
 const MONGO_RETRY_DELAY_MS = Number(process.env.MONGO_RETRY_DELAY_MS || 5000);
 
 // =====================================================
@@ -82,7 +92,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 app.use(
   cors({
-    origin: true,
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     allowedHeaders: [
@@ -137,7 +147,7 @@ const { attachSocketServer } = require("./services/socketService");
 if (require.main === module) {
   const httpServer = http.createServer(app);
   const socketServer = new SocketIOServer(httpServer, {
-    cors: { origin: true, credentials: true },
+    cors: { origin: allowedOrigins, credentials: true },
   });
 
   socketServer.use((socket, next) => {

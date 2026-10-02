@@ -34,6 +34,16 @@ const supportRoutes = require("./routes/supportRoute");
 
 const app = express();
 const PORT = process.env.PORT || 4001;
+const configuredOrigins = process.env.CORS_ORIGINS?.trim();
+const isProduction = process.env.NODE_ENV === "production";
+const allowedOrigins =
+  configuredOrigins?.toLowerCase() === "true" && !isProduction
+    ? true
+    : configuredOrigins
+      ? configuredOrigins.split(",").map((origin) => origin.trim()).filter(Boolean)
+      : isProduction
+        ? []
+        : true;
 app.set("trust proxy", 1);
 
 // =====================================================
@@ -83,7 +93,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 app.use(
   cors({
-    origin: true,
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     allowedHeaders: [

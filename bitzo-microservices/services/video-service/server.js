@@ -21,6 +21,16 @@ const route1 = require("./routes/userVideoRoute");
 
 const app = express();
 const PORT = process.env.PORT || 4003;
+const configuredOrigins = process.env.CORS_ORIGINS?.trim();
+const isProduction = process.env.NODE_ENV === "production";
+const allowedOrigins =
+  configuredOrigins?.toLowerCase() === "true" && !isProduction
+    ? true
+    : configuredOrigins
+      ? configuredOrigins.split(",").map((origin) => origin.trim()).filter(Boolean)
+      : isProduction
+        ? []
+        : true;
 
 // =====================================================
 // LOGGING
@@ -69,7 +79,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 app.use(
   cors({
-    origin: true,
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     allowedHeaders: [
@@ -127,7 +137,7 @@ app.use((err, req, res, next) => {
 if (require.main === module) {
   const httpServer = http.createServer(app);
   const socketServer = new SocketIOServer(httpServer, {
-    cors: { origin: true, credentials: true },
+    cors: { origin: allowedOrigins, credentials: true },
   });
 
   socketServer.use((socket, next) => {
