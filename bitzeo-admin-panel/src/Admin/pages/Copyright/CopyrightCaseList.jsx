@@ -475,6 +475,35 @@ function VideoPanel({ video, label, username, channelName, emptyText }) {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex items-center gap-3 rounded-xl border border-bp-border bg-bp-card/70 px-4 py-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-bp-cyan/10">
+            <Eye size={17} className="text-bp-cyan" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-bp-text-muted">
+              Views
+            </p>
+            <p className="text-base font-bold tabular-nums text-bp-text">
+              {compact(video.views ?? video.viewsCount ?? 0)}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl border border-bp-border bg-bp-card/70 px-4 py-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-pink-500/10">
+            <Heart size={17} className="text-pink-400" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-bp-text-muted">
+              Likes
+            </p>
+            <p className="text-base font-bold tabular-nums text-bp-text">
+              {compact(video.likesCount ?? video.likes ?? video.likeCount ?? 0)}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="relative aspect-video rounded-lg overflow-hidden bg-black">
         {playing && url ? (
           <video src={url} controls playsInline className="w-full h-full" />
@@ -513,35 +542,6 @@ function VideoPanel({ video, label, username, channelName, emptyText }) {
           <span className="text-bp-text-secondary">Channel:</span>{" "}
           {channelName || "—"}
         </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex items-center gap-3 rounded-xl border border-bp-border bg-bp-card/70 px-4 py-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-bp-cyan/10">
-            <Eye size={17} className="text-bp-cyan" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-bp-text-muted">
-              Views
-            </p>
-            <p className="text-base font-bold tabular-nums text-bp-text">
-              {compact(video.views ?? video.viewsCount)}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 rounded-xl border border-bp-border bg-bp-card/70 px-4 py-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-pink-500/10">
-            <Heart size={17} className="text-pink-400" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-bp-text-muted">
-              Likes
-            </p>
-            <p className="text-base font-bold tabular-nums text-bp-text">
-              {compact(video.likesCount ?? video.likes ?? video.likeCount)}
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Everything a reviewer compares between the two uploads. */}
