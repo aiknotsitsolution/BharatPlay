@@ -1,6 +1,7 @@
 const CopyrightCase = require("../../models/CopyrightCase");
 const CopyrightStrike = require("../../models/CopyrightStrike");
 const Video = require("../../models/Videomodel");
+const Channel = require("../../models/Channel/ChannelModel");
 const User = require("../../models/usermodel");
 const Admin = require("../../models/admin/AdminModel");
 const { logAuditEvent } = require("../../services/auditEventService");
@@ -89,17 +90,76 @@ exports.getCaseById = async (req, res) => {
     }
 
     const copyrightCase = await CopyrightCase.findById(id)
-      .populate({ path: "respondent", select: "name email channelImage", model: User })
+      .populate({
+        path: "respondent",
+        select: "name email phone channels createdAt",
+        model: User,
+        populate: { path: "channels", select: "name", model: Channel },
+      })
       .populate({ path: "assignedTo", select: "name email", model: Admin })
-      .populate({ path: "content.video", select: "title videoUrl thumbnail videoType", model: Video })
-      .populate({ path: "evidence.uploadedBy", select: "name email", model: User })
+      .populate({
+        path: "content.video",
+        select:
+          "title description videoUrl thumbnail videoType channel status deletedAt disabledAt disableReason deleteReason duration views likesCount createdAt",
+        model: Video,
+        populate: { path: "channel", select: "name" },
+      })
+      .populate({
+        path: "claim.originalWorkVideo",
+        select:
+          "title description videoUrl thumbnail videoType channel status deletedAt disabledAt disableReason deleteReason duration views likesCount createdAt",
+        model: Video,
+        populate: { path: "channel", select: "name" },
+      })
+      .populate({
+        path: "claimant.userId",
+        select: "name email createdAt channels",
+        model: User,
+      })
+      .populate({ path: "evidence.uploadedBy", select: "name email", model: Admin })
+      .populate({ path: "statusHistory.changedBy", select: "name email", model: Admin })
+      .populate({ path: "notes.author", select: "name email", model: Admin })
       .populate({ path: "resolution.resolvedBy", select: "name email", model: Admin })
-      .populate("strike")
+      .populate({
+        path: "strike",
+        populate: [
+          { path: "issuedBy", select: "name email", model: Admin },
+          { path: "resolvedBy", select: "name email", model: Admin },
+          { path: "statusHistory.changedBy", select: "name email", model: Admin },
+        ],
+      })
       .lean();
 
     if (!copyrightCase) {
       return res.status(404).json({ success: false, message: "Case not found" });
     }
+
+    const videoReferences = [
+      copyrightCase.content?.video,
+      copyrightCase.claim?.originalWorkVideo,
+    ].filter((video) => video?._id);
+    if (videoReferences.length > 0) {
+      const videoMetrics = await Video.find({
+        _id: { $in: videoReferences.map((video) => video._id) },
+      })
+        .select("_id views likesCount")
+        .lean();
+      const metricsById = new Map(
+        videoMetrics.map((video) => [String(video._id), video]),
+      );
+
+      for (const video of videoReferences) {
+        const metrics = metricsById.get(String(video._id));
+        if (!metrics) continue;
+        video.views = metrics.views ?? video.views ?? 0;
+        video.likesCount = metrics.likesCount ?? video.likesCount ?? 0;
+      }
+    }
+
+    copyrightCase.respondentStrikeCount = await CopyrightStrike.countDocuments({
+      user: copyrightCase.respondent?._id || copyrightCase.respondent,
+      status: "active",
+    });
 
     return res.status(200).json({ success: true, data: copyrightCase });
   } catch (err) {

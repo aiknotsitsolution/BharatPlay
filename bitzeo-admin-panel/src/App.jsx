@@ -35,8 +35,9 @@ import EditUser from "./Admin/Users/EditUser";
 import AllUploads from "./Admin/pages/AllUploads";
 import Notifications from "./Admin/pages/Notifications";
 import Profile from "./Admin/pages/Profile";
-import CopyrightCaseList from "./Admin/pages/Copyright/CopyrightCaseList";
-import CopyrightCaseDetail from "./Admin/pages/Copyright/CopyrightCaseDetail";
+import CopyrightCaseList, {
+  CopyrightCaseReview,
+} from "./Admin/pages/Copyright/CopyrightCaseList";
 import CopyrightStrikeList from "./Admin/pages/Copyright/CopyrightStrikeList";
 import CopyrightCreateCase from "./Admin/pages/Copyright/CopyrightCreateCase";
 import CopyrightStrikeDetail from "./Admin/pages/Copyright/CopyrightStrikeDetail";
@@ -177,7 +178,7 @@ function App() {
               <Route element={<RoleGuard />}>
                 <Route path="copyright" element={<TabRedirect tab="copyright" />} />
                 <Route path="copyright/cases" element={<CopyrightCaseList />} />
-                <Route path="copyright/cases/:id" element={<CopyrightCaseDetail />} />
+                <Route path="copyright/cases/:id" element={<CopyrightCaseReview />} />
                 <Route path="copyright/strikes" element={<CopyrightStrikeList />} />
                 <Route path="copyright/strikes/:id" element={<CopyrightStrikeDetail />} />
               </Route>
