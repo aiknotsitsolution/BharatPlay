@@ -155,6 +155,16 @@ const copyrightCaseSchema = new mongoose.Schema(
         trim: true,
         default: "",
       },
+      originalWorkVideo: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Video",
+        default: null,
+      },
+      originalWorkThumbnail: {
+        type: String,
+        trim: true,
+        default: "",
+      },
     },
 
     // Case status (lifecycle state machine)

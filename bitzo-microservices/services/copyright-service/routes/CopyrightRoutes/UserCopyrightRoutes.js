@@ -3,6 +3,7 @@ const router = express.Router();
 const CopyrightCase = require("../../models/CopyrightCase");
 const CopyrightStrike = require("../../models/CopyrightStrike");
 const Video = require("../../models/Videomodel");
+const Channel = require("../../models/Channel/ChannelModel");
 const User = require("../../models/usermodel");
 const Admin = require("../../models/admin/AdminModel");
 const { logAuditEvent } = require("../../services/auditEventService");
@@ -224,6 +225,7 @@ router.post("/claim", publicClaimLimiter, async (req, res) => {
       claimDescription,
       originalWork,
       originalWorkUrl,
+      originalWorkVideoId,
       declaration,
     } = req.body;
 
@@ -241,15 +243,50 @@ router.post("/claim", publicClaimLimiter, async (req, res) => {
     }
     if (!videoId || !isValidObjectId(videoId))
       errors.push("A valid video ID is required");
+    if (originalWorkVideoId && !isValidObjectId(originalWorkVideoId))
+      errors.push("A valid original work video ID is required");
     if (!claimType) errors.push("Claim type is required");
     if (!claimDescription || !claimDescription.trim())
       errors.push("Claim description is required");
     if (!declaration) errors.push("You must agree to the declaration");
+    if (originalWorkUrl && typeof originalWorkUrl !== "string") {
+      errors.push("Original work URL must be a valid HTTP or HTTPS URL");
+    } else if (originalWorkUrl?.trim()) {
+      try {
+        const parsedOriginalWorkUrl = new URL(originalWorkUrl.trim());
+        if (!["http:", "https:"].includes(parsedOriginalWorkUrl.protocol)) {
+          errors.push("Original work URL must use HTTP or HTTPS");
+        }
+      } catch {
+        errors.push("Original work URL must be a valid HTTP or HTTPS URL");
+      }
+    }
 
     if (errors.length > 0) {
       return res
         .status(400)
         .json({ success: false, message: errors.join("; ") });
+    }
+
+    const originalWorkVideo = originalWorkVideoId
+      ? await Video.findById(originalWorkVideoId)
+          .select("videoUrl thumbnail")
+          .lean()
+      : null;
+    if (originalWorkVideoId && !originalWorkVideo) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Original work video not found" });
+    }
+    if (
+      originalWorkVideo &&
+      (!originalWorkUrl ||
+        originalWorkVideo.videoUrl !== originalWorkUrl.trim())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Original work video does not match the supplied URL",
+      });
     }
 
     // Verify video exists and is accessible
@@ -340,6 +377,8 @@ router.post("/claim", publicClaimLimiter, async (req, res) => {
         description: (claimDescription || "").trim(),
         originalWork: (originalWork || "").trim(),
         originalWorkUrl: (originalWorkUrl || "").trim(),
+        originalWorkVideo: originalWorkVideo?._id || null,
+        originalWorkThumbnail: originalWorkVideo?.thumbnail || "",
       },
       status: "pending",
       priority: "medium",
@@ -429,7 +468,7 @@ router.post("/claim", publicClaimLimiter, async (req, res) => {
   }
 });
 
-// GET /api/copyright/claim/:reference — Check claim status by reference number
+// GET /api/copyright/claim/:reference — Check public claim details by reference number
 router.get("/claim/:reference", claimLookupLimiter, async (req, res) => {
   try {
     const { reference } = req.params;
@@ -440,10 +479,11 @@ router.get("/claim/:reference", claimLookupLimiter, async (req, res) => {
     }
 
     const copyrightCase = await CopyrightCase.findOne({
-      caseNumber: reference.trim(),
+      caseNumber: reference.trim().toUpperCase(),
+      source: "public_submission",
     })
       .select(
-        "caseNumber status source createdAt claim.type claim.description resolution",
+        "caseNumber status source createdAt claimant.name claimant.organization claimant.relationship content.video content.title content.url claim.type claim.description claim.originalWork claim.originalWorkUrl claim.originalWorkVideo claim.originalWorkThumbnail resolution",
       )
       .lean();
 
@@ -456,6 +496,28 @@ router.get("/claim/:reference", claimLookupLimiter, async (req, res) => {
         });
     }
 
+    const video = isValidObjectId(copyrightCase.content?.video)
+      ? await Video.findById(copyrightCase.content.video)
+          .select("title description thumbnail videoUrl duration channel createdAt")
+          .lean()
+      : null;
+    const channel = video?.channel
+      ? await Channel.findById(video.channel).select("name").lean()
+      : null;
+    const originalWorkVideo = isValidObjectId(
+      copyrightCase.claim?.originalWorkVideo,
+    )
+      ? await Video.findById(copyrightCase.claim.originalWorkVideo)
+          .select("thumbnail videoUrl")
+          .lean()
+      : copyrightCase.claim?.originalWorkUrl
+        ? await Video.findOne({
+            videoUrl: copyrightCase.claim.originalWorkUrl,
+          })
+            .select("thumbnail videoUrl")
+            .lean()
+        : null;
+
     return res.status(200).json({
       success: true,
       data: {
@@ -465,6 +527,33 @@ router.get("/claim/:reference", claimLookupLimiter, async (req, res) => {
         filedAt: copyrightCase.createdAt,
         claimType: copyrightCase.claim?.type,
         claimDescription: copyrightCase.claim?.description,
+        claimant: {
+          name: copyrightCase.claimant?.name || "",
+          organization: copyrightCase.claimant?.organization || "",
+          relationship: copyrightCase.claimant?.relationship || "",
+        },
+        originalWork: {
+          title: copyrightCase.claim?.originalWork || "",
+          url:
+            originalWorkVideo?.videoUrl ||
+            copyrightCase.claim?.originalWorkUrl ||
+            "",
+          videoId: originalWorkVideo?._id || null,
+          thumbnail:
+            copyrightCase.claim?.originalWorkThumbnail ||
+            originalWorkVideo?.thumbnail ||
+            "",
+        },
+        reportedVideo: {
+          id: copyrightCase.content?.video || null,
+          title: video?.title || copyrightCase.content?.title || "",
+          description: video?.description || "",
+          thumbnail: video?.thumbnail || "",
+          url: video?.videoUrl || copyrightCase.content?.url || "",
+          duration: video?.duration ?? null,
+          uploadedAt: video?.createdAt || null,
+          channel: channel?.name || "",
+        },
         resolution: copyrightCase.resolution?.decision
           ? {
               decision: copyrightCase.resolution.decision,
@@ -553,5 +642,181 @@ router.get("/my-claims", isAuthenticated, async (req, res) => {
       .json({ success: false, message: "Failed to fetch your claims" });
   }
 });
+
+// GET /api/copyright/my-claims/:caseNumber — full details for an owned claim
+router.get("/my-claims/:caseNumber", isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId).select("email").lean();
+    if (!user) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
+
+    const copyrightCase = await CopyrightCase.findOne({
+      caseNumber: req.params.caseNumber.trim().toUpperCase(),
+      $or: [
+        { "claimant.userId": userId },
+        { "claimant.email": user.email.toLowerCase() },
+      ],
+    })
+      .select(
+        "caseNumber status source priority createdAt updatedAt claimant.name claimant.email claimant.phone claimant.address claimant.organization claimant.relationship content.video content.title content.url claim.type claim.description claim.originalWork claim.originalWorkUrl claim.originalWorkVideo claim.originalWorkThumbnail evidence statusHistory resolution",
+      )
+      .lean();
+
+    if (!copyrightCase) {
+      return res.status(404).json({ success: false, message: "Claim not found" });
+    }
+
+    const [reportedVideo, originalWorkVideo] = await Promise.all([
+      isValidObjectId(copyrightCase.content?.video)
+        ? Video.findById(copyrightCase.content.video)
+            .select("title description thumbnail videoUrl duration channel createdAt")
+            .lean()
+        : null,
+      isValidObjectId(copyrightCase.claim?.originalWorkVideo)
+        ? Video.findById(copyrightCase.claim.originalWorkVideo)
+            .select("thumbnail videoUrl")
+            .lean()
+        : copyrightCase.claim?.originalWorkUrl
+          ? Video.findOne({ videoUrl: copyrightCase.claim.originalWorkUrl })
+              .select("thumbnail videoUrl")
+              .lean()
+          : null,
+    ]);
+    const channel = reportedVideo?.channel
+      ? await Channel.findById(reportedVideo.channel).select("name").lean()
+      : null;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...copyrightCase,
+        content: {
+          ...copyrightCase.content,
+          video: {
+            id: copyrightCase.content?.video || null,
+            title: reportedVideo?.title || copyrightCase.content?.title || "",
+            description: reportedVideo?.description || "",
+            thumbnail: reportedVideo?.thumbnail || "",
+            url: reportedVideo?.videoUrl || copyrightCase.content?.url || "",
+            duration: reportedVideo?.duration ?? null,
+            uploadedAt: reportedVideo?.createdAt || null,
+            channel: channel?.name || "",
+          },
+        },
+        claim: {
+          ...copyrightCase.claim,
+          originalWorkVideoId: originalWorkVideo?._id || null,
+          originalWorkThumbnail:
+            copyrightCase.claim?.originalWorkThumbnail ||
+            originalWorkVideo?.thumbnail ||
+            "",
+        },
+      },
+    });
+  } catch (err) {
+    console.error("getMyClaimDetails error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch claim details" });
+  }
+});
+
+// PUT /api/copyright/my-claims/:caseNumber/withdraw — withdraw an unresolved owned claim
+router.put(
+  "/my-claims/:caseNumber/withdraw",
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const user = await User.findById(userId).select("email").lean();
+      if (!user) {
+        return res
+          .status(401)
+          .json({ success: false, message: "User not found" });
+      }
+
+      const copyrightCase = await CopyrightCase.findOne({
+        caseNumber: req.params.caseNumber.trim().toUpperCase(),
+        $or: [
+          { "claimant.userId": userId },
+          { "claimant.email": user.email.toLowerCase() },
+        ],
+      }).select("_id status caseNumber");
+
+      if (!copyrightCase) {
+        return res.status(404).json({ success: false, message: "Claim not found" });
+      }
+
+      const withdrawableStatuses = [
+        "pending",
+        "under_review",
+        "more_information_required",
+      ];
+      if (!withdrawableStatuses.includes(copyrightCase.status)) {
+        return res.status(409).json({
+          success: false,
+          message: "This claim can no longer be withdrawn",
+        });
+      }
+
+      const withdrawnAt = new Date();
+      const updatedCase = await CopyrightCase.findOneAndUpdate(
+        {
+          _id: copyrightCase._id,
+          status: { $in: withdrawableStatuses },
+        },
+        {
+          $set: {
+            status: "withdrawn",
+            "resolution.decision": "withdrawn",
+            "resolution.reason": "Withdrawn by claimant",
+            "resolution.resolvedAt": withdrawnAt,
+          },
+          $push: {
+            statusHistory: {
+              from: copyrightCase.status,
+              to: "withdrawn",
+              changedBy: null,
+              reason: "Withdrawn by claimant",
+              timestamp: withdrawnAt,
+            },
+          },
+        },
+        { new: true },
+      ).select("caseNumber status updatedAt resolution");
+
+      if (!updatedCase) {
+        return res.status(409).json({
+          success: false,
+          message: "This claim status changed and can no longer be withdrawn",
+        });
+      }
+
+      await logAuditEvent({
+        userId,
+        eventType: "COPYRIGHT_CASE_WITHDRAWN",
+        ip: req.ip,
+        userAgent: req.get("User-Agent"),
+        metadata: {
+          caseId: copyrightCase._id,
+          caseNumber: copyrightCase.caseNumber,
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Copyright claim withdrawn successfully",
+        data: updatedCase,
+      });
+    } catch (err) {
+      console.error("withdrawMyClaim error:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to withdraw claim" });
+    }
+  },
+);
 
 module.exports = router;

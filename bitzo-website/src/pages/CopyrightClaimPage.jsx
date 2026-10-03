@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Send,
   Shield,
@@ -11,8 +11,17 @@ import {
   X,
   Clock,
   RefreshCw,
+  ExternalLink,
+  Copyright,
+  UserRound,
+  Play,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { API_ORIGIN } from "../config/api";
+import { resolveMediaUrl } from "../utils/mediaUrl";
+
+const MY_CLAIMS_PER_PAGE = 5;
 
 const claimTypes = [
   { value: "takedown", label: "Takedown Request" },
@@ -63,6 +72,14 @@ function getVideoId(value) {
     return videoId && /^[0-9a-fA-F]{24}$/.test(videoId) ? videoId : "";
   } catch {
     return "";
+  }
+}
+
+function isSafeExternalUrl(value) {
+  try {
+    return ["http:", "https:"].includes(new URL(value).protocol);
+  } catch {
+    return false;
   }
 }
 
@@ -262,12 +279,16 @@ function VideoSearchSelect({
 }
 
 export default function CopyrightClaimPage() {
-  const [activeTab, setActiveTab] = useState("submit");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const lookupReferenceFromUrl = searchParams.get("reference") || "";
+  const autoLookupReference = useRef("");
+  const [activeTab, setActiveTab] = useState(
+    lookupReferenceFromUrl ? "lookup" : "submit",
+  );
   const [submitting, setSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
   const [errors, setErrors] = useState([]);
 
-  const [searchParams] = useSearchParams();
   const preloadedVideoId = searchParams.get("videoId") || "";
   const preloadedTitle = searchParams.get("title") || "";
 
@@ -281,21 +302,25 @@ export default function CopyrightClaimPage() {
     claimDescription: "",
     originalWork: "",
     originalWorkUrl: "",
+    originalWorkVideoId: "",
   });
 
   const [selectedOriginalWork, setSelectedOriginalWork] = useState(null);
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
 
   // Lookup state
-  const [lookupRef, setLookupRef] = useState("");
+  const [lookupRef, setLookupRef] = useState(lookupReferenceFromUrl);
   const [lookupResult, setLookupResult] = useState(null);
+  const [showLookupDetails, setShowLookupDetails] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState(null);
   const [myClaims, setMyClaims] = useState([]);
+  const [myClaimsPage, setMyClaimsPage] = useState(1);
   const [claimsLoading, setClaimsLoading] = useState(false);
   const [claimsError, setClaimsError] = useState(null);
   const [selectedClaim, setSelectedClaim] = useState(null);
   const [selectedClaimLoading, setSelectedClaimLoading] = useState(false);
+  const [selectedClaimError, setSelectedClaimError] = useState(null);
 
   const fetchMyClaims = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -317,6 +342,7 @@ export default function CopyrightClaimPage() {
       }
       const claims = Array.isArray(data.data) ? data.data : [];
       setMyClaims(claims);
+      setMyClaimsPage(1);
       setSelectedClaim((current) =>
         current
           ? claims.find((claim) => claim.caseNumber === current.caseNumber) ||
@@ -331,6 +357,14 @@ export default function CopyrightClaimPage() {
     }
   }, []);
 
+  const myClaimsPageCount = Math.ceil(
+    myClaims.length / MY_CLAIMS_PER_PAGE,
+  );
+  const visibleMyClaims = myClaims.slice(
+    (myClaimsPage - 1) * MY_CLAIMS_PER_PAGE,
+    myClaimsPage * MY_CLAIMS_PER_PAGE,
+  );
+
   useEffect(() => {
     const timer = window.setTimeout(fetchMyClaims, 0);
     return () => window.clearTimeout(timer);
@@ -338,6 +372,7 @@ export default function CopyrightClaimPage() {
 
   const handleSelectClaim = async (claim) => {
     setSelectedClaim(claim);
+    setSelectedClaimError(null);
     if (!claim.caseNumber) return;
 
     setSelectedClaimLoading(true);
@@ -347,15 +382,20 @@ export default function CopyrightClaimPage() {
       );
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to fetch claim status");
+        throw new Error(data.message || "Failed to fetch claim details");
       }
       setSelectedClaim((current) =>
         current?.caseNumber === claim.caseNumber
-          ? { ...claim, ...data.data, createdAt: claim.createdAt }
+          ? {
+              ...claim,
+              ...data.data,
+              createdAt: data.data.filedAt || claim.createdAt,
+            }
           : current,
       );
     } catch (err) {
-      console.error("Failed to refresh claim status:", err);
+      console.error("Failed to fetch selected claim details:", err);
+      setSelectedClaimError(err.message || "Failed to fetch claim details");
     } finally {
       setSelectedClaimLoading(false);
     }
@@ -363,7 +403,16 @@ export default function CopyrightClaimPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "originalWork" || name === "originalWorkUrl"
+        ? { originalWorkVideoId: "" }
+        : {}),
+    }));
+    if (name === "originalWork" || name === "originalWorkUrl") {
+      setSelectedOriginalWork(null);
+    }
     setErrors([]);
   };
 
@@ -419,6 +468,7 @@ export default function CopyrightClaimPage() {
           claimDescription: form.claimDescription.trim(),
           originalWork: form.originalWork.trim(),
           originalWorkUrl: form.originalWorkUrl.trim(),
+          originalWorkVideoId: form.originalWorkVideoId || undefined,
           declaration: declarationAccepted,
         }),
       });
@@ -443,6 +493,7 @@ export default function CopyrightClaimPage() {
         claimDescription: "",
         originalWork: "",
         originalWorkUrl: "",
+        originalWorkVideoId: "",
       });
       await fetchMyClaims();
     } catch (err) {
@@ -453,20 +504,27 @@ export default function CopyrightClaimPage() {
     }
   };
 
-  const handleLookup = async (e) => {
-    e.preventDefault();
-    if (!lookupRef.trim()) return;
+  const handleLookup = useCallback(async (
+    e,
+    reference = lookupRef,
+    expandDetails = true,
+  ) => {
+    e?.preventDefault();
+    const normalizedReference = reference.trim();
+    if (!normalizedReference) return;
 
     setLookupLoading(true);
     setLookupError(null);
     setLookupResult(null);
+    setShowLookupDetails(false);
     try {
       const res = await fetch(
-        `${API_ORIGIN}/api/copyright/claim/${encodeURIComponent(lookupRef.trim())}`,
+        `${API_ORIGIN}/api/copyright/claim/${encodeURIComponent(normalizedReference)}`,
       );
       const data = await res.json();
       if (res.ok && data.success) {
         setLookupResult(data.data);
+        setShowLookupDetails(expandDetails);
       } else {
         setLookupError(data.message || "Claim not found");
       }
@@ -476,7 +534,33 @@ export default function CopyrightClaimPage() {
     } finally {
       setLookupLoading(false);
     }
+  }, [lookupRef]);
+
+  const handleChooseMyClaim = (claim) => {
+    setLookupRef(claim.caseNumber);
+    setLookupResult(null);
+    setLookupError(null);
+    setShowLookupDetails(false);
+    setActiveTab("lookup");
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams);
+      nextParams.set("reference", claim.caseNumber);
+      return nextParams;
+    });
   };
+
+  useEffect(() => {
+    if (!lookupReferenceFromUrl) {
+      autoLookupReference.current = "";
+      return;
+    }
+    if (autoLookupReference.current === lookupReferenceFromUrl) return;
+
+    autoLookupReference.current = lookupReferenceFromUrl;
+    setActiveTab("lookup");
+    setLookupRef(lookupReferenceFromUrl);
+    handleLookup(null, lookupReferenceFromUrl, true);
+  }, [handleLookup, lookupReferenceFromUrl]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -747,6 +831,7 @@ export default function CopyrightClaimPage() {
                           ...prev,
                           originalWork: video.title || "",
                           originalWorkUrl: video.videoUrl || "",
+                          originalWorkVideoId: video._id || "",
                         }));
                       }}
                       onClear={() => {
@@ -868,7 +953,7 @@ export default function CopyrightClaimPage() {
                   </p>
                 ) : (
                   <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
-                    {myClaims.map((claim) => (
+                    {visibleMyClaims.map((claim) => (
                       <button
                         key={claim._id || claim.caseNumber}
                         type="button"
@@ -900,13 +985,67 @@ export default function CopyrightClaimPage() {
                         <p className="text-xs text-gray-500 font-mono mt-1">
                           {claim.caseNumber}
                         </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Filed{" "}
+                          {claim.createdAt
+                            ? new Date(claim.createdAt).toLocaleString(
+                                undefined,
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                },
+                              )
+                            : "-"}
+                        </p>
                       </button>
                     ))}
                   </div>
                 )}
 
+                {myClaims.length > MY_CLAIMS_PER_PAGE && (
+                  <div className="flex items-center justify-between gap-2 mt-3">
+                    <span className="text-xs text-gray-500">
+                      Page {myClaimsPage} of {myClaimsPageCount}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMyClaimsPage((page) => Math.max(1, page - 1))
+                        }
+                        disabled={myClaimsPage === 1}
+                        aria-label="Previous claims page"
+                        className="p-2 rounded-lg border border-zinc-700 text-gray-300 hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMyClaimsPage((page) =>
+                            Math.min(myClaimsPageCount, page + 1),
+                          )
+                        }
+                        disabled={myClaimsPage === myClaimsPageCount}
+                        aria-label="Next claims page"
+                        className="p-2 rounded-lg border border-zinc-700 text-gray-300 hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {selectedClaim && (
                   <div className="mt-5 pt-5 border-t border-zinc-800 space-y-3">
+                    {selectedClaimError && (
+                      <p role="alert" className="text-sm text-red-300">
+                        {selectedClaimError}
+                      </p>
+                    )}
                     <div>
                       <p className="text-xs text-gray-500">
                         {selectedClaimLoading ? "Refreshing status..." : "Current status"}
@@ -943,10 +1082,20 @@ export default function CopyrightClaimPage() {
                         </p>
                       </div>
                     )}
+                    {selectedClaim.caseNumber && (
+                      <Link
+                        to={`/copyright/claim?reference=${encodeURIComponent(selectedClaim.caseNumber)}`}
+                        className="inline-flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300"
+                      >
+                        View full details
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
                   </div>
                 )}
               </aside>
             </div>
+
           </>
         )}
 
@@ -956,7 +1105,12 @@ export default function CopyrightClaimPage() {
             <form onSubmit={handleLookup} className="flex gap-3">
               <input
                 value={lookupRef}
-                onChange={(e) => setLookupRef(e.target.value)}
+                onChange={(e) => {
+                  setLookupRef(e.target.value);
+                  setLookupResult(null);
+                  setShowLookupDetails(false);
+                  setLookupError(null);
+                }}
                 placeholder="Enter your reference number (e.g. PUB-260101-0001)"
                 className="flex-1 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
               />
@@ -974,6 +1128,51 @@ export default function CopyrightClaimPage() {
               </button>
             </form>
 
+            {myClaims.length > 0 && (
+              <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-white">
+                    Your claims
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Select a claim to open its full details.
+                  </p>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {myClaims.map((claim) => (
+                    <button
+                      key={claim._id || claim.caseNumber}
+                      type="button"
+                      onClick={() => handleChooseMyClaim(claim)}
+                      disabled={lookupLoading}
+                      className={`min-w-48 rounded-xl border px-3 py-2 text-left transition-colors disabled:opacity-50 ${
+                        lookupRef === claim.caseNumber
+                          ? "border-indigo-500/50 bg-indigo-500/10"
+                          : "border-zinc-800 bg-zinc-800/60 hover:border-zinc-700"
+                      }`}
+                    >
+                      <span
+                        className={`block text-xs font-medium ${
+                          statusColors[claim.status] || "text-gray-400"
+                        }`}
+                      >
+                        {statusLabels[claim.status] ||
+                          claim.status?.replace(/_/g, " ")}
+                      </span>
+                      <span className="block text-xs text-white font-mono mt-1">
+                        {claim.caseNumber}
+                      </span>
+                      <span className="block text-xs text-gray-500 mt-1 truncate">
+                        {claim.content?.title ||
+                          claim.claim?.originalWork ||
+                          "Copyright claim"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {lookupError && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
                 <p className="text-sm text-red-300">{lookupError}</p>
@@ -981,22 +1180,39 @@ export default function CopyrightClaimPage() {
             )}
 
             {lookupResult && (
-              <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-6 space-y-5">
+              <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-6 space-y-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-white">
-                    Claim Status
-                  </h3>
-                  <span
-                    className={`text-sm font-medium ${
-                      statusColors[lookupResult.status] || "text-gray-400"
-                    }`}
+                  <div>
+                    <p className="text-sm font-mono text-gray-300">
+                      {lookupResult.caseNumber}
+                    </p>
+                    <span
+                      className={`text-sm font-medium ${
+                        statusColors[lookupResult.status] || "text-gray-400"
+                      }`}
+                    >
+                      {statusLabels[lookupResult.status] ||
+                        lookupResult.status?.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowLookupDetails((visible) => !visible)
+                    }
+                    aria-expanded={showLookupDetails}
+                    className="px-3 py-2 text-sm font-medium text-indigo-300 border border-indigo-500/30 rounded-lg hover:bg-indigo-500/10 transition-colors"
                   >
-                    {statusLabels[lookupResult.status] ||
-                      lookupResult.status?.replace(/_/g, " ")}
-                  </span>
+                    {showLookupDetails ? "Hide details" : "View full details"}
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                {showLookupDetails && (
+                  <div className="space-y-6">
+                    <h3 className="text-lg font-semibold text-white">
+                      Copyright Claim Details
+                    </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-gray-500">Reference Number</p>
                     <p className="text-white font-mono mt-0.5">
@@ -1034,9 +1250,163 @@ export default function CopyrightClaimPage() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <section className="rounded-xl border border-zinc-800 bg-zinc-800/40 p-4 space-y-3">
+                    <h4 className="flex items-center gap-2 text-sm font-semibold text-white">
+                      <Film className="w-4 h-4 text-indigo-400" />
+                      Reported Video
+                    </h4>
+                    {lookupResult.reportedVideo?.id && (
+                      <Link
+                        to={`/video/${lookupResult.reportedVideo.id}`}
+                        aria-label={`Watch ${lookupResult.reportedVideo.title || "reported video"}`}
+                        className="group relative block overflow-hidden rounded-lg bg-zinc-950"
+                      >
+                        {lookupResult.reportedVideo.thumbnail ? (
+                          <img
+                            src={resolveMediaUrl(lookupResult.reportedVideo.thumbnail)}
+                            alt={`${lookupResult.reportedVideo.title || "Reported video"} thumbnail`}
+                            className="w-full aspect-video object-cover transition-transform group-hover:scale-[1.02]"
+                          />
+                        ) : (
+                          <div className="flex w-full aspect-video items-center justify-center text-gray-500">
+                            <Film className="w-10 h-10" />
+                          </div>
+                        )}
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/40">
+                          <span className="rounded-full bg-black/60 p-3 text-white">
+                            <Play className="w-6 h-6 fill-current" />
+                          </span>
+                        </span>
+                      </Link>
+                    )}
+                    <p className="font-medium text-gray-100">
+                      {lookupResult.reportedVideo?.title || "Video details unavailable"}
+                    </p>
+                    {lookupResult.reportedVideo?.channel && (
+                      <p className="text-sm text-gray-400">
+                        Channel: {lookupResult.reportedVideo.channel}
+                      </p>
+                    )}
+                    {lookupResult.reportedVideo?.description && (
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap">
+                        {lookupResult.reportedVideo.description}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-4 text-sm">
+                      {lookupResult.reportedVideo?.id && (
+                        <Link
+                          to={`/video/${lookupResult.reportedVideo.id}`}
+                          className="inline-flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300"
+                        >
+                          Open video <ExternalLink className="w-3.5 h-3.5" />
+                        </Link>
+                      )}
+                      {lookupResult.reportedVideo?.uploadedAt && (
+                        <span className="text-gray-500">
+                          Uploaded{" "}
+                          {new Date(
+                            lookupResult.reportedVideo.uploadedAt,
+                          ).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </section>
+
+                  <section className="rounded-xl border border-zinc-800 bg-zinc-800/40 p-4 space-y-3">
+                    <h4 className="flex items-center gap-2 text-sm font-semibold text-white">
+                      <Copyright className="w-4 h-4 text-indigo-400" />
+                      Copyright Owner & Original Work
+                    </h4>
+                    {lookupResult.claimant?.name && (
+                      <div className="flex items-start gap-2">
+                        <UserRound className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-gray-100">
+                            {lookupResult.claimant.name}
+                          </p>
+                          {lookupResult.claimant.organization && (
+                            <p className="text-sm text-gray-400">
+                              {lookupResult.claimant.organization}
+                            </p>
+                          )}
+                          {lookupResult.claimant.relationship && (
+                            <p className="text-xs text-gray-500 mt-1 capitalize">
+                              {lookupResult.claimant.relationship.replace(/_/g, " ")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm text-gray-500">Original work</p>
+                      <p className="text-gray-100 mt-1">
+                        {lookupResult.originalWork?.title || "Not provided"}
+                      </p>
+                      {lookupResult.originalWork?.thumbnail &&
+                        (lookupResult.originalWork?.videoId ? (
+                          <Link
+                            to={`/video/${lookupResult.originalWork.videoId}`}
+                            aria-label={`Watch ${lookupResult.originalWork.title || "original work"}`}
+                            className="group relative mt-3 block overflow-hidden rounded-lg bg-zinc-950"
+                          >
+                            <img
+                              src={resolveMediaUrl(lookupResult.originalWork.thumbnail)}
+                              alt={`${lookupResult.originalWork.title || "Original work"} thumbnail`}
+                              className="w-full aspect-video object-cover transition-transform group-hover:scale-[1.02]"
+                            />
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/40">
+                              <span className="rounded-full bg-black/60 p-3 text-white">
+                                <Play className="w-6 h-6 fill-current" />
+                              </span>
+                            </span>
+                          </Link>
+                        ) : (
+                          <a
+                            href={lookupResult.originalWork.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`Watch ${lookupResult.originalWork.title || "original work"}`}
+                            className="group relative mt-3 block overflow-hidden rounded-lg bg-zinc-950"
+                          >
+                            <img
+                              src={resolveMediaUrl(lookupResult.originalWork.thumbnail)}
+                              alt={`${lookupResult.originalWork.title || "Original work"} thumbnail`}
+                              className="w-full aspect-video object-cover transition-transform group-hover:scale-[1.02]"
+                            />
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/40">
+                              <span className="rounded-full bg-black/60 p-3 text-white">
+                                <Play className="w-6 h-6 fill-current" />
+                              </span>
+                            </span>
+                          </a>
+                        ))}
+                      {isSafeExternalUrl(lookupResult.originalWork?.url) && (
+                        lookupResult.originalWork?.videoId ? (
+                          <Link
+                            to={`/video/${lookupResult.originalWork.videoId}`}
+                            className="inline-flex items-center gap-1.5 mt-2 text-sm text-indigo-400 hover:text-indigo-300 break-all"
+                          >
+                            Watch original work <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                          </Link>
+                        ) : (
+                          <a
+                            href={lookupResult.originalWork.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 mt-2 text-sm text-indigo-400 hover:text-indigo-300 break-all"
+                          >
+                            Watch original work <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                          </a>
+                        )
+                      )}
+                    </div>
+                  </section>
+                </div>
+
                 {lookupResult.claimDescription && (
                   <div>
-                    <p className="text-gray-500 text-sm">Description</p>
+                    <p className="text-gray-500 text-sm">Claim Details</p>
                     <p className="text-gray-300 text-sm mt-1">
                       {lookupResult.claimDescription}
                     </p>
@@ -1054,6 +1424,8 @@ export default function CopyrightClaimPage() {
                         {lookupResult.resolution.reason}
                       </p>
                     )}
+                  </div>
+                )}
                   </div>
                 )}
               </div>
