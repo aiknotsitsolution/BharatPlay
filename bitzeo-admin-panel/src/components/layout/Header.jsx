@@ -144,7 +144,7 @@
 //   );
 // }
 
-import { Bell, Sun, Moon, ChevronDown, User, LogOut } from "lucide-react";
+import { Bell, Sun, Moon, ChevronDown, User, LogOut, Menu, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentRole, getRoleMeta } from "../../config/roleConfig";
@@ -153,7 +153,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { clearAdminState } from "../../utils/session";
 import API from "../../api";
 
-export default function Header() {
+export default function Header({ sidebarOpen, toggleSidebar }) {
   const navigate = useNavigate();
   const [userName, setUserName] = useState(getAdminDisplayName());
   const [avatar, setAvatar] = useState(getAdminPhoto());
@@ -201,7 +201,19 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-100">
-      <div className="flex items-center justify-end h-[64px] px-4 sm:px-6 gap-2 sm:gap-3">
+      <div className="flex h-14 items-center justify-between gap-2 px-3 sm:h-16 sm:px-6">
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 transition-colors hover:bg-slate-100 md:hidden"
+          aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={sidebarOpen}
+          aria-controls="mobile-navigation"
+        >
+          {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+
+        <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-3">
         {/* Role badge */}
         <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] font-semibold rounded-full bg-slate-50 text-slate-600 border border-slate-100">
           {roleMeta.icon && <roleMeta.icon className="w-3 h-3" />}
@@ -298,6 +310,7 @@ export default function Header() {
               </button>
             </div>
           )}
+        </div>
         </div>
       </div>
     </header>
