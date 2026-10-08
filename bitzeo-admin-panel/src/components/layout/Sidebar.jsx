@@ -1,4 +1,3 @@
-
 // import { useEffect, useState } from "react";
 // import { NavLink } from "react-router-dom";
 // import {
@@ -62,11 +61,11 @@
 //       <div className="h-[68px] flex items-center px-5 shrink-0 gap-3 border-b border-slate-100">
 //         <img
 //           src="/Logo-image.jpg"
-//           alt="BharatPlay"
+//           alt="VidBuxApp"
 //           className="w-9 h-9 rounded-xl object-cover shadow-sm ring-1 ring-slate-100"
 //         />
 //         <span className="text-[20px] font-bold tracking-tight text-slate-800 font-display">
-//           Bharatplay
+//           VidBuxApp
 //         </span>
 //       </div>
 
@@ -154,8 +153,16 @@ import {
   Headphones,
   Eye,
 } from "lucide-react";
-import { getNavItems, getRoleMeta, getCurrentRole } from "../../config/roleConfig";
-import { getAdminDisplayName, getAdminPhoto, getInitials } from "../../utils/helpers";
+import {
+  getNavItems,
+  getRoleMeta,
+  getCurrentRole,
+} from "../../config/roleConfig";
+import {
+  getAdminDisplayName,
+  getAdminPhoto,
+  getInitials,
+} from "../../utils/helpers";
 
 const ICON_MAP = {
   LayoutDashboard,
@@ -206,11 +213,11 @@ export default function Sidebar({ mobile = false, onNavigate }) {
       <div className="h-[68px] flex items-center px-4 sm:px-5 shrink-0 gap-3 border-b border-slate-100">
         <img
           src="/Logo-image.jpg"
-          alt="BharatPlay"
+          alt="VidBuxApp"
           className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-cover shadow-sm ring-1 ring-slate-100"
         />
         <span className="text-[18px] sm:text-[20px] font-bold tracking-tight text-slate-800 font-display">
-          Bharatplay
+          VidBuxApp
         </span>
       </div>
 
@@ -220,7 +227,8 @@ export default function Sidebar({ mobile = false, onNavigate }) {
         className="flex-1 px-2 sm:px-3 py-4 sm:py-5 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-thin"
       >
         {navItems.map((item) => {
-          const Icon = typeof item.icon === "string" ? ICON_MAP[item.icon] : item.icon;
+          const Icon =
+            typeof item.icon === "string" ? ICON_MAP[item.icon] : item.icon;
           return (
             <NavLink
               key={item.to}
@@ -241,7 +249,9 @@ export default function Sidebar({ mobile = false, onNavigate }) {
                   {Icon && (
                     <Icon
                       className={`w-[18px] h-[18px] shrink-0 transition-colors ${
-                        isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"
+                        isActive
+                          ? "text-blue-600"
+                          : "text-slate-400 group-hover:text-slate-600"
                       }`}
                       strokeWidth={isActive ? 2.2 : 1.8}
                     />

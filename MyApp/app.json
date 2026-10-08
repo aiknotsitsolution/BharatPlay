@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Bharatplay",
-    "slug": "Bharatplay",
-    "scheme": "bharatplay",
+    "name": "VidBuxApp",
+    "slug": "vidbuxapp",
+    "scheme": "vidbuxapp",
     "version": "1.0.0",
-    "description": "BharatPlay is a creator-first video app for watching, discovering, uploading, and sharing short and long-form entertainment.",
+    "description": "VidBuxApp is a creator-first video app for watching, discovering, uploading, and sharing short and long-form entertainment.",
     "keywords": [
-      "bharatplay",
+      "VidBuxApp",
       "india",
       "short videos",
       "creator platform",
@@ -16,11 +16,11 @@
       "video app"
     ],
     "orientation": "portrait",
-    "icon": "./assets/Bharatplay-Cb3qGLyP-Cb3qGLyP.png",
+    "icon": "./assets/VidBuxApp-logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/Bharatplay-Cb3qGLyP-Cb3qGLyP.png",
+      "image": "./assets/VidBuxApp-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -30,7 +30,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/Bharatplay-Cb3qGLyP-Cb3qGLyP.png",
+        "foregroundImage": "./assets/VidBuxApp-logo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -39,13 +39,13 @@
       "permissions": []
     },
     "web": {
-      "favicon": "./assets/Bharatplay-Cb3qGLyP-Cb3qGLyP.png"
+      "favicon": "./assets/VidBuxApp-logo.png"
     },
     "plugins": [
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Bharatplay to access your photos so you can update your profile picture."
+          "photosPermission": "Allow VidBuxApp to access your photos so you can update your profile picture."
         }
       ],
       "expo-web-browser",

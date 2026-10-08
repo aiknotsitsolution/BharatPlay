@@ -6,7 +6,26 @@ import SITE from "../../../config/site";
 const SECTIONS = [
   {
     title: "1. Purpose of This Policy",
-    body: <>This Content Policy sets out the types of content that are allowed and not allowed on BharatPlay. It works together with our <Link to="/community-guidelines" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Community Guidelines</Link> and <Link to="/terms" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Terms & Conditions</Link>.</>,
+    body: (
+      <>
+        This Content Policy sets out the types of content that are allowed and
+        not allowed on VidBuxApp. It works together with our{" "}
+        <Link
+          to="/community-guidelines"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          Community Guidelines
+        </Link>{" "}
+        and{" "}
+        <Link
+          to="/terms"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          Terms & Conditions
+        </Link>
+        .
+      </>
+    ),
   },
   {
     title: "2. Allowed Content",
@@ -39,9 +58,9 @@ const SECTIONS = [
 export default function ContentPolicyPage() {
   return (
     <LegalPageLayout
-      title="BharatPlay Content Policy"
-      description="Understand what content is allowed and not allowed on BharatPlay."
-      intro="This Content Policy explains the standards that apply to all content uploaded or shared on BharatPlay."
+      title="VidBuxApp Content Policy"
+      description="Understand what content is allowed and not allowed on VidBuxApp."
+      intro="This Content Policy explains the standards that apply to all content uploaded or shared on VidBuxApp."
       lastUpdated={SITE.legal.lastUpdated}
     >
       <LegalContent sections={SECTIONS} />

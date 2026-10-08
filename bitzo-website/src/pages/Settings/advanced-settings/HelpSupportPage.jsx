@@ -18,11 +18,43 @@ const SECTIONS = [
   },
   {
     title: "4. Reporting Problems",
-    body: <>If you see content that violates our <Link to="/community-guidelines" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Community Guidelines</Link> or <Link to="/content-policy" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Content Policy</Link>, use the report button on the video, comment or channel. For technical issues (app crashes, login problems, playback errors), contact us with details of the problem and your device information.</>,
+    body: (
+      <>
+        If you see content that violates our{" "}
+        <Link
+          to="/community-guidelines"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          Community Guidelines
+        </Link>{" "}
+        or{" "}
+        <Link
+          to="/content-policy"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          Content Policy
+        </Link>
+        , use the report button on the video, comment or channel. For technical
+        issues (app crashes, login problems, playback errors), contact us with
+        details of the problem and your device information.
+      </>
+    ),
   },
   {
     title: "5. Account & Data Deletion",
-    body: <>If you want to permanently delete your account and associated data, go to the <Link to="/delete-account" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Delete Account page</Link> and follow the instructions. This action cannot be undone.</>,
+    body: (
+      <>
+        If you want to permanently delete your account and associated data, go
+        to the{" "}
+        <Link
+          to="/delete-account"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          Delete Account page
+        </Link>{" "}
+        and follow the instructions. This action cannot be undone.
+      </>
+    ),
   },
   {
     title: "6. Still Need Help?",
@@ -36,8 +68,8 @@ export default function HelpSupportPage() {
   return (
     <LegalPageLayout
       title="Help & Support"
-      description="Find answers to common questions about using BharatPlay and get support when you need it."
-      intro="This page answers common questions and explains how to get help with BharatPlay."
+      description="Find answers to common questions about using VidBuxApp and get support when you need it."
+      intro="This page answers common questions and explains how to get help with VidBuxApp."
       lastUpdated={SITE.legal.lastUpdated}
     >
       <LegalContent sections={SECTIONS} />

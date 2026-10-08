@@ -221,12 +221,11 @@ const FORMATS = [
   {
     icon: Clapperboard,
     title: "Video Ads",
-    body: "Reach viewers with engaging video placements built around the BharatPlay playback experience.",
+    body: "Reach viewers with engaging video placements built around the VidBuxApp playback experience.",
     tag: "Flagship",
     size: "large",
     image: "/advertising/format-video.jpg",
-    imageAlt:
-      "Video production set with a cinema camera",
+    imageAlt: "Video production set with a cinema camera",
     accent: "from-red-600/40 via-red-500/10 to-transparent",
   },
   {
@@ -333,12 +332,12 @@ const ECOSYSTEM_NODES = [
   {
     icon: Smartphone,
     label: "Mobile",
-    desc: "The BharatPlay Android experience.",
+    desc: "The VidBuxApp Android experience.",
   },
   {
     icon: Globe,
     label: "Web",
-    desc: "The BharatPlay web experience.",
+    desc: "The VidBuxApp web experience.",
   },
 ];
 
@@ -349,11 +348,11 @@ const WORKFLOW_STEPS = [
   },
   {
     title: "Choose your audience and format",
-    body: "Work with the BharatPlay team to shape the right format and audience approach.",
+    body: "Work with the VidBuxApp team to shape the right format and audience approach.",
   },
   {
     title: "Launch your campaign",
-    body: "Go live with a campaign built around the BharatPlay entertainment experience.",
+    body: "Go live with a campaign built around the VidBuxApp entertainment experience.",
   },
   {
     title: "Measure and optimize",
@@ -409,28 +408,28 @@ const WHY_STATEMENTS = [
 
 const FAQS = [
   {
-    q: "Who can advertise on BharatPlay?",
-    a: "BharatPlay advertising is open to brands, businesses and organizations of all sizes. Contact our advertising team to discuss your goals and the options available for your campaign.",
+    q: "Who can advertise on VidBuxApp?",
+    a: "VidBuxApp advertising is open to brands, businesses and organizations of all sizes. Contact our advertising team to discuss your goals and the options available for your campaign.",
   },
   {
     q: "What advertising formats are available?",
-    a: "BharatPlay is building a range of advertising opportunities including video ads, in-stream placements, feed and discovery placements, short-form ads, sponsored content and creator partnerships. Contact the team to understand the options currently available.",
+    a: "VidBuxApp is building a range of advertising opportunities including video ads, in-stream placements, feed and discovery placements, short-form ads, sponsored content and creator partnerships. Contact the team to understand the options currently available.",
   },
   {
     q: "How do I start a campaign?",
-    a: "Get started by contacting the BharatPlay advertising team through our contact page. Share your objective and we will help shape the right format and audience approach for your brand.",
+    a: "Get started by contacting the VidBuxApp advertising team through our contact page. Share your objective and we will help shape the right format and audience approach for your brand.",
   },
   {
     q: "Can I advertise through video?",
-    a: "Yes. Video is at the heart of the BharatPlay experience, and video-led advertising placements are a key part of the opportunities we are building. Contact the team to explore the video formats available for your campaign.",
+    a: "Yes. Video is at the heart of the VidBuxApp experience, and video-led advertising placements are a key part of the opportunities we are building. Contact the team to explore the video formats available for your campaign.",
   },
   {
-    q: "Can brands work with BharatPlay creators?",
-    a: "Yes. BharatPlay is a creator-driven platform, and creator partnerships are an important part of how brands can connect with engaged communities. Reach out to discuss collaboration options.",
+    q: "Can brands work with VidBuxApp creators?",
+    a: "Yes. VidBuxApp is a creator-driven platform, and creator partnerships are an important part of how brands can connect with engaged communities. Reach out to discuss collaboration options.",
   },
   {
     q: "How are campaigns planned?",
-    a: "Campaigns are planned around your objective, audience and activity. The BharatPlay team works with you to design an advertising experience that fits your brand. Contact us to start the conversation.",
+    a: "Campaigns are planned around your objective, audience and activity. The VidBuxApp team works with you to design an advertising experience that fits your brand. Contact us to start the conversation.",
   },
   {
     q: "How can I contact the advertising team?",
@@ -474,7 +473,7 @@ function HeroSection({ isDark }) {
         <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
           {/* Copy */}
           <SectionReveal>
-            <Eyebrow isDark={isDark}>BharatPlay for Business</Eyebrow>
+            <Eyebrow isDark={isDark}>VidBuxApp for Business</Eyebrow>
             <h1
               className={`mt-5 text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl ${
                 isDark ? "text-white" : "text-gray-900"
@@ -491,7 +490,7 @@ function HeroSection({ isDark }) {
               }`}
             >
               Reach entertainment audiences through video, content and
-              creator-led experiences across the BharatPlay ecosystem.
+              creator-led experiences across the VidBuxApp ecosystem.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <PrimaryLink to="/contact">Start Advertising</PrimaryLink>
@@ -505,8 +504,8 @@ function HeroSection({ isDark }) {
               }`}
             >
               <BadgeCheck size={16} className="text-red-500/80" />
-              Built for brands of every size — from first campaigns to
-              always-on presence.
+              Built for brands of every size — from first campaigns to always-on
+              presence.
             </p>
           </SectionReveal>
 
@@ -660,7 +659,7 @@ function ValueSection({ isDark }) {
     <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:py-20">
       <SectionHeading
         isDark={isDark}
-        eyebrow="Why BharatPlay"
+        eyebrow="Why VidBuxApp"
         title="Reach audiences through entertainment."
         description="Build awareness, consideration and action with advertising experiences designed around the way people discover and consume content."
       />
@@ -738,7 +737,7 @@ function JourneySection({ isDark }) {
           isDark={isDark}
           eyebrow="The journey"
           title="From attention to action."
-          description="A simple way to think about how a BharatPlay advertising experience can work for your brand."
+          description="A simple way to think about how a VidBuxApp advertising experience can work for your brand."
         />
 
         <div className="relative mt-12">
@@ -904,7 +903,7 @@ function FormatsSection({ isDark }) {
             isDark ? "text-zinc-500" : "text-gray-500"
           }`}
         >
-          These represent the advertising opportunities BharatPlay is building
+          These represent the advertising opportunities VidBuxApp is building
           around its entertainment experiences. Availability evolves with the
           platform — talk to our team to understand the options for your
           campaign today.
@@ -928,7 +927,7 @@ function ObjectivesSection({ isDark }) {
           isDark={isDark}
           eyebrow="Objectives"
           title="What are you trying to achieve?"
-          description="Campaigns are shaped around a business objective. These are the kinds of outcomes campaigns can be built toward — the BharatPlay team works with you to find the right approach."
+          description="Campaigns are shaped around a business objective. These are the kinds of outcomes campaigns can be built toward — the VidBuxApp team works with you to find the right approach."
         />
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {OBJECTIVES.map((item, i) => {
@@ -1026,7 +1025,7 @@ function EcosystemSection({ isDark }) {
       <SectionHeading
         isDark={isDark}
         eyebrow="Ecosystem"
-        title="Advertise across the BharatPlay experience."
+        title="Advertise across the VidBuxApp experience."
         description="One platform. Multiple entertainment experiences. Multiple opportunities for brands."
       />
 
@@ -1143,7 +1142,7 @@ function WorkflowSection({ isDark }) {
             isDark={isDark}
             eyebrow="How it works"
             title="From idea to campaign."
-            description="A simple, guided process to bring your advertising idea to life on BharatPlay."
+            description="A simple, guided process to bring your advertising idea to life on VidBuxApp."
           />
 
           <ol className="relative space-y-8">
@@ -1188,9 +1187,7 @@ function WorkflowSection({ isDark }) {
         </div>
 
         <SectionReveal className="mt-12">
-          <PrimaryLink to="/contact">
-            Talk to BharatPlay Advertising
-          </PrimaryLink>
+          <PrimaryLink to="/contact">Talk to VidBuxApp Advertising</PrimaryLink>
         </SectionReveal>
       </div>
     </section>
@@ -1206,7 +1203,7 @@ function ShowcaseSection({ isDark }) {
         isDark={isDark}
         eyebrow="Creative showcase"
         title="Make your brand part of the story."
-        description="Placement concepts that show how your brand could live inside the BharatPlay experience."
+        description="Placement concepts that show how your brand could live inside the VidBuxApp experience."
         center
       />
       <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -1266,7 +1263,7 @@ function ShowcaseSection({ isDark }) {
   );
 }
 
-/* ─── WHY BHARATPLAY ─── */
+/* ─── WHY VidBuxApp ─── */
 
 function WhySection({ isDark }) {
   return (
@@ -1302,7 +1299,7 @@ function WhySection({ isDark }) {
         <div className="relative mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:py-24">
           <SectionHeading
             isDark={isDark}
-            eyebrow="Why BharatPlay"
+            eyebrow="Why VidBuxApp"
             title="Advertising built around entertainment."
             center
           />
@@ -1349,7 +1346,7 @@ function FaqSection({ isDark }) {
           isDark={isDark}
           eyebrow="FAQ"
           title="Questions, answered."
-          description="Common questions about advertising on BharatPlay. If you cannot find what you are looking for, contact the team."
+          description="Common questions about advertising on VidBuxApp. If you cannot find what you are looking for, contact the team."
         />
         <div className="space-y-3">
           {FAQS.map((faq, i) => {
@@ -1468,10 +1465,10 @@ function FinalCtaSection({ isDark }) {
               }`}
             >
               Tell us what you&apos;re building and let&apos;s explore the right
-              BharatPlay advertising experience for your campaign.
+              VidBuxApp advertising experience for your campaign.
             </p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-              <PrimaryLink to="/contact">Advertise With BharatPlay</PrimaryLink>
+              <PrimaryLink to="/contact">Advertise With VidBuxApp</PrimaryLink>
               <SecondaryLink to="/contact" isDark={isDark}>
                 Contact Us
               </SecondaryLink>
@@ -1491,7 +1488,7 @@ function FinalCtaSection({ isDark }) {
               </span>
               <span className="flex items-center gap-1.5">
                 <Globe size={15} className="text-red-500/80" />
-                BharatPlay Ecosystem
+                VidBuxApp Ecosystem
               </span>
             </div>
           </SectionReveal>
@@ -1505,8 +1502,8 @@ function FinalCtaSection({ isDark }) {
 
 export default function AdvertisingPage() {
   usePageMeta(
-    "Advertise With BharatPlay | Reach Audiences Through Entertainment",
-    "Discover advertising opportunities across the BharatPlay entertainment ecosystem and build campaigns around video, content and audience experiences.",
+    "Advertise With VidBuxApp | Reach Audiences Through Entertainment",
+    "Discover advertising opportunities across the VidBuxApp entertainment ecosystem and build campaigns around video, content and audience experiences.",
   );
 
   const { theme } = useTheme();

@@ -24,7 +24,7 @@ export default function BottomInfo({
     raw.channelName ||
     uploadedBy?.name ||
     creator?.name ||
-    "Bharat Play Creator";
+    "VidBuxApp Creator";
 
   const avatar = resolveImage(
     channel?.channelImage ||

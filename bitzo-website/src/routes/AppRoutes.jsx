@@ -35,7 +35,7 @@ import CopyrightClaimPage from "../pages/CopyrightClaimPage";
 import MyClaimsPage from "../pages/MyClaimsPage";
 import FAQPage from "../pages/FAQPage";
 import FeedbackPage from "../pages/FeedbackPage";
-import BharatPlayStudio from "../pages/Studio/BharatPlayStudio";
+import VidBuxAppStudio from "../pages/Studio/VidBuxAppStudio";
 import MySupportRequests from "../pages/MySupportRequests";
 
 // Public company website
@@ -75,7 +75,10 @@ export default function AppRoutes() {
         <Route path="contact" element={<ContactPage />} />
         <Route path="delete-account" element={<DeleteAccountPage />} />
         <Route path="apps" element={<AppsPage />} />
-        <Route path="community-guidelines" element={<CommunityGuidelinesPage />} />
+        <Route
+          path="community-guidelines"
+          element={<CommunityGuidelinesPage />}
+        />
         <Route path="content-policy" element={<ContentPolicyPage />} />
         <Route path="copyright-policy" element={<CopyrightPolicyPage />} />
         <Route path="help-support" element={<HelpSupportPage />} />
@@ -126,8 +129,8 @@ export default function AppRoutes() {
             path="customer-support"
             element={<Navigate to="/contact" replace />}
           />
-          <Route path="studio" element={<BharatPlayStudio />} />
-    <Route path="my-support-requests" element={<MySupportRequests />} />
+          <Route path="studio" element={<VidBuxAppStudio />} />
+          <Route path="my-support-requests" element={<MySupportRequests />} />
         </Route>
       </Route>
 

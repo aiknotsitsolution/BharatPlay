@@ -22,7 +22,20 @@ const SECTIONS = [
   },
   {
     title: "5. Respect Intellectual Property",
-    body: <>Only upload content that you own or have permission to use. Do not upload copyrighted videos, music or other material without proper rights. Repeated <Link to="/copyright-policy" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">copyright violations</Link> may lead to account termination.</>,
+    body: (
+      <>
+        Only upload content that you own or have permission to use. Do not
+        upload copyrighted videos, music or other material without proper
+        rights. Repeated{" "}
+        <Link
+          to="/copyright-policy"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          copyright violations
+        </Link>{" "}
+        may lead to account termination.
+      </>
+    ),
   },
   {
     title: "6. No Spam or Scams",
@@ -55,9 +68,9 @@ const SECTIONS = [
 export default function CommunityGuidelinesPage() {
   return (
     <LegalPageLayout
-      title="BharatPlay Community Guidelines"
-      description="Learn the rules that help keep the BharatPlay community safe, respectful and enjoyable for everyone."
-      intro="These Community Guidelines explain what is and is not allowed on BharatPlay so that everyone can have a positive experience."
+      title="VidBuxApp Community Guidelines"
+      description="Learn the rules that help keep the VidBuxApp community safe, respectful and enjoyable for everyone."
+      intro="These Community Guidelines explain what is and is not allowed on VidBuxApp so that everyone can have a positive experience."
       lastUpdated={SITE.legal.lastUpdated}
     >
       <LegalContent sections={SECTIONS} />

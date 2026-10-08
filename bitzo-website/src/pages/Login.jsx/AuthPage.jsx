@@ -324,7 +324,7 @@ export default function AuthPage() {
       <div className="min-h-screen bg-[#0f0f0f] text-white flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl shadow-2xl border border-gray-800 overflow-hidden">
           <div className="p-8 pb-4 text-center">
-            <h1 className="text-3xl font-bold text-red-600">Bharat Play</h1>
+            <h1 className="text-3xl font-bold text-red-600">VidBuxApp</h1>
             <p className="text-gray-400 mt-2">
               {isLogin ? "Sign in to continue" : "Create your account"}
             </p>

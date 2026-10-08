@@ -737,10 +737,10 @@ export default function Shorts() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: short.title || "Bharat Play Short",
+          title: short.title || "VidBuxApp Short",
           text: short.title
-            ? `${short.title} - Watch on Bharat Play`
-            : "Watch on Bharat Play",
+            ? `${short.title} - Watch on VidBuxApp`
+            : "Watch on VidBuxApp",
           url: shareUrl,
         });
         return;

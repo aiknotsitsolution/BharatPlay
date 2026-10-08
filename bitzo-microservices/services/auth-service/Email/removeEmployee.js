@@ -7,7 +7,7 @@ module.exports = function getRemoveEmployeeMailOptions(
   return {
     from: process.env.EMAIL,
     to: email,
-    subject: "Bharat Play — Account Removal Notification",
+    subject: "VidBuxApp — Account Removal Notification",
     html: `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,12 +42,12 @@ module.exports = function getRemoveEmployeeMailOptions(
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <h1>Bharat Play</h1>
+        <h1>VidBuxApp</h1>
         <p>Account Removal Notice</p>
       </div>
       <div class="body">
         <p>Dear <strong>${name || "there"}</strong>,</p>
-        <p>Your account on Bharat Play has been removed. Below are the details:</p>
+        <p>Your account on VidBuxApp has been removed. Below are the details:</p>
         <div class="detail-box">
           <div class="detail-row">
             <span class="detail-label">Position</span>
@@ -61,7 +61,7 @@ module.exports = function getRemoveEmployeeMailOptions(
         <p>If you have any questions, please contact the admin team.</p>
       </div>
       <div class="footer">
-        <p>&copy; ${new Date().getFullYear()} Bharat Play. All rights reserved.</p>
+        <p>&copy; ${new Date().getFullYear()} VidBuxApp. All rights reserved.</p>
       </div>
     </div>
   </div>

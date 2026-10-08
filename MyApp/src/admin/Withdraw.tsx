@@ -128,7 +128,7 @@ export default function WithdrawScreen() {
 
     if (!WITHDRAWALS_ENABLED) {
       setError(
-        "Withdrawals are not available yet. Your points remain in your account until BharatPlay enables verified payouts.",
+        "Withdrawals are not available yet. Your points remain in your account until VidBuxApp enables verified payouts.",
       );
       return;
     }
@@ -263,7 +263,7 @@ export default function WithdrawScreen() {
         <View style={styles.balanceCard}>
           <View style={styles.balanceRow}>
             <View>
-              <Text style={styles.balanceLabel}>BharatPlay Points</Text>
+              <Text style={styles.balanceLabel}>VidBuxApp Points</Text>
               <Text style={styles.balanceValue}>
                 {Number(points).toFixed(2)}
               </Text>
@@ -272,14 +272,14 @@ export default function WithdrawScreen() {
           </View>
           <Text style={styles.pointsText}>
             Promotional points only. They are not cash until a verified
-            BharatPlay payout program is enabled.
+            VidBuxApp payout program is enabled.
           </Text>
         </View>
 
         <View style={styles.noticeBox}>
           <Text style={styles.noticeText}>
             Withdrawals are not available in this release. Do not send money or
-            payment details to anyone claiming to represent BharatPlay. Your
+            payment details to anyone claiming to represent VidBuxApp. Your
             points remain associated with your account.
           </Text>
         </View>
@@ -471,7 +471,7 @@ export default function WithdrawScreen() {
 
         <Text style={styles.footerNote}>
           Any future payout will require account verification, eligibility
-          checks, and an active BharatPlay payout provider.
+          checks, and an active VidBuxApp payout provider.
         </Text>
       </ScrollView>
 

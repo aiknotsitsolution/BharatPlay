@@ -12,7 +12,9 @@ const escapeHtml = (value = "") =>
 
 // Strip newlines from fragments interpolated into email subject lines.
 const cleanSubjectFragment = (value = "") =>
-  String(value).replace(/[\r\n]+/g, " ").trim();
+  String(value)
+    .replace(/[\r\n]+/g, " ")
+    .trim();
 
 const sendMailSafely = async (mailOptions) => {
   if (!mailOptions?.to || !transporter?.sendMail) {
@@ -43,7 +45,7 @@ const buildMailWrapper = ({ title, name, bodyHtml }) => `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bharat Play</title>
+  <title>VidBuxApp</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f4f4f7; margin: 0; padding: 0; }
     .wrapper { width: 100%; background: #f4f4f7; padding: 40px 0; }
@@ -70,7 +72,7 @@ const buildMailWrapper = ({ title, name, bodyHtml }) => `<!DOCTYPE html>
         ${bodyHtml}
       </div>
       <div class="footer">
-        <p>&copy; ${new Date().getFullYear()} Bharat Play. All rights reserved.</p>
+        <p>&copy; ${new Date().getFullYear()} VidBuxApp. All rights reserved.</p>
       </div>
     </div>
   </div>
@@ -78,14 +80,19 @@ const buildMailWrapper = ({ title, name, bodyHtml }) => `<!DOCTYPE html>
 </html>`;
 
 // Contact request: notify the user when an admin replies or the status changes.
-const notifyTicketUser = async ({ ticket, kind, replyText = "", newStatus = "" }) => {
+const notifyTicketUser = async ({
+  ticket,
+  kind,
+  replyText = "",
+  newStatus = "",
+}) => {
   try {
     if (!ticket?.email) return;
 
     const isReply = kind === "reply";
     const subject = isReply
-      ? "[BharatPlay] A support team member replied to your request"
-      : `[BharatPlay] Your support request is now "${cleanSubjectFragment(newStatus)}"`;
+      ? "[VidBuxApp] A support team member replied to your request"
+      : `[VidBuxApp] Your support request is now "${cleanSubjectFragment(newStatus)}"`;
 
     const bodyHtml = isReply
       ? `<p>We replied to your request titled "<strong>${escapeHtml(ticket.subject)}</strong>".</p>
@@ -93,11 +100,11 @@ const notifyTicketUser = async ({ ticket, kind, replyText = "", newStatus = "" }
       : `<p>Your request titled "<strong>${escapeHtml(ticket.subject)}</strong>" has been updated to status <strong>${escapeHtml(newStatus)}</strong>.</p>`;
 
     await sendMailSafely({
-      from: `"BharatPlay Support" <${process.env.EMAIL}>`,
+      from: `"VidBuxApp Support" <${process.env.EMAIL}>`,
       to: ticket.email,
       subject,
       html: buildMailWrapper({
-        title: "Bharat Play Support",
+        title: "VidBuxApp Support",
         name: ticket.name,
         bodyHtml,
       }),
@@ -117,17 +124,17 @@ const notifyDeletionUser = async ({ ticket, newStatus = "" }) => {
   try {
     if (!ticket?.email) return;
 
-    const subject = `[BharatPlay] Your account deletion request is now "${cleanSubjectFragment(newStatus)}"`;
+    const subject = `[VidBuxApp] Your account deletion request is now "${cleanSubjectFragment(newStatus)}"`;
 
     const bodyHtml = `<p>Your request to delete the account associated with <strong>${escapeHtml(ticket.email)}</strong> has been updated to status <strong>${escapeHtml(newStatus)}</strong>.</p>
       <p>If you have questions about this, please contact our support team.</p>`;
 
     await sendMailSafely({
-      from: `"BharatPlay Support" <${process.env.EMAIL}>`,
+      from: `"VidBuxApp Support" <${process.env.EMAIL}>`,
       to: ticket.email,
       subject,
       html: buildMailWrapper({
-        title: "Bharat Play Account Deletion",
+        title: "VidBuxApp Account Deletion",
         name: "there",
         bodyHtml,
       }),

@@ -1,5 +1,5 @@
 /**
- * Central public-facing site configuration for BharatPlay.
+ * Central public-facing site configuration for VidBuxApp.
  *
  * Only facts that can be verified from the repository are hard-coded here.
  * Anything not yet verified is read from environment variables so the real
@@ -9,21 +9,21 @@
 const isBrowser = typeof window !== "undefined";
 
 export const SITE = {
-  brandName: "BharatPlay",
+  brandName: "VidBuxApp",
   brandTagline: "Watch. Create. Connect.",
 
   description:
-    "BharatPlay is a video and creator platform where people can watch, discover, upload and share short and long videos across web and mobile.",
+    "VidBuxApp is a video and creator platform where people can watch, discover, upload and share short and long videos across web and mobile.",
 
   // Verified in the repository: the website is a video-sharing platform.
   product: {
-    categories: ["BharatPlay Website (Web)", "BharatPlay Mobile App (Android)"],
+    categories: ["VidBuxApp Website (Web)", "VidBuxApp Mobile App (Android)"],
   },
 
   // Verified from MyApp/app.json
-  androidPackageName: "com.bharatplay.app",
+  androidPackageName: "com.VidBuxApp.app",
   // Verified from MyApp/app.json (configuration only; iOS store availability is not verified)
-  iosBundleId: "com.bharatplay.MyApp",
+  iosBundleId: "com.VidBuxApp.MyApp",
   hasVerifiedIosStoreListing: false,
 
   // Website URL. Falls back to the current origin so it works in dev and prod.

@@ -740,10 +740,10 @@ export default function ShortsScreen() {
 
   const handleShare = async (item: ShortItem) => {
     try {
-      const shareUrl = `bharatplay://shorts/${item.id}`;
+      const shareUrl = `vidbuxapp://shorts/${item.id}`;
 
       await Share.share({
-        title: item.title || "Bharat Play Short",
+        title: item.title || "VidBuxApp Short",
 
         message: `${item.title || "Watch this short"}\n\n${shareUrl}`,
       });
@@ -1108,7 +1108,7 @@ export default function ShortsScreen() {
               </View>
 
               <Text style={styles.channelName} numberOfLines={1}>
-                {item.channel?.name || item.raw?.channel?.name || "Bharat Play"}
+                {item.channel?.name || item.raw?.channel?.name || "VidBuxApp"}
               </Text>
 
               {getChannelId(item) && (

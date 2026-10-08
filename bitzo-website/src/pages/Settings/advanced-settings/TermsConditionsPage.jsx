@@ -6,7 +6,7 @@ import SITE from "../../../config/site";
 const SECTIONS = [
   {
     title: "1. Introduction",
-    body: 'These Terms & Conditions ("Terms") govern your access to and use of the BharatPlay website and Android application (together, the "Service"). By accessing or using the Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.',
+    body: 'These Terms & Conditions ("Terms") govern your access to and use of the VidBuxApp website and Android application (together, the "Service"). By accessing or using the Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.',
   },
   {
     title: "2. Eligibility",
@@ -18,23 +18,52 @@ const SECTIONS = [
   },
   {
     title: "4. User Content",
-    body: "You retain ownership of the content you upload (videos, comments, profile information, etc.). By uploading content, you grant BharatPlay a worldwide, non-exclusive, royalty-free licence to host, store, display, distribute and promote that content in connection with the Service. You are solely responsible for the content you post.",
+    body: "You retain ownership of the content you upload (videos, comments, profile information, etc.). By uploading content, you grant VidBuxApp a worldwide, non-exclusive, royalty-free licence to host, store, display, distribute and promote that content in connection with the Service. You are solely responsible for the content you post.",
   },
   {
     title: "5. Acceptable Use",
-    body: "You agree not to use the Service to upload, post or share any content that is illegal, harmful, harassing, defamatory, pornographic, or that infringes the rights of others. You also agree not to interfere with the Service, attempt to gain unauthorised access, or engage in any activity that harms other users or BharatPlay.",
+    body: "You agree not to use the Service to upload, post or share any content that is illegal, harmful, harassing, defamatory, pornographic, or that infringes the rights of others. You also agree not to interfere with the Service, attempt to gain unauthorised access, or engage in any activity that harms other users or VidBuxApp.",
   },
   {
     title: "6. Prohibited Content and Conduct",
-    body: <>Prohibited content includes, but is not limited to: copyrighted material without permission, hate speech, violence, child sexual exploitation material, spam, scams, and content that promotes illegal activities. We may remove such content and suspend or terminate accounts that violate these rules. Please refer to our <Link to="/community-guidelines" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Community Guidelines</Link> for more details.</>,
+    body: (
+      <>
+        Prohibited content includes, but is not limited to: copyrighted material
+        without permission, hate speech, violence, child sexual exploitation
+        material, spam, scams, and content that promotes illegal activities. We
+        may remove such content and suspend or terminate accounts that violate
+        these rules. Please refer to our{" "}
+        <Link
+          to="/community-guidelines"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          Community Guidelines
+        </Link>{" "}
+        for more details.
+      </>
+    ),
   },
   {
     title: "7. Intellectual Property",
-    body: "The BharatPlay name, logo, design and all related intellectual property belong to us. You may not use our trademarks or branding without prior written permission. User content remains the property of the respective users, subject to the licence granted above.",
+    body: "The VidBuxApp name, logo, design and all related intellectual property belong to us. You may not use our trademarks or branding without prior written permission. User content remains the property of the respective users, subject to the licence granted above.",
   },
   {
     title: "8. Copyright and DMCA",
-    body: <>We respect intellectual property rights. If you believe your copyrighted work has been uploaded without authorisation, please follow the process described in our <Link to="/copyright-policy" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Copyright Policy</Link>. We may remove infringing content and, in appropriate cases, terminate repeat infringers.</>,
+    body: (
+      <>
+        We respect intellectual property rights. If you believe your copyrighted
+        work has been uploaded without authorisation, please follow the process
+        described in our{" "}
+        <Link
+          to="/copyright-policy"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          Copyright Policy
+        </Link>
+        . We may remove infringing content and, in appropriate cases, terminate
+        repeat infringers.
+      </>
+    ),
   },
   {
     title: "9. Termination",
@@ -42,7 +71,7 @@ const SECTIONS = [
   },
   {
     title: "10. Rewards, Advertising and Withdrawals",
-    body: "BharatPlay may offer points or other in-app rewards for eligible activity, including approved rewarded-ad experiences. Rewards are promotional, have no guaranteed cash value until a withdrawal is approved, and may be limited, reversed, withheld, or removed for invalid activity, duplicate accounts, automation, fraud, chargebacks, policy violations, or technical errors. Conversion rates, minimum thresholds, supported payout methods, fees, regions, and processing times may change and are shown in the app when available. A withdrawal request is not a payment guarantee; payouts require an active BharatPlay account, successful verification, an available payout system, and final approval. Users must not encourage accidental ad clicks or use methods that manipulate ad measurement.",
+    body: "VidBuxApp may offer points or other in-app rewards for eligible activity, including approved rewarded-ad experiences. Rewards are promotional, have no guaranteed cash value until a withdrawal is approved, and may be limited, reversed, withheld, or removed for invalid activity, duplicate accounts, automation, fraud, chargebacks, policy violations, or technical errors. Conversion rates, minimum thresholds, supported payout methods, fees, regions, and processing times may change and are shown in the app when available. A withdrawal request is not a payment guarantee; payouts require an active VidBuxApp account, successful verification, an available payout system, and final approval. Users must not encourage accidental ad clicks or use methods that manipulate ad measurement.",
   },
   {
     title: "11. Disclaimers",
@@ -50,7 +79,7 @@ const SECTIONS = [
   },
   {
     title: "12. Limitation of Liability",
-    body: "To the maximum extent permitted by law, BharatPlay and its officers, directors and employees shall not be liable for any indirect, incidental, special, consequential or punitive damages arising out of your use of the Service.",
+    body: "To the maximum extent permitted by law, VidBuxApp and its officers, directors and employees shall not be liable for any indirect, incidental, special, consequential or punitive damages arising out of your use of the Service.",
   },
   {
     title: "13. Changes to Terms",
@@ -71,9 +100,20 @@ const SECTIONS = [
 export default function TermsPage() {
   return (
     <LegalPageLayout
-      title="BharatPlay Terms & Conditions"
-      description="Read the Terms & Conditions that govern your use of the BharatPlay website and mobile application."
-      intro={<>These <Link to="/terms" className="font-medium text-blue-500 underline underline-offset-2 transition-colors hover:text-blue-400">Terms & Conditions</Link> set out the rules for using BharatPlay. Please read them carefully.</>}
+      title="VidBuxApp Terms & Conditions"
+      description="Read the Terms & Conditions that govern your use of the VidBuxApp website and mobile application."
+      intro={
+        <>
+          These{" "}
+          <Link
+            to="/terms"
+            className="font-medium text-blue-500 underline underline-offset-2 transition-colors hover:text-blue-400"
+          >
+            Terms & Conditions
+          </Link>{" "}
+          set out the rules for using VidBuxApp. Please read them carefully.
+        </>
+      }
       lastUpdated={SITE.legal.lastUpdated}
     >
       <LegalContent sections={SECTIONS} />

@@ -39,7 +39,7 @@ import {
 import { fetchProfileData } from "../../features/profile/profileSlice";
 import axios from "axios";
 import { API_ORIGIN as API_BASE_URL } from "../../config/api";
-const logo = "/Bharatplay-Cb3qGLyP-Cb3qGLyP-DSDLqCtA.png";
+const logo = "/VidBuxApp-Cb3qGLyP-Cb3qGLyP-DSDLqCtA.png";
 
 const HINTS_URL = `${API_BASE_URL}/api/uservideo/search/hints`;
 
@@ -376,12 +376,12 @@ export default function Navbar({ toggleSidebar }) {
             <div className="w-16 h-12 rounded-md overflow-hidden flex items-center justify-center">
               <img
                 src={logo}
-                alt="BharatPlay"
+                alt="VidBuxApp"
                 className="w-full rounded-2xl h-full object-contain"
               />
             </div>
             <span className="text-xl font-bold tracking-tight text-white dark:text-white">
-              BharatPlay
+              VidBuxApp
             </span>
           </Link>
           {/* Points (desktop) */}
@@ -594,7 +594,7 @@ export default function Navbar({ toggleSidebar }) {
                     }}
                     className="w-full px-4 py-2.5 text-left hover:bg-[#272727] flex items-center gap-4 text-sm"
                   >
-                    <Video size={20} className="text-gray-300" /> Bharat Play
+                    <Video size={20} className="text-gray-300" /> VidBuxApp
                     Studio
                   </button>
 

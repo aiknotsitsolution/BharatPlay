@@ -1,4 +1,4 @@
-name: bharatplay
+name: VidBuxApp
 
 x-app-environment: &app-environment
   NODE_ENV: production

@@ -1,7 +1,11 @@
 /**
  * User notification: your video was taken down due to a copyright claim.
  */
-function getCopyrightTakedownApprovedMailOptions(userEmail, userName, { caseNumber, videoTitle, reason }) {
+function getCopyrightTakedownApprovedMailOptions(
+  userEmail,
+  userName,
+  { caseNumber, videoTitle, reason },
+) {
   return {
     from: process.env.EMAIL,
     to: userEmail,
@@ -28,7 +32,7 @@ function getCopyrightTakedownApprovedMailOptions(userEmail, userName, { caseNumb
 </head>
 <body>
   <div class="container">
-    <div class="brand">Bharat Play</div>
+    <div class="brand">VidBuxApp</div>
     <div style="text-align:center"><span class="badge">Copyright Takedown</span></div>
     <div class="title">Your Video Has Been Taken Down</div>
     <div class="content">
@@ -43,16 +47,20 @@ function getCopyrightTakedownApprovedMailOptions(userEmail, userName, { caseNumb
           <span class="detail-label">Video</span>
           <span class="detail-value">${videoTitle || "Untitled"}</span>
         </div>
-        ${reason ? `<div class="detail-row">
+        ${
+          reason
+            ? `<div class="detail-row">
           <span class="detail-label">Reason</span>
           <span class="detail-value">${reason}</span>
-        </div>` : ""}
+        </div>`
+            : ""
+        }
       </div>
       <p>If you believe this action was taken in error, you have the right to file a counter-notification. You can manage this from your copyright dashboard.</p>
-      <a href="${process.env.WEBSITE_URL || "https://bharatplay.com"}/copyright" class="cta">View Your Copyright Dashboard</a>
+      <a href="${process.env.WEBSITE_URL || "https://VidBuxApp.com"}/copyright" class="cta">View Your Copyright Dashboard</a>
     </div>
     <div class="footer">
-      &copy; 2026 Bharat Play. All rights reserved.
+      &copy; 2026 VidBuxApp. All rights reserved.
     </div>
   </div>
 </body>

@@ -3,7 +3,7 @@ import { SettingsPageShell, SettingsPageHeader } from "../components/common/Sett
 const SECTIONS = [
   {
     title: "1. Acceptance of Terms",
-    body: "By accessing or using Bharat Play (the \"Service\"), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the Service.",
+    body: "By accessing or using VidBuxApp (the \"Service\"), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the Service.",
   },
   {
     title: "2. User Accounts",
@@ -11,11 +11,11 @@ const SECTIONS = [
   },
   {
     title: "3. User Content",
-    body: "You retain ownership of any content you upload, post, or share on the Service (\"User Content\"). By submitting User Content, you grant Bharat Play a worldwide, non-exclusive, royalty-free license to use, reproduce, modify, and distribute your content in connection with operating and improving the Service.",
+    body: "You retain ownership of any content you upload, post, or share on the Service (\"User Content\"). By submitting User Content, you grant VidBuxApp a worldwide, non-exclusive, royalty-free license to use, reproduce, modify, and distribute your content in connection with operating and improving the Service.",
   },
   {
     title: "4. Video Content",
-    body: "Creators are solely responsible for the videos they upload. Videos must comply with our content policies and must not infringe on third-party intellectual property rights. Bharat Play reserves the right to remove content that violates these terms.",
+    body: "Creators are solely responsible for the videos they upload. Videos must comply with our content policies and must not infringe on third-party intellectual property rights. VidBuxApp reserves the right to remove content that violates these terms.",
   },
   {
     title: "5. Prohibited Activities",
@@ -23,7 +23,7 @@ const SECTIONS = [
   },
   {
     title: "6. Intellectual Property",
-    body: "All content, trademarks, logos, and software associated with the Service are the property of Bharat Play or its licensors. You may not use, copy, or distribute any part of the Service without prior written permission, except as permitted by applicable law.",
+    body: "All content, trademarks, logos, and software associated with the Service are the property of VidBuxApp or its licensors. You may not use, copy, or distribute any part of the Service without prior written permission, except as permitted by applicable law.",
   },
   {
     title: "7. Privacy",
@@ -31,19 +31,19 @@ const SECTIONS = [
   },
   {
     title: "8. Third-Party Services",
-    body: "The Service may contain links to or integrations with third-party websites or services. Bharat Play is not responsible for the content, policies, or practices of any third-party services. Use of third-party services is at your own risk.",
+    body: "The Service may contain links to or integrations with third-party websites or services. VidBuxApp is not responsible for the content, policies, or practices of any third-party services. Use of third-party services is at your own risk.",
   },
   {
     title: "9. Account Suspension & Termination",
-    body: "Bharat Play reserves the right to suspend or terminate your account at any time, with or without notice, for conduct that violates these Terms or is otherwise harmful to the Service or other users. Upon termination, your right to use the Service ceases immediately.",
+    body: "VidBuxApp reserves the right to suspend or terminate your account at any time, with or without notice, for conduct that violates these Terms or is otherwise harmful to the Service or other users. Upon termination, your right to use the Service ceases immediately.",
   },
   {
     title: "10. Disclaimers",
-    body: "The Service is provided \"as is\" and \"as available\" without warranties of any kind, whether express or implied. Bharat Play does not guarantee that the Service will be uninterrupted, error-free, or secure.",
+    body: "The Service is provided \"as is\" and \"as available\" without warranties of any kind, whether express or implied. VidBuxApp does not guarantee that the Service will be uninterrupted, error-free, or secure.",
   },
   {
     title: "11. Limitation of Liability",
-    body: "To the fullest extent permitted by law, Bharat Play shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of or inability to use the Service. Our total liability shall not exceed the amount you paid us in the twelve months preceding the claim.",
+    body: "To the fullest extent permitted by law, VidBuxApp shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of or inability to use the Service. Our total liability shall not exceed the amount you paid us in the twelve months preceding the claim.",
   },
   {
     title: "12. Changes to Terms",

@@ -28,7 +28,7 @@ function getCopyrightMoreInfoRequiredMailOptions(claimantEmail, claimantName, { 
 </head>
 <body>
   <div class="container">
-    <div class="brand">Bharat Play</div>
+    <div class="brand">VidBuxApp</div>
     <div style="text-align:center"><span class="badge">Action Required</span></div>
     <div class="title">More Information Required</div>
     <div class="content">
@@ -51,7 +51,7 @@ function getCopyrightMoreInfoRequiredMailOptions(claimantEmail, claimantName, { 
       <p>Please respond to this email with the requested information so we can continue processing your claim.</p>
     </div>
     <div class="footer">
-      &copy; 2026 Bharat Play. All rights reserved.
+      &copy; 2026 VidBuxApp. All rights reserved.
     </div>
   </div>
 </body>

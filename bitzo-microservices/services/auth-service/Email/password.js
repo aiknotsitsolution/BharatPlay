@@ -2,7 +2,7 @@ module.exports = function getPasswordResetMailOptions(email, name, otp) {
   return {
     from: process.env.EMAIL,
     to: email,
-    subject: "Bharat Play — Password Reset Verification Code",
+    subject: "VidBuxApp — Password Reset Verification Code",
     html: `<!DOCTYPE html>
       <html lang="en">
       <head>
@@ -40,7 +40,7 @@ module.exports = function getPasswordResetMailOptions(email, name, otp) {
         <div class="wrapper">
           <div class="container">
             <div class="header">
-              <h1>Bharat Play</h1>
+              <h1>VidBuxApp</h1>
               <p>Password Reset</p>
             </div>
             <div class="body">
@@ -52,12 +52,12 @@ module.exports = function getPasswordResetMailOptions(email, name, otp) {
               </div>
               <p class="expiry">This code expires in <strong>10 minutes</strong>.</p>
               <div class="warning">
-                <p>Do not share this code with anyone. Bharat Play will never ask for your verification code over the phone or email.</p>
+                <p>Do not share this code with anyone. VidBuxApp will never ask for your verification code over the phone or email.</p>
               </div>
               <p class="expiry">If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
             </div>
             <div class="footer">
-              <p>&copy; ${new Date().getFullYear()} Bharat Play. All rights reserved.</p>
+              <p>&copy; ${new Date().getFullYear()} VidBuxApp. All rights reserved.</p>
             </div>
           </div>
         </div>

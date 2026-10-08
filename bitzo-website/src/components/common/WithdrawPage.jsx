@@ -25,7 +25,7 @@ export default function WithdrawPage() {
   const handleWithdraw = () => {
     if (!WITHDRAWALS_ENABLED) {
       setError(
-        "Withdrawals are not available yet. Your points remain in your account until BharatPlay enables verified payouts.",
+        "Withdrawals are not available yet. Your points remain in your account until VidBuxApp enables verified payouts.",
       );
       return;
     }
@@ -73,21 +73,21 @@ export default function WithdrawPage() {
         <div className="bg-linear-to-br from-[#1a1a2e] to-[#0f0f1f] rounded-2xl p-6 mb-6 border border-gray-700 shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-gray-400 text-sm">BharatPlay Points</p>
+              <p className="text-gray-400 text-sm">VidBuxApp Points</p>
               <p className="text-4xl font-bold">${usdBalance}</p>
             </div>
             <Wallet size={48} className="text-yellow-400 opacity-80" />
           </div>
           <p className="text-sm text-gray-500">
             Current points are promotional and are not cash until a verified
-            BharatPlay payout program is enabled.
+            VidBuxApp payout program is enabled.
           </p>
         </div>
 
         <div className="mb-6 rounded-xl border border-amber-700/50 bg-amber-950/30 p-4 text-sm leading-relaxed text-amber-200">
           Withdrawals are not available in this release. Do not send money or
-          payment details to anyone claiming to represent BharatPlay. Your
-          points remain associated with your account.
+          payment details to anyone claiming to represent VidBuxApp. Your points
+          remain associated with your account.
         </div>
 
         {/* Select Method */}
@@ -186,7 +186,7 @@ export default function WithdrawPage() {
 
         <p className="text-center text-xs text-gray-500 mt-6">
           Any future payout will require account verification, eligibility
-          checks, and an active BharatPlay payout provider.
+          checks, and an active VidBuxApp payout provider.
         </p>
       </div>
     </div>

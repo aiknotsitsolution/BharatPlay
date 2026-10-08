@@ -38,7 +38,7 @@ function getCopyrightCaseResolvedMailOptions(claimantEmail, claimantName, { case
 </head>
 <body>
   <div class="container">
-    <div class="brand">Bharat Play</div>
+    <div class="brand">VidBuxApp</div>
     <div style="text-align:center"><span class="badge">Case Resolved</span></div>
     <div class="title">Your Copyright Case Has Been Resolved</div>
     <div class="content">
@@ -61,7 +61,7 @@ function getCopyrightCaseResolvedMailOptions(claimantEmail, claimantName, { case
       <p>If you have any questions about this decision, please contact our support team.</p>
     </div>
     <div class="footer">
-      &copy; 2026 Bharat Play. All rights reserved.
+      &copy; 2026 VidBuxApp. All rights reserved.
     </div>
   </div>
 </body>

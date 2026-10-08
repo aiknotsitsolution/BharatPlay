@@ -27,8 +27,14 @@ import {
 const PAGE_SIZE = 10;
 
 const STATUSES = {
-  active: { label: "Active", classes: "bg-green-500/15 text-green-400 border border-green-500/30" },
-  disabled: { label: "Disabled", classes: "bg-amber-500/15 text-amber-400 border border-amber-500/30" },
+  active: {
+    label: "Active",
+    classes: "bg-green-500/15 text-green-400 border border-green-500/30",
+  },
+  disabled: {
+    label: "Disabled",
+    classes: "bg-amber-500/15 text-amber-400 border border-amber-500/30",
+  },
 };
 
 function formatCount(n) {
@@ -42,7 +48,9 @@ function EditModal({ video, onClose, onSaved }) {
   const [title, setTitle] = useState(video.title || "");
   const [description, setDescription] = useState(video.description || "");
   const [videoType, setVideoType] = useState(
-    Array.isArray(video.videoType) ? video.videoType[0] : video.videoType || "long",
+    Array.isArray(video.videoType)
+      ? video.videoType[0]
+      : video.videoType || "long",
   );
   const [saving, setSaving] = useState(false);
 
@@ -54,15 +62,18 @@ function EditModal({ video, onClose, onSaved }) {
     }
     setSaving(true);
     try {
-      const res = await authFetch(`${API_ORIGIN}/api/adminvideo/update/${video._id || video.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim(),
-          type: videoType,
-        }),
-      });
+      const res = await authFetch(
+        `${API_ORIGIN}/api/adminvideo/update/${video._id || video.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: title.trim(),
+            description: description.trim(),
+            type: videoType,
+          }),
+        },
+      );
       const data = await res.json();
       if (data.success) {
         toast.success("Video updated");
@@ -99,7 +110,10 @@ function EditModal({ video, onClose, onSaved }) {
 
         <form onSubmit={handleSave} className="space-y-4 px-6 py-5">
           <div>
-            <label htmlFor="edit-title" className="mb-1 block text-sm font-medium text-zinc-300">
+            <label
+              htmlFor="edit-title"
+              className="mb-1 block text-sm font-medium text-zinc-300"
+            >
               Title
             </label>
             <input
@@ -112,7 +126,10 @@ function EditModal({ video, onClose, onSaved }) {
           </div>
 
           <div>
-            <label htmlFor="edit-desc" className="mb-1 block text-sm font-medium text-zinc-300">
+            <label
+              htmlFor="edit-desc"
+              className="mb-1 block text-sm font-medium text-zinc-300"
+            >
               Description
             </label>
             <textarea
@@ -126,7 +143,10 @@ function EditModal({ video, onClose, onSaved }) {
           </div>
 
           <div>
-            <label htmlFor="edit-type" className="mb-1 block text-sm font-medium text-zinc-300">
+            <label
+              htmlFor="edit-type"
+              className="mb-1 block text-sm font-medium text-zinc-300"
+            >
               Type
             </label>
             <select
@@ -226,7 +246,7 @@ function DeleteConfirm({ video, onClose, onDeleted }) {
   );
 }
 
-export default function BharatPlayStudio() {
+export default function VidBuxAppStudio() {
   const navigate = useNavigate();
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -238,33 +258,30 @@ export default function BharatPlayStudio() {
 
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
-  const fetchVideos = useCallback(
-    async (pageNum) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await authFetch(
-          `${API_USERVIDEO}/my-videos?page=${pageNum}&limit=${PAGE_SIZE}`,
-        );
-        if (res.status === 401 || res.status === 403) {
-          setError("auth");
-          return;
-        }
-        if (!res.ok) {
-          setError("server");
-          return;
-        }
-        const data = await res.json();
-        setVideos(Array.isArray(data.videos) ? data.videos : []);
-        setTotal(data.total ?? 0);
-      } catch {
-        setError("network");
-      } finally {
-        setLoading(false);
+  const fetchVideos = useCallback(async (pageNum) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await authFetch(
+        `${API_USERVIDEO}/my-videos?page=${pageNum}&limit=${PAGE_SIZE}`,
+      );
+      if (res.status === 401 || res.status === 403) {
+        setError("auth");
+        return;
       }
-    },
-    [],
-  );
+      if (!res.ok) {
+        setError("server");
+        return;
+      }
+      const data = await res.json();
+      setVideos(Array.isArray(data.videos) ? data.videos : []);
+      setTotal(data.total ?? 0);
+    } catch {
+      setError("network");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchVideos(page);
@@ -293,7 +310,7 @@ export default function BharatPlayStudio() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white md:text-3xl">
-            Bharat Play Studio
+            VidBuxApp Studio
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
             Manage your videos, track performance, and grow your audience.
@@ -361,7 +378,7 @@ export default function BharatPlayStudio() {
         ) : error === "auth" ? (
           <SettingsAuthState
             icon={Video}
-            title="Sign in to access Bharat Play Studio"
+            title="Sign in to access VidBuxApp Studio"
           />
         ) : error ? (
           <SettingsErrorState onRetry={() => fetchVideos(page)} />
@@ -387,8 +404,7 @@ export default function BharatPlayStudio() {
             <div className="space-y-2.5">
               {videos.map((video) => {
                 const videoId = video._id || video.id;
-                const statusInfo =
-                  STATUSES[video.status] || STATUSES.active;
+                const statusInfo = STATUSES[video.status] || STATUSES.active;
 
                 return (
                   <VideoRowCard
@@ -396,7 +412,9 @@ export default function BharatPlayStudio() {
                     video={{
                       ...video,
                       channelName:
-                        video.channelName || video.channel?.name || "Unknown channel",
+                        video.channelName ||
+                        video.channel?.name ||
+                        "Unknown channel",
                     }}
                     onClick={() =>
                       navigate(`/video/${videoId}`, { state: { video } })
@@ -485,7 +503,9 @@ export default function BharatPlayStudio() {
         <DeleteConfirm
           video={deletingVideo}
           onClose={() => setDeletingVideo(null)}
-          onDeleted={() => handleVideoRemoved(deletingVideo._id || deletingVideo.id)}
+          onDeleted={() =>
+            handleVideoRemoved(deletingVideo._id || deletingVideo.id)
+          }
         />
       )}
     </SettingsPageShell>

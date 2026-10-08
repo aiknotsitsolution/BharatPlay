@@ -6,8 +6,8 @@ const FAQ_DATA = [
   {
     category: "General",
     items: [
-      { q: "What is Bharat Play?", a: "Bharat Play is a video platform where creators can upload, share, and monetize their content. Viewers can watch videos, subscribe to channels, and engage with creators." },
-      { q: "Is Bharat Play free to use?", a: "Yes. Creating an account and watching videos is completely free. Some features like creator monetization may have additional requirements." },
+      { q: "What is VidBuxApp?", a: "VidBuxApp is a video platform where creators can upload, share, and monetize their content. Viewers can watch videos, subscribe to channels, and engage with creators." },
+      { q: "Is VidBuxApp free to use?", a: "Yes. Creating an account and watching videos is completely free. Some features like creator monetization may have additional requirements." },
       { q: "How do I create an account?", a: "You can sign up using your email address or via Google OAuth. Tap the Sign Up or Sign In button on the login page to get started." },
     ],
   },
@@ -128,7 +128,7 @@ export default function FAQPage() {
       <SettingsPageHeader title="Frequently Asked Questions" />
 
       <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-        Find answers to common questions about using Bharat Play.
+        Find answers to common questions about using VidBuxApp.
       </p>
 
       {/* Search */}

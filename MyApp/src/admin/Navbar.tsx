@@ -226,12 +226,12 @@ export default function Navbar({ onMenuPress, points = 0 }) {
         <View style={styles.topRow}>
           <View style={styles.logoSection}>
             <Image
-              source={require("../../assets/Bharatplay-Cb3qGLyP-Cb3qGLyP.png")}
+              source={require("../../assets/VidBuxApp-logo.png")}
               style={styles.logoImage}
               resizeMode="contain"
-              accessibilityLabel="BharatPlay"
+              accessibilityLabel="VidBuxApp"
             />
-            <Text style={styles.logoText}>BharatPlay</Text>
+            <Text style={styles.logoText}>VidBuxApp</Text>
 
             {/* Search icon next to logo */}
             <View style={styles.badgesRow}>

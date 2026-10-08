@@ -2,13 +2,13 @@ module.exports = function getRegisterMailOptions(email, name) {
   return {
     from: process.env.EMAIL,
     to: email,
-    subject: "Bharat Play — Welcome to Bharat Play",
+    subject: "VidBuxApp — Welcome to VidBuxApp",
     html: `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to Bharat Play</title>
+  <title>Welcome to VidBuxApp</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f4f4f7; margin: 0; padding: 0; }
     .wrapper { width: 100%; background: #f4f4f7; padding: 40px 0; }
@@ -32,15 +32,15 @@ module.exports = function getRegisterMailOptions(email, name) {
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <h1>Bharat Play</h1>
+        <h1>VidBuxApp</h1>
       </div>
       <div class="body">
         <p>Hi <strong>${name || "there"}</strong>,</p>
-        <p>Your Bharat Play account has been created successfully. You can now sign in and start exploring content on the platform.</p>
+        <p>Your VidBuxApp account has been created successfully. You can now sign in and start exploring content on the platform.</p>
         <p>If you have any questions, feel free to reach out to our support team.</p>
       </div>
       <div class="footer">
-        <p>&copy; ${new Date().getFullYear()} Bharat Play. All rights reserved.</p>
+        <p>&copy; ${new Date().getFullYear()} VidBuxApp. All rights reserved.</p>
       </div>
     </div>
   </div>

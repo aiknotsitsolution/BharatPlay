@@ -44,8 +44,8 @@ const SECTIONS: Section[] = [
   { key: "about", title: "About Us", icon: "information-circle-outline" },
 ];
 
-const SUPPORT_EMAIL = "admin@bharatplay.com";
-const COPYRIGHT_EMAIL = "admin@bharatplay.com";
+const SUPPORT_EMAIL = "admin@VidBuxApp.com";
+const COPYRIGHT_EMAIL = "admin@VidBuxApp.com";
 
 export default function LegalSidebarScreen() {
   const navigation = useNavigation();
@@ -65,11 +65,11 @@ export default function LegalSidebarScreen() {
               Last updated: September 18, 2026
             </Text>
 
-            <Text style={styles.heading}>1. Welcome to BharatPlay</Text>
+            <Text style={styles.heading}>1. Welcome to VidBuxApp</Text>
             <Text style={styles.paragraph}>
-              BharatPlay is a creator-first entertainment platform for
+              VidBuxApp is a creator-first entertainment platform for
               discovering, watching, and sharing short-form and long-form video
-              content. By accessing or using the BharatPlay app, website, or
+              content. By accessing or using the VidBuxApp app, website, or
               related services, you agree to these Terms and Conditions.
             </Text>
 
@@ -83,7 +83,7 @@ export default function LegalSidebarScreen() {
 
             <Text style={styles.heading}>3. User Responsibilities</Text>
             <Text style={styles.paragraph}>
-              You agree to use BharatPlay responsibly and in compliance with all
+              You agree to use VidBuxApp responsibly and in compliance with all
               applicable laws. You may not upload, share, or promote prohibited
               content, spam, scams, manipulative engagement, or misleading
               activity.
@@ -99,7 +99,7 @@ export default function LegalSidebarScreen() {
             <Text style={styles.heading}>4. Your Content</Text>
             <Text style={styles.paragraph}>
               You retain ownership of your uploaded content. By uploading
-              content to BharatPlay, you grant us a worldwide, non-exclusive,
+              content to VidBuxApp, you grant us a worldwide, non-exclusive,
               royalty-free license to host, display, distribute, promote, and
               monetize that content as part of the Service, where permitted by
               law and platform functionality.
@@ -114,21 +114,21 @@ export default function LegalSidebarScreen() {
               5. Account Suspension and Termination
             </Text>
             <Text style={styles.paragraph}>
-              BharatPlay may suspend, restrict, or terminate accounts that
+              VidBuxApp may suspend, restrict, or terminate accounts that
               violate these Terms, the Community Guidelines, or relevant laws.
               We may also remove content that violates our policies.
             </Text>
 
             <Text style={styles.heading}>6. Service Availability</Text>
             <Text style={styles.paragraph}>
-              BharatPlay may update, modify, suspend, or discontinue features at
+              VidBuxApp may update, modify, suspend, or discontinue features at
               any time. We aim to provide a reliable service, but we do not
               guarantee uninterrupted access or error-free operation.
             </Text>
 
             <Text style={styles.heading}>7. Liability</Text>
             <Text style={styles.paragraph}>
-              BharatPlay is provided on an “as is” basis. We are not liable for
+              VidBuxApp is provided on an “as is” basis. We are not liable for
               indirect, incidental, or consequential damages arising from your
               use of the platform, except where required by applicable law.
             </Text>
@@ -136,7 +136,7 @@ export default function LegalSidebarScreen() {
             <Text style={styles.heading}>8. Changes to Terms</Text>
             <Text style={styles.paragraph}>
               We may update these Terms from time to time. Continued use of
-              BharatPlay after changes become effective means you accept the
+              VidBuxApp after changes become effective means you accept the
               revised Terms.
             </Text>
 
@@ -160,9 +160,9 @@ export default function LegalSidebarScreen() {
               Last updated: September 18, 2026
             </Text>
             <Text style={styles.paragraph}>
-              BharatPlay respects your privacy. This Privacy Policy explains how
+              VidBuxApp respects your privacy. This Privacy Policy explains how
               we collect, use, protect, and share data when you use the
-              BharatPlay app, website, creator tools, or connected services.
+              VidBuxApp app, website, creator tools, or connected services.
             </Text>
 
             <Text style={styles.heading}>Information We Collect</Text>
@@ -179,7 +179,7 @@ export default function LegalSidebarScreen() {
 
             <Text style={styles.heading}>How We Use Information</Text>
             <Text style={styles.bullet}>
-              • To provide and improve the BharatPlay experience{"\n"}• To
+              • To provide and improve the VidBuxApp experience{"\n"}• To
               personalize content, recommendations, and discovery features{"\n"}
               • To secure the Service, prevent abuse, and support moderation and
               safety systems{"\n"}• To communicate support, updates, account
@@ -207,7 +207,7 @@ export default function LegalSidebarScreen() {
               frozen for duplicate accounts, automation, invalid activity,
               fraud, policy violations, or technical errors. Conversion rates,
               eligibility, minimum withdrawal thresholds, supported payout
-              methods, and processing times depend on the active BharatPlay
+              methods, and processing times depend on the active VidBuxApp
               rewards program and are shown when available. Never click ads or
               interact with ads solely to manipulate rewards.
             </Text>
@@ -226,13 +226,13 @@ export default function LegalSidebarScreen() {
         return (
           <View style={styles.contentBox}>
             <Text style={styles.paragraph}>
-              BharatPlay is committed to building a respectful, safe, and
+              VidBuxApp is committed to building a respectful, safe, and
               inclusive community for creators, viewers, and brands. These
               guidelines explain what is expected from users on the platform.
             </Text>
             <Text style={styles.bullet}>
               • Be respectful to other users, creators, moderators, and teams
-              working on BharatPlay{"\n"}• No harassment, hate speech, threats,
+              working on VidBuxApp{"\n"}• No harassment, hate speech, threats,
               or discriminatory behavior{"\n"}• No illegal activity, scams,
               fraud, or harmful misinformation{"\n"}• No content that exploits
               children or sexualizes minors{"\n"}• No spam, repeated abuse, or
@@ -251,7 +251,7 @@ export default function LegalSidebarScreen() {
         return (
           <View style={styles.contentBox}>
             <Text style={styles.paragraph}>
-              BharatPlay allows original, licensed, and lawfully shared content
+              VidBuxApp allows original, licensed, and lawfully shared content
               that complies with local regulations and our platform standards.
               The following content is not allowed:
             </Text>
@@ -275,8 +275,8 @@ export default function LegalSidebarScreen() {
         return (
           <View style={styles.contentBox}>
             <Text style={styles.paragraph}>
-              BharatPlay respects the rights of copyright owners. If you believe
-              content on BharatPlay infringes your copyright, please contact us
+              VidBuxApp respects the rights of copyright owners. If you believe
+              content on VidBuxApp infringes your copyright, please contact us
               using the notice details below so we can review the claim quickly
               and fairly.
             </Text>
@@ -309,8 +309,8 @@ export default function LegalSidebarScreen() {
         return (
           <View style={styles.contentBox}>
             <Text style={styles.paragraph}>
-              You may delete your BharatPlay account and related data at any
-              time from the app settings, or by contacting support for assisted
+              You may delete your VidBuxApp account and related data at any time
+              from the app settings, or by contacting support for assisted
               account removal.
             </Text>
             <Text style={styles.heading}>What Happens After Deletion</Text>
@@ -359,7 +359,7 @@ export default function LegalSidebarScreen() {
         return (
           <View style={styles.contentBox}>
             <Text style={styles.paragraph}>
-              BharatPlay is a digital entertainment and creator platform built
+              VidBuxApp is a digital entertainment and creator platform built
               for viewers, communities, and publishers. We aim to make content
               discovery, creator growth, and social engagement simple, safe, and
               accessible for Indian audiences and global users alike.
@@ -372,7 +372,7 @@ export default function LegalSidebarScreen() {
               digital media growth and user trust.
             </Text>
             <Text style={styles.paragraph}>
-              © 2026 BharatPlay. All rights reserved. For support, contact{" "}
+              © 2026 VidBuxApp. All rights reserved. For support, contact{" "}
               <Text
                 style={styles.link}
                 onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}

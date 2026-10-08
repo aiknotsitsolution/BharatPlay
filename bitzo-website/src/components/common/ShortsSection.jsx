@@ -1,16 +1,15 @@
-
 // src/components/common/ShortsSection.jsx
 import React, { useState } from "react";
-import { 
-  Heart, 
-  MessageCircle, 
-  Share2, 
-  Bookmark, 
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  Bookmark,
   MoreHorizontal,
   VolumeX,
   Volume2,
-  X
-} from 'lucide-react';
+  X,
+} from "lucide-react";
 
 const shorts = [
   {
@@ -19,7 +18,8 @@ const shorts = [
     views: "1.2M views",
     thumbnail: "https://i.ytimg.com/vi/lEP0r0XwN78/sddefault.jpg",
     duration: "0:58",
-    videoUrl: "https://www.youtube.com/embed/lEP0r0XwN78?autoplay=1&mute=1&loop=1&playlist=lEP0r0XwN78&controls=0&showinfo=0&rel=0",
+    videoUrl:
+      "https://www.youtube.com/embed/lEP0r0XwN78?autoplay=1&mute=1&loop=1&playlist=lEP0r0XwN78&controls=0&showinfo=0&rel=0",
     creator: "sayli_ally",
     creatorHandle: "sayli_s0395",
     likes: "2,496",
@@ -32,7 +32,8 @@ const shorts = [
     views: "890K views",
     thumbnail: "https://i.ytimg.com/vi/-fC0__71FFs/sddefault.jpg",
     duration: "1:02",
-    videoUrl: "https://www.youtube.com/embed/-fC0__71FFs?autoplay=1&mute=1&loop=1&playlist=-fC0__71FFs&controls=0&showinfo=0&rel=0",
+    videoUrl:
+      "https://www.youtube.com/embed/-fC0__71FFs?autoplay=1&mute=1&loop=1&playlist=-fC0__71FFs&controls=0&showinfo=0&rel=0",
     creator: "webflow_pro",
     creatorHandle: "webflow_2025",
     likes: "1,845",
@@ -41,13 +42,14 @@ const shorts = [
   },
   {
     id: 3,
-    title: "Killer Bharat Play Thumbnail Formula for 2025 Algo",
+    title: "Killer VidBuxApp Thumbnail Formula for 2025 Algo",
     views: "3.1M views",
     thumbnail: "https://i.ytimg.com/vi/0TolBiTrUg4/sddefault.jpg",
     duration: "0:45",
-    videoUrl: "https://www.youtube.com/embed/0TolBiTrUg4?autoplay=1&mute=1&loop=1&playlist=0TolBiTrUg4&controls=0&showinfo=0&rel=0",
-    creator: "bharatplay_tips",
-    creatorHandle: "bharatplay_official",
+    videoUrl:
+      "https://www.youtube.com/embed/0TolBiTrUg4?autoplay=1&mute=1&loop=1&playlist=0TolBiTrUg4&controls=0&showinfo=0&rel=0",
+    creator: "VidBuxApp_tips",
+    creatorHandle: "VidBuxApp_official",
     likes: "5,234",
     comments: "156",
     description: "Ultimate thumbnail secrets... more",
@@ -58,7 +60,8 @@ const shorts = [
     views: "2.4M views",
     thumbnail: "https://i.ytimg.com/vi/ieguGuC-yRI/sddefault.jpg",
     duration: "0:55",
-    videoUrl: "https://www.youtube.com/embed/ieguGuC-yRI?autoplay=1&mute=1&loop=1&playlist=ieguGuC-yRI&controls=0&showinfo=0&rel=0",
+    videoUrl:
+      "https://www.youtube.com/embed/ieguGuC-yRI?autoplay=1&mute=1&loop=1&playlist=ieguGuC-yRI&controls=0&showinfo=0&rel=0",
     creator: "ui_master",
     creatorHandle: "ui_design_pro",
     likes: "3,892",
@@ -71,7 +74,8 @@ const shorts = [
     views: "4.7M views",
     thumbnail: "https://i.ytimg.com/vi/UrTStGUxtbs/sddefault.jpg",
     duration: "0:50",
-    videoUrl: "https://www.youtube.com/embed/UrTStGUxtbs?autoplay=1&mute=1&loop=1&playlist=UrTStGUxtbs&controls=0&showinfo=0&rel=0",
+    videoUrl:
+      "https://www.youtube.com/embed/UrTStGUxtbs?autoplay=1&mute=1&loop=1&playlist=UrTStGUxtbs&controls=0&showinfo=0&rel=0",
     creator: "figma_expert",
     creatorHandle: "figma_2026",
     likes: "7,123",
@@ -80,11 +84,12 @@ const shorts = [
   },
   {
     id: 6,
-    title: "Bharat Play Shorts Thumbnail Hacks for More Views",
+    title: "VidBuxApp Shorts Thumbnail Hacks for More Views",
     views: "1.5M views",
     thumbnail: "https://i.ytimg.com/vi/nPBy5abtUYk/sddefault.jpg",
     duration: "1:10",
-    videoUrl: "https://www.youtube.com/embed/nPBy5abtUYk?autoplay=1&mute=1&loop=1&playlist=nPBy5abtUYk&controls=0&showinfo=0&rel=0",
+    videoUrl:
+      "https://www.youtube.com/embed/nPBy5abtUYk?autoplay=1&mute=1&loop=1&playlist=nPBy5abtUYk&controls=0&showinfo=0&rel=0",
     creator: "growth_hacker",
     creatorHandle: "growth_tips",
     likes: "2,678",
@@ -117,7 +122,7 @@ function ShortsViewer({ short, onClose, onNext, onPrev }) {
             className="w-full h-full object-cover"
             allow="autoplay; encrypted-media"
             allowFullScreen
-            style={{ pointerEvents: 'none' }}
+            style={{ pointerEvents: "none" }}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60" />
         </div>
@@ -181,12 +186,14 @@ function ShortsViewer({ short, onClose, onNext, onPrev }) {
                 <Heart
                   size={28}
                   className={`${
-                    liked ? 'fill-red-500 text-red-500' : 'text-white'
+                    liked ? "fill-red-500 text-red-500" : "text-white"
                   } transition-colors`}
                 />
                 <span className="text-white text-xs font-medium">
                   {liked
-                    ? (parseInt(short.likes.replace(/,/g, '')) + 1).toLocaleString()
+                    ? (
+                        parseInt(short.likes.replace(/,/g, "")) + 1
+                      ).toLocaleString()
                     : short.likes}
                 </span>
               </button>
@@ -212,7 +219,7 @@ function ShortsViewer({ short, onClose, onNext, onPrev }) {
                 <Bookmark
                   size={28}
                   className={`${
-                    saved ? 'fill-white text-white' : 'text-white'
+                    saved ? "fill-white text-white" : "text-white"
                   } transition-colors`}
                 />
               </button>
@@ -256,7 +263,7 @@ export default function ShortsSection() {
 
   const handleNext = () => {
     if (selectedShort) {
-      const currentIndex = shorts.findIndex(s => s.id === selectedShort.id);
+      const currentIndex = shorts.findIndex((s) => s.id === selectedShort.id);
       const nextIndex = (currentIndex + 1) % shorts.length;
       setSelectedShort(shorts[nextIndex]);
     }
@@ -264,7 +271,7 @@ export default function ShortsSection() {
 
   const handlePrev = () => {
     if (selectedShort) {
-      const currentIndex = shorts.findIndex(s => s.id === selectedShort.id);
+      const currentIndex = shorts.findIndex((s) => s.id === selectedShort.id);
       const prevIndex = (currentIndex - 1 + shorts.length) % shorts.length;
       setSelectedShort(shorts[prevIndex]);
     }

@@ -763,7 +763,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
               {/* Header */}
               <View style={styles.header}>
                 <Image
-                  source={require("../../assets/Bharatplay-Cb3qGLyP-Cb3qGLyP.png")}
+                  source={require("../../assets/VidBuxApp-logo.png")}
                   style={styles.logoImage}
                   resizeMode="contain"
                 />

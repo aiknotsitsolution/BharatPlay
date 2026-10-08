@@ -85,7 +85,7 @@ export default function EmployeeLogin() {
           <div className="flex flex-col items-center text-center gap-3 mb-5">
             <img
               src="/Logo-image.jpg"
-              alt="BharatPlay"
+              alt="VidBuxApp"
               className="w-14 h-14 rounded-2xl object-cover ring-1 ring-bp-border"
             />
             <div>
@@ -100,7 +100,7 @@ export default function EmployeeLogin() {
                     "drop-shadow(0 0 8px rgba(231,199,102,0.4)) drop-shadow(0 0 15px rgba(239,107,94,0.3)) drop-shadow(0 0 20px rgba(86,161,232,0.3))",
                 }}
               >
-                Bharatplay
+                VidBuxApp
               </h1>
               <p className="text-bp-text-secondary mt-1.5 text-sm">
                 Employee &amp; Staff Login

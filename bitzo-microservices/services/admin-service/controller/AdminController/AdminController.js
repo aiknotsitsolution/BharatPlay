@@ -698,7 +698,7 @@ exports.deleteUser = async (req, res) => {
           user.email,
           user.name,
           user.role || "Employee",
-          "Bharat Play",
+          "VidBuxApp",
         ),
       );
     } catch (mailError) {
@@ -1054,7 +1054,7 @@ exports.deleteEmployee = async (req, res) => {
           employee.email,
           employee.name,
           employee.role || "Employee",
-          "Bharat Play",
+          "VidBuxApp",
         ),
       );
     } catch (mailError) {
@@ -3761,7 +3761,7 @@ exports.registerEmployee = async (req, res) => {
         user.email,
         user.name,
         user.role,
-        "Bharat Play",
+        "VidBuxApp",
         user.experienceYears || "N/A",
         password,
       ),

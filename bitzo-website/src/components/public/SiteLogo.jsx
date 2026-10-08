@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
-const logo = "/Bharatplay-Cb3qGLyP-Cb3qGLyP-DSDLqCtA.png";
+const logo = "/VidBuxApp-Cb3qGLyP-Cb3qGLyP-DSDLqCtA.png";
 import SITE from "../../config/site";
 import { useTheme } from "../../context/ThemeContext";
 
 /**
- * BharatPlay brand lockup used across public pages.
+ * VidBuxApp brand lockup used across public pages.
  */
 export default function SiteLogo({ to = "/", className = "" }) {
   const { theme } = useTheme();

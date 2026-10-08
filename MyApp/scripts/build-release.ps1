@@ -8,7 +8,7 @@ $shortProjectRoot = 'C:\Users\adity\OneDrive\Desktop\Video\NEWFOL~1\BHARAT~4\MyA
 $shortRootParent = Split-Path -Parent $shortRoot
 
 Write-Host "========================================="
-Write-Host " BharatPlay Android Release Build"
+Write-Host " VidBuxApp Android Release Build"
 Write-Host "========================================="
 Write-Host "Project Root : $projectRoot"
 Write-Host "Short Root   : $shortRoot"

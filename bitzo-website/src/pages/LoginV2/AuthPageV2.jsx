@@ -357,7 +357,7 @@ export default function AuthPageV2() {
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              Bharat Play
+              VidBuxApp
             </h1>
             <p className="text-gray-400 mt-1 text-xs sm:text-sm">
               {isLogin ? "Sign in to continue" : "Create your account"}
@@ -1232,7 +1232,7 @@ export default function AuthPageV2() {
 //               <span className="text-2xl font-black text-red-500 tracking-tight">BP</span>
 //             </div>
 //             <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-//               Bharat Play
+//               VidBuxApp
 //             </h1>
 //             <p className="text-gray-400 mt-2 text-sm">
 //               {isLogin ? "Sign in to continue" : "Create your account"}

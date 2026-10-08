@@ -6,7 +6,23 @@ import SITE from "../../../config/site";
 const SECTIONS = [
   {
     title: "1. Introduction",
-    body: <>This Privacy Policy explains how BharatPlay ("we", "our" or "us") collects, uses, stores, shares and protects information relating to users of the BharatPlay website and the BharatPlay Android application (together, the "Service"). By using the Service, you agree to the practices described in this policy. This policy should be read alongside our <Link to="/terms" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Terms & Conditions</Link>.</>,
+    body: (
+      <>
+        This Privacy Policy explains how VidBuxApp ("we", "our" or "us")
+        collects, uses, stores, shares and protects information relating to
+        users of the VidBuxApp website and the VidBuxApp Android application
+        (together, the "Service"). By using the Service, you agree to the
+        practices described in this policy. This policy should be read alongside
+        our{" "}
+        <Link
+          to="/terms"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          Terms & Conditions
+        </Link>
+        .
+      </>
+    ),
   },
   {
     title: "2. Information We Collect",
@@ -14,7 +30,7 @@ const SECTIONS = [
   },
   {
     title: "3. Personal Information",
-    body: "When you create an account, we may collect personal information such as your name, email address, profile picture and other details you choose to provide. If you sign in using a supported identity provider, such as Google Sign-In used on the BharatPlay website, we receive the account information made available by that provider in accordance with your choices on that provider's platform.",
+    body: "When you create an account, we may collect personal information such as your name, email address, profile picture and other details you choose to provide. If you sign in using a supported identity provider, such as Google Sign-In used on the VidBuxApp website, we receive the account information made available by that provider in accordance with your choices on that provider's platform.",
   },
   {
     title: "4. Account Information",
@@ -46,7 +62,7 @@ const SECTIONS = [
   },
   {
     title: "11. Third-Party Services / SDKs",
-    body: "The Service may use third-party services and software development kits (SDKs) to support core functionality. For example, the BharatPlay website uses Google Sign-In for authentication, and the BharatPlay mobile application uses Firebase Authentication for sign-in and account-related features. These providers process data according to their own privacy policies and our instructions.",
+    body: "The Service may use third-party services and software development kits (SDKs) to support core functionality. For example, the VidBuxApp website uses Google Sign-In for authentication, and the VidBuxApp mobile application uses Firebase Authentication for sign-in and account-related features. These providers process data according to their own privacy policies and our instructions.",
   },
   {
     title: "12. Data Sharing",
@@ -74,30 +90,81 @@ const SECTIONS = [
   },
   {
     title: "18. Consent",
-    body: <>By using the Service and providing us with your information, you consent to the collection, use and sharing of your information as described in this Privacy Policy. Your use of the Service is also governed by our <Link to="/terms" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Terms & Conditions</Link>.</>,
+    body: (
+      <>
+        By using the Service and providing us with your information, you consent
+        to the collection, use and sharing of your information as described in
+        this Privacy Policy. Your use of the Service is also governed by our{" "}
+        <Link
+          to="/terms"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          Terms & Conditions
+        </Link>
+        .
+      </>
+    ),
   },
   {
     title: "19. Account & Data Deletion",
-    body: <>You can request the deletion of your BharatPlay account and the personal information associated with it through the <Link to="/delete-account" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Account & Data Deletion page</Link>. We process deletion requests in accordance with applicable law. Some information may be retained where required by law or for legitimate business purposes, such as preventing fraud or fulfilling legal obligations.</>,
+    body: (
+      <>
+        You can request the deletion of your VidBuxApp account and the personal
+        information associated with it through the{" "}
+        <Link
+          to="/delete-account"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          Account & Data Deletion page
+        </Link>
+        . We process deletion requests in accordance with applicable law. Some
+        information may be retained where required by law or for legitimate
+        business purposes, such as preventing fraud or fulfilling legal
+        obligations.
+      </>
+    ),
   },
   {
     title: "20. Changes to Privacy Policy",
-    body: "We may update this Privacy Policy from time to time. When we make material changes, we will update the \"Last Updated\" date at the top of this page and, where appropriate, notify you through the Service. Your continued use of the Service after changes take effect constitutes your acceptance of the updated policy.",
+    body: 'We may update this Privacy Policy from time to time. When we make material changes, we will update the "Last Updated" date at the top of this page and, where appropriate, notify you through the Service. Your continued use of the Service after changes take effect constitutes your acceptance of the updated policy.',
   },
   {
     title: "21. Contact Us",
-    body: SITE.supportEmail
-      ? <>If you have any questions about this Privacy Policy or your personal information, you can reach us at {SITE.supportEmail}. You may also use the <Link to="/contact" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Contact page</Link> to submit a privacy request.</>
-      : <>If you have any questions about this Privacy Policy or your personal information, please use the <Link to="/contact" className="text-blue-500 underline underline-offset-2 hover:text-blue-400">Contact page</Link> to submit a privacy request and a member of our team will respond.</>,
+    body: SITE.supportEmail ? (
+      <>
+        If you have any questions about this Privacy Policy or your personal
+        information, you can reach us at {SITE.supportEmail}. You may also use
+        the{" "}
+        <Link
+          to="/contact"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          Contact page
+        </Link>{" "}
+        to submit a privacy request.
+      </>
+    ) : (
+      <>
+        If you have any questions about this Privacy Policy or your personal
+        information, please use the{" "}
+        <Link
+          to="/contact"
+          className="text-blue-500 underline underline-offset-2 hover:text-blue-400"
+        >
+          Contact page
+        </Link>{" "}
+        to submit a privacy request and a member of our team will respond.
+      </>
+    ),
   },
 ];
 
 export default function PrivacyPolicyPage() {
   return (
     <LegalPageLayout
-      title="BharatPlay Privacy Policy"
-      description="Read the BharatPlay Privacy Policy to understand what information we collect, how we use it, and how you can manage or delete your data."
-      intro="This Privacy Policy describes how BharatPlay collects, uses, stores and protects information in connection with the BharatPlay website and mobile application."
+      title="VidBuxApp Privacy Policy"
+      description="Read the VidBuxApp Privacy Policy to understand what information we collect, how we use it, and how you can manage or delete your data."
+      intro="This Privacy Policy describes how VidBuxApp collects, uses, stores and protects information in connection with the VidBuxApp website and mobile application."
       lastUpdated={SITE.legal.lastUpdated}
     >
       <LegalContent sections={SECTIONS} />

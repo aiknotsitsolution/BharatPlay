@@ -5,7 +5,7 @@ module.exports = function getPasswordChangeConfirmationMailOptions(
   return {
     from: process.env.EMAIL,
     to: email,
-    subject: "Bharat Play — Password Changed Successfully",
+    subject: "VidBuxApp — Password Changed Successfully",
     html: `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,14 +34,14 @@ module.exports = function getPasswordChangeConfirmationMailOptions(
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <h1>Bharat Play</h1>
+        <h1>VidBuxApp</h1>
       </div>
       <div class="body">
         <p>Hi <strong>${name || "there"}</strong>,</p>
         <p>Your password has been successfully changed. If you did not initiate this change, please contact support immediately.</p>
       </div>
       <div class="footer">
-        <p>&copy; ${new Date().getFullYear()} Bharat Play. All rights reserved.</p>
+        <p>&copy; ${new Date().getFullYear()} VidBuxApp. All rights reserved.</p>
       </div>
     </div>
   </div>

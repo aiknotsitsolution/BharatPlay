@@ -18,19 +18,28 @@ export default function IntroScreen() {
         <div className="intro-logo">
           <img
             src="/Logo-image.jpg"
-            alt="BharatPlay"
+            alt="VidBuxApp"
             className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover shadow-md ring-1 ring-bp-border"
           />
         </div>
 
         <p className="intro-wordmark brand-wordmark text-[26px] sm:text-[30px] font-black tracking-tight font-display">
-          Bharatplay
+          VidBuxApp
         </p>
 
         <div className="intro-loader flex items-center gap-1.5">
-          <span className="intro-dot w-1.5 h-1.5 rounded-full bg-bp-blue" style={{ animationDelay: "0s" }} />
-          <span className="intro-dot w-1.5 h-1.5 rounded-full bg-bp-blue/60" style={{ animationDelay: "0.15s" }} />
-          <span className="intro-dot w-1.5 h-1.5 rounded-full bg-bp-blue" style={{ animationDelay: "0.3s" }} />
+          <span
+            className="intro-dot w-1.5 h-1.5 rounded-full bg-bp-blue"
+            style={{ animationDelay: "0s" }}
+          />
+          <span
+            className="intro-dot w-1.5 h-1.5 rounded-full bg-bp-blue/60"
+            style={{ animationDelay: "0.15s" }}
+          />
+          <span
+            className="intro-dot w-1.5 h-1.5 rounded-full bg-bp-blue"
+            style={{ animationDelay: "0.3s" }}
+          />
         </div>
       </div>
     </div>

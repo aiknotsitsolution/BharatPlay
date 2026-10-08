@@ -1,7 +1,11 @@
 /**
  * Admin notification: a user has filed a counter-notification against a strike.
  */
-function getCopyrightCounterNotificationMailOptions(adminEmail, adminName, { caseNumber, videoTitle, userName, reason }) {
+function getCopyrightCounterNotificationMailOptions(
+  adminEmail,
+  adminName,
+  { caseNumber, videoTitle, userName, reason },
+) {
   return {
     from: process.env.EMAIL,
     to: adminEmail,
@@ -28,7 +32,7 @@ function getCopyrightCounterNotificationMailOptions(adminEmail, adminName, { cas
 </head>
 <body>
   <div class="container">
-    <div class="brand">Bharat Play</div>
+    <div class="brand">VidBuxApp</div>
     <div style="text-align:center"><span class="badge">Counter-Notification</span></div>
     <div class="title">Counter-Notification Filed</div>
     <div class="content">
@@ -52,10 +56,10 @@ function getCopyrightCounterNotificationMailOptions(adminEmail, adminName, { cas
           <div class="detail-value">${reason || "Not provided"}</div>
         </div>
       </div>
-      <a href="${process.env.ADMIN_URL || "https://admin.bharatplay.com"}/copyright/cases" class="cta">Review Dispute</a>
+      <a href="${process.env.ADMIN_URL || "https://admin.VidBuxApp.com"}/copyright/cases" class="cta">Review Dispute</a>
     </div>
     <div class="footer">
-      &copy; 2026 Bharat Play. All rights reserved.
+      &copy; 2026 VidBuxApp. All rights reserved.
     </div>
   </div>
 </body>

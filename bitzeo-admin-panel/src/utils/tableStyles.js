@@ -1,5 +1,5 @@
 /**
- * Shared DataTable customStyles for the BharatPlay admin panel.
+ * Shared DataTable customStyles for the VidBuxApp admin panel.
  * Uses CSS variables for theme-aware styling.
  */
 const tableCustomStyles = {
@@ -10,7 +10,8 @@ const tableCustomStyles = {
   },
   headRow: {
     style: {
-      backgroundColor: "color-mix(in srgb, var(--bp-elevated) 50%, transparent)",
+      backgroundColor:
+        "color-mix(in srgb, var(--bp-elevated) 50%, transparent)",
       borderBottom: "none",
       minHeight: "44px",
     },

@@ -15,20 +15,34 @@ const { ticketIdFromMongoId } = require("../utils/ticketId");
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || process.env.EMAIL;
 
-const DELETION_STATUSES = ["pending", "verified", "processing", "completed", "rejected"];
+const DELETION_STATUSES = [
+  "pending",
+  "verified",
+  "processing",
+  "completed",
+  "rejected",
+];
 
-const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegex = (value = "") =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 exports.submitDeletionRequest = async (req, res) => {
   try {
     const { email, accountIdentifier, reason } = req.body;
 
     if (!email?.trim())
-      return res.status(400).json({ success: false, message: "Email is required." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email is required." });
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim()))
-      return res.status(400).json({ success: false, message: "Please enter a valid email address." });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Please enter a valid email address.",
+        });
 
     // Associate with logged-in user if present, otherwise find by email
     let userId = req.user?.id || null;
@@ -57,9 +71,9 @@ exports.submitDeletionRequest = async (req, res) => {
     if (SUPPORT_EMAIL) {
       try {
         await transporter.sendMail({
-          from: `"BharatPlay" <${process.env.EMAIL}>`,
+          from: `"VidBuxApp" <${process.env.EMAIL}>`,
           to: SUPPORT_EMAIL,
-          subject: `[BharatPlay] Account Deletion Request - ${cleanSubjectFragment(email)}`,
+          subject: `[VidBuxApp] Account Deletion Request - ${cleanSubjectFragment(email)}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #dc2626;">Account Deletion Request</h2>
@@ -81,21 +95,24 @@ exports.submitDeletionRequest = async (req, res) => {
           `,
         });
       } catch (emailErr) {
-        console.error("[deletion] Email notification failed:", emailErr.message);
+        console.error(
+          "[deletion] Email notification failed:",
+          emailErr.message,
+        );
       }
     }
 
     // Confirmation email to user
     try {
       await transporter.sendMail({
-        from: `"BharatPlay" <${process.env.EMAIL}>`,
+        from: `"VidBuxApp" <${process.env.EMAIL}>`,
         to: email.trim(),
-        subject: "Account Deletion Request Received - BharatPlay",
+        subject: "Account Deletion Request Received - VidBuxApp",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #dc2626;">Deletion Request Received</h2>
             <p>Hi,</p>
-            <p>We've received your request to delete the BharatPlay account associated with <strong>${escapeHtml(email)}</strong>.</p>
+            <p>We've received your request to delete the VidBuxApp account associated with <strong>${escapeHtml(email)}</strong>.</p>
             <p>Our team will verify your request and process the deletion in accordance with applicable law. This may take some time.</p>
             <div style="margin: 16px 0; padding: 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
               <p style="color: #991b1b; margin: 0;"><strong>Important:</strong> Once deletion is completed, this action cannot be undone. Your uploaded content, channel information and rewards balance will be permanently removed.</p>
@@ -116,12 +133,15 @@ exports.submitDeletionRequest = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Your deletion request has been submitted. Our team will verify and process it.",
+      message:
+        "Your deletion request has been submitted. Our team will verify and process it.",
       requestId: deletionRequest._id,
     });
   } catch (err) {
     console.error("[deletion] Submit error:", err);
-    return res.status(500).json({ success: false, message: "Failed to submit deletion request." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to submit deletion request." });
   }
 };
 
@@ -175,7 +195,9 @@ exports.getDeletionRequests = async (req, res) => {
     });
   } catch (err) {
     console.error("[deletion] Fetch error:", err);
-    return res.status(500).json({ success: false, message: "Failed to fetch requests." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch requests." });
   }
 };
 
@@ -218,7 +240,9 @@ exports.getMyDeletionRequests = async (req, res) => {
     });
   } catch (err) {
     console.error("[deletion] My requests error:", err);
-    return res.status(500).json({ success: false, message: "Failed to fetch your requests." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch your requests." });
   }
 };
 
@@ -227,12 +251,16 @@ exports.getDeletionRequestById = async (req, res) => {
     const { id } = req.params;
     const request = await DeletionRequest.findById(id).lean();
     if (!request) {
-      return res.status(404).json({ success: false, message: "Request not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Request not found." });
     }
     return res.status(200).json({ success: true, request });
   } catch (err) {
     console.error("[deletion] Fetch by ID error:", err);
-    return res.status(500).json({ success: false, message: "Failed to fetch request." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch request." });
   }
 };
 
@@ -241,11 +269,22 @@ exports.updateDeletionStatus = async (req, res) => {
     const { id } = req.params;
     const { status, adminNotes, assignedTo } = req.body;
 
-    if (status !== undefined && status !== null && !DELETION_STATUSES.includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status." });
+    if (
+      status !== undefined &&
+      status !== null &&
+      !DELETION_STATUSES.includes(status)
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid status." });
     }
-    if (assignedTo !== undefined && !(await isAssignableEmployeeId(assignedTo))) {
-      return res.status(400).json({ success: false, message: "Invalid assignee." });
+    if (
+      assignedTo !== undefined &&
+      !(await isAssignableEmployeeId(assignedTo))
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid assignee." });
     }
 
     const update = {};
@@ -267,7 +306,9 @@ exports.updateDeletionStatus = async (req, res) => {
       runValidators: true,
     });
     if (!request) {
-      return res.status(404).json({ success: false, message: "Request not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Request not found." });
     }
 
     // If completed, mark user as deleted
@@ -275,7 +316,10 @@ exports.updateDeletionStatus = async (req, res) => {
       try {
         await User.findByIdAndUpdate(request.userId, { status: "deleted" });
       } catch (userErr) {
-        console.error("[deletion] Failed to mark user as deleted:", userErr.message);
+        console.error(
+          "[deletion] Failed to mark user as deleted:",
+          userErr.message,
+        );
       }
     }
 
@@ -287,6 +331,8 @@ exports.updateDeletionStatus = async (req, res) => {
     return res.status(200).json({ success: true, request });
   } catch (err) {
     console.error("[deletion] Update error:", err);
-    return res.status(500).json({ success: false, message: "Failed to update request." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to update request." });
   }
 };

@@ -19,7 +19,8 @@ const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || process.env.EMAIL;
 
 const CONTACT_STATUSES = ["pending", "in-progress", "resolved", "closed"];
 
-const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegex = (value = "") =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const resolveAssignedByName = async (assignedBy) => {
   if (!assignedBy || assignedBy === "system") return null;
@@ -33,15 +34,28 @@ exports.submitContactRequest = async (req, res) => {
     const { name, email, inquiryType, subject, message } = req.body;
 
     if (!name?.trim())
-      return res.status(400).json({ success: false, message: "Name is required." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Name is required." });
     if (!email?.trim())
-      return res.status(400).json({ success: false, message: "Email is required." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email is required." });
     if (!inquiryType?.trim())
-      return res.status(400).json({ success: false, message: "Inquiry type is required." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Inquiry type is required." });
     if (!subject?.trim())
-      return res.status(400).json({ success: false, message: "Subject is required." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Subject is required." });
     if (!message?.trim() || message.trim().length < 10)
-      return res.status(400).json({ success: false, message: "Message must be at least 10 characters." });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Message must be at least 10 characters.",
+        });
 
     const employee = await assignTicket(categoryOfContactRequest(inquiryType));
 
@@ -63,10 +77,10 @@ exports.submitContactRequest = async (req, res) => {
     if (SUPPORT_EMAIL) {
       try {
         await transporter.sendMail({
-          from: `"BharatPlay" <${process.env.EMAIL}>`,
+          from: `"VidBuxApp" <${process.env.EMAIL}>`,
           to: SUPPORT_EMAIL,
           replyTo: email.trim(),
-          subject: `[BharatPlay Support] ${cleanSubjectFragment(inquiryType)} - ${cleanSubjectFragment(subject)}`,
+          subject: `[VidBuxApp Support] ${cleanSubjectFragment(inquiryType)} - ${cleanSubjectFragment(subject)}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #dc2626;">New Support Request</h2>
@@ -99,7 +113,7 @@ exports.submitContactRequest = async (req, res) => {
     // Send confirmation email to user
     try {
       await transporter.sendMail({
-        from: `"BharatPlay" <${process.env.EMAIL}>`,
+        from: `"VidBuxApp" <${process.env.EMAIL}>`,
         to: email.trim(),
         subject: `We received your request - ${cleanSubjectFragment(subject)}`,
         html: `
@@ -129,7 +143,9 @@ exports.submitContactRequest = async (req, res) => {
     });
   } catch (err) {
     console.error("[contact] Submit error:", err);
-    return res.status(500).json({ success: false, message: "Failed to submit request." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to submit request." });
   }
 };
 
@@ -183,7 +199,9 @@ exports.getContactRequests = async (req, res) => {
     });
   } catch (err) {
     console.error("[contact] Fetch error:", err);
-    return res.status(500).json({ success: false, message: "Failed to fetch requests." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch requests." });
   }
 };
 
@@ -226,7 +244,9 @@ exports.getMyContactRequests = async (req, res) => {
     });
   } catch (err) {
     console.error("[contact] My requests error:", err);
-    return res.status(500).json({ success: false, message: "Failed to fetch your requests." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch your requests." });
   }
 };
 
@@ -235,13 +255,19 @@ exports.getContactRequestById = async (req, res) => {
     const { id } = req.params;
     const request = await ContactRequest.findById(id).lean();
     if (!request) {
-      return res.status(404).json({ success: false, message: "Request not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Request not found." });
     }
     const assignedByName = await resolveAssignedByName(request.assignedBy);
-    return res.status(200).json({ success: true, request: { ...request, assignedByName } });
+    return res
+      .status(200)
+      .json({ success: true, request: { ...request, assignedByName } });
   } catch (err) {
     console.error("[contact] Fetch by ID error:", err);
-    return res.status(500).json({ success: false, message: "Failed to fetch request." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch request." });
   }
 };
 
@@ -250,11 +276,22 @@ exports.updateContactStatus = async (req, res) => {
     const { id } = req.params;
     const { status, adminReply, assignedTo } = req.body;
 
-    if (status !== undefined && status !== null && !CONTACT_STATUSES.includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status." });
+    if (
+      status !== undefined &&
+      status !== null &&
+      !CONTACT_STATUSES.includes(status)
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid status." });
     }
-    if (assignedTo !== undefined && !(await isAssignableEmployeeId(assignedTo))) {
-      return res.status(400).json({ success: false, message: "Invalid assignee." });
+    if (
+      assignedTo !== undefined &&
+      !(await isAssignableEmployeeId(assignedTo))
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid assignee." });
     }
 
     const update = {};
@@ -280,7 +317,9 @@ exports.updateContactStatus = async (req, res) => {
       runValidators: true,
     });
     if (!request) {
-      return res.status(404).json({ success: false, message: "Request not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Request not found." });
     }
 
     if (notify.status) {
@@ -299,9 +338,16 @@ exports.updateContactStatus = async (req, res) => {
     }
 
     const assignedByName = await resolveAssignedByName(request.assignedBy);
-    return res.status(200).json({ success: true, request: { ...request.toObject(), assignedByName } });
+    return res
+      .status(200)
+      .json({
+        success: true,
+        request: { ...request.toObject(), assignedByName },
+      });
   } catch (err) {
     console.error("[contact] Update error:", err);
-    return res.status(500).json({ success: false, message: "Failed to update request." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to update request." });
   }
 };

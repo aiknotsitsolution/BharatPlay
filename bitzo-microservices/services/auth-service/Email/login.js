@@ -2,7 +2,7 @@ module.exports = function getLoginMailOptions(email, name, otp) {
   return {
     from: process.env.EMAIL,
     to: email,
-    subject: "Bharat Play — Login Verification",
+    subject: "VidBuxApp — Login Verification",
     html: `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -41,27 +41,27 @@ module.exports = function getLoginMailOptions(email, name, otp) {
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <h1>Bharat Play</h1>
+        <h1>VidBuxApp</h1>
         <p>Login Verification</p>
       </div>
       <div class="body">
         <p class="greeting">Hi <strong>${name || "there"}</strong>,</p>
         ${
           otp
-            ? `<p class="subtitle">Use the code below to continue signing in to Bharat Play.</p>
+            ? `<p class="subtitle">Use the code below to continue signing in to VidBuxApp.</p>
               <div class="otp-box">
                 <p class="otp-label">Your verification code</p>
                 <p class="otp-value">${otp}</p>
               </div>
               <p style="color:#9ca3af; font-size:0.82rem;">If you did not request this, you can safely ignore this email.</p>`
-            : `<p>Your Bharat Play account was just accessed. If this was not you, please reset your password immediately.</p>
+            : `<p>Your VidBuxApp account was just accessed. If this was not you, please reset your password immediately.</p>
               <div class="warning">
                 <p>Did not recognize this activity? Reset your password now to secure your account.</p>
               </div>`
         }
       </div>
       <div class="footer">
-        <p>&copy; ${new Date().getFullYear()} Bharat Play. All rights reserved.</p>
+        <p>&copy; ${new Date().getFullYear()} VidBuxApp. All rights reserved.</p>
       </div>
     </div>
   </div>

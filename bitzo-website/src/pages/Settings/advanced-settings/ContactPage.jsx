@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Mail, HelpCircle, ShieldCheck, UserX, AlertTriangle, Briefcase, CheckCircle2, Send, Loader2 } from "lucide-react";
+import {
+  Mail,
+  HelpCircle,
+  ShieldCheck,
+  UserX,
+  AlertTriangle,
+  Briefcase,
+  CheckCircle2,
+  Send,
+  Loader2,
+} from "lucide-react";
 import LegalPageLayout from "../../../components/public/LegalPageLayout";
 import { useTheme } from "../../../context/ThemeContext";
 import { submitContactForm } from "../../../api/support";
@@ -21,12 +31,36 @@ const INQUIRY_TYPES = [
 ];
 
 const CONTACT_CHANNELS = [
-  { icon: HelpCircle, title: "General inquiries", body: "Questions about BharatPlay, its features or how to get started." },
-  { icon: Briefcase, title: "Technical support", body: "Issues with signing in, playback, uploads, payments or the application." },
-  { icon: ShieldCheck, title: "Privacy requests", body: "Questions about your data or requests related to the Privacy Policy." },
-  { icon: UserX, title: "Data deletion", body: "Requests to delete your account and associated personal information." },
-  { icon: AlertTriangle, title: "Complaints", body: "Report inappropriate content, bugs, security concerns or policy violations." },
-  { icon: Briefcase, title: "Business inquiries", body: "Partnerships, advertising or other business opportunities." },
+  {
+    icon: HelpCircle,
+    title: "General inquiries",
+    body: "Questions about VidBuxApp, its features or how to get started.",
+  },
+  {
+    icon: Briefcase,
+    title: "Technical support",
+    body: "Issues with signing in, playback, uploads, payments or the application.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Privacy requests",
+    body: "Questions about your data or requests related to the Privacy Policy.",
+  },
+  {
+    icon: UserX,
+    title: "Data deletion",
+    body: "Requests to delete your account and associated personal information.",
+  },
+  {
+    icon: AlertTriangle,
+    title: "Complaints",
+    body: "Report inappropriate content, bugs, security concerns or policy violations.",
+  },
+  {
+    icon: Briefcase,
+    title: "Business inquiries",
+    body: "Partnerships, advertising or other business opportunities.",
+  },
 ];
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -68,18 +102,24 @@ export default function ContactPage() {
   const validate = () => {
     const next = {};
     if (!form.name.trim()) next.name = "Please enter your full name.";
-    else if (form.name.trim().length > 100) next.name = "Name must be 100 characters or fewer.";
+    else if (form.name.trim().length > 100)
+      next.name = "Name must be 100 characters or fewer.";
 
     if (!form.email.trim()) next.email = "Please enter your email address.";
-    else if (!EMAIL_PATTERN.test(form.email.trim())) next.email = "Please enter a valid email address.";
-    else if (form.email.trim().length > 200) next.email = "Email must be 200 characters or fewer.";
+    else if (!EMAIL_PATTERN.test(form.email.trim()))
+      next.email = "Please enter a valid email address.";
+    else if (form.email.trim().length > 200)
+      next.email = "Email must be 200 characters or fewer.";
 
     if (!form.subject.trim()) next.subject = "Please enter a subject.";
-    else if (form.subject.trim().length > 150) next.subject = "Subject must be 150 characters or fewer.";
+    else if (form.subject.trim().length > 150)
+      next.subject = "Subject must be 150 characters or fewer.";
 
     if (!form.message.trim()) next.message = "Please write a message.";
-    else if (form.message.trim().length < 10) next.message = "Message must be at least 10 characters.";
-    else if (form.message.trim().length > 5000) next.message = "Message must be 5000 characters or fewer.";
+    else if (form.message.trim().length < 10)
+      next.message = "Message must be at least 10 characters.";
+    else if (form.message.trim().length > 5000)
+      next.message = "Message must be 5000 characters or fewer.";
 
     return next;
   };
@@ -113,14 +153,20 @@ export default function ContactPage() {
 
   const errorText = (key) =>
     errors[key] ? (
-      <p id={`${key}-error`} className="mt-1.5 text-sm text-red-400" role="alert">
+      <p
+        id={`${key}-error`}
+        className="mt-1.5 text-sm text-red-400"
+        role="alert"
+      >
         {errors[key]}
       </p>
     ) : null;
 
   const inputClasses = (key) =>
     `w-full rounded-xl border px-4 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 ${
-      isDark ? "bg-[#121212] text-white placeholder-zinc-600" : "bg-gray-50 text-gray-900 placeholder-gray-400"
+      isDark
+        ? "bg-[#121212] text-white placeholder-zinc-600"
+        : "bg-gray-50 text-gray-900 placeholder-gray-400"
     } ${
       errors[key]
         ? "border-red-600/70 focus:border-red-500 focus:ring-red-500/30"
@@ -132,7 +178,7 @@ export default function ContactPage() {
   return (
     <LegalPageLayout
       title="Contact & Support"
-      description="Contact the BharatPlay team for general inquiries, technical support, privacy requests, data deletion, complaints or business inquiries."
+      description="Contact the VidBuxApp team for general inquiries, technical support, privacy requests, data deletion, complaints or business inquiries."
       intro="We're here to help. Choose the topic that best matches your request and send us a message — our team will get back to you."
     >
       {/* Contact options */}
@@ -145,21 +191,35 @@ export default function ContactPage() {
               className={`rounded-xl border p-4 ${isDark ? "border-zinc-800/70 bg-[#161616]" : "border-gray-200 bg-white"}`}
             >
               <div className="flex items-center gap-3">
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ${isDark ? "bg-zinc-800/80 ring-zinc-700/60" : "bg-gray-100 ring-gray-200"}`}>
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ${isDark ? "bg-zinc-800/80 ring-zinc-700/60" : "bg-gray-100 ring-gray-200"}`}
+                >
                   <Icon size={16} className="text-red-500" />
                 </div>
-                <h2 className={`text-sm font-semibold ${isDark ? "text-zinc-100" : "text-gray-800"}`}>{channel.title}</h2>
+                <h2
+                  className={`text-sm font-semibold ${isDark ? "text-zinc-100" : "text-gray-800"}`}
+                >
+                  {channel.title}
+                </h2>
               </div>
-              <p className={`mt-2.5 text-sm leading-relaxed ${isDark ? "text-zinc-400" : "text-gray-500"}`}>{channel.body}</p>
+              <p
+                className={`mt-2.5 text-sm leading-relaxed ${isDark ? "text-zinc-400" : "text-gray-500"}`}
+              >
+                {channel.body}
+              </p>
             </div>
           );
         })}
       </div>
 
       {SITE.supportEmail && (
-        <div className={`mt-6 flex items-center gap-3 rounded-xl border p-4 ${isDark ? "border-zinc-800/70 bg-[#161616]" : "border-gray-200 bg-white"}`}>
+        <div
+          className={`mt-6 flex items-center gap-3 rounded-xl border p-4 ${isDark ? "border-zinc-800/70 bg-[#161616]" : "border-gray-200 bg-white"}`}
+        >
           <Mail size={18} className="shrink-0 text-red-500" />
-          <p className={`text-sm ${isDark ? "text-zinc-400" : "text-gray-500"}`}>
+          <p
+            className={`text-sm ${isDark ? "text-zinc-400" : "text-gray-500"}`}
+          >
             Prefer email? Reach us directly at{" "}
             <a
               href={`mailto:${SITE.supportEmail}`}
@@ -172,29 +232,48 @@ export default function ContactPage() {
       )}
 
       {/* Contact form */}
-      <div className={`mt-8 rounded-2xl border p-6 sm:p-8 ${isDark ? "border-zinc-800/70 bg-[#161616]" : "border-gray-200 bg-white"}`}>
+      <div
+        className={`mt-8 rounded-2xl border p-6 sm:p-8 ${isDark ? "border-zinc-800/70 bg-[#161616]" : "border-gray-200 bg-white"}`}
+      >
         {submitted ? (
           <div className="flex flex-col items-center py-10 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/30">
               <CheckCircle2 size={28} className="text-emerald-400" />
             </div>
-            <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Request received</h2>
-            <p className={`mt-2 max-w-md text-sm leading-relaxed ${isDark ? "text-zinc-400" : "text-gray-500"}`}>
-              Thank you, {form.name.split(" ")[0] || "there"}. We've received your{" "}
-              {form.inquiryType.toLowerCase()} request regarding &ldquo;{form.subject}&rdquo;. Our team will
-              review it and respond to{" "}
-              <span className={isDark ? "text-zinc-200" : "text-gray-700"}>{form.email}</span> as soon as
-              possible.
+            <h2
+              className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}
+            >
+              Request received
+            </h2>
+            <p
+              className={`mt-2 max-w-md text-sm leading-relaxed ${isDark ? "text-zinc-400" : "text-gray-500"}`}
+            >
+              Thank you, {form.name.split(" ")[0] || "there"}. We've received
+              your {form.inquiryType.toLowerCase()} request regarding &ldquo;
+              {form.subject}&rdquo;. Our team will review it and respond to{" "}
+              <span className={isDark ? "text-zinc-200" : "text-gray-700"}>
+                {form.email}
+              </span>{" "}
+              as soon as possible.
             </p>
-            <div className={`mt-5 rounded-xl border px-5 py-4 ${isDark ? "border-zinc-700/70 bg-[#121212]" : "border-gray-300 bg-gray-50"}`}>
-              <p className={`text-xs font-medium uppercase tracking-wide ${isDark ? "text-zinc-500" : "text-gray-500"}`}>
+            <div
+              className={`mt-5 rounded-xl border px-5 py-4 ${isDark ? "border-zinc-700/70 bg-[#121212]" : "border-gray-300 bg-gray-50"}`}
+            >
+              <p
+                className={`text-xs font-medium uppercase tracking-wide ${isDark ? "text-zinc-500" : "text-gray-500"}`}
+              >
                 Your Ticket ID
               </p>
-              <p className={`mt-1 font-mono text-lg font-semibold tracking-wider ${isDark ? "text-red-400" : "text-red-600"}`}>
+              <p
+                className={`mt-1 font-mono text-lg font-semibold tracking-wider ${isDark ? "text-red-400" : "text-red-600"}`}
+              >
                 {ticketId}
               </p>
-              <p className={`mt-1 text-xs ${isDark ? "text-zinc-500" : "text-gray-400"}`}>
-                Save this ID and include it if you contact us about this request.
+              <p
+                className={`mt-1 text-xs ${isDark ? "text-zinc-500" : "text-gray-400"}`}
+              >
+                Save this ID and include it if you contact us about this
+                request.
               </p>
             </div>
             <button
@@ -222,14 +301,23 @@ export default function ContactPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate>
-            <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>Send us a message</h2>
-            <p className={`mt-1 text-sm ${isDark ? "text-zinc-500" : "text-gray-400"}`}>
+            <h2
+              className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}
+            >
+              Send us a message
+            </h2>
+            <p
+              className={`mt-1 text-sm ${isDark ? "text-zinc-500" : "text-gray-400"}`}
+            >
               Fields marked * are required.
             </p>
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
               <div>
-                <label htmlFor="contact-name" className={`mb-1.5 block text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}>
+                <label
+                  htmlFor="contact-name"
+                  className={`mb-1.5 block text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}
+                >
                   Full Name *
                 </label>
                 <input
@@ -248,7 +336,10 @@ export default function ContactPage() {
               </div>
 
               <div>
-                <label htmlFor="contact-email" className={`mb-1.5 block text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}>
+                <label
+                  htmlFor="contact-email"
+                  className={`mb-1.5 block text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}
+                >
                   Email Address *
                 </label>
                 <input
@@ -267,7 +358,10 @@ export default function ContactPage() {
               </div>
 
               <div>
-                <label htmlFor="contact-type" className={`mb-1.5 block text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}>
+                <label
+                  htmlFor="contact-type"
+                  className={`mb-1.5 block text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}
+                >
                   Inquiry Type *
                 </label>
                 <select
@@ -285,7 +379,10 @@ export default function ContactPage() {
               </div>
 
               <div>
-                <label htmlFor="contact-subject" className={`mb-1.5 block text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}>
+                <label
+                  htmlFor="contact-subject"
+                  className={`mb-1.5 block text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}
+                >
                   Subject *
                 </label>
                 <input
@@ -295,7 +392,9 @@ export default function ContactPage() {
                   value={form.subject}
                   onChange={(e) => setField("subject", e.target.value)}
                   aria-invalid={Boolean(errors.subject)}
-                  aria-describedby={errors.subject ? "subject-error" : undefined}
+                  aria-describedby={
+                    errors.subject ? "subject-error" : undefined
+                  }
                   className={inputClasses("subject")}
                   placeholder="What is this about?"
                 />
@@ -304,7 +403,10 @@ export default function ContactPage() {
             </div>
 
             <div className="mt-5">
-              <label htmlFor="contact-message" className={`mb-1.5 block text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}>
+              <label
+                htmlFor="contact-message"
+                className={`mb-1.5 block text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}
+              >
                 Message *
               </label>
               <textarea
@@ -320,7 +422,9 @@ export default function ContactPage() {
               />
               <div className="mt-1 flex items-center justify-between">
                 {errorText("message")}
-                <span className={`ml-auto text-xs tabular-nums ${isDark ? "text-zinc-600" : "text-gray-400"}`}>
+                <span
+                  className={`ml-auto text-xs tabular-nums ${isDark ? "text-zinc-600" : "text-gray-400"}`}
+                >
                   {form.message.length}/5000
                 </span>
               </div>
@@ -334,7 +438,11 @@ export default function ContactPage() {
               disabled={submitting}
               className="mt-6 inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+              {submitting ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Send size={16} />
+              )}
               {submitting ? "Submitting..." : "Submit Request"}
             </button>
           </form>

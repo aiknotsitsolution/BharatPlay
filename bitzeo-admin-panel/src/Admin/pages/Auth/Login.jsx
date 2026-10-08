@@ -25,7 +25,8 @@ export default function Login() {
     setIsLoading(true);
     try {
       const res = await API.post("/admin/login", { email, password, role });
-      if (!res.data.success) throw new Error(res.data.message || "Login failed");
+      if (!res.data.success)
+        throw new Error(res.data.message || "Login failed");
 
       localStorage.setItem("adminToken", res.data.token);
       localStorage.setItem("adminUser", JSON.stringify(res.data.user));
@@ -35,12 +36,19 @@ export default function Login() {
 
       const userRole = res.data.user.role || role;
       window.dispatchEvent(new Event("bp-login-celebrate"));
-      if (userRole === "finance") navigate("/finance-dashboard", { replace: true });
-      else if (userRole === "support") navigate("/support-dashboard", { replace: true });
-      else if (userRole === "read-only") navigate("/read-only-dashboard", { replace: true });
+      if (userRole === "finance")
+        navigate("/finance-dashboard", { replace: true });
+      else if (userRole === "support")
+        navigate("/support-dashboard", { replace: true });
+      else if (userRole === "read-only")
+        navigate("/read-only-dashboard", { replace: true });
       else navigate("/", { replace: true });
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || "Login failed. Please try again.");
+      toast.error(
+        err.response?.data?.message ||
+          err.message ||
+          "Login failed. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -52,18 +60,39 @@ export default function Login() {
         <div className="glass-card p-6">
           {/* Logo row */}
           <div className="flex flex-col items-center text-center gap-3 mb-5">
-            <img src="/Logo-image.jpg" alt="BharatPlay" className="w-14 h-14 rounded-2xl object-cover ring-1 ring-bp-border" />
+            <img
+              src="/Logo-image.jpg"
+              alt="VidBuxApp"
+              className="w-14 h-14 rounded-2xl object-cover ring-1 ring-bp-border"
+            />
             <div>
-              <h1 className="text-[26px] font-black tracking-tight font-display" style={{ background: "linear-gradient(120deg, #F8E7B3 0%, #E7C766 25%, #EF6B5E 50%, #EA8A7E 62%, #56A1E8 85%, #7FBCF2 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", filter: "drop-shadow(0 0 8px rgba(231,199,102,0.4)) drop-shadow(0 0 15px rgba(239,107,94,0.3)) drop-shadow(0 0 20px rgba(86,161,232,0.3))" }}>
-                Bharatplay
+              <h1
+                className="text-[26px] font-black tracking-tight font-display"
+                style={{
+                  background:
+                    "linear-gradient(120deg, #F8E7B3 0%, #E7C766 25%, #EF6B5E 50%, #EA8A7E 62%, #56A1E8 85%, #7FBCF2 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  filter:
+                    "drop-shadow(0 0 8px rgba(231,199,102,0.4)) drop-shadow(0 0 15px rgba(239,107,94,0.3)) drop-shadow(0 0 20px rgba(86,161,232,0.3))",
+                }}
+              >
+                VidBuxApp
               </h1>
-              <p className="text-bp-text-secondary mt-1.5 text-sm">Admin Login</p>
+              <p className="text-bp-text-secondary mt-1.5 text-sm">
+                Admin Login
+              </p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-bp-text-secondary mb-1">Email</label>
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-bp-text-secondary mb-1"
+              >
+                Email
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-bp-text-muted" />
                 <input
@@ -79,22 +108,47 @@ export default function Login() {
             </div>
 
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-bp-text-secondary mb-1 flex items-center gap-2">
+              <label
+                htmlFor="role"
+                className="block text-sm font-medium text-bp-text-secondary mb-1 flex items-center gap-2"
+              >
                 <Shield size={15} className="text-bp-blue" />
                 Login Role
               </label>
               <div className="relative">
-                <select id="role" value={role} onChange={(e) => setRole(e.target.value)}
-                  className="w-full appearance-none px-4 py-2.5 bg-bp-card border border-bp-border text-bp-text rounded-lg focus:ring-2 focus:ring-bp-blue/20 focus:border-bp-blue outline-none transition-colors cursor-pointer">
-                  {ROLES.map((r) => (<option key={r.value} value={r.value} className="bg-bp-card">{r.label}</option>))}
+                <select
+                  id="role"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full appearance-none px-4 py-2.5 bg-bp-card border border-bp-border text-bp-text rounded-lg focus:ring-2 focus:ring-bp-blue/20 focus:border-bp-blue outline-none transition-colors cursor-pointer"
+                >
+                  {ROLES.map((r) => (
+                    <option
+                      key={r.value}
+                      value={r.value}
+                      className="bg-bp-card"
+                    >
+                      {r.label}
+                    </option>
+                  ))}
                 </select>
-                <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-bp-text-muted pointer-events-none" />
+                <ChevronDown
+                  size={16}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-bp-text-muted pointer-events-none"
+                />
               </div>
-              <p className="text-xs text-bp-text-muted mt-1.5">Select your role to access the corresponding dashboard</p>
+              <p className="text-xs text-bp-text-muted mt-1.5">
+                Select your role to access the corresponding dashboard
+              </p>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-bp-text-secondary mb-1">Password</label>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-bp-text-secondary mb-1"
+              >
+                Password
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-bp-text-muted" />
                 <input
@@ -118,17 +172,26 @@ export default function Login() {
             </div>
 
             <div className="flex justify-end">
-              <Link to="/forgot-password" className="text-sm font-medium text-bp-blue hover:opacity-80 transition">Forgot Password?</Link>
+              <Link
+                to="/forgot-password"
+                className="text-sm font-medium text-bp-blue hover:opacity-80 transition"
+              >
+                Forgot Password?
+              </Link>
             </div>
 
-            <RocketButton loading={isLoading}>
-              Sign In
-            </RocketButton>
+            <RocketButton loading={isLoading}>Sign In</RocketButton>
           </form>
 
           <div className="mt-5 pt-4 border-t border-bp-border">
             <p className="text-center text-sm text-bp-text-secondary">
-              Don't have an account? <Link to="/register" className="font-medium text-bp-blue hover:opacity-80 transition">Register</Link>
+              Don't have an account?{" "}
+              <Link
+                to="/register"
+                className="font-medium text-bp-blue hover:opacity-80 transition"
+              >
+                Register
+              </Link>
             </p>
           </div>
         </div>

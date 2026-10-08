@@ -69,7 +69,7 @@ export default function FeedbackPage() {
           <h2 className="text-xl font-semibold text-zinc-200">Thank you!</h2>
           <p className="mt-2 max-w-sm text-sm text-zinc-500">
             Your feedback has been received. We appreciate you helping us
-            improve Bharat Play.
+            improve VidBuxApp.
           </p>
           <button
             onClick={() => {
@@ -91,7 +91,7 @@ export default function FeedbackPage() {
       <SettingsPageHeader title="Send Feedback" />
 
       <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-        Help us improve Bharat Play. Your feedback is reviewed by our team.
+        Help us improve VidBuxApp. Your feedback is reviewed by our team.
       </p>
 
       <form

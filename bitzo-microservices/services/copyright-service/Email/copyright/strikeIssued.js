@@ -1,9 +1,17 @@
 /**
  * User notification: a copyright strike has been issued against your account.
  */
-function getCopyrightStrikeIssuedMailOptions(userEmail, userName, { caseNumber, videoTitle, reason, expiresAt }) {
+function getCopyrightStrikeIssuedMailOptions(
+  userEmail,
+  userName,
+  { caseNumber, videoTitle, reason, expiresAt },
+) {
   const expiryFormatted = expiresAt
-    ? new Date(expiresAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    ? new Date(expiresAt).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
     : "90 days from issue";
 
   return {
@@ -35,7 +43,7 @@ function getCopyrightStrikeIssuedMailOptions(userEmail, userName, { caseNumber, 
 </head>
 <body>
   <div class="container">
-    <div class="brand">Bharat Play</div>
+    <div class="brand">VidBuxApp</div>
     <div style="text-align:center"><span class="badge">Copyright Strike</span></div>
     <div class="title">A Copyright Strike Has Been Issued</div>
     <div class="content">
@@ -59,19 +67,23 @@ function getCopyrightStrikeIssuedMailOptions(userEmail, userName, { caseNumber, 
           <span class="detail-label">Video</span>
           <span class="detail-value">${videoTitle || "Untitled"}</span>
         </div>
-        ${reason ? `<div class="detail-row">
+        ${
+          reason
+            ? `<div class="detail-row">
           <span class="detail-label">Reason</span>
           <span class="detail-value">${reason}</span>
-        </div>` : ""}
+        </div>`
+            : ""
+        }
         <div class="detail-row">
           <span class="detail-label">Strike Expires</span>
           <span class="detail-value">${expiryFormatted}</span>
         </div>
       </div>
-      <a href="${process.env.WEBSITE_URL || "https://bharatplay.com"}/copyright" class="cta">Manage This Strike</a>
+      <a href="${process.env.WEBSITE_URL || "https://VidBuxApp.com"}/copyright" class="cta">Manage This Strike</a>
     </div>
     <div class="footer">
-      &copy; 2026 Bharat Play. All rights reserved.
+      &copy; 2026 VidBuxApp. All rights reserved.
     </div>
   </div>
 </body>

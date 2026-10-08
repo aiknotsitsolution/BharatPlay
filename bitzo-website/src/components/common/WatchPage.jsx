@@ -173,7 +173,7 @@ export default function WatchPage() {
         <span className="text-yellow-400 font-bold text-lg">
           ★ {points.toFixed(2)}
         </span>
-        <span className="text-sm text-gray-300">Bharat Play Points</span>
+        <span className="text-sm text-gray-300">VidBuxApp Points</span>
       </div>
 
       <div className="max-w-[1800px] mx-auto px-4 md:px-6 lg:px-8">
