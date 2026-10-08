@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-const logo = "/VidBuxApp-Cb3qGLyP-Cb3qGLyP-DSDLqCtA.png";
+const logo = "/VidBuxApp-logo.png";
 import SITE from "../../config/site";
 import { useTheme } from "../../context/ThemeContext";
 

@@ -84,7 +84,7 @@ export default function Register() {
           {/* Logo row */}
           <div className="flex flex-col items-center text-center gap-2 mb-4">
             <img
-              src="/Logo-image.jpg"
+              src="/VidBuxApp-logo.png"
               alt="VidBuxApp"
               className="w-12 h-12 rounded-2xl object-cover ring-1 ring-bp-border"
             />

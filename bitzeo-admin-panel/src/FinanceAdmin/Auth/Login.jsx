@@ -41,7 +41,7 @@ const EmployeeLogin = () => {
         <div className="glass-card p-6">
           <div className="flex flex-col items-center text-center gap-3 mb-5">
             <img
-              src="/Logo-image.jpg"
+              src="/VidBuxApp-logo.png"
               alt="VidBuxApp"
               className="w-14 h-14 rounded-2xl object-cover ring-1 ring-bp-border"
             />

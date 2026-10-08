@@ -153,7 +153,7 @@ export default function AppsPage() {
               className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl ring-1 ${isDark ? "ring-zinc-700/60" : "ring-gray-200"}`}
             >
               <img
-                src="/VidBuxApp-Cb3qGLyP-Cb3qGLyP-DSDLqCtA.png"
+                src="/VidBuxApp-logo.png"
                 alt="VidBuxApp Android app icon"
                 className="h-full w-full object-cover"
               />

@@ -210,15 +210,12 @@ export default function Sidebar({ mobile = false, onNavigate }) {
       `}
     >
       {/* Logo / Branding */}
-      <div className="h-[68px] flex items-center px-4 sm:px-5 shrink-0 gap-3 border-b border-slate-100">
+      <div className="h-[68px] flex items-center px-4 sm:px-5 shrink-0 border-b border-slate-100">
         <img
-          src="/Logo-image.jpg"
+          src="/VidBuxApp-logo.png"
           alt="VidBuxApp"
-          className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-cover shadow-sm ring-1 ring-slate-100"
+          className="h-9 sm:h-10 w-auto object-contain max-w-[150px]"
         />
-        <span className="text-[18px] sm:text-[20px] font-bold tracking-tight text-slate-800 font-display">
-          VidBuxApp
-        </span>
       </div>
 
       {/* Navigation */}

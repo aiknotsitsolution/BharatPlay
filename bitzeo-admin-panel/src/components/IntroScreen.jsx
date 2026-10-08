@@ -17,7 +17,7 @@ export default function IntroScreen() {
       <div className="relative z-10 flex flex-col items-center gap-5 px-6">
         <div className="intro-logo">
           <img
-            src="/Logo-image.jpg"
+            src="/VidBuxApp-logo.png"
             alt="VidBuxApp"
             className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover shadow-md ring-1 ring-bp-border"
           />
