@@ -19,7 +19,7 @@ export default function IntroScreen() {
           <img
             src="/VidBuxApp-logo.png"
             alt="VidBuxApp"
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover shadow-md ring-1 ring-bp-border"
+            className="h-28 w-28 rounded-3xl object-contain p-4 bg-bp-elevated ring-1 ring-bp-border sm:h-32 sm:w-32"
           />
         </div>
 

@@ -84,7 +84,7 @@ export default function Layout() {
         <Sidebar mobile onNavigate={closeSidebar} />
       </div>
 
-      <div className="flex min-h-screen min-w-0 flex-col md:pl-[260px]">
+      <div className="flex min-h-screen min-w-0 flex-col md:pl-[280px]">
         <Header
           sidebarOpen={sidebarOpen}
           toggleSidebar={() => setSidebarOpen((open) => !open)}

@@ -501,7 +501,7 @@ export default function ChannelPage() {
         contactemail: "",
       });
 
-      alert("Channel created successfully!");
+      toast.success("Channel created successfully!");
     } catch (error) {
       console.error("Channel creation error:", error);
       setCreateError(error.message || "Failed to create channel.");
@@ -618,7 +618,7 @@ export default function ChannelPage() {
         );
       }
 
-      alert("Video uploaded successfully!");
+      toast.success("Video uploaded successfully!");
 
       // Refresh videos
       const videosRes = await authFetch(

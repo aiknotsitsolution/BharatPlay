@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 /* ══════════════════════════════════════════════════════════════
-   VidBuxApp DESIGN SYSTEM — Paper & Ink
-   Cool neutral surfaces, deep ink navy, restrained blue accent.
+   VidBuxApp DESIGN SYSTEM — based on MaterialM (BLUE_THEME)
+   Light  = MaterialM LIGHT BLUE_THEME   (bg #F8FAFD, primary #00A1FF)
+   Dark   = MaterialM DARK BLUE_THEME    (bg #1A2537, primary #00A1FF)
    Space Grotesk display + Inter body.
    ══════════════════════════════════════════════════════════════ */
 
@@ -20,6 +21,7 @@
   --color-bp-text-secondary: var(--bp-text-secondary);
   --color-bp-text-muted: var(--bp-text-muted);
   --color-bp-hover: var(--bp-hover);
+  --color-bp-primary-soft: var(--bp-primary-soft);
 
   --color-ink: #27374d;
   --color-ink-light: #3a5068;
@@ -41,38 +43,390 @@
 /* ─── Light Theme (default) — Steel Blue palette ─── */
 :root,
 [data-theme="light"] {
-  --bp-navy: #27374d;
-  --bp-surface: #dde6ed;
-  --bp-card: #ffffff;
-  --bp-elevated: #f0f4f7;
-  --bp-border: #9db2bf;
-  --bp-blue: #27374d;
-  --bp-cyan: #526d82;
-  --bp-orange: #9db2bf;
-  --bp-yellow: #526d82;
-  --bp-text: #27374d;
-  --bp-text-secondary: #526d82;
-  --bp-text-muted: #9db2bf;
-  --bp-hover: #e8edf2;
-  --bp-primary-soft: rgba(39, 55, 77, 0.08);
+  /* MaterialM LIGHT — BLUE_THEME */
+  --bp-navy: #111c2d; /* textPrimary (active nav / btn-navy → white text) */
+  --bp-surface: #f8fafd; /* background / containerBg */
+  --bp-card: #ffffff; /* surface */
+  --bp-elevated: #eff4fa; /* hoverColor / light */
+  --bp-border: #e0e6eb; /* borderColor */
+  --bp-blue: #00a1ff; /* primary */
+  --bp-cyan: #0074ba; /* info (darkened for readable text on white) */
+  --bp-orange: #fa896b;
+  --bp-yellow: #9a5b00; /* warning (darkened: MaterialM #ffae1f fails on white) */
+  --bp-text: #111c2d; /* textPrimary */
+  --bp-text-secondary: #7b8893; /* textSecondary */
+  --bp-text-muted: #526b7a; /* muted */
+  --bp-hover: #eff4fa;
+  --bp-primary-soft: rgba(0, 161, 255, 0.12);
 }
 
 /* ─── Dark Theme ─── */
 [data-theme="dark"] {
-  --bp-navy: #1a2634;
-  --bp-surface: #1a2634;
-  --bp-card: #27374d;
-  --bp-elevated: #2f4157;
-  --bp-border: #526d82;
-  --bp-blue: #9db2bf;
-  --bp-cyan: #dde6ed;
-  --bp-orange: #526d82;
-  --bp-yellow: #9db2bf;
-  --bp-text: #dde6ed;
-  --bp-text-secondary: #9db2bf;
-  --bp-text-muted: #526d82;
-  --bp-hover: rgba(255, 255, 255, 0.06);
-  --bp-primary-soft: rgba(157, 178, 191, 0.18);
+  /* MaterialM DARK — DARK_BLUE_THEME */
+  --bp-navy: #2a3851; /* hoverColor — active nav / btn-navy */
+  --bp-surface: #1a2537; /* background / containerBg */
+  --bp-card: #1f2a3d; /* surface */
+  --bp-elevated: #2a3851; /* hoverColor */
+  --bp-border: #333f55; /* borderColor */
+  --bp-blue: #00a1ff; /* primary */
+  --bp-cyan: #3cacc8; /* info */
+  --bp-orange: #fb9678; /* secondary */
+  --bp-yellow: #ffae1f; /* warning */
+  --bp-text: #eaeff4; /* textPrimary */
+  --bp-text-secondary: #a4b4c9;
+  --bp-text-muted: #7c8fac; /* textSecondary */
+  --bp-hover: #2a3851;
+  --bp-primary-soft: rgba(0, 161, 255, 0.16);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   KPI STATE CARDS — MaterialM stat cards
+   tinted paper gradient + circular artwork + gradient icon + chip
+   ══════════════════════════════════════════════════════════════ */
+:root,
+[data-theme="light"] {
+  --kpi-ink: #111c2d;
+  --kpi-sub: #64748b;
+  --kpi-chip-border: rgba(17, 28, 45, 0.25);
+  --kpi-chip-bg: rgba(255, 255, 255, 0.55);
+  --kpi-shadow: 0 1px 2px rgba(39, 55, 77, 0.05),
+    0 12px 26px -22px rgba(39, 55, 77, 0.5);
+}
+[data-theme="dark"] {
+  --kpi-ink: #eaeff4;
+  --kpi-sub: #a4b4c9;
+  --kpi-chip-border: rgba(234, 239, 244, 0.28);
+  --kpi-chip-bg: rgba(255, 255, 255, 0.05);
+  --kpi-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.kpi-card {
+  position: relative;
+  display: flex;
+  min-height: 150px;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 16px;
+  color: var(--kpi-ink);
+  background: var(--kpi-bg);
+  box-shadow: var(--kpi-shadow);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 36px -24px rgba(0, 0, 0, 0.5);
+}
+.kpi-art {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+.kpi-art-a {
+  top: -36px;
+  right: -26px;
+  width: 108px;
+  height: 108px;
+  background: var(--kpi-art-1);
+}
+.kpi-art-b {
+  top: 10px;
+  right: 44px;
+  width: 56px;
+  height: 56px;
+  background: var(--kpi-art-2);
+}
+/* Wide chart KPI card — tooltip must escape the card bounds, so the
+   card itself stays visible while artwork is clipped by an inner layer. */
+.kpi-card--chart {
+  overflow: visible;
+}
+.kpi-art-clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  pointer-events: none;
+}
+.kpi-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--kpi-a), var(--kpi-b));
+  box-shadow: 0 10px 20px -10px var(--kpi-a);
+}
+.kpi-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid var(--kpi-chip-border);
+  border-radius: 9999px;
+  background: var(--kpi-chip-bg);
+  color: var(--kpi-ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+/* accent icon gradients (both themes) */
+.kpi-blue {
+  --kpi-a: #00a1ff;
+  --kpi-b: #0074ba;
+}
+.kpi-emerald {
+  --kpi-a: #10c996;
+  --kpi-b: #0b9968;
+}
+.kpi-amber {
+  --kpi-a: #ffb020;
+  --kpi-b: #ef8d0a;
+}
+.kpi-violet {
+  --kpi-a: #8b5cf6;
+  --kpi-b: #6d28d9;
+}
+.kpi-pink {
+  --kpi-a: #ff5c8a;
+  --kpi-b: #e93b76;
+}
+.kpi-cyan {
+  --kpi-a: #06b6d4;
+  --kpi-b: #0891b2;
+}
+.kpi-rose {
+  --kpi-a: #ff4d67;
+  --kpi-b: #e11d48;
+}
+.kpi-teal {
+  --kpi-a: #14b8a6;
+  --kpi-b: #0d9488;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PANEL PAPER ARTWORK — cut-paper shapes for list/snapshot panels.
+   Deliberately DIFFERENT from the KPI cards: those use soft circles,
+   these use quarter-disc fans, rotated diamonds and diagonal ribbons.
+   ══════════════════════════════════════════════════════════════ */
+.pa {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* quarter-disc fan — square with one fully-rounded corner */
+.pa-fan-tr {
+  top: -34px;
+  right: -34px;
+  width: 160px;
+  height: 160px;
+  border-radius: 0 0 0 100%;
+}
+.pa-fan-br {
+  bottom: -40px;
+  right: -40px;
+  width: 170px;
+  height: 170px;
+  border-radius: 100% 0 0 0;
+}
+
+/* rotated rounded squares — paper diamonds */
+.pa-diamond {
+  width: 92px;
+  height: 92px;
+  border-radius: 26px;
+  transform: rotate(45deg);
+}
+.pa-diamond-sm {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+}
+.pa-diamond-bl {
+  bottom: -40px;
+  left: -38px;
+}
+.pa-diamond-br {
+  bottom: -34px;
+  right: -30px;
+}
+
+/* diagonal pill ribbons */
+.pa-ribbon {
+  height: 26px;
+  border-radius: 9999px;
+  transform: rotate(-32deg);
+}
+.pa-ribbon-a {
+  width: 220px;
+  bottom: 42px;
+  left: -84px;
+}
+.pa-ribbon-b {
+  width: 150px;
+  bottom: 84px;
+  left: -60px;
+}
+.pa-ribbon-c {
+  width: 190px;
+  top: 46%;
+  right: -76px;
+}
+
+/* artwork tints — translucent so they read as layered paper in both themes */
+.pa-blue {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 161, 255, 0.24),
+    rgba(0, 161, 255, 0.07)
+  );
+}
+.pa-cyan {
+  background: linear-gradient(
+    135deg,
+    rgba(6, 182, 212, 0.24),
+    rgba(6, 182, 212, 0.07)
+  );
+}
+.pa-violet {
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.24),
+    rgba(139, 92, 246, 0.07)
+  );
+}
+.pa-pink {
+  background: linear-gradient(
+    135deg,
+    rgba(236, 72, 153, 0.22),
+    rgba(236, 72, 153, 0.06)
+  );
+}
+.pa-amber {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 176, 32, 0.28),
+    rgba(255, 176, 32, 0.08)
+  );
+}
+.pa-emerald {
+  background: linear-gradient(
+    135deg,
+    rgba(16, 201, 150, 0.24),
+    rgba(16, 201, 150, 0.07)
+  );
+}
+
+/* Revenue card end dot — pulsing ping (radar-style) */
+@keyframes bp-dot-ping {
+  0% {
+    stroke-width: 3;
+    stroke-opacity: 0.6;
+  }
+  70%,
+  100% {
+    stroke-width: 18;
+    stroke-opacity: 0;
+  }
+}
+.bp-ping-dot circle {
+  animation: bp-dot-ping 2s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bp-ping-dot circle {
+    animation: none;
+    stroke-width: 8;
+    stroke-opacity: 0.28;
+  }
+}
+
+/* light — pastel paper tints */
+html:not([data-theme="dark"]) .kpi-blue {
+  --kpi-bg: linear-gradient(150deg, #e3f2ff, #f6fbff);
+  --kpi-art-1: rgba(0, 161, 255, 0.16);
+  --kpi-art-2: rgba(255, 255, 255, 0.7);
+}
+html:not([data-theme="dark"]) .kpi-emerald {
+  --kpi-bg: linear-gradient(150deg, #dff7ee, #f3fdf9);
+  --kpi-art-1: rgba(16, 185, 129, 0.16);
+  --kpi-art-2: rgba(255, 255, 255, 0.7);
+}
+html:not([data-theme="dark"]) .kpi-amber {
+  --kpi-bg: linear-gradient(150deg, #fdeecd, #fff8ec);
+  --kpi-art-1: rgba(255, 176, 32, 0.22);
+  --kpi-art-2: rgba(255, 255, 255, 0.7);
+}
+html:not([data-theme="dark"]) .kpi-violet {
+  --kpi-bg: linear-gradient(150deg, #eee7ff, #f9f6ff);
+  --kpi-art-1: rgba(139, 92, 246, 0.16);
+  --kpi-art-2: rgba(255, 255, 255, 0.7);
+}
+html:not([data-theme="dark"]) .kpi-pink {
+  --kpi-bg: linear-gradient(150deg, #ffe4ec, #fff5f9);
+  --kpi-art-1: rgba(255, 92, 138, 0.18);
+  --kpi-art-2: rgba(255, 255, 255, 0.7);
+}
+html:not([data-theme="dark"]) .kpi-cyan {
+  --kpi-bg: linear-gradient(150deg, #dcf6fc, #f1fdfe);
+  --kpi-art-1: rgba(6, 182, 212, 0.16);
+  --kpi-art-2: rgba(255, 255, 255, 0.7);
+}
+html:not([data-theme="dark"]) .kpi-rose {
+  --kpi-bg: linear-gradient(150deg, #ffe4e9, #fff5f6);
+  --kpi-art-1: rgba(255, 77, 103, 0.16);
+  --kpi-art-2: rgba(255, 255, 255, 0.7);
+}
+html:not([data-theme="dark"]) .kpi-teal {
+  --kpi-bg: linear-gradient(150deg, #d5f6f1, #f0fdfc);
+  --kpi-art-1: rgba(20, 184, 166, 0.2);
+  --kpi-art-2: rgba(255, 255, 255, 0.7);
+}
+
+/* dark — deep accent tints over the MaterialM navy surface */
+[data-theme="dark"] .kpi-blue {
+  --kpi-bg: linear-gradient(150deg, #1e3a55, #1a2c42);
+  --kpi-art-1: rgba(0, 161, 255, 0.16);
+  --kpi-art-2: rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] .kpi-emerald {
+  --kpi-bg: linear-gradient(150deg, #193940, #1a2c3c);
+  --kpi-art-1: rgba(16, 201, 150, 0.16);
+  --kpi-art-2: rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] .kpi-amber {
+  --kpi-bg: linear-gradient(150deg, #353630, #1e2a3c);
+  --kpi-art-1: rgba(255, 176, 32, 0.14);
+  --kpi-art-2: rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] .kpi-violet {
+  --kpi-bg: linear-gradient(150deg, #282b4e, #1c2a41);
+  --kpi-art-1: rgba(139, 92, 246, 0.18);
+  --kpi-art-2: rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] .kpi-pink {
+  --kpi-bg: linear-gradient(150deg, #352c41, #1e2b41);
+  --kpi-art-1: rgba(255, 92, 138, 0.16);
+  --kpi-art-2: rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] .kpi-cyan {
+  --kpi-bg: linear-gradient(150deg, #18364a, #1a2b40);
+  --kpi-art-1: rgba(6, 182, 212, 0.16);
+  --kpi-art-2: rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] .kpi-rose {
+  --kpi-bg: linear-gradient(150deg, #352a3d, #1e2b40);
+  --kpi-art-1: rgba(255, 77, 103, 0.16);
+  --kpi-art-2: rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] .kpi-teal {
+  --kpi-bg: linear-gradient(150deg, #143a3e, #182c3e);
+  --kpi-art-1: rgba(20, 184, 166, 0.18);
+  --kpi-art-2: rgba(255, 255, 255, 0.04);
 }
 
 /* ─── Base ─── */
@@ -308,13 +662,13 @@ html[data-theme="light"] .text-red-400 {
   color: #dc2626 !important;
 }
 html[data-theme="light"] .text-amber-400 {
-  color: #64748b !important;
+  color: #b45309 !important;
 }
 html[data-theme="light"] .text-orange-400 {
   color: #ea580c !important;
 }
 html[data-theme="light"] .text-yellow-400 {
-  color: #64748b !important;
+  color: #a16207 !important;
 }
 html[data-theme="light"] .text-cyan-400 {
   color: #0891b2 !important;
@@ -349,10 +703,10 @@ html[data-theme="light"] .text-pink-400 {
 
 /* 300-level and other bright tones → muted, readable in light mode */
 html[data-theme="light"] .text-amber-300 {
-  color: #64748b !important;
+  color: #b45309 !important;
 }
 html[data-theme="light"] .text-yellow-300 {
-  color: #64748b !important;
+  color: #a16207 !important;
 }
 html[data-theme="light"] .text-orange-300 {
   color: #c2410c !important;
@@ -379,24 +733,27 @@ html[data-theme="light"] .text-pink-300 {
   color: #be185d !important;
 }
 
-/* Neutralize any remaining yellow/amber status tones in light mode */
-html[data-theme="light"] [class*="text-amber-"] {
-  color: #64748b !important;
+/* Amber / yellow status — keep the HUE in light mode so both themes
+   agree (dark theme keeps amber, so light must too). Only the bright
+   100–500 text levels are darkened to pass on white; backgrounds and
+   borders keep their real amber tint (a 15%-alpha amber chip reads
+   fine on white — no more gray flattening). */
+html[data-theme="light"] .text-amber-100,
+html[data-theme="light"] .text-amber-200,
+html[data-theme="light"] .text-amber-500,
+html[data-theme="light"] .text-amber-500\/80,
+html[data-theme="light"] .hover\:text-amber-300:hover,
+html[data-theme="light"] .hover\:text-amber-400:hover,
+html[data-theme="light"] .hover\:text-amber-500:hover {
+  color: #b45309 !important;
 }
-html[data-theme="light"] [class*="text-yellow-"] {
-  color: #64748b !important;
-}
-html[data-theme="light"] [class*="bg-amber-"] {
-  background-color: #e4e8ef !important;
-}
-html[data-theme="light"] [class*="bg-yellow-"] {
-  background-color: #e4e8ef !important;
-}
-html[data-theme="light"] [class*="border-amber-"] {
-  border-color: rgba(100, 116, 139, 0.28) !important;
-}
-html[data-theme="light"] [class*="border-yellow-"] {
-  border-color: rgba(100, 116, 139, 0.28) !important;
+html[data-theme="light"] .text-yellow-100,
+html[data-theme="light"] .text-yellow-200,
+html[data-theme="light"] .text-yellow-500,
+html[data-theme="light"] .hover\:text-yellow-300:hover,
+html[data-theme="light"] .hover\:text-yellow-400:hover,
+html[data-theme="light"] .hover\:text-yellow-500:hover {
+  color: #a16207 !important;
 }
 
 /* Neutral (not indigo) shadow colors in light mode */
@@ -411,6 +768,262 @@ html[data-theme="light"] .shadow-bp-blue {
 }
 html[data-theme="light"] .hover\:shadow-bp-blue\/40:hover {
   --tw-shadow-color: rgba(39, 55, 77, 0.14) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DARK THEME — READABILITY SAFETY NET
+   Pages that still hard-code Tailwind slate/white are remapped onto
+   the MaterialM dark tokens so nothing renders white-on-dark.
+   ══════════════════════════════════════════════════════════════ */
+html[data-theme="dark"] .bg-white {
+  background-color: var(--bp-card) !important;
+}
+html[data-theme="dark"] .border-slate-100,
+html[data-theme="dark"] .border-slate-200,
+html[data-theme="dark"] .divide-slate-100 > * + * {
+  border-color: var(--bp-border) !important;
+}
+html[data-theme="dark"] .bg-slate-50,
+html[data-theme="dark"] .bg-slate-100,
+html[data-theme="dark"] .bg-slate-200 {
+  background-color: var(--bp-elevated) !important;
+}
+html[data-theme="dark"] .hover\:bg-slate-50:hover,
+html[data-theme="dark"] .hover\:bg-slate-100:hover {
+  background-color: var(--bp-hover) !important;
+}
+html[data-theme="dark"] .text-slate-800,
+html[data-theme="dark"] .text-slate-700,
+html[data-theme="dark"] .text-slate-600,
+html[data-theme="dark"] .hover\:text-slate-800:hover,
+html[data-theme="dark"] .hover\:text-slate-700:hover,
+html[data-theme="dark"] .hover\:text-slate-600:hover {
+  color: var(--bp-text) !important;
+}
+html[data-theme="dark"] .text-slate-500,
+html[data-theme="dark"] .text-slate-400,
+html[data-theme="dark"] .placeholder\:text-slate-400::placeholder,
+html[data-theme="dark"] .placeholder\:text-slate-500::placeholder {
+  color: var(--bp-text-muted) !important;
+}
+html[data-theme="dark"] .ring-white {
+  --tw-ring-color: var(--bp-border) !important;
+}
+html[data-theme="dark"] .bg-red-50,
+html[data-theme="dark"] .hover\:bg-red-50:hover {
+  background-color: rgba(255, 102, 146, 0.12) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DARK THEME — EXTENDED UTILITY REMAP (exact classes)
+   The safety net above only matched the plain slate/white classes.
+   Pages actually also use opacity-variant hovers
+   (hover:bg-slate-50/80 ← the light row highlight bug), light tint
+   fills (bg-blue-50, bg-emerald-50 …), dark -600/-700 status text,
+   pale solid borders and pale focus rings. All remapped to the
+   MaterialM dark tokens / bright status tones.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Light tint fills → soft tinted paper on the dark card ── */
+html[data-theme="dark"] .bg-blue-50,
+html[data-theme="dark"] .hover\:bg-blue-50:hover,
+html[data-theme="dark"] .bg-blue-100,
+html[data-theme="dark"] .hover\:bg-blue-100:hover,
+html[data-theme="dark"] .file\:bg-blue-50::file-selector-button,
+html[data-theme="dark"] .hover\:file\:bg-blue-100:hover::file-selector-button {
+  background-color: rgba(0, 161, 255, 0.14) !important;
+}
+html[data-theme="dark"] .bg-emerald-50,
+html[data-theme="dark"] .hover\:bg-emerald-50:hover,
+html[data-theme="dark"] .hover\:bg-emerald-100:hover {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+}
+html[data-theme="dark"] .bg-amber-50,
+html[data-theme="dark"] .bg-amber-100,
+html[data-theme="dark"] .hover\:bg-amber-100:hover {
+  background-color: rgba(245, 158, 11, 0.14) !important;
+}
+html[data-theme="dark"] .bg-cyan-50,
+html[data-theme="dark"] .hover\:bg-cyan-50:hover,
+html[data-theme="dark"] .hover\:bg-cyan-100:hover {
+  background-color: rgba(34, 211, 238, 0.12) !important;
+}
+html[data-theme="dark"] .bg-violet-50 {
+  background-color: rgba(139, 92, 246, 0.16) !important;
+}
+html[data-theme="dark"] .bg-orange-50,
+html[data-theme="dark"] .hover\:bg-orange-50:hover {
+  background-color: rgba(251, 146, 60, 0.14) !important;
+}
+html[data-theme="dark"] .bg-red-100,
+html[data-theme="dark"] .hover\:bg-red-100:hover {
+  background-color: rgba(248, 113, 113, 0.14) !important;
+}
+
+/* ── Opacity-variant hovers the first pass missed ── */
+html[data-theme="dark"] .hover\:bg-slate-50\/80:hover,
+html[data-theme="dark"] .hover\:bg-slate-100\/80:hover,
+html[data-theme="dark"] .hover\:bg-white:hover {
+  background-color: var(--bp-hover) !important;
+}
+html[data-theme="dark"] .divide-slate-50 > * + * {
+  border-color: var(--bp-border) !important;
+}
+
+/* ── -600/-700/-800 status text → readable -400 tones ── */
+html[data-theme="dark"] .text-blue-600,
+html[data-theme="dark"] .text-blue-700,
+html[data-theme="dark"] .hover\:text-blue-600:hover,
+html[data-theme="dark"] .hover\:text-blue-700:hover,
+html[data-theme="dark"] .file\:text-blue-600::file-selector-button {
+  color: #60a5fa !important;
+}
+html[data-theme="dark"] .text-emerald-600,
+html[data-theme="dark"] .text-emerald-700,
+html[data-theme="dark"] .text-emerald-800,
+html[data-theme="dark"] .text-emerald-700\/80 {
+  color: #34d399 !important;
+}
+html[data-theme="dark"] .text-red-600,
+html[data-theme="dark"] .text-red-700 {
+  color: #f87171 !important;
+}
+html[data-theme="dark"] .text-amber-600,
+html[data-theme="dark"] .text-amber-700,
+html[data-theme="dark"] .text-amber-600\/70 {
+  color: #fbbf24 !important;
+}
+html[data-theme="dark"] .text-cyan-600,
+html[data-theme="dark"] .hover\:text-cyan-600:hover {
+  color: #22d3ee !important;
+}
+html[data-theme="dark"] .text-violet-600 {
+  color: #a78bfa !important;
+}
+html[data-theme="dark"] .text-orange-600 {
+  color: #fb923c !important;
+}
+html[data-theme="dark"] .text-slate-900,
+html[data-theme="dark"] .hover\:text-slate-900:hover {
+  color: var(--bp-text) !important;
+}
+html[data-theme="dark"] .group:hover .group-hover\:text-slate-600 {
+  color: var(--bp-text-secondary) !important;
+}
+
+/* ── Pale solid borders → tinted hairline (status kept, glare gone) ── */
+html[data-theme="dark"] .border-slate-300,
+html[data-theme="dark"] .hover\:border-slate-300:hover,
+html[data-theme="dark"] .hover\:border-slate-200:hover {
+  border-color: var(--bp-border) !important;
+}
+html[data-theme="dark"] .border-blue-200,
+html[data-theme="dark"] .hover\:border-blue-300:hover {
+  border-color: rgba(96, 165, 250, 0.38) !important;
+}
+html[data-theme="dark"] .border-emerald-100,
+html[data-theme="dark"] .border-emerald-200 {
+  border-color: rgba(52, 211, 153, 0.38) !important;
+}
+html[data-theme="dark"] .border-red-100,
+html[data-theme="dark"] .border-red-200 {
+  border-color: rgba(248, 113, 113, 0.38) !important;
+}
+html[data-theme="dark"] .border-amber-100,
+html[data-theme="dark"] .border-amber-200 {
+  border-color: rgba(251, 191, 36, 0.38) !important;
+}
+html[data-theme="dark"] .border-cyan-100,
+html[data-theme="dark"] .border-cyan-200 {
+  border-color: rgba(34, 211, 238, 0.38) !important;
+}
+html[data-theme="dark"] .border-violet-100 {
+  border-color: rgba(167, 139, 250, 0.38) !important;
+}
+
+/* ── Pale focus / avatar rings → brand ring ── */
+html[data-theme="dark"] .focus\:ring-blue-100:focus,
+html[data-theme="dark"] .ring-blue-50,
+html[data-theme="dark"] .ring-blue-100 {
+  --tw-ring-color: rgba(0, 161, 255, 0.45) !important;
+}
+html[data-theme="dark"] .ring-slate-100 {
+  --tw-ring-color: var(--bp-border) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LIGHT THEME — EXTENDED UTILITY REMAP (exact classes)
+   Dark-theme idioms that fail on white: the pale slate label used
+   for table headers / captions (text-slate-300 = 1.7:1) and the
+   bright 500-level status text (2.3–4.1:1).
+   ══════════════════════════════════════════════════════════════ */
+html[data-theme="light"] .text-slate-300 {
+  color: #64748b !important;
+}
+html[data-theme="light"] .text-red-500,
+html[data-theme="light"] .hover\:text-red-500:hover,
+html[data-theme="light"] .hover\:text-red-400:hover {
+  color: #dc2626 !important;
+}
+html[data-theme="light"] .text-blue-500,
+html[data-theme="light"] .text-blue-500\/80 {
+  color: #2563eb !important;
+}
+html[data-theme="light"] .text-emerald-500,
+html[data-theme="light"] .text-emerald-500\/80 {
+  color: #059669 !important;
+}
+html[data-theme="light"] .text-cyan-500,
+html[data-theme="light"] .text-cyan-500\/80 {
+  color: #0891b2 !important;
+}
+html[data-theme="light"] .text-orange-500 {
+  color: #c2410c !important;
+}
+html[data-theme="light"] .text-pink-500 {
+  color: #db2777 !important;
+}
+html[data-theme="light"] .text-violet-500,
+html[data-theme="light"] .text-violet-500\/80,
+html[data-theme="light"] .text-purple-500\/80 {
+  color: #7c3aed !important;
+}
+html[data-theme="light"] .text-rose-300 {
+  color: #be185d !important;
+}
+html[data-theme="light"] .focus\:ring-blue-100:focus,
+html[data-theme="light"] .ring-blue-50,
+html[data-theme="light"] .ring-blue-100 {
+  --tw-ring-color: rgba(0, 161, 255, 0.32) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PRIMARY ACTION BUTTONS — deep, matte brand blue
+   bg-blue-600 + hover:bg-blue-700 is the primary CTA on every page.
+   Cyan-leaning #00A1FF → #0089d9 still read as glowy on large fills,
+   so buttons drop to a deeper, low-glare navy-blue (saturation and
+   luminance both down). Accents/links/sidebar keep #00A1FF.
+   Also kills the button glow carriers: shadow/ring removed.
+   ══════════════════════════════════════════════════════════════ */
+.bg-blue-600 {
+  background-color: #0b5fbd !important;
+}
+.hover\:bg-blue-700:hover {
+  background-color: #094e9c !important;
+}
+.hover\:bg-blue-600:hover {
+  background-color: #0a54a8 !important;
+}
+.bg-blue-700 {
+  background-color: #094e9c !important;
+}
+/* buttons: no glossy lift — shadows/rings on the blue fill only */
+.bg-blue-600.shadow-sm,
+.bg-blue-600.shadow-md,
+.bg-blue-600.shadow-lg,
+.bg-blue-600.ring-1,
+.bg-blue-600.ring-2 {
+  box-shadow: none !important;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -511,11 +1124,11 @@ html[data-theme="light"] .hover\:shadow-bp-blue\/40:hover {
   color: #ffffff !important;
 }
 .btn-primary {
-  background: linear-gradient(135deg, #4a90d9 0%, #2e6bb4 100%) !important;
+  background: linear-gradient(135deg, #00a1ff 0%, #0074ba 100%) !important;
   color: #ffffff !important;
 }
 .btn-primary:hover {
-  background: linear-gradient(135deg, #56a1e8 0%, #387bc8 100%) !important;
+  background: linear-gradient(135deg, #33b4ff 0%, #0088d6 100%) !important;
 }
 .btn-primary:disabled {
   opacity: 0.6;
@@ -753,14 +1366,26 @@ html[data-theme="light"] .hover\:shadow-bp-blue\/40:hover {
 }
 
 /* ─── Login / auth surface ─── */
+/* Theme-aware backdrop for login / signup / forgot-password shells.
+   Light: MaterialM light background (#f8fafd) so the white card reads as a card.
+   Dark: deep navy (#111c2d) — --bp-navy in dark (#2a3851) was LIGHTER than the
+   card (#1f2a3d), which made the card look muddy/inverted. */
+.auth-shell {
+  background-color: var(--bp-surface);
+}
+[data-theme="dark"] .auth-shell {
+  background-color: #111c2d;
+}
+
 .glass-card {
   background: var(--bp-card);
   border: 1px solid var(--bp-border);
   border-radius: 20px;
-  box-shadow: none;
+  box-shadow: 0 14px 34px rgba(17, 28, 45, 0.08);
 }
 [data-theme="dark"] .glass-card {
-  box-shadow: none;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+  border-color: #3a4761;
 }
 
 .glow-hover {

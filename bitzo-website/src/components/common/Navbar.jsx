@@ -39,6 +39,7 @@ import {
 import { fetchProfileData } from "../../features/profile/profileSlice";
 import axios from "axios";
 import { API_ORIGIN as API_BASE_URL } from "../../config/api";
+import { toast } from "react-toastify";
 const logo = "/VidBuxApp-logo.png";
 
 const HINTS_URL = `${API_BASE_URL}/api/uservideo/search/hints`;
@@ -137,7 +138,7 @@ export default function Navbar({ toggleSidebar }) {
       console.error("Speech recognition error:", event.error);
       setIsListening(false);
       if (event.error === "not-allowed") {
-        alert("Microphone permission denied. Please allow mic access.");
+        toast.error("Microphone permission denied. Please allow mic access.");
       }
     };
 
@@ -185,7 +186,7 @@ export default function Navbar({ toggleSidebar }) {
 
   const handleMicClick = () => {
     if (!voiceSupported) {
-      alert("Voice search is not supported in this browser. Use Chrome.");
+      toast.error("Voice search is not supported in this browser. Use Chrome.");
       return;
     }
 

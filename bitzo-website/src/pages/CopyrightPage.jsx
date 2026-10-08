@@ -338,6 +338,7 @@ import {
   Shield,
 } from "lucide-react";
 import { API_ORIGIN } from "../config/api";
+import { toast } from "react-toastify";
 
 const getToken = () => localStorage.getItem("token");
 
@@ -427,11 +428,11 @@ export default function CopyrightPage() {
         setDisputeReason("");
         fetchStrikes();
       } else {
-        alert(data.message || "Failed to submit counter-notification");
+        toast.error(data.message || "Failed to submit counter-notification");
       }
     } catch (err) {
       console.error("Failed to submit dispute:", err);
-      alert("Failed to submit counter-notification");
+      toast.error("Failed to submit counter-notification");
     } finally {
       setSubmitting(false);
     }

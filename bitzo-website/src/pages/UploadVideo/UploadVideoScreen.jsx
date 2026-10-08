@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
+import { toast } from "react-toastify";
 import { API_BASE as API } from "../../config/api";
 
 export default function UploadVideo() {
@@ -134,7 +135,7 @@ export default function UploadVideo() {
       );
 
       if (res.data?.success) {
-        alert("Video uploaded successfully! 🎉");
+        toast.success("Video uploaded successfully! 🎉");
         // Reset form
         setTitle("");
         setDescription("");
@@ -150,7 +151,7 @@ export default function UploadVideo() {
       const msg =
         error.response?.data?.message || "Upload failed. Please try again.";
       setErrorMsg(msg);
-      alert(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

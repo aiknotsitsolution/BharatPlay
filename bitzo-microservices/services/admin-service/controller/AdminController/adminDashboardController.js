@@ -1,5 +1,6 @@
 const User = require("../../models/usermodel");
 const Video = require("../../models/Videomodel");
+const Channel = require("../../models/Channel/ChannelModel");
 const WatchSession = require("../../models/WatchSession");
 const {
   getAdImpressionModel,
@@ -8,6 +9,20 @@ const {
 } = require("../../models/DashboardMetrics");
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_NAMES = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 const formatRelativeTime = (date) => {
   const diff = Date.now() - new Date(date).getTime();
@@ -54,6 +69,23 @@ const buildWeekDays = () => {
   return days;
 };
 
+// Last 12 calendar months (oldest first) for the month-wise growth trend.
+const buildMonths = () => {
+  const now = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    months.push({
+      key: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`,
+      label: MONTH_NAMES[start.getMonth()],
+      start,
+      days: Math.round((end - start) / 86400000),
+    });
+  }
+  return months;
+};
+
 const getDailyMetrics = async (label, modelFactory, pipeline) => {
   try {
     return await modelFactory().aggregate(pipeline).exec();
@@ -70,6 +102,7 @@ exports.getDashboard = async (req, res) => {
 
     const weekDays = buildWeekDays();
     const weekStart = weekDays[0].start;
+    const monthWindow = buildMonths();
     const sevenDaysAgo = new Date(weekStart);
     const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -88,6 +121,8 @@ exports.getDashboard = async (req, res) => {
       recentUsersDocs,
       recentUploadDocs,
       onlineIds,
+      usersByMonthAgg,
+      videosByMonthAgg,
     ] = await Promise.all([
       User.estimatedDocumentCount(),
       Video.estimatedDocumentCount(),
@@ -117,9 +152,35 @@ exports.getDashboard = async (req, res) => {
         { $group: { _id: "$userId" } },
         { $limit: 100 },
       ]),
+      // Month-wise new users (last 12 months) for the growth trend chart
+      getDailyMetrics("monthly-users", () => User, [
+        { $match: { createdAt: { $gte: monthWindow[0].start } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+            total: { $sum: 1 },
+          },
+        },
+      ]),
+      // Month-wise video uploads (last 12 months) for the activity chart
+      getDailyMetrics("monthly-uploads", () => Video, [
+        { $match: { createdAt: { $gte: monthWindow[0].start } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+            total: { $sum: 1 },
+          },
+        },
+      ]),
     ]);
 
-    const [inquiriesByDay, copyrightByDay, adsByDay] = await Promise.all([
+    const [
+      inquiriesByDay,
+      copyrightByDay,
+      adsByDay,
+      copyrightByMonth,
+      adsByMonth,
+    ] = await Promise.all([
       getDailyMetrics("inquiry", getContactRequestModel, [
           { $match: { createdAt: { $gte: weekStart } } },
           {
@@ -163,7 +224,140 @@ exports.getDashboard = async (req, res) => {
             },
           },
         ]),
+      // Month-wise copyright cases (last 12 months) for the cases trend chart
+      getDailyMetrics("monthly-copyright", getCopyrightCaseModel, [
+          { $match: { createdAt: { $gte: monthWindow[0].start } } },
+          {
+            $group: {
+              _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+              total: { $sum: 1 },
+            },
+          },
+        ]),
+      // Month-wise ad impressions/completions (last 12 months) for the ads trend chart
+      getDailyMetrics("monthly-ads", getAdImpressionModel, [
+          {
+            $match: {
+              createdAt: { $gte: monthWindow[0].start },
+              event: { $in: ["impression", "complete"] },
+            },
+          },
+          {
+            $group: {
+              _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+              impressions: {
+                $sum: { $cond: [{ $eq: ["$event", "impression"] }, 1, 0] },
+              },
+              completed: {
+                $sum: { $cond: [{ $eq: ["$event", "complete"] }, 1, 0] },
+              },
+            },
+          },
+        ]),
     ]);
+
+    // ── Top-viewed videos per period (long vs short) ────────────────────
+    // For every month (last 12) and day (last 7) find the highest-viewed
+    // long & short video, then hydrate uploader + channel for the hover card.
+    const classifyVideoType = {
+      $cond: [{ $in: ["short", "$videoType"] }, "short", "long"],
+    };
+    const [topByMonthAgg, topByDayAgg] = await Promise.all([
+      getDailyMetrics("top-videos-month", () => Video, [
+        { $match: { createdAt: { $gte: monthWindow[0].start } } },
+        { $sort: { views: -1 } },
+        {
+          $group: {
+            _id: {
+              key: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+              type: classifyVideoType,
+            },
+            views: { $first: "$views" },
+            videoId: { $first: "$_id" },
+          },
+        },
+      ]),
+      getDailyMetrics("top-videos-day", () => Video, [
+        { $match: { createdAt: { $gte: weekStart } } },
+        { $sort: { views: -1 } },
+        {
+          $group: {
+            _id: {
+              key: {
+                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+              },
+              type: classifyVideoType,
+            },
+            views: { $first: "$views" },
+            videoId: { $first: "$_id" },
+          },
+        },
+      ]),
+    ]);
+
+    const topVideoIds = [
+      ...new Set(
+        [...(topByMonthAgg || []), ...(topByDayAgg || [])].map((row) =>
+          String(row.videoId),
+        ),
+      ),
+    ];
+    let topVideoDocs = [];
+    if (topVideoIds.length) {
+      try {
+        topVideoDocs = await Video.find({ _id: { $in: topVideoIds } })
+          .populate({ path: "uploadedBy", select: "name avatar", model: User })
+          .populate({ path: "channel", select: "name", model: Channel })
+          .lean();
+      } catch (error) {
+        console.error("getDashboard top-video hydrate error:", error.message);
+      }
+    }
+    const topVideoById = new Map(
+      topVideoDocs.map((doc) => [String(doc._id), doc]),
+    );
+    const serializeTopVideo = (videoId) => {
+      if (!videoId) return null;
+      const doc = topVideoById.get(String(videoId));
+      if (!doc) return null;
+      return {
+        title: doc.title,
+        views: doc.views || 0,
+        userName: doc.uploadedBy?.name || "Unknown",
+        userAvatar: doc.uploadedBy?.avatar || null,
+        channelName: doc.channel?.name || "—",
+      };
+    };
+    const topMapOf = (rows) =>
+      rows
+        ? new Map(rows.map((row) => [`${row._id.key}|${row._id.type}`, row]))
+        : new Map();
+    const monthTopMap = topMapOf(topByMonthAgg);
+    const dayTopMap = topMapOf(topByDayAgg);
+
+    const topVideosMonthwise = monthWindow.map(({ key, label }) => {
+      const longRow = monthTopMap.get(`${key}|long`);
+      const shortRow = monthTopMap.get(`${key}|short`);
+      return {
+        month: label,
+        longViews: longRow?.views || 0,
+        shortViews: shortRow?.views || 0,
+        longTop: serializeTopVideo(longRow?.videoId),
+        shortTop: serializeTopVideo(shortRow?.videoId),
+      };
+    });
+    const topVideosDaywise = weekDays.map(({ day, start }) => {
+      const dateKey = start.toISOString().slice(0, 10);
+      const longRow = dayTopMap.get(`${dateKey}|long`);
+      const shortRow = dayTopMap.get(`${dateKey}|short`);
+      return {
+        day,
+        longViews: longRow?.views || 0,
+        shortViews: shortRow?.views || 0,
+        longTop: serializeTopVideo(longRow?.videoId),
+        shortTop: serializeTopVideo(shortRow?.videoId),
+      };
+    });
 
     const totalsByDay = (rows) =>
       rows ? new Map(rows.map((row) => [row._id, row.total])) : null;
@@ -189,6 +383,61 @@ exports.getDashboard = async (req, res) => {
         copyrightCases: copyrightMap ? copyrightMap.get(dateKey) || 0 : null,
         adImpressions: adsMap ? adsMap.get(dateKey)?.impressions || 0 : null,
         adCompletions: adsMap ? adsMap.get(dateKey)?.completed || 0 : null,
+      };
+    });
+
+    // Month-wise growth trend (real data — last 12 months of signups)
+    const monthlyTotals = usersByMonthAgg
+      ? new Map(usersByMonthAgg.map((row) => [row._id, row.total]))
+      : null;
+    const monthly = monthWindow.map(({ key, label, days }) => {
+      const total = monthlyTotals ? monthlyTotals.get(key) || 0 : 0;
+      return {
+        month: label,
+        users: total,
+        dayAvg: Math.round(total / days),
+      };
+    });
+
+    // Month-wise video uploads (real data — last 12 months)
+    const uploadTotals = videosByMonthAgg
+      ? new Map(videosByMonthAgg.map((row) => [row._id, row.total]))
+      : null;
+    const monthlyVideos = monthWindow.map(({ key, label, days }) => {
+      const total = uploadTotals ? uploadTotals.get(key) || 0 : 0;
+      return {
+        month: label,
+        videos: total,
+        dayAvg: Math.round(total / days),
+      };
+    });
+
+    // Month-wise copyright cases (real data — last 12 months)
+    const copyrightMonthMap = copyrightByMonth
+      ? new Map(copyrightByMonth.map((row) => [row._id, row.total]))
+      : null;
+    const monthlyCopyright = monthWindow.map(({ key, label, days }) => {
+      const total = copyrightMonthMap ? copyrightMonthMap.get(key) || 0 : 0;
+      return {
+        month: label,
+        cases: total,
+        dayAvg: Number((total / days).toFixed(2)),
+      };
+    });
+
+    // Month-wise ad impressions/completions (last 12 months)
+    const adsMonthMap = adsByMonth
+      ? new Map(adsByMonth.map((row) => [row._id, row]))
+      : null;
+    const monthlyAds = monthWindow.map(({ key, label, days }) => {
+      const row = adsMonthMap ? adsMonthMap.get(key) : null;
+      const impressions = row?.impressions || 0;
+      const completed = row?.completed || 0;
+      return {
+        month: label,
+        impressions,
+        completed,
+        dayAvg: Number((impressions / days).toFixed(2)),
       };
     });
 
@@ -231,9 +480,17 @@ exports.getDashboard = async (req, res) => {
       data: {
         stats,
         weekly,
+        monthly,
+        monthlyVideos,
+        monthlyCopyright,
+        monthlyAds,
         snapshot,
         recentUsers,
         recentUploads,
+        topVideos: {
+          monthwise: topVideosMonthwise,
+          daywise: topVideosDaywise,
+        },
       },
       generatedAt: new Date().toISOString(),
     });

@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { ArrowLeft, Wallet, AlertCircle } from "lucide-react";
 import { useRewards } from "../../context/RewardContext"; // your points context
+import { toast } from "react-toastify";
 
 const WITHDRAWALS_ENABLED = false;
 
@@ -49,7 +50,7 @@ export default function WithdrawPage() {
     }
 
     // Here you would call your backend API
-    alert(
+    toast.success(
       `Withdrawal request of $${withdrawAmount.toFixed(2)} via ${selectedMethod.name} submitted!`,
     );
     // Reset form

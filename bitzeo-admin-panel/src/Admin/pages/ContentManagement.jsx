@@ -742,9 +742,13 @@ import PageHeader from "../../components/layout/PageHeader";
 const MEDIA_BASE = API_BASE_URL.replace(/\/api\/?$/, "");
 
 function formatDuration(sec) {
-  if (!sec && sec !== 0) return "—";
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
+  if (sec === null || sec === undefined || sec === "") return "—";
+  const n = Number(sec);
+  if (!Number.isFinite(n) || n < 0) return "—";
+  // stored duration can be fractional seconds (e.g. 8.613991) — round to whole seconds
+  const total = Math.round(n);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
@@ -1104,7 +1108,10 @@ export default function ContentManagement({ type = "long" }) {
               {[
                 { label: "Category", value: selectedVideo.category?.name || "—" },
                 { label: "Type", value: isShorts ? "Short" : "Long" },
-                { label: "Duration", value: selectedVideo.duration ? `${selectedVideo.duration} sec` : "—" },
+                {
+                  label: "Duration",
+                  value: selectedVideo.duration ? formatDuration(selectedVideo.duration) : "—",
+                },
                 { label: "Views", value: selectedVideo.views || 0 },
                 { label: "Uploaded", value: formatDateTime(selectedVideo.createdAt) },
               ].map((item) => (

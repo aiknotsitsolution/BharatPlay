@@ -78,7 +78,7 @@ export default function EmployeeLogin() {
   };
 
   return (
-    <div className="relative min-h-screen bg-bp-navy overflow-hidden flex items-center justify-center px-4 py-6">
+    <div className="relative min-h-screen auth-shell overflow-hidden flex items-center justify-center px-4 py-6">
       <div className="relative w-full max-w-[440px] animate-fade-in">
         <div className="glass-card p-6">
           {/* Logo row */}
@@ -86,7 +86,7 @@ export default function EmployeeLogin() {
             <img
               src="/VidBuxApp-logo.png"
               alt="VidBuxApp"
-              className="w-14 h-14 rounded-2xl object-cover ring-1 ring-bp-border"
+              className="h-16 w-16 rounded-2xl object-contain p-2 bg-bp-elevated ring-1 ring-bp-border"
             />
             <div>
               <h1

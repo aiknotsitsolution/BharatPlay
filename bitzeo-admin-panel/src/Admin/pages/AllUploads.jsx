@@ -26,9 +26,13 @@ const TAB_DEFS = [
 const LIMIT = 10;
 
 function formatDuration(sec) {
-  if (!sec && sec !== 0) return "—";
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
+  if (sec === null || sec === undefined || sec === "") return "—";
+  const n = Number(sec);
+  if (!Number.isFinite(n) || n < 0) return "—";
+  // stored duration can be fractional seconds (e.g. 8.613991) — round to whole seconds
+  const total = Math.round(n);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 

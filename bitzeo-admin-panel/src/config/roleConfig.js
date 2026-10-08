@@ -1,19 +1,20 @@
 import {
-  LayoutDashboard,
-  Users,
-  ShoppingBag,
-  Package,
-  FolderOpen,
-  Video,
-  Box,
-  Clapperboard,
+  LayoutGrid,
+  Shapes,
+  UserPlus,
+  UsersRound,
+  UserX,
+  MonitorPlay,
+  Zap,
+  LifeBuoy,
+  Copyright,
+  MessagesSquare,
+  Trash2,
+  Inbox,
   Shield,
   DollarSign,
   Headphones,
   Eye,
-  MessageSquare,
-  Trash2,
-  Inbox,
 } from "lucide-react";
 
 /**
@@ -23,18 +24,18 @@ import {
 
 // ─── NAV ITEMS ────────────────────────────────────────────────
 const ALL_NAV_ITEMS = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "finance", "read-only"] },
-  { to: "/category", icon: FolderOpen, label: "Category", roles: ["admin"] },
-  { to: "/create-employee", icon: Package, label: "Add Employee", roles: ["admin"] },
-  { to: "/alluser", icon: Users, label: "Users", roles: ["admin", "finance", "support", "read-only"] },
-  { to: "/deleted-users", icon: Users, label: "Deleted Users", roles: ["admin"] },
-  { to: "/video", icon: Video, label: "Video", roles: ["admin", "support", "read-only"] },
-  { to: "/shorts", icon: Clapperboard, label: "Shorts", roles: ["admin", "support", "read-only"] },
-  { to: "/support-dashboard", icon: Headphones, label: "Support Management", roles: ["finance", "read-only"] },
+  { to: "/", icon: LayoutGrid, label: "Dashboard", roles: ["admin", "finance", "read-only"] },
+  { to: "/category", icon: Shapes, label: "Category", roles: ["admin"] },
+  { to: "/create-employee", icon: UserPlus, label: "Add Employee", roles: ["admin"] },
+  { to: "/alluser", icon: UsersRound, label: "Users", roles: ["admin", "finance", "support", "read-only"] },
+  { to: "/deleted-users", icon: UserX, label: "Deleted Users", roles: ["admin"] },
+  { to: "/video", icon: MonitorPlay, label: "Video", roles: ["admin", "support", "read-only"] },
+  { to: "/shorts", icon: Zap, label: "Shorts", roles: ["admin", "support", "read-only"] },
+  { to: "/support-dashboard", icon: LifeBuoy, label: "Support Management", roles: ["finance", "read-only"] },
   // Admin sees Support Management as 4 flat sidebar pages (Overview first)
-  { to: "/support-dashboard", icon: Headphones, label: "Support Dashboard", roles: ["admin"] },
-  { to: "/copyright/cases", icon: Shield, label: "Copyright Issues", roles: ["admin"] },
-  { to: "/support/contact", icon: MessageSquare, label: "General Queries", roles: ["admin"] },
+  { to: "/support-dashboard", icon: LifeBuoy, label: "Support Dashboard", roles: ["admin"] },
+  { to: "/copyright/cases", icon: Copyright, label: "Copyright Issues", roles: ["admin"] },
+  { to: "/support/contact", icon: MessagesSquare, label: "General Queries", roles: ["admin"] },
   { to: "/support/deletion", icon: Trash2, label: "Deletions Requests", roles: ["admin"] },
 ];
 
@@ -43,13 +44,13 @@ const ALL_NAV_ITEMS = [
 // order. The support-management areas are full sidebar pages instead
 // of tabs inside the Support Dashboard.
 const SUPPORT_NAV = [
-  { to: "/support-dashboard", icon: Headphones, label: "Support Dashboard" },
+  { to: "/support-dashboard", icon: LifeBuoy, label: "Support Dashboard" },
   { to: "/my-tickets", icon: Inbox, label: "My Tickets" },
-  { to: "/alluser", icon: Users, label: "Users" },
-  { to: "/video", icon: Video, label: "Videos" },
-  { to: "/shorts", icon: Clapperboard, label: "Shorts" },
-  { to: "/copyright/cases", icon: Shield, label: "Copyright Issues" },
-  { to: "/support/contact", icon: MessageSquare, label: "General Queries" },
+  { to: "/alluser", icon: UsersRound, label: "Users" },
+  { to: "/video", icon: MonitorPlay, label: "Videos" },
+  { to: "/shorts", icon: Zap, label: "Shorts" },
+  { to: "/copyright/cases", icon: Copyright, label: "Copyright Issues" },
+  { to: "/support/contact", icon: MessagesSquare, label: "General Queries" },
   { to: "/support/deletion", icon: Trash2, label: "Deletions Requests" },
 ];
 
