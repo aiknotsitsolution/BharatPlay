@@ -712,11 +712,18 @@ export default function ChannelPage() {
     <div className="min-h-screen bg-[#0f0f0f] text-white pb-20">
       {/* Banner + Profile Header */}
       <div className="relative">
-        <div className="h-40 md:h-56 lg:h-72 bg-gray-800 relative overflow-hidden">
+        <div className="relative h-[clamp(180px,28vw,360px)] overflow-hidden bg-[#111]">
           <img
             src={currentChannel.banner}
-            alt="Channel banner"
-            className="w-full h-full object-cover"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30" />
+          <img
+            src={currentChannel.banner}
+            alt={`${currentChannel.name} channel banner`}
+            className="relative z-[1] h-full w-full object-contain"
           />
         </div>
 

@@ -360,25 +360,28 @@ const updateChannel = async (req, res) => {
       channelBannerUrl = bannerRes.url;
     }
 
-    const updatedChannel = await Channel.findByIdAndUpdate(
-      id,
-      {
-        $set: {
-          name: nextName,
-          channeldescription:
-            channeldescription !== undefined
-              ? channeldescription
-              : channel.channeldescription || "",
-          category: categoryData._id,
-          hashtags: [...new Set(nextHashtags)],
-          contactemail: contactemail !== undefined ? contactemail : channel.contactemail || "",
-          videoUrl: videoUrl !== undefined ? videoUrl : channel.videoUrl || "",
-          channelImage: channelImageUrl,
-          channelBanner: channelBannerUrl,
-        },
-      },
-      { new: true },
-    ).populate({ path: "category", select: "name" });
+    channel.name = nextName;
+    channel.channeldescription =
+      channeldescription !== undefined
+        ? channeldescription
+        : channel.channeldescription || "";
+    channel.category = categoryData._id;
+    channel.hashtags = [...new Set(nextHashtags)];
+    channel.contactemail =
+      contactemail !== undefined
+        ? contactemail
+        : channel.contactemail || "";
+    channel.videoUrl =
+      videoUrl !== undefined ? videoUrl : channel.videoUrl || "";
+    channel.channelImage = channelImageUrl;
+    channel.channelBanner = channelBannerUrl;
+
+    await channel.save();
+    const updatedChannel = channel.toObject();
+    updatedChannel.category = {
+      _id: categoryData._id,
+      name: categoryData.name,
+    };
 
     return res.status(200).json({
       success: true,

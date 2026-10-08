@@ -89,7 +89,7 @@ router.put(
   ]),
   updateChannel,
 );
-router.get("/channel/:id", isAuthenticated, getChannelById);
+router.get("/channel/:id", optionalAuth, getChannelById);
 router.get("/channel/:id/videos", isAuthenticated, getvideosByChannel);
 router.delete("/channel/:id", isAuthenticated, deleteChannel);
 
