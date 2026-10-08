@@ -264,6 +264,136 @@ const createChannel = async (req, res) => {
   }
 };
 
+const updateChannel = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    const channel = await Channel.findById(id);
+    if (!channel) {
+      return res.status(404).json({
+        success: false,
+        message: "Channel not found",
+      });
+    }
+
+    if (String(channel.creator) !== String(userId)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to update this channel",
+      });
+    }
+
+    const {
+      name,
+      channeldescription,
+      category,
+      contactemail,
+      videoUrl,
+      hashtags: rawHashtags,
+    } = req.body;
+
+    const nextName = typeof name === "string" ? name.trim() : channel.name;
+    const nextCategoryValue =
+      category !== undefined ? category : channel.category?._id || channel.category;
+
+    if (!nextName || !nextCategoryValue) {
+      return res.status(400).json({
+        success: false,
+        message: "Channel name and category are required",
+      });
+    }
+
+    const categoryData = await resolveCategory(nextCategoryValue);
+    if (!categoryData) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    const nextHashtags =
+      rawHashtags !== undefined
+        ? (Array.isArray(rawHashtags) ? rawHashtags : [rawHashtags])
+            .flatMap((value) => String(value || "").split(/[\s,]+/))
+            .map((tag) => tag.replace(/^#+/, "").trim().toLowerCase())
+            .filter(Boolean)
+        : channel.hashtags || [];
+
+    const isCreativeCornerCategory =
+      categoryData.isCreativeCorner ||
+      categoryData.slug === "creative-corner" ||
+      categoryData.name?.toLowerCase() === "creative corner";
+
+    if (isCreativeCornerCategory && nextHashtags.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "At least one hashtag is required for Creative Corner channels",
+      });
+    }
+
+    let channelImageUrl = channel.channelImage || "";
+    let channelBannerUrl = channel.channelBanner || "";
+
+    if (req.files?.channelImage?.[0]) {
+      const file = req.files.channelImage[0];
+      const base64String = file.buffer.toString("base64");
+      const imageRes = await imagekit.upload({
+        file: base64String,
+        fileName: `channel-img-${Date.now()}-${file.originalname}`,
+        folder: "channelImages",
+        overwriteFile: true,
+      });
+      channelImageUrl = imageRes.url;
+    }
+
+    if (req.files?.channelBanner?.[0]) {
+      const file = req.files.channelBanner[0];
+      const base64String = file.buffer.toString("base64");
+      const bannerRes = await imagekit.upload({
+        file: base64String,
+        fileName: `channel-banner-${Date.now()}-${file.originalname}`,
+        folder: "channelBanners",
+        overwriteFile: true,
+      });
+      channelBannerUrl = bannerRes.url;
+    }
+
+    const updatedChannel = await Channel.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          name: nextName,
+          channeldescription:
+            channeldescription !== undefined
+              ? channeldescription
+              : channel.channeldescription || "",
+          category: categoryData._id,
+          hashtags: [...new Set(nextHashtags)],
+          contactemail: contactemail !== undefined ? contactemail : channel.contactemail || "",
+          videoUrl: videoUrl !== undefined ? videoUrl : channel.videoUrl || "",
+          channelImage: channelImageUrl,
+          channelBanner: channelBannerUrl,
+        },
+      },
+      { new: true },
+    ).populate({ path: "category", select: "name" });
+
+    return res.status(200).json({
+      success: true,
+      message: "Channel updated successfully",
+      channel: updatedChannel,
+    });
+  } catch (error) {
+    console.error("Error in updateChannel:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Server error",
+    });
+  }
+};
+
 const uploadVideo = async (req, res) => {
   try {
     const { channelId } = req.params;
@@ -2799,6 +2929,7 @@ module.exports = {
   deleteComment,
   getVideoInteraction,
   createChannel,
+  updateChannel,
   getChannels,
   getSubscribedChannels,
   getChannelById,

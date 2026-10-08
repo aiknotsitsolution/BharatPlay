@@ -23,6 +23,7 @@ const {
   getUserWatchLaterVideos,
   getUserUploadedVideos,
   createChannel,
+  updateChannel,
   subscribeChannel,
   uploadVideo,
   recommendedVideos,
@@ -78,6 +79,15 @@ router.get(
   "/admin/creative-corner/hashtag-stats",
   requireAdmin,
   getCreativeCornerHashtagStats,
+);
+router.put(
+  "/channel/:id",
+  isAuthenticated,
+  imageUpload.fields([
+    { name: "channelImage", maxCount: 1 },
+    { name: "channelBanner", maxCount: 1 },
+  ]),
+  updateChannel,
 );
 router.get("/channel/:id", isAuthenticated, getChannelById);
 router.get("/channel/:id/videos", isAuthenticated, getvideosByChannel);

@@ -662,9 +662,20 @@ export default function ChannelPage() {
   };
 
   const handlePlayVideo = (video) => {
-    setCurrentVideo(video);
-    setVideoDuration(null);
-    setShowVideoPlayer(true);
+    const videoId = video?._id || video?.id;
+    if (!videoId) {
+      toast.error("Unable to open this video.");
+      return;
+    }
+
+    navigate(`/video/${videoId}`, {
+      state: {
+        video: {
+          ...video,
+          id: videoId,
+        },
+      },
+    });
   };
 
   const handleCloseVideoPlayer = () => {
@@ -721,7 +732,14 @@ export default function ChannelPage() {
           <div className="flex-1 pb-4">
             <div className="flex flex-wrap gap-4 mt-5">
               <button
-                onClick={() => navigate("/channel/customize")}
+                onClick={() => {
+                  if (selectedChannelId) {
+                    localStorage.setItem("selectedChannelId", selectedChannelId);
+                  }
+                  navigate("/channel/customize", {
+                    state: { channelId: selectedChannelId },
+                  });
+                }}
                 className="px-6 py-2.5 bg-[#272727] hover:bg-[#3a3a3a] rounded-full flex items-center gap-2 transition"
               >
                 <Edit size={18} />
