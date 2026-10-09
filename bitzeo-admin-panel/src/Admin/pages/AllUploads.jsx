@@ -12,6 +12,10 @@ import {
 import { fetchUploads, setSearch } from "../../redux/slices/adminUploadsSlice";
 import { API_BASE_URL } from "../../api";
 import tableCustomStyles from "../../utils/tableStyles";
+import {
+  PAGINATION_PER_PAGE,
+  PAGINATION_OPTIONS,
+} from "../../utils/paginationConfig";
 import PageHeader from "../../components/layout/PageHeader";
 
 const MEDIA_BASE = API_BASE_URL.replace(/\/api\/?$/, "");
@@ -23,7 +27,7 @@ const TAB_DEFS = [
   { key: "shorts", label: "Shorts" },
 ];
 
-const LIMIT = 10;
+const LIMIT = PAGINATION_PER_PAGE;
 
 function formatDuration(sec) {
   if (sec === null || sec === undefined || sec === "") return "—";
@@ -54,6 +58,7 @@ export default function AllUploads() {
 
   const [activeTab, setActiveTab] = useState("all");
   const [searchInput, setSearchInput] = useState("");
+  const [limit, setLimit] = useState(LIMIT);
   const debounceRef = useRef(null);
 
   const tab = tabs[activeTab] || tabs.all;
@@ -66,13 +71,13 @@ export default function AllUploads() {
           tabKey: type,
           type: TYPE_MAP[type],
           page,
-          limit: LIMIT,
+          limit,
           search,
           force,
         })
       );
     },
-    [dispatch]
+    [dispatch, limit]
   );
 
   useEffect(() => {
@@ -107,6 +112,12 @@ export default function AllUploads() {
   const handlePageChange = (newPage) => {
     loadData(activeTab, newPage, _search || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // rows-per-page dropdown → refetch this tab from page 1 with the new size
+  const handleRowsPerPage = (rows) => {
+    setLimit(rows);
+    loadData(activeTab, 1, _search || "", true);
   };
 
   const columns = useMemo(
@@ -344,12 +355,11 @@ export default function AllUploads() {
           pagination
           paginationServer
           paginationTotalRows={pagination.total || 0}
-          paginationPerPage={LIMIT}
+          paginationPerPage={limit}
+          paginationRowsPerPageOptions={PAGINATION_OPTIONS}
           paginationDefaultPage={pagination.page || 1}
           onChangePage={handlePageChange}
-          paginationComponentOptions={{
-            noRowsPerPage: true,
-          }}
+          onChangeRowsPerPage={handleRowsPerPage}
           customStyles={uploadsTableStyles}
           highlightOnHover
           pointerOnHover={false}

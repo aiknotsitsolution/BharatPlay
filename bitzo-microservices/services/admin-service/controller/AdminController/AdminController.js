@@ -229,7 +229,7 @@ exports.registerUser = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 15));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 15));
     const skip = (page - 1) * limit;
     const rawSearch = (req.query.search || "").slice(0, MAX_SEARCH_LENGTH);
     const search = rawSearch.trim();
@@ -240,10 +240,14 @@ exports.getAllUsers = async (req, res) => {
     const rawPlatform = String(req.query.platform || "")
       .trim()
       .toLowerCase();
+    // Display rule below maps any non-"app" platform to Website, so the
+    // Website filter (and its counts) match that: everything not app.
     const platformFilter =
-      rawPlatform === "app" || rawPlatform === "website"
-        ? { platform: rawPlatform }
-        : {};
+      rawPlatform === "app"
+        ? { platform: "app" }
+        : rawPlatform === "website"
+          ? { platform: { $ne: "app" } }
+          : {};
 
     const filter = {
       status: { $ne: "deleted" },
@@ -352,14 +356,16 @@ exports.getAllUsers = async (req, res) => {
       };
     });
 
-    // Quick counts so the admin panel can show "X from Website / Y from
-    // App" without a second round trip, regardless of the current filter.
-    const [websiteCount, appCount] = await Promise.all([
+    // Quick counts so the admin panel can show the stat cards (platform
+    // split + suspended total) without a second round trip, regardless of
+    // the current filter.
+    const [websiteCount, appCount, suspendedCount] = await Promise.all([
       AllUser.countDocuments({
         status: { $ne: "deleted" },
-        platform: "website",
+        platform: { $ne: "app" }, // display maps any non-app platform to Website
       }),
       AllUser.countDocuments({ status: { $ne: "deleted" }, platform: "app" }),
+      AllUser.countDocuments({ status: "suspended" }),
     ]);
 
     res.status(200).json({
@@ -374,6 +380,7 @@ exports.getAllUsers = async (req, res) => {
         website: websiteCount,
         app: appCount,
       },
+      suspendedCount,
       data: formattedUsers,
     });
   } catch (err) {
@@ -718,7 +725,7 @@ exports.deleteUser = async (req, res) => {
 exports.getDeletedUsers = async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 15));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 15));
     const skip = (page - 1) * limit;
     const rawSearch = (req.query.search || "").slice(0, MAX_SEARCH_LENGTH);
     const search = rawSearch.trim();
@@ -1510,7 +1517,7 @@ exports.getAdminUserChannels = async (req, res) => {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(
       Math.max(parseInt(req.query.limit, 10) || 10, 1),
-      50,
+      100,
     );
     const skip = (page - 1) * limit;
 
@@ -1635,7 +1642,7 @@ exports.getAdminUserChannels = async (req, res) => {
 // ================== ADMIN: USER VIDEOS ==================
 const VIDEO_SORT_FIELDS = { createdAt: 1, views: 1, likesCount: 1 };
 const VIDEO_PAGE_SIZE = 12;
-const VIDEO_MAX_PAGE_SIZE = 50;
+const VIDEO_MAX_PAGE_SIZE = 100;
 
 exports.getAdminUserVideos = async (req, res) => {
   try {

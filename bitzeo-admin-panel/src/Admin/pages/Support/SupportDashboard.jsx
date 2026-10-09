@@ -382,6 +382,10 @@ import {
   UserPlus,
 } from "lucide-react";
 import tableCustomStyles from "../../../utils/tableStyles";
+import {
+  PAGINATION_PER_PAGE,
+  PAGINATION_OPTIONS,
+} from "../../../utils/paginationConfig";
 import useDashboardData from "../../../hooks/useDashboardData";
 import useSupportEmployees from "../../../hooks/useSupportEmployees";
 import { fetchContactRequests, fetchDeletionRequests } from "../../../api";
@@ -648,6 +652,9 @@ function OverviewPanel() {
           columns={columns}
           data={tableRows}
           customStyles={tableCustomStyles}
+          pagination
+          paginationPerPage={PAGINATION_PER_PAGE}
+          paginationRowsPerPageOptions={PAGINATION_OPTIONS}
           progressPending={employeesLoading}
           progressComponent={
             <div className="py-12 text-center text-sm text-slate-400">

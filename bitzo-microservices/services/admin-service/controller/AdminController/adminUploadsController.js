@@ -12,7 +12,7 @@ exports.getAdminUploads = async (req, res) => {
   try {
     // --- Pagination ---
     let page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    let limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    let limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
 
     // --- Type filter ---
     const type = ALLOWED_TYPES.includes(req.query.type) ? req.query.type : "all";

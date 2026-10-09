@@ -737,6 +737,10 @@ import API, { API_BASE_URL } from "../../api";
 import { hasFeature } from "../../config/roleConfig";
 import { formatDateTime } from "../../utils/helpers";
 import tableCustomStyles from "../../utils/tableStyles";
+import {
+  PAGINATION_PER_PAGE,
+  PAGINATION_OPTIONS,
+} from "../../utils/paginationConfig";
 import PageHeader from "../../components/layout/PageHeader";
 
 const MEDIA_BASE = API_BASE_URL.replace(/\/api\/?$/, "");
@@ -1334,8 +1338,8 @@ export default function ContentManagement({ type = "long" }) {
             </div>
           }
           pagination
-          paginationPerPage={10}
-          paginationRowsPerPageOptions={[5, 10, 15, 25, 50]}
+          paginationPerPage={PAGINATION_PER_PAGE}
+          paginationRowsPerPageOptions={PAGINATION_OPTIONS}
           customStyles={contentTableStyles}
           highlightOnHover
           pointerOnHover={false}

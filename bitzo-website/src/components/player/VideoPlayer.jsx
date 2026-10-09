@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
+import { toast } from "react-toastify";
 import PlayerControls from "./PlayerControls";
 import { clamp } from "./utils";
 import "./player.css";
@@ -121,14 +122,49 @@ export default function VideoPlayer({
     }
   }, []);
 
+  // Chrome only lets a video enter PiP once it has decoded at least one frame
+  // (readyState >= 2) and rejects silently before that — so wait for the data,
+  // retry once it is there, and surface a toast instead of failing invisibly.
   const togglePip = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
+
+    const enter = () => {
+      v.requestPictureInPicture()
+        .then(() => setIsPip(true))
+        .catch((err) => {
+          console.error("[VideoPlayer] PiP enter failed:", err);
+          toast.error("Picture-in-Picture could not start for this video");
+        });
+    };
+
     if (document.pictureInPictureElement) {
-      document.exitPictureInPicture().catch(() => {});
-    } else {
-      v.requestPictureInPicture().catch(() => {});
+      document.exitPictureInPicture().catch((err) => {
+        console.error("[VideoPlayer] PiP exit failed:", err);
+      });
+      return;
     }
+
+    if (v.readyState >= 2) {
+      enter();
+      return;
+    }
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      v.removeEventListener("loadeddata", onData);
+      v.removeEventListener("canplay", onData);
+    };
+    const onData = () => {
+      cleanup();
+      enter();
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      enter();
+    }, 2500);
+    v.addEventListener("loadeddata", onData);
+    v.addEventListener("canplay", onData);
   }, []);
 
   const toggleTheater = useCallback(() => {

@@ -534,9 +534,13 @@ import { hasFeature } from "../../config/roleConfig";
 import { fetchDeletedUsers, hardDeleteUser } from "../../api";
 import { restoreUser } from "../../redux/slices/adminUser360Slice";
 import tableCustomStyles from "../../utils/tableStyles";
+import {
+  PAGINATION_PER_PAGE,
+  PAGINATION_OPTIONS,
+} from "../../utils/paginationConfig";
 import PageHeader from "../../components/layout/PageHeader";
 
-const LIMIT = 15;
+const LIMIT = PAGINATION_PER_PAGE;
 
 export default function DeletedUsers() {
   const dispatch = useDispatch();
@@ -544,6 +548,7 @@ export default function DeletedUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(LIMIT);
   const [totalRows, setTotalRows] = useState(0);
 
   const [confirmModal, setConfirmModal] = useState(false);
@@ -559,7 +564,7 @@ export default function DeletedUsers() {
       setLoading(true);
       const res = await fetchDeletedUsers({
         page: pageNum,
-        limit: LIMIT,
+        limit,
         search: searchTerm,
       });
       setUsers(res.data?.data || []);
@@ -572,7 +577,7 @@ export default function DeletedUsers() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [limit]);
 
   useEffect(() => {
     fetchUsers(page, search);
@@ -818,9 +823,14 @@ export default function DeletedUsers() {
           pagination
           paginationServer
           paginationTotalRows={totalRows}
-          paginationPerPage={LIMIT}
+          paginationPerPage={limit}
+          paginationRowsPerPageOptions={PAGINATION_OPTIONS}
           paginationDefaultPage={page}
           onChangePage={handlePageChange}
+          onChangeRowsPerPage={(rows) => {
+            setLimit(rows);
+            setPage(1);
+          }}
           highlightOnHover
           pointerOnHover={false}
         />

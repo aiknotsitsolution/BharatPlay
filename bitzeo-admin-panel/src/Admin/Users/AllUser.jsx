@@ -868,7 +868,6 @@ import {
   Mail,
   X,
   User,
-  Eye,
   Check,
   Clapperboard,
   Globe,
@@ -876,10 +875,16 @@ import {
   Shield,
   Star,
   Award,
+  Users as UsersIcon,
+  UserX,
 } from "lucide-react";
 import { hasFeature } from "../../config/roleConfig";
 import { API_BASE_URL } from "../../api";
 import tableCustomStyles from "../../utils/tableStyles";
+import {
+  PAGINATION_PER_PAGE,
+  PAGINATION_OPTIONS,
+} from "../../utils/paginationConfig";
 import PageHeader from "../../components/layout/PageHeader";
 
 const allUserTableStyles = {
@@ -894,7 +899,7 @@ const allUserTableStyles = {
 };
 
 const BASE_URL = API_BASE_URL;
-const LIMIT = 15;
+const LIMIT = PAGINATION_PER_PAGE;
 
 const isShortVideo = (v) => {
   const t = v?.videoType;
@@ -929,7 +934,9 @@ export default function Users() {
   const [search, setSearch] = useState("");
   const [platform, setPlatform] = useState("all");
   const [platformCounts, setPlatformCounts] = useState({ website: 0, app: 0 });
+  const [suspendedCount, setSuspendedCount] = useState(0);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(LIMIT);
   const [totalRows, setTotalRows] = useState(0);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedChannel, setSelectedChannel] = useState(null);
@@ -954,7 +961,7 @@ export default function Users() {
         const res = await axios.get(`${BASE_URL}/admin/alluser`, {
           params: {
             page: pageNum,
-            limit: LIMIT,
+            limit,
             search: searchTerm,
             ...(platformFilter !== "all" ? { platform: platformFilter } : {}),
           },
@@ -965,6 +972,9 @@ export default function Users() {
         if (res.data?.platformCounts) {
           setPlatformCounts(res.data.platformCounts);
         }
+        if (typeof res.data?.suspendedCount === "number") {
+          setSuspendedCount(res.data.suspendedCount);
+        }
       } catch (err) {
         console.error(err);
         toast.error("Failed to load users");
@@ -974,7 +984,7 @@ export default function Users() {
         setLoading(false);
       }
     },
-    [],
+    [limit],
   );
 
   useEffect(() => {
@@ -1212,17 +1222,12 @@ export default function Users() {
         center: true,
         cell: (row) => (
           <div className="flex items-center justify-center gap-1.5">
-            <button
-              onClick={() => navigate(`/users/${row._id}`)}
-              className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-all duration-150 hover:scale-105"
-              title="View Full Details"
-            >
-              <Eye size={15} />
-            </button>
-
             {hasFeature("canEditUsers") && (
               <button
-                onClick={() => navigate(`/users/${row._id}/edit`)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/users/${row._id}/edit`);
+                }}
                 className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-all duration-150 hover:scale-105"
                 title="Edit User"
               >
@@ -1238,10 +1243,7 @@ export default function Users() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <PageHeader
-        title="Users"
-        subtitle={`${totalRows} total users · ${platformCounts.website} from Website · ${platformCounts.app} from App`}
-      >
+      <PageHeader title="Users">
         <div className="flex flex-wrap items-center gap-3">
           {/* Platform filter */}
           <div className="inline-flex items-center bg-white border border-slate-200 rounded-xl p-1 text-sm shadow-sm">
@@ -1289,11 +1291,101 @@ export default function Users() {
         </div>
       </PageHeader>
 
+      {/* Stat cards — global counts; platform cards double as filter
+          switchers (same keys as the header tabs), last card is info-only */}
+      <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 xl:grid-cols-4">
+        {[
+          {
+            key: "all",
+            title: "All users",
+            value: (platformCounts.website || 0) + (platformCounts.app || 0),
+            detail: "Across website and app",
+            icon: UsersIcon,
+            accent: "kpi-blue",
+          },
+          {
+            key: "website",
+            title: "Website",
+            value: platformCounts.website || 0,
+            detail: "Signed up on the web",
+            icon: Globe,
+            accent: "kpi-cyan",
+          },
+          {
+            key: "app",
+            title: "App",
+            value: platformCounts.app || 0,
+            detail: "Signed up on mobile",
+            icon: Smartphone,
+            accent: "kpi-violet",
+          },
+        ].map((card) => {
+          const CardIcon = card.icon;
+          return (
+            <button
+              key={card.key}
+              type="button"
+              onClick={() => setPlatform(card.key)}
+              aria-pressed={platform === card.key}
+              className={`kpi-card ${card.accent} text-left cursor-pointer`}
+            >
+              <span className="kpi-art kpi-art-a" aria-hidden="true" />
+              <span className="kpi-art kpi-art-b" aria-hidden="true" />
+
+              <div className="kpi-icon relative">
+                <CardIcon className="h-5 w-5" strokeWidth={1.9} />
+              </div>
+
+              <div className="relative mt-4">
+                <p className="font-display text-[24px] font-bold leading-none tracking-tight">
+                  {card.value.toLocaleString()}
+                </p>
+                <p className="mt-2.5 text-[13.5px] font-semibold leading-tight">
+                  {card.title}
+                </p>
+                <p
+                  className="mt-1 text-[11px] leading-snug"
+                  style={{ color: "var(--kpi-sub)" }}
+                >
+                  {card.detail}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+
+        {/* Suspended — info-only card (no platform filter for it) */}
+        <article className="kpi-card kpi-amber">
+          <span className="kpi-art kpi-art-a" aria-hidden="true" />
+          <span className="kpi-art kpi-art-b" aria-hidden="true" />
+
+          <div className="kpi-icon relative">
+            <UserX className="h-5 w-5" strokeWidth={1.9} />
+          </div>
+
+          <div className="relative mt-4">
+            <p className="font-display text-[24px] font-bold leading-none tracking-tight">
+              {suspendedCount.toLocaleString()}
+            </p>
+            <p className="mt-2.5 text-[13.5px] font-semibold leading-tight">
+              Suspended
+            </p>
+            <p
+              className="mt-1 text-[11px] leading-snug"
+              style={{ color: "var(--kpi-sub)" }}
+            >
+              Accounts on hold
+            </p>
+          </div>
+        </article>
+      </div>
+
       {/* DataTable */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <DataTable
           columns={columns}
           data={users}
+          onRowClicked={(row) => navigate(`/users/${row._id}`)}
           customStyles={allUserTableStyles}
           progressPending={loading}
           progressComponent={
@@ -1308,9 +1400,14 @@ export default function Users() {
           pagination
           paginationServer
           paginationTotalRows={totalRows}
-          paginationPerPage={LIMIT}
+          paginationPerPage={limit}
+          paginationRowsPerPageOptions={PAGINATION_OPTIONS}
           paginationDefaultPage={page}
           onChangePage={handlePageChange}
+          onChangeRowsPerPage={(rows) => {
+            setLimit(rows);
+            setPage(1);
+          }}
           highlightOnHover
           pointerOnHover={false}
         />

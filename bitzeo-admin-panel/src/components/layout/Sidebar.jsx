@@ -253,7 +253,7 @@ export default function Sidebar({ mobile = false, onNavigate }) {
           className={({ isActive }) =>
             `group flex items-center gap-3.5 rounded-full px-4 py-3 text-[15px] font-medium transition-all duration-200 ${
               isActive
-                ? "bg-bp-primary-soft text-bp-blue shadow-sm"
+                ? "nav-pill-active"
                 : "text-bp-text-secondary hover:bg-bp-hover hover:text-bp-text"
             }`
           }
@@ -280,7 +280,7 @@ export default function Sidebar({ mobile = false, onNavigate }) {
   return (
     <aside
       className={`
-        flex h-full flex-col bg-bp-card border-r border-bp-border/60
+        flex h-full flex-col sidebar-shell
         ${
           mobile
             ? "w-full"

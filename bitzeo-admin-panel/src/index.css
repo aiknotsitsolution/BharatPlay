@@ -58,6 +58,9 @@
   --bp-text-muted: #526b7a; /* muted */
   --bp-hover: #eff4fa;
   --bp-primary-soft: rgba(0, 161, 255, 0.12);
+  /* table chrome — blue-tint header + hairline (no zebra: rows stay uniform) */
+  --bp-table-head: #eff6ff;
+  --bp-table-head-border: #e1ebf9;
 }
 
 /* ─── Dark Theme ─── */
@@ -77,6 +80,9 @@
   --bp-text-muted: #7c8fac; /* textSecondary */
   --bp-hover: #2a3851;
   --bp-primary-soft: rgba(0, 161, 255, 0.16);
+  /* table chrome — darker header + hairline (no zebra: rows stay uniform) */
+  --bp-table-head: #26324a;
+  --bp-table-head-border: #3a4761;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1030,11 +1036,78 @@ html[data-theme="light"] .ring-blue-100 {
    COMPONENT UTILITIES
    ══════════════════════════════════════════════════════════════ */
 
-/* ─── Sidebar (ink) ─── */
+/* ─── Top bar — light: solid white floating bar (MaterialM appbar),
+   hairline replaced by a soft bottom shadow; dark: translucent card ─── */
+.app-topbar {
+  background-color: #ffffff !important;
+  border-bottom: none !important;
+  box-shadow:
+    0 1px 2px rgba(17, 28, 45, 0.05),
+    0 10px 24px rgba(17, 28, 45, 0.06);
+}
+[data-theme="dark"] .app-topbar {
+  background-color: rgba(31, 42, 61, 0.92) !important;
+  border-bottom: 1px solid var(--bp-border) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+/* ─── Sidebar — palette taken from the 2nd KPI state card (emerald) ───
+   Background = that card's dark teal gradient (#193940 → #1a2c3c),
+   light ink, emerald accent pill. Same look in BOTH themes. */
 .sidebar-shell,
 .sidebar-gradient {
-  background: var(--bp-card);
-  border-right: 1px solid var(--bp-border);
+  background: linear-gradient(160deg, #193940, #1a2c3c);
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  /* soft elevation — shadow falls to the right, over the page */
+  box-shadow: 8px 0 26px -10px rgba(4, 22, 26, 0.45);
+}
+
+/* sidebar ink — always light on the dark teal surface */
+.sidebar-shell .text-bp-text,
+.sidebar-gradient .text-bp-text {
+  color: #eaeff4;
+}
+.sidebar-shell .text-bp-text-secondary,
+.sidebar-gradient .text-bp-text-secondary {
+  color: #a4b4c9;
+}
+.sidebar-shell .text-bp-text-muted,
+.sidebar-gradient .text-bp-text-muted {
+  color: #7c8fac;
+}
+.sidebar-shell .hover\:text-bp-text:hover,
+.sidebar-gradient .hover\:text-bp-text:hover {
+  color: #ffffff;
+}
+.sidebar-shell .group:hover .group-hover\:text-bp-text,
+.sidebar-gradient .group:hover .group-hover\:text-bp-text {
+  color: #ffffff;
+}
+.sidebar-shell .hover\:bg-bp-hover:hover,
+.sidebar-gradient .hover\:bg-bp-hover:hover {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+.sidebar-shell .border-bp-border\/60,
+.sidebar-gradient .border-bp-border\/60 {
+  border-color: rgba(255, 255, 255, 0.09);
+}
+.sidebar-shell .ring-bp-border\/60,
+.sidebar-gradient .ring-bp-border\/60 {
+  --tw-ring-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Active nav pill — ₹ icon colour from the 2nd home card
+   (Revenue growth, kpi-teal #14b8a6 → #0d9488) darkened one step */
+.sidebar-shell .nav-pill-active,
+.sidebar-gradient .nav-pill-active {
+  background: linear-gradient(135deg, #0b8a7e, #06615a);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 8px 18px rgba(6, 97, 90, 0.45);
+}
+.sidebar-shell .nav-pill-active svg,
+.sidebar-gradient .nav-pill-active svg {
+  color: #ffffff;
 }
 
 /* ─── Brand wordmark (theme-aware) ───
@@ -1600,8 +1673,10 @@ div[class*="rdt"] {
   box-shadow: none !important;
   outline: none !important;
 }
-.rdt_TableHeadRow {
-  border-bottom: none !important;
+.rdt_TableHeadRow.rdt_TableHeadRow {
+  /* blue-tint header (dark: darker card) + hairline divider */
+  background-color: var(--bp-table-head) !important;
+  border-bottom: 1px solid var(--bp-table-head-border) !important;
 }
 .rdt_TableRow {
   border-top: none !important;
@@ -1615,6 +1690,37 @@ div[class*="rdt"] {
 .rdt_Table {
   height: auto !important;
 }
+
+/* ─── Table header cells — one uniform size + bold + theme colour ───
+   Covers BOTH hand-rolled <thead><th> tables and react-data-table-component
+   (RDT applies head styles inline, so !important is required to win).
+   Light theme → dark text (var(--bp-text) = #111c2d); dark theme → #eaeff4. */
+html[data-theme] table thead th,
+html[data-theme] table thead th[class],
+html[data-theme] .rdt_TableHeadRow .rdt_TableCol,
+html[data-theme] .rdt_TableHeadRow .rdt_TableCol_Sortable,
+html[data-theme] .rdt_TableHeadRow > div {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.4 !important;
+  color: var(--bp-text) !important;
+}
+
+/* ─── Table header row — uniform blue tint (light) / darker card (dark) ───
+   Forced with !important so per-page header utilities (bg-bp-elevated/50,
+   bg-bp-surface …) all resolve to the same chrome. */
+html[data-theme] table thead,
+html[data-theme] table thead tr {
+  background-color: var(--bp-table-head) !important;
+}
+html[data-theme] table thead th {
+  background-color: transparent !important; /* let the head row tint show through */
+  border-bottom: 1px solid var(--bp-table-head-border) !important;
+}
+
+/* ─── Data rows — intentionally NO zebra striping ───
+   Rows stay uniform on the card (RDT rows get var(--bp-card) from
+   tableStyles.js); hover is handled by RDT's own rows.style.&:hover. */
 div[class*="rdt"] {
   height: auto !important;
   max-height: none !important;

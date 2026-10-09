@@ -1,130 +1,28 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Video, Clapperboard, Shield, UserPlus, CheckCheck } from "lucide-react";
-import { getAdminUploads, fetchCopyrightCases, fetchAdminUsers } from "../../api";
+import { Bell, CheckCheck, Trash2, Undo2, X } from "lucide-react";
 import PageHeader from "../../components/layout/PageHeader";
-
-const SEEN_KEY = "bp-notif-seen";
-
-function timeAgo(dateStr) {
-  if (!dateStr) return "—";
-  const t = new Date(dateStr).getTime();
-  if (Number.isNaN(t)) return "—";
-  const diff = Date.now() - t;
-  if (diff < 0) return "Just now";
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(t).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-function fullDate(dateStr) {
-  if (!dateStr) return "";
-  const t = new Date(dateStr);
-  if (Number.isNaN(t.getTime())) return "";
-  return t.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-const asArray = (res) => {
-  const d = res?.data?.data;
-  if (Array.isArray(d)) return d;
-  if (d && Array.isArray(d.data)) return d.data;
-  return [];
-};
-
-const isLongVideo = (row) =>
-  Array.isArray(row.videoType) ? row.videoType.includes("long") : row.videoType === "long";
+import useNotifications, {
+  kindStyle,
+  timeAgo,
+  fullDate,
+} from "../../hooks/useNotifications";
 
 export default function Notifications() {
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [seenAt, setSeenAt] = useState(() => {
-    try {
-      return Number(localStorage.getItem(SEEN_KEY) || 0);
-    } catch {
-      return 0;
-    }
-  });
+  // shared feed — same source as the header bell panel
+  const {
+    items,
+    loading,
+    seenAt,
+    unreadCount,
+    dismissedCount,
+    markAllRead,
+    dismiss,
+    clearAll,
+    restoreAll,
+  } = useNotifications({ limit: 15 });
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      const [uploadsRes, casesRes, usersRes] = await Promise.all([
-        getAdminUploads({ page: 1, limit: 5 }).catch(() => null),
-        fetchCopyrightCases({ page: 1, limit: 5 }).catch(() => null),
-        fetchAdminUsers({ page: 1, limit: 5 }).catch(() => null),
-      ]);
-      if (cancelled) return;
-
-      const feed = [];
-
-      asArray(uploadsRes).forEach((v) => {
-        if (!v?.createdAt) return;
-        const long = isLongVideo(v);
-        feed.push({
-          id: `video-${v._id}`,
-          kind: long ? "video" : "short",
-          title: v.title || "Untitled",
-          sub: `${long ? "New video" : "New short"} by ${v.uploadedBy?.name || "Unknown"}`,
-          date: v.createdAt,
-          link: "/uploads",
-        });
-      });
-
-      asArray(casesRes).forEach((c) => {
-        if (!c?.createdAt) return;
-        feed.push({
-          id: `case-${c._id}`,
-          kind: "case",
-          title: `Case ${c.caseNumber || ""}`.trim(),
-          sub: `${c.claimant?.name || "Someone"} filed against "${c.content?.title || "Untitled"}"`,
-          date: c.createdAt,
-          link: c._id ? `/copyright/cases/${c._id}` : "/copyright/cases",
-        });
-      });
-
-      asArray(usersRes).forEach((u) => {
-        if (!u?.createdAt) return;
-        feed.push({
-          id: `user-${u._id}`,
-          kind: "user",
-          title: u.name || "New user",
-          sub: `Joined${u.email ? ` • ${u.email}` : ""}`,
-          date: u.createdAt,
-          link: u._id ? `/users/${u._id}` : "/alluser",
-        });
-      });
-
-      feed.sort((a, b) => new Date(b.date) - new Date(a.date));
-      setItems(feed.slice(0, 15));
-      setLoading(false);
-    };
-    load();
-    return () => { cancelled = true; };
-  }, []);
-
-  const newCount = items.filter((i) => new Date(i.date).getTime() > seenAt).length;
-
-  const markAllRead = () => {
-    const now = Date.now();
-    try {
-      localStorage.setItem(SEEN_KEY, String(now));
-    } catch (_) {}
-    setSeenAt(now);
-  };
-
-  const kindStyle = {
-    video: { icon: Video, bg: "bg-bp-blue/12", text: "text-bp-blue" },
-    short: { icon: Clapperboard, bg: "bg-bp-cyan/12", text: "text-bp-cyan" },
-    case: { icon: Shield, bg: "bg-bp-yellow/12", text: "text-bp-yellow" },
-    user: { icon: UserPlus, bg: "bg-emerald-500/12", text: "text-emerald-600" },
-  };
+  const newCount = unreadCount;
 
   return (
     <div className="space-y-6">
@@ -139,15 +37,37 @@ export default function Notifications() {
               : "You're all caught up"
         }
       >
-        {!loading && items.length > 0 && newCount > 0 && (
-          <button
-            onClick={markAllRead}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-bp-text-secondary bg-bp-elevated border border-bp-border hover:bg-bp-elevated/80 hover:text-bp-text hover:border-bp-border/80 transition-all duration-200 self-start sm:self-auto"
-          >
-            <CheckCheck size={16} />
-            Mark all as read
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {!loading && items.length > 0 && newCount > 0 && (
+            <button
+              onClick={markAllRead}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-bp-text-secondary bg-bp-elevated border border-bp-border hover:bg-bp-elevated/80 hover:text-bp-text hover:border-bp-border/80 transition-all duration-200"
+            >
+              <CheckCheck size={16} />
+              Mark all as read
+            </button>
+          )}
+
+          {!loading && items.length > 0 && (
+            <button
+              onClick={clearAll}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-bp-text-secondary bg-bp-elevated border border-bp-border hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/30 transition-all duration-200"
+            >
+              <Trash2 size={16} />
+              Clear all
+            </button>
+          )}
+
+          {dismissedCount > 0 && (
+            <button
+              onClick={restoreAll}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-bp-blue bg-bp-blue/10 border border-bp-blue/25 hover:bg-bp-blue/15 transition-all duration-200"
+            >
+              <Undo2 size={16} />
+              Restore {dismissedCount}
+            </button>
+          )}
+        </div>
       </PageHeader>
 
       {/* List */}
@@ -179,6 +99,15 @@ export default function Notifications() {
               You&apos;re all caught up. New alerts about videos, users and
               copyright activity will appear here.
             </p>
+            {dismissedCount > 0 && (
+              <button
+                onClick={restoreAll}
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-bp-blue bg-bp-blue/10 border border-bp-blue/25 hover:bg-bp-blue/15 transition-all duration-200"
+              >
+                <Undo2 size={16} />
+                Restore {dismissedCount} cleared
+              </button>
+            )}
           </div>
         ) : (
           <div className="p-2">
@@ -187,24 +116,39 @@ export default function Notifications() {
               const Icon = style.icon;
               const isNew = new Date(item.date).getTime() > seenAt;
               return (
-                <button
+                <div
                   key={item.id}
-                  onClick={() => navigate(item.link)}
-                  className="w-full text-left flex items-center gap-3 p-3 rounded-xl hover:bg-bp-surface/60 transition-colors duration-150"
+                  className="group relative flex items-center rounded-xl transition-colors duration-150 hover:bg-bp-surface/60"
                 >
-                  <div className={`w-10 h-10 rounded-xl ${style.bg} ${style.text} flex items-center justify-center shrink-0`}>
-                    <Icon size={18} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-bp-text truncate">{item.title}</p>
-                    <p className="text-xs text-bp-text-muted truncate mt-0.5">{item.sub}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="text-xs font-medium text-bp-text-secondary whitespace-nowrap">{timeAgo(item.date)}</span>
-                    <span className="text-[11px] text-bp-text-muted whitespace-nowrap">{fullDate(item.date)}</span>
-                  </div>
-                  {isNew && <span className="w-2 h-2 rounded-full bg-bp-blue shrink-0" />}
-                </button>
+                  {/* row body — click opens the notification */}
+                  <button
+                    onClick={() => navigate(item.link)}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left p-3 pr-10"
+                  >
+                    <div className={`w-10 h-10 rounded-xl ${style.bg} ${style.text} flex items-center justify-center shrink-0`}>
+                      <Icon size={18} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-bp-text truncate">{item.title}</p>
+                      <p className="text-xs text-bp-text-muted truncate mt-0.5">{item.sub}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="text-xs font-medium text-bp-text-secondary whitespace-nowrap">{timeAgo(item.date)}</span>
+                      <span className="text-[11px] text-bp-text-muted whitespace-nowrap">{fullDate(item.date)}</span>
+                    </div>
+                    {isNew && <span className="w-2 h-2 rounded-full bg-bp-blue shrink-0" />}
+                  </button>
+
+                  {/* individual clear */}
+                  <button
+                    onClick={() => dismiss(item.id)}
+                    title="Remove notification"
+                    aria-label={`Remove ${item.title}`}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center text-bp-text-muted opacity-0 group-hover:opacity-100 focus-visible:opacity-100 bg-bp-card hover:!text-red-500 hover:!bg-red-500/10 transition-all duration-150"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
               );
             })}
           </div>

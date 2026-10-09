@@ -10,17 +10,18 @@ const tableCustomStyles = {
   },
   headRow: {
     style: {
-      backgroundColor:
-        "color-mix(in srgb, var(--bp-elevated) 50%, transparent)",
-      borderBottom: "none",
+      // blue-tint header row (light) / darker card (dark) — theme tokens
+      backgroundColor: "var(--bp-table-head)",
+      borderBottom: "1px solid var(--bp-table-head-border)",
       minHeight: "44px",
     },
   },
   headCells: {
     style: {
-      color: "var(--bp-text-secondary)",
+      // uniform header look: same size + bold + theme-aware (dark in light)
+      color: "var(--bp-text)",
       fontSize: "11px",
-      fontWeight: "600",
+      fontWeight: "700",
       textTransform: "uppercase",
       letterSpacing: "0.05em",
       textAlign: "left",
@@ -31,7 +32,12 @@ const tableCustomStyles = {
   },
   rows: {
     style: {
-      backgroundColor: "transparent",
+      // RDT deep-merges its own default theme, which paints every row
+      // #FFFFFF — that white leaked through in dark mode (styled-components
+      // is unlayered, so no layered CSS could override it). Pin the base to
+      // the card token instead: uniform rows in BOTH themes (no zebra);
+      // hover colour comes from the &:hover below.
+      backgroundColor: "var(--bp-card)",
       minHeight: "64px",
       color: "var(--bp-text-secondary)",
       borderBottom: "none",

@@ -373,17 +373,17 @@ export default function Navbar({ toggleSidebar }) {
             <Menu size={22} className="text-white" />
           </button>
 
-          <Link to="/" className="flex items-center flex-shrink-0 gap-0 ml-1">
-            <div className="w-16 h-12 rounded-md overflow-hidden flex items-center justify-center">
-              <img
-                src={logo}
-                alt="VidBuxApp"
-                className="w-full rounded-2xl h-full object-contain"
-              />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white dark:text-white">
-              VidBuxApp
-            </span>
+          {/* logo only — brand wordmark lives inside the image itself */}
+          <Link
+            to="/"
+            aria-label="VidBuxApp home"
+            className="flex items-center flex-shrink-0 ml-1"
+          >
+            <img
+              src={logo}
+              alt="VidBuxApp"
+              className="w-16 h-12 object-contain"
+            />
           </Link>
           {/* Points (desktop) */}
 

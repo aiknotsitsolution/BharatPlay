@@ -1685,6 +1685,8 @@ import {
   fetchAdminUserVideosRedux,
   fetchAdminUserShortsRedux,
 } from "../../redux/slices/adminUser360Slice";
+import ListPagination from "../../components/common/ListPagination";
+import { PAGINATION_PER_PAGE } from "../../utils/paginationConfig";
 
 const TABS = [
   { key: "overview", label: "Overview", icon: BarChart3 },
@@ -1704,6 +1706,10 @@ export default function User360() {
   const [channelContentTab, setChannelContentTab] = useState("videos");
   const [activityFilter, setActivityFilter] = useState("");
   const [fraudFilter, setFraudFilter] = useState("");
+  const [contentLimit, setContentLimit] = useState(PAGINATION_PER_PAGE);
+  const [watchHistoryLimit, setWatchHistoryLimit] = useState(PAGINATION_PER_PAGE);
+  const [activityLimit, setActivityLimit] = useState(PAGINATION_PER_PAGE);
+  const [fraudLimit, setFraudLimit] = useState(PAGINATION_PER_PAGE);
 
   // ==================== REDUX SELECTORS ====================
   const overviewState = useSelector((s) => s.adminUser360.overview[userId]);
@@ -1806,34 +1812,34 @@ export default function User360() {
       dispatch(fetchAdminUserSubscriptions({ userId }));
     }
     if (activeTab === "activity") {
-      dispatch(fetchAdminUserActivity({ userId, page: 1, filter: activityFilter }));
-      dispatch(fetchAdminUserWatchHistory({ userId, page: 1 }));
+      dispatch(fetchAdminUserActivity({ userId, page: 1, limit: activityLimit, filter: activityFilter }));
+      dispatch(fetchAdminUserWatchHistory({ userId, page: 1, limit: watchHistoryLimit }));
     }
     if (activeTab === "security") {
       dispatch(fetchAdminUserDevices({ userId }));
-      dispatch(fetchAdminUserFraudEvents({ userId, page: 1, severity: fraudFilter }));
+      dispatch(fetchAdminUserFraudEvents({ userId, page: 1, limit: fraudLimit, severity: fraudFilter }));
       dispatch(fetchAdminUserNotifications({ userId, page: 1, limit: 50 }));
     }
   }, [activeTab, userId, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (activeTab === "activity") {
-      dispatch(fetchAdminUserActivity({ userId, page: 1, filter: activityFilter }));
+      dispatch(fetchAdminUserActivity({ userId, page: 1, limit: activityLimit, filter: activityFilter }));
     }
   }, [activityFilter, activeTab, userId, dispatch]);
 
   useEffect(() => {
     if (activeTab === "security") {
-      dispatch(fetchAdminUserFraudEvents({ userId, page: 1, severity: fraudFilter }));
+      dispatch(fetchAdminUserFraudEvents({ userId, page: 1, limit: fraudLimit, severity: fraudFilter }));
     }
   }, [fraudFilter, activeTab, userId, dispatch]);
 
   useEffect(() => {
     if (!effectiveSelectedChannelId || !channelContentTab) return;
     if (channelContentTab === "videos") {
-      dispatch(fetchAdminUserVideosRedux({ userId, channelId: effectiveSelectedChannelId, page: 1 }));
+      dispatch(fetchAdminUserVideosRedux({ userId, channelId: effectiveSelectedChannelId, page: 1, limit: contentLimit }));
     } else if (channelContentTab === "shorts") {
-      dispatch(fetchAdminUserShortsRedux({ userId, channelId: effectiveSelectedChannelId, page: 1 }));
+      dispatch(fetchAdminUserShortsRedux({ userId, channelId: effectiveSelectedChannelId, page: 1, limit: contentLimit }));
     }
   }, [effectiveSelectedChannelId, channelContentTab, userId, dispatch]);
 
@@ -1900,23 +1906,25 @@ export default function User360() {
   };
 
   // ==================== HANDLERS ====================
-  const handleVideoPageChange = (newPage) =>
-    dispatch(fetchAdminUserVideosRedux({ userId, channelId: effectiveSelectedChannelId, page: newPage }));
-  const handleShortsPageChange = (newPage) =>
-    dispatch(fetchAdminUserShortsRedux({ userId, channelId: effectiveSelectedChannelId, page: newPage }));
-  const handleActivityPageChange = (newPage) =>
-    dispatch(fetchAdminUserActivity({ userId, page: newPage, filter: activityFilter }));
-  const handleWatchHistoryPageChange = (newPage) =>
-    dispatch(fetchAdminUserWatchHistory({ userId, page: newPage }));
-  const handleFraudPageChange = (newPage) =>
-    dispatch(fetchAdminUserFraudEvents({ userId, page: newPage, severity: fraudFilter }));
+  // The optional second arg lets "rows per page" refetch page 1 with the new
+  // size in the same dispatch (state would still be stale inside the handler).
+  const handleVideoPageChange = (newPage, newLimit) =>
+    dispatch(fetchAdminUserVideosRedux({ userId, channelId: effectiveSelectedChannelId, page: newPage, limit: newLimit ?? contentLimit }));
+  const handleShortsPageChange = (newPage, newLimit) =>
+    dispatch(fetchAdminUserShortsRedux({ userId, channelId: effectiveSelectedChannelId, page: newPage, limit: newLimit ?? contentLimit }));
+  const handleActivityPageChange = (newPage, newLimit) =>
+    dispatch(fetchAdminUserActivity({ userId, page: newPage, limit: newLimit ?? activityLimit, filter: activityFilter }));
+  const handleWatchHistoryPageChange = (newPage, newLimit) =>
+    dispatch(fetchAdminUserWatchHistory({ userId, page: newPage, limit: newLimit ?? watchHistoryLimit }));
+  const handleFraudPageChange = (newPage, newLimit) =>
+    dispatch(fetchAdminUserFraudEvents({ userId, page: newPage, limit: newLimit ?? fraudLimit, severity: fraudFilter }));
 
   const retryOverview = () => dispatch(fetchAdminUserOverview({ userId }));
   const retryEngagement = () => dispatch(fetchAdminUserEngagement({ userId }));
   const retryVideos = () =>
-    dispatch(fetchAdminUserVideosRedux({ userId, channelId: effectiveSelectedChannelId, page: videosPagination.page }));
+    dispatch(fetchAdminUserVideosRedux({ userId, channelId: effectiveSelectedChannelId, page: videosPagination.page, limit: contentLimit }));
   const retryShorts = () =>
-    dispatch(fetchAdminUserShortsRedux({ userId, channelId: effectiveSelectedChannelId, page: shortsPagination.page }));
+    dispatch(fetchAdminUserShortsRedux({ userId, channelId: effectiveSelectedChannelId, page: shortsPagination.page, limit: contentLimit }));
 
   // ==================== LOADING ====================
   if (overviewLoading) {
@@ -2282,6 +2290,11 @@ export default function User360() {
                     emptyText="No videos found"
                     onPageChange={handleVideoPageChange}
                     onRetry={retryVideos}
+                    limit={contentLimit}
+                    onLimitChange={(l) => {
+                      setContentLimit(l);
+                      handleVideoPageChange(1, l);
+                    }}
                   />
                 ) : (
                   <ContentGrid
@@ -2293,6 +2306,11 @@ export default function User360() {
                     emptyText="No shorts found"
                     onPageChange={handleShortsPageChange}
                     onRetry={retryShorts}
+                    limit={contentLimit}
+                    onLimitChange={(l) => {
+                      setContentLimit(l);
+                      handleShortsPageChange(1, l);
+                    }}
                   />
                 )}
               </>
@@ -2411,7 +2429,15 @@ export default function User360() {
                   ))}
                 </div>
                 {watchHistoryPagination.totalPages > 1 && (
-                  <Pagination pagination={watchHistoryPagination} onPageChange={handleWatchHistoryPageChange} />
+                  <Pagination
+                    pagination={watchHistoryPagination}
+                    onPageChange={handleWatchHistoryPageChange}
+                    limit={watchHistoryLimit}
+                    onLimitChange={(l) => {
+                      setWatchHistoryLimit(l);
+                      handleWatchHistoryPageChange(1, l);
+                    }}
+                  />
                 )}
               </>
             )}
@@ -2486,7 +2512,15 @@ export default function User360() {
                   ))}
                 </div>
                 {activityPagination.totalPages > 1 && (
-                  <Pagination pagination={activityPagination} onPageChange={handleActivityPageChange} />
+                  <Pagination
+                    pagination={activityPagination}
+                    onPageChange={handleActivityPageChange}
+                    limit={activityLimit}
+                    onLimitChange={(l) => {
+                      setActivityLimit(l);
+                      handleActivityPageChange(1, l);
+                    }}
+                  />
                 )}
               </>
             )}
@@ -2632,7 +2666,15 @@ export default function User360() {
                   ))}
                 </div>
                 {fraudPagination.totalPages > 1 && (
-                  <Pagination pagination={fraudPagination} onPageChange={handleFraudPageChange} />
+                  <Pagination
+            pagination={fraudPagination}
+            onPageChange={handleFraudPageChange}
+            limit={fraudLimit}
+            onLimitChange={(l) => {
+              setFraudLimit(l);
+              handleFraudPageChange(1, l);
+            }}
+          />
                 )}
               </>
             )}
@@ -2719,7 +2761,7 @@ function SectionError({ message, onRetry }) {
   );
 }
 
-function ContentGrid({ items, loading, error, pagination, emptyText, onPageChange, onRetry, emptyIcon: EmptyIcon }) {
+function ContentGrid({ items, loading, error, pagination, emptyText, onPageChange, onRetry, emptyIcon: EmptyIcon, limit, onLimitChange }) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -2794,35 +2836,28 @@ function ContentGrid({ items, loading, error, pagination, emptyText, onPageChang
         ))}
       </div>
       {pagination.totalPages > 1 && (
-        <Pagination pagination={pagination} onPageChange={onPageChange} />
+        <Pagination
+          pagination={pagination}
+          onPageChange={onPageChange}
+          limit={limit}
+          onLimitChange={onLimitChange}
+        />
       )}
     </>
   );
 }
 
-function Pagination({ pagination, onPageChange }) {
+function Pagination({ pagination, onPageChange, limit, onLimitChange }) {
+  // Thin wrapper over the shared bar so every non-table list in the panel
+  // paginates exactly like the react-data-table tables do.
   return (
-    <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
-      <p className="text-sm text-slate-400">
-        Page {pagination.page} of {pagination.totalPages}
-      </p>
-      <div className="flex gap-2">
-        <button
-          disabled={pagination.page <= 1}
-          onClick={() => onPageChange(pagination.page - 1)}
-          className="p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-40 transition"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <button
-          disabled={pagination.page >= pagination.totalPages}
-          onClick={() => onPageChange(pagination.page + 1)}
-          className="p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-40 transition"
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
-    </div>
+    <ListPagination
+      pagination={pagination}
+      onPageChange={onPageChange}
+      limit={limit}
+      onLimitChange={onLimitChange}
+      total={pagination?.total}
+    />
   );
 }
 

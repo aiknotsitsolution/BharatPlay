@@ -13,6 +13,10 @@ import { fetchContactRequests, fetchDeletionRequests } from "../../../api";
 import { formatTicketId } from "../../../utils/ticketId";
 import PageHeader from "../../../components/layout/PageHeader";
 import tableCustomStyles from "../../../utils/tableStyles";
+import {
+  PAGINATION_PER_PAGE,
+  PAGINATION_OPTIONS,
+} from "../../../utils/paginationConfig";
 
 const statusColors = {
   pending: "bg-bp-yellow/15 text-bp-yellow border-bp-yellow/30",
@@ -60,8 +64,8 @@ export default function MyTickets() {
       setLoading(true);
       setError("");
       const [contactResult, deletionResult] = await Promise.allSettled([
-        fetchContactRequests({ assignedTo: myId, page: 1, limit: 50 }),
-        fetchDeletionRequests({ assignedTo: myId, page: 1, limit: 50 }),
+        fetchContactRequests({ assignedTo: myId, page: 1, limit: 100 }),
+        fetchDeletionRequests({ assignedTo: myId, page: 1, limit: 100 }),
       ]);
       if (cancelled) return;
 
@@ -247,6 +251,9 @@ export default function MyTickets() {
           columns={columns}
           data={items}
           customStyles={tableCustomStyles}
+          pagination
+          paginationPerPage={PAGINATION_PER_PAGE}
+          paginationRowsPerPageOptions={PAGINATION_OPTIONS}
           highlightOnHover
           pointerOnHover
           progressPending={loading}

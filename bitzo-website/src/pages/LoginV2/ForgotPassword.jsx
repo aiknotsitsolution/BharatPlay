@@ -225,10 +225,12 @@ export default function ForgotPassword() {
       <div className="loginv2-card relative z-10 w-full max-w-[400px] px-5 py-5 sm:px-7 sm:py-6 rounded-2xl animate-cardIn">
         {/* Header */}
         <div className="text-center mb-5">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-red-500/20 to-red-700/20 border border-red-500/20 mb-3">
-            <span className="text-xl font-black text-red-500 tracking-tight">BP</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+          <img
+            src="/VidBuxApp-logo.png"
+            alt="VidBuxApp"
+            className="mx-auto h-16 w-auto object-contain drop-shadow-lg"
+          />
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight mt-2">
             {stepTitle}
           </h1>
           <p className="text-gray-400 mt-1 text-xs sm:text-sm">

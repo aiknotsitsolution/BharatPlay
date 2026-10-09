@@ -869,7 +869,13 @@ export default function YouTubeLikeVideoPage() {
 
   return (
     <div className="bg-[#0f0f0f] text-white min-h-screen">
-      <div className="max-w-[1750px] mx-auto px-4 pt-4 md:px-6 lg:px-8 flex flex-col lg:flex-row gap-6">
+      {/* Theater mode = full-width column: player stretches edge-to-edge and
+          the "Up next" rail moves below the description instead of beside it */}
+      <div
+        className={`mx-auto px-4 pt-4 md:px-6 lg:px-8 flex flex-col gap-6 ${
+          theaterMode ? "max-w-none" : "max-w-[1750px] lg:flex-row"
+        }`}
+      >
         {/* Left – Video + Description + Comments */}
         <div
           className={`flex-1 ${theaterMode ? "max-w-none" : "max-w-[1280px]"}`}
@@ -1221,8 +1227,12 @@ export default function YouTubeLikeVideoPage() {
           </div>
         </div>
 
-        {/* Right Sidebar – Up Next */}
-        <div className="w-full lg:w-96 xl:w-[402px] flex-shrink-0">
+        {/* Right Sidebar – Up Next (drops below the player in theater mode) */}
+        <div
+          className={
+            theaterMode ? "w-full" : "w-full lg:w-96 xl:w-[402px] flex-shrink-0"
+          }
+        >
           <div className="flex items-center justify-between mb-2 px-2">
             <h2 className="text-lg font-semibold">Up next</h2>
             <div className="flex items-center gap-2 text-sm text-gray-300">

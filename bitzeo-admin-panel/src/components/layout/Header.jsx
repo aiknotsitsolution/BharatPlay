@@ -7,6 +7,9 @@ import { getCurrentRole, getRoleMeta } from "../../config/roleConfig";
 import { getAdminDisplayName, getInitials, getAdminPhoto } from "../../utils/helpers";
 import { useTheme } from "../../context/ThemeContext";
 import { clearAdminState } from "../../utils/session";
+import useNotifications from "../../hooks/useNotifications";
+import NotificationPanel from "./NotificationPanel";
+import NotificationToasts from "./NotificationToasts";
 import API from "../../api";
 
 export default function Header({ sidebarOpen, toggleSidebar }) {
@@ -15,8 +18,12 @@ export default function Header({ sidebarOpen, toggleSidebar }) {
   const [avatar, setAvatar] = useState(getAdminPhoto());
   const [role, setRole] = useState(getCurrentRole());
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
   const userMenuRef = useRef(null);
+  const notifRef = useRef(null);
   const { theme, toggleTheme } = useTheme();
+  // feed + unread badge + panel + push toasts (polls every 30s for arrivals)
+  const notif = useNotifications({ limit: 20, pollMs: 30000 });
 
   useEffect(() => {
     const syncUser = () => {
@@ -34,6 +41,9 @@ export default function Header({ sidebarOpen, toggleSidebar }) {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
         setShowUserMenu(false);
       }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifPanel(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -50,13 +60,14 @@ export default function Header({ sidebarOpen, toggleSidebar }) {
 
   const goTo = (path) => {
     setShowUserMenu(false);
+    setShowNotifPanel(false);
     navigate(path);
   };
 
   const roleMeta = getRoleMeta(role);
 
   return (
-    <header className="sticky top-0 z-20 bg-bp-card/85 backdrop-blur-md border-b border-bp-border/60">
+    <header className="app-topbar sticky top-0 z-20 bg-bp-card/85 backdrop-blur-md border-b border-bp-border/60">
       <div className="flex h-14 items-center justify-between gap-2 px-3 sm:h-16 sm:px-6">
   {/* Mobile menu button – left side */}
   <button
@@ -91,15 +102,33 @@ export default function Header({ sidebarOpen, toggleSidebar }) {
       )}
     </button>
 
-    {/* Notifications */}
-    <button
-      onClick={() => navigate("/notifications")}
-      className="relative w-9 h-9 rounded-full bg-bp-elevated border border-bp-border/60 flex items-center justify-center text-bp-text-secondary hover:text-bp-blue hover:bg-bp-hover transition-all duration-150"
-      aria-label="Notifications"
-    >
-      <Bell className="w-[17px] h-[17px]" />
-      <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 ring-2 ring-bp-card" />
-    </button>
+    {/* Notifications — bell opens the panel (full page = “View all”) */}
+    <div className="relative" ref={notifRef}>
+      <button
+        onClick={() => {
+          setShowNotifPanel((prev) => !prev);
+          setShowUserMenu(false);
+        }}
+        aria-haspopup="menu"
+        aria-expanded={showNotifPanel}
+        aria-label="Notifications"
+        className="relative w-9 h-9 rounded-full bg-bp-elevated border border-bp-border/60 flex items-center justify-center text-bp-text-secondary hover:text-bp-blue hover:bg-bp-hover transition-all duration-150"
+      >
+        <Bell className="w-[17px] h-[17px]" />
+        {notif.unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-bp-card">
+            {notif.unreadCount > 99 ? "99+" : notif.unreadCount}
+          </span>
+        )}
+      </button>
+
+      {showNotifPanel && (
+        <NotificationPanel
+          notif={notif}
+          onClose={() => setShowNotifPanel(false)}
+        />
+      )}
+    </div>
 
     {/* Separator */}
     <div className="w-px h-6 mx-0.5 hidden sm:block bg-bp-border/60" />
@@ -171,6 +200,9 @@ export default function Header({ sidebarOpen, toggleSidebar }) {
         </div>
         </div>
       </div>
+
+      {/* push toasts — fixed, top-center (mobile notification style) */}
+      <NotificationToasts notif={notif} />
     </header>
   );
 }

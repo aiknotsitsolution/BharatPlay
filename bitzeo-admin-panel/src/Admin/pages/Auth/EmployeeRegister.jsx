@@ -2343,6 +2343,10 @@ import API from "../../../api";
 import toast from "react-hot-toast";
 import { hasFeature } from "../../../config/roleConfig";
 import tableCustomStyles from "../../../utils/tableStyles";
+import {
+  PAGINATION_PER_PAGE,
+  PAGINATION_OPTIONS,
+} from "../../../utils/paginationConfig";
 import PageHeader from "../../../components/layout/PageHeader";
 
 const countries = [
@@ -2782,9 +2786,6 @@ export default function UsersManagement() {
             <p className={`text-[13.5px] font-medium ${row.isActive === false ? "text-slate-400 line-through" : "text-slate-800"}`}>
               {row.name}
             </p>
-            <p className="text-[12px] text-slate-400">
-              {row.contactNumber || "No contact"} • {row.experienceYears ?? 0} yrs
-            </p>
           </div>
         </div>
       ),
@@ -2864,13 +2865,6 @@ export default function UsersManagement() {
             title={row.isActive === false ? "Enable User" : "Disable User"}
           >
             {row.isActive === false ? <Power size={16} /> : <PowerOff size={16} />}
-          </button>
-          <button
-            onClick={() => handleView(row)}
-            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-            title="View Employee"
-          >
-            <Eye size={16} />
           </button>
           <button
             onClick={() => handleEdit(row)}
@@ -3021,10 +3015,11 @@ export default function UsersManagement() {
           data={filteredUsers}
           progressPending={loading}
           pagination
-          paginationPerPage={10}
-          paginationRowsPerPageOptions={[5, 10, 15, 25, 50]}
+          paginationPerPage={PAGINATION_PER_PAGE}
+          paginationRowsPerPageOptions={PAGINATION_OPTIONS}
           highlightOnHover
-          pointerOnHover={false}
+          pointerOnHover
+          onRowClicked={handleView}
           customStyles={tableCustomStyles}
           noDataComponent={
             <div className="py-14 text-center text-slate-400 text-sm">No users found</div>

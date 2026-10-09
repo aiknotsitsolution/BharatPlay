@@ -26,6 +26,7 @@ import {
   Link2,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import DataTable from "react-data-table-component";
 import {
   fetchCopyrightCases,
   fetchCopyrightCaseById,
@@ -33,6 +34,11 @@ import {
 } from "../../../api";
 import { hasFeature } from "../../../config/roleConfig";
 import PageHeader from "../../../components/layout/PageHeader";
+import tableCustomStyles from "../../../utils/tableStyles";
+import {
+  PAGINATION_PER_PAGE,
+  PAGINATION_OPTIONS,
+} from "../../../utils/paginationConfig";
 import {
   statusLabels,
   statusColors,
@@ -1156,12 +1162,13 @@ export function CopyrightCaseReview({ caseId, onBack }) {
     const [pagination, setPagination] = useState({
       total: 0,
       page: 1,
-      limit: 20,
+      limit: PAGINATION_PER_PAGE,
       pages: 1,
     });
     const [page, setPage] = useState(
       Math.max(1, Number(searchParams.get("page")) || 1),
     );
+    const [limit, setLimit] = useState(PAGINATION_PER_PAGE);
     const [search, setSearch] = useState(searchParams.get("search") || "");
     const [appliedSearch, setAppliedSearch] = useState(
       searchParams.get("search") || "",
@@ -1177,7 +1184,7 @@ export function CopyrightCaseReview({ caseId, onBack }) {
       setLoading(true);
       setError("");
       try {
-        const params = { page, limit: 20 };
+        const params = { page, limit };
         if (appliedSearch.trim()) params.search = appliedSearch.trim();
         if (status) params.status = status;
         if (priority) params.priority = priority;
@@ -1188,7 +1195,7 @@ export function CopyrightCaseReview({ caseId, onBack }) {
           response.data?.pagination || {
             total: 0,
             page: 1,
-            limit: 20,
+            limit,
             pages: 1,
           },
         );
@@ -1201,7 +1208,7 @@ export function CopyrightCaseReview({ caseId, onBack }) {
       } finally {
         setLoading(false);
       }
-    }, [appliedSearch, page, priority, status]);
+    }, [appliedSearch, limit, page, priority, status]);
 
     useEffect(() => {
       loadCases();
@@ -1222,7 +1229,94 @@ export function CopyrightCaseReview({ caseId, onBack }) {
       setAppliedSearch(search);
     };
 
-    const pageCount = Math.max(1, pagination.pages || 1);
+    const columns = [
+      {
+        name: "Case",
+        minWidth: "130px",
+        cell: (item) => (
+          <span className="text-sm font-mono text-bp-text">
+            {item.caseNumber || "—"}
+          </span>
+        ),
+      },
+      {
+        name: "Claimant",
+        minWidth: "180px",
+        cell: (item) => (
+          <div>
+            <p className="text-sm text-bp-text">{item.claimant?.name || "—"}</p>
+            <p className="text-xs text-bp-text-muted">
+              {item.claimant?.organization || item.claimant?.email || ""}
+            </p>
+          </div>
+        ),
+      },
+      {
+        name: "Reported video",
+        minWidth: "200px",
+        grow: 1,
+        cell: (item) => (
+          <p className="text-sm text-bp-text truncate max-w-[240px]">
+            {item.content?.title ||
+              item.content?.video?.title ||
+              "Untitled video"}
+          </p>
+        ),
+      },
+      {
+        name: "Status",
+        minWidth: "130px",
+        cell: (item) => (
+          <span
+            className={`inline-flex px-2.5 py-1 rounded-full border text-xs font-medium ${
+              statusColors[item.status] ||
+              "bg-bp-elevated text-bp-text-secondary border-bp-border"
+            }`}
+          >
+            {statusLabels[item.status] || item.status || "Unknown"}
+          </span>
+        ),
+      },
+      {
+        name: "Filed",
+        width: "120px",
+        cell: (item) => (
+          <span className="text-sm text-bp-text-secondary">
+            {formatCaseDate(item.createdAt)}
+          </span>
+        ),
+      },
+      {
+        name: "Priority",
+        width: "110px",
+        cell: (item) => (
+          <span
+            className={`text-xs font-semibold capitalize ${
+              priorityBadgeColors[item.priority] || priorityBadgeColors.medium
+            }`}
+          >
+            {item.priority || "medium"}
+          </span>
+        ),
+      },
+      {
+        name: "Details",
+        width: "90px",
+        right: true,
+        ignoreRowClick: true,
+        cell: (item) => (
+          <button
+            type="button"
+            onClick={() => navigate(`/copyright/cases/${item._id}`)}
+            aria-label={`View full details for ${item.caseNumber}`}
+            title="View full details"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-bp-border text-bp-cyan hover:bg-bp-cyan/10 focus:outline-none focus:ring-2 focus:ring-bp-cyan/50"
+          >
+            <Eye size={17} />
+          </button>
+        ),
+      },
+    ];
 
     return (
       <div className="space-y-6">
@@ -1311,115 +1405,40 @@ export function CopyrightCaseReview({ caseId, onBack }) {
                 Try again
               </button>
             </div>
-          ) : cases.length === 0 ? (
-            <div className="text-center py-16">
-              <FileText className="w-10 h-10 text-bp-text-muted mx-auto mb-3" />
-              <p className="text-sm text-bp-text-secondary">No copyright cases found.</p>
-            </div>
           ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-bp-border">
-                  <thead className="bg-bp-elevated/50">
-                    <tr>
-                      {["Case", "Claimant", "Reported video", "Status", "Filed", "Priority", "Details"].map(
-                        (heading) => (
-                          <th
-                            key={heading}
-                            scope="col"
-                            className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-bp-text-muted"
-                          >
-                            {heading}
-                          </th>
-                        ),
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-bp-border">
-                    {cases.map((item) => (
-                      <tr key={item._id} className="hover:bg-bp-elevated/30">
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <span className="text-sm font-mono text-bp-text">
-                            {item.caseNumber || "—"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <p className="text-sm text-bp-text">
-                            {item.claimant?.name || "—"}
-                          </p>
-                          <p className="text-xs text-bp-text-muted">
-                            {item.claimant?.organization || item.claimant?.email || ""}
-                          </p>
-                        </td>
-                        <td className="px-4 py-4 max-w-64">
-                          <p className="text-sm text-bp-text truncate">
-                            {item.content?.title || item.content?.video?.title || "Untitled video"}
-                          </p>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex px-2.5 py-1 rounded-full border text-xs font-medium ${
-                              statusColors[item.status] ||
-                              "bg-bp-elevated text-bp-text-secondary border-bp-border"
-                            }`}
-                          >
-                            {statusLabels[item.status] || item.status || "Unknown"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-bp-text-secondary">
-                          {formatCaseDate(item.createdAt)}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <span
-                            className={`text-xs font-semibold capitalize ${
-                              priorityBadgeColors[item.priority] || priorityBadgeColors.medium
-                            }`}
-                          >
-                            {item.priority || "medium"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/copyright/cases/${item._id}`)}
-                            aria-label={`View full details for ${item.caseNumber}`}
-                            title="View full details"
-                            className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-bp-border text-bp-cyan hover:bg-bp-cyan/10 focus:outline-none focus:ring-2 focus:ring-bp-cyan/50"
-                          >
-                            <Eye size={17} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex items-center justify-between gap-3 border-t border-bp-border px-4 py-3">
-                <p className="text-xs text-bp-text-muted">
-                  Page {pagination.page || page} of {pageCount} · {pagination.total} cases
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPage((current) => Math.max(1, current - 1))}
-                    disabled={page <= 1}
-                    className="inline-flex items-center gap-1 rounded-lg border border-bp-border px-3 py-2 text-xs text-bp-text disabled:opacity-40"
-                  >
-                    <ChevronLeft size={14} />
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
-                    disabled={page >= pageCount}
-                    className="inline-flex items-center gap-1 rounded-lg border border-bp-border px-3 py-2 text-xs text-bp-text disabled:opacity-40"
-                  >
-                    Next
-                    <ChevronRight size={14} />
-                  </button>
+            <DataTable
+              columns={columns}
+              data={cases}
+              customStyles={tableCustomStyles}
+              progressPending={loading}
+              progressComponent={
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-6 h-6 animate-spin text-bp-cyan" />
                 </div>
-              </div>
-            </>
+              }
+              noDataComponent={
+                <div className="text-center py-16">
+                  <FileText className="w-10 h-10 text-bp-text-muted mx-auto mb-3" />
+                  <p className="text-sm text-bp-text-secondary">
+                    No copyright cases found.
+                  </p>
+                </div>
+              }
+              pagination
+              paginationServer
+              paginationTotalRows={pagination.total || 0}
+              paginationPerPage={limit}
+              paginationRowsPerPageOptions={PAGINATION_OPTIONS}
+              paginationDefaultPage={page}
+              onChangePage={(p) => setPage(p)}
+              onChangeRowsPerPage={(rows) => {
+                setLimit(rows);
+                setPage(1);
+              }}
+              highlightOnHover
+              pointerOnHover
+              onRowClicked={(item) => navigate(`/copyright/cases/${item._id}`)}
+            />
           )}
         </section>
       </div>

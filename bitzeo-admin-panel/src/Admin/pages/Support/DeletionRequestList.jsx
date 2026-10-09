@@ -4,8 +4,6 @@ import DataTable from "react-data-table-component";
 import {
   Search,
   Eye,
-  ChevronLeft,
-  ChevronRight,
   Trash2,
   X,
 } from "lucide-react";
@@ -14,6 +12,10 @@ import useSupportEmployees from "../../../hooks/useSupportEmployees";
 import PageHeader from "../../../components/layout/PageHeader";
 import { formatTicketId } from "../../../utils/ticketId";
 import tableCustomStyles from "../../../utils/tableStyles";
+import {
+  PAGINATION_PER_PAGE,
+  PAGINATION_OPTIONS,
+} from "../../../utils/paginationConfig";
 
 const statusColors = {
   pending: "bg-bp-yellow/15 text-bp-yellow border-bp-yellow/30",
@@ -54,12 +56,13 @@ export default function DeletionRequestList({ hideHeader = false }) {
   const [status, setStatus] = useState(searchParams.get("status") || "");
   const [assignedTo, setAssignedTo] = useState(searchParams.get("assignedTo") || "");
   const [page, setPage] = useState(parseInt(searchParams.get("page")) || 1);
+  const [limit, setLimit] = useState(PAGINATION_PER_PAGE);
 
   const fetchData = async () => {
     setLoading(true);
     setFetchError("");
     try {
-      const params = { page, limit: 20 };
+      const params = { page, limit };
       if (search) params.search = search;
       if (status) params.status = status;
       if (assignedTo) params.assignedTo = assignedTo;
@@ -67,7 +70,7 @@ export default function DeletionRequestList({ hideHeader = false }) {
       const res = await fetchDeletionRequests(params);
       setRequests(res.data?.requests || []);
       setPagination(
-        res.data?.pagination || { total: 0, page: 1, limit: 20, pages: 1 }
+        res.data?.pagination || { total: 0, page: 1, limit, pages: 1 }
       );
     } catch (err) {
       console.error("Failed to fetch deletion requests:", err);
@@ -79,7 +82,7 @@ export default function DeletionRequestList({ hideHeader = false }) {
 
   useEffect(() => {
     fetchData();
-  }, [page, status, assignedTo]);
+  }, [page, limit, status, assignedTo]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -277,38 +280,21 @@ export default function DeletionRequestList({ hideHeader = false }) {
                 <p className="text-bp-text-muted">No deletion requests found</p>
               </div>
             }
+            pagination
+            paginationServer
+            paginationTotalRows={pagination.total || 0}
+            paginationPerPage={limit}
+            paginationRowsPerPageOptions={PAGINATION_OPTIONS}
+            paginationDefaultPage={page}
+            onChangePage={(p) => setPage(p)}
+            onChangeRowsPerPage={(rows) => {
+              setLimit(rows);
+              setPage(1);
+            }}
             highlightOnHover
             pointerOnHover
             onRowClicked={(row) => navigate(`/support/deletion/${row._id}`)}
           />
-        )}
-
-        {/* Pagination */}
-        {!fetchError && pagination.pages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-bp-border">
-            <p className="text-sm text-bp-text-muted">
-              Page {pagination.page} of {pagination.pages} ({pagination.total}{" "}
-              requests)
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="p-2 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                onClick={() =>
-                  setPage((p) => Math.min(pagination.pages, p + 1))
-                }
-                disabled={page >= pagination.pages}
-                className="p-2 text-bp-text-secondary hover:text-bp-text hover:bg-bp-elevated rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          </div>
         )}
       </div>
     </div>

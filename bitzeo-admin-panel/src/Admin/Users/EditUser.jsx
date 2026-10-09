@@ -60,6 +60,13 @@ import {
 } from "../../redux/slices/adminUser360Slice";
 import ModerationDialog from "./ModerationDialog";
 import { hasFeature } from "../../config/roleConfig";
+import DataTable from "react-data-table-component";
+import tableCustomStyles from "../../utils/tableStyles";
+import ListPagination from "../../components/common/ListPagination";
+import {
+  PAGINATION_PER_PAGE,
+  PAGINATION_OPTIONS,
+} from "../../utils/paginationConfig";
 
 const VALID_ROLES = ["viewer", "creator", "admin"];
 
@@ -288,13 +295,13 @@ export default function EditUser() {
   const [contentDialog, setContentDialog] = useState({ open: false, action: null, targetType: null, targetId: null, targetName: "", dialogKey: 0 });
 
   const [channelPage, setChannelPage] = useState(1);
-  const [channelLimit] = useState(10);
+  const [channelLimit, setChannelLimit] = useState(PAGINATION_PER_PAGE);
   const [channelSearch, setChannelSearch] = useState("");
   const [debouncedChannelSearch, setDebouncedChannelSearch] = useState("");
   const channelSearchTimer = useRef(null);
 
   const [videoPage, setVideoPage] = useState(1);
-  const [videoLimit, setVideoLimit] = useState(10);
+  const [videoLimit, setVideoLimit] = useState(PAGINATION_PER_PAGE);
   const [videoSearch, setVideoSearch] = useState("");
   const [debouncedVideoSearch, setDebouncedVideoSearch] = useState("");
   const videoSearchTimer = useRef(null);
@@ -302,7 +309,7 @@ export default function EditUser() {
   const [videoSortOrder, setVideoSortOrder] = useState("desc");
 
   const [shortsPage, setShortsPage] = useState(1);
-  const [shortsLimit, setShortsLimit] = useState(10);
+  const [shortsLimit, setShortsLimit] = useState(PAGINATION_PER_PAGE);
   const [shortsSearch, setShortsSearch] = useState("");
   const [debouncedShortsSearch, setDebouncedShortsSearch] = useState("");
   const shortsSearchTimer = useRef(null);
@@ -800,11 +807,15 @@ export default function EditUser() {
                   })}
                 </div>
                 {channelsPagination.totalPages > 1 && (
-                  <PaginationBar
+                  <ListPagination
                     pagination={channelsPagination}
                     onPageChange={setChannelPage}
                     total={channelsPagination.total}
                     limit={channelLimit}
+                    onLimitChange={(l) => {
+                      setChannelLimit(l);
+                      setChannelPage(1);
+                    }}
                   />
                 )}
               </>
@@ -1202,74 +1213,6 @@ const SORT_OPTIONS = [
   { value: "views:desc", label: "Most Views" },
   { value: "likesCount:desc", label: "Most Likes" },
 ];
-const LIMIT_OPTIONS = [10, 20, 50];
-
-function PaginationBar({ pagination, onPageChange, total, limit }) {
-  const { page, totalPages } = pagination;
-  const start = Math.min((page - 1) * limit + 1, total || 0);
-  const end = Math.min(page * limit, total || 0);
-
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisible = 5;
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (page > 3) pages.push("...");
-      const rangeStart = Math.max(2, page - 1);
-      const rangeEnd = Math.min(totalPages - 1, page + 1);
-      for (let i = rangeStart; i <= rangeEnd; i++) pages.push(i);
-      if (page < totalPages - 2) pages.push("...");
-      if (totalPages > 1) pages.push(totalPages);
-    }
-    return pages;
-  };
-
-  return (
-    <div className="mt-3 pt-3 border-t border-bp-border">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[11px] text-bp-text-muted">Showing {start}â€“{end} of {total}</p>
-      </div>
-      <div className="flex items-center justify-center gap-1">
-        <button
-          type="button"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-          className="p-1 rounded border border-bp-border text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text disabled:opacity-30 transition"
-        >
-          <ChevronLeft size={14} />
-        </button>
-        {getPageNumbers().map((p, i) =>
-          p === "..." ? (
-            <span key={`e${i}`} className="px-1 text-bp-text-muted text-xs">...</span>
-          ) : (
-            <button
-              key={p}
-              type="button"
-              onClick={() => onPageChange(p)}
-              className={`min-w-[26px] h-[26px] rounded border text-[11px] font-medium transition ${
-                p === page
-                  ? "bg-bp-blue border-bp-blue text-white"
-                  : "border-bp-border text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text"
-              }`}
-            >
-              {p}
-            </button>
-          )
-        )}
-        <button
-          type="button"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
-          className="p-1 rounded border border-bp-border text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text disabled:opacity-30 transition"
-        >
-          <ChevronRight size={14} />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function ContentTable({
   items, loading, error, pagination, type,
@@ -1321,6 +1264,107 @@ function ContentTable({
     );
   }
 
+  const disableAction = type === "short" ? "disableShort" : "disableVideo";
+  const enableAction = type === "short" ? "enableShort" : "enableVideo";
+  const deleteAction = type === "short" ? "deleteShort" : "deleteVideo";
+
+  const columns = [
+    {
+      name: "Content",
+      minWidth: "240px",
+      grow: 1,
+      cell: (item) => (
+        <div className="flex items-center gap-2.5">
+          <div className="w-16 h-10 rounded-lg bg-bp-elevated overflow-hidden flex-shrink-0">
+            {item.thumbnail ? (
+              <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Video size={14} className="text-bp-text-muted" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[13px] text-white font-medium truncate max-w-[260px]">{item.title}</p>
+            <p className="text-[10px] text-bp-text-muted">{formatDate(item.createdAt)}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      name: "Views",
+      width: "90px",
+      right: true,
+      cell: (item) => (
+        <span className="text-[13px] text-bp-text-secondary">{(item.views || 0).toLocaleString()}</span>
+      ),
+    },
+    {
+      name: "Likes",
+      width: "90px",
+      right: true,
+      cell: (item) => (
+        <span className="text-[13px] text-bp-text-secondary">{(item.likesCount || 0).toLocaleString()}</span>
+      ),
+    },
+    {
+      name: "Comments",
+      width: "100px",
+      right: true,
+      cell: (item) => (
+        <span className="text-[13px] text-bp-text-secondary">{item.commentCount || 0}</span>
+      ),
+    },
+    {
+      name: "Status",
+      width: "120px",
+      cell: (item) => <ChannelStatusBadge status={item.status || "active"} />,
+    },
+    {
+      name: "Actions",
+      width: "130px",
+      right: true,
+      ignoreRowClick: true,
+      cell: (item) => {
+        const itemStatus = item.status || "active";
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {itemStatus === "active" && hasFeature("canModerateContent") && (
+              <button
+                type="button"
+                onClick={() => onAction(disableAction, item)}
+                title="Disable"
+                className="inline-flex items-center px-1.5 py-1 text-[11px] font-medium text-bp-yellow bg-bp-yellow/10 hover:bg-bp-yellow/20 border border-bp-yellow/20 rounded transition"
+              >
+                <PowerOff size={11} />
+              </button>
+            )}
+            {itemStatus === "disabled" && hasFeature("canModerateContent") && (
+              <button
+                type="button"
+                onClick={() => onAction(enableAction, item)}
+                title="Enable"
+                className="inline-flex items-center px-1.5 py-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded transition"
+              >
+                <Power size={11} />
+              </button>
+            )}
+            {hasFeature("canModerateContent") && (
+              <button
+                type="button"
+                onClick={() => onAction(deleteAction, item)}
+                title="Delete"
+                className="inline-flex items-center px-1.5 py-1 text-[11px] font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded transition"
+              >
+                <Trash2 size={11} />
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <div>
       {/* Toolbar: search + sort + limit */}
@@ -1356,113 +1400,31 @@ function ContentTable({
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
-        <select
-          value={limit || 10}
-          onChange={(e) => onLimitChange(Number(e.target.value))}
-          className="bg-bp-elevated/70 border border-bp-border/50 rounded-lg text-[11px] text-bp-text-secondary px-2 py-1.5 focus:outline-none focus:border-bp-blue/50"
-        >
-          {LIMIT_OPTIONS.map((n) => (
-            <option key={n} value={n}>{n} / page</option>
-          ))}
-        </select>
       </div>
 
-      {items.length === 0 ? (
-        <div className="py-8 text-center">
-          <Search size={24} className="text-bp-text-muted mx-auto mb-2" />
-          <p className="text-sm text-bp-text-muted">No matching {itemTypeLabel} found.</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="text-[11px] text-bp-text-muted border-b border-bp-border">
-                <th className="pb-2 pr-3 font-medium">Content</th>
-                <th className="pb-2 pr-3 font-medium text-right">Views</th>
-                <th className="pb-2 pr-3 font-medium text-right">Likes</th>
-                <th className="pb-2 pr-3 font-medium text-right">Comments</th>
-                <th className="pb-2 pr-3 font-medium">Status</th>
-                <th className="pb-2 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-bp-border">
-              {items.map((item) => {
-                const itemStatus = item.status || "active";
-                const disableAction = type === "short" ? "disableShort" : "disableVideo";
-                const enableAction = type === "short" ? "enableShort" : "enableVideo";
-                const deleteAction = type === "short" ? "deleteShort" : "deleteVideo";
-                return (
-                  <tr key={item._id} className="hover:bg-bp-elevated/30 transition">
-                    <td className="py-2.5 pr-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-16 h-10 rounded-lg bg-bp-elevated overflow-hidden flex-shrink-0">
-                          {item.thumbnail ? (
-                            <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Video size={14} className="text-bp-text-muted" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[13px] text-white font-medium truncate max-w-[260px]">{item.title}</p>
-                          <p className="text-[10px] text-bp-text-muted">{formatDate(item.createdAt)}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-2.5 pr-3 text-right text-[13px] text-bp-text-secondary">{(item.views || 0).toLocaleString()}</td>
-                    <td className="py-2.5 pr-3 text-right text-[13px] text-bp-text-secondary">{(item.likesCount || 0).toLocaleString()}</td>
-                    <td className="py-2.5 pr-3 text-right text-[13px] text-bp-text-secondary">{item.commentCount || 0}</td>
-                    <td className="py-2.5 pr-3"><ChannelStatusBadge status={itemStatus} /></td>
-                    <td className="py-2.5 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {itemStatus === "active" && hasFeature("canModerateContent") && (
-                          <button
-                            type="button"
-                            onClick={() => onAction(disableAction, item)}
-                            title="Disable"
-                            className="inline-flex items-center px-1.5 py-1 text-[11px] font-medium text-bp-yellow bg-bp-yellow/10 hover:bg-bp-yellow/20 border border-bp-yellow/20 rounded transition"
-                          >
-                            <PowerOff size={11} />
-                          </button>
-                        )}
-                        {itemStatus === "disabled" && hasFeature("canModerateContent") && (
-                          <button
-                            type="button"
-                            onClick={() => onAction(enableAction, item)}
-                            title="Enable"
-                            className="inline-flex items-center px-1.5 py-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded transition"
-                          >
-                            <Power size={11} />
-                          </button>
-                        )}
-                        {hasFeature("canModerateContent") && (
-                        <button
-                          type="button"
-                          onClick={() => onAction(deleteAction, item)}
-                          title="Delete"
-                          className="inline-flex items-center px-1.5 py-1 text-[11px] font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded transition"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {pagination.totalPages > 1 && (
-            <PaginationBar
-              pagination={pagination}
-              onPageChange={onPageChange}
-              total={pagination.total || 0}
-              limit={limit || 10}
-            />
-          )}
-        </div>
-      )}
+      <div className="border border-bp-border/50 rounded-xl overflow-hidden">
+        <DataTable
+          columns={columns}
+          data={items}
+          customStyles={tableCustomStyles}
+          noDataComponent={
+            <div className="py-10 text-center">
+              <Search size={24} className="text-bp-text-muted mx-auto mb-2" />
+              <p className="text-sm text-bp-text-muted">No matching {itemTypeLabel} found.</p>
+            </div>
+          }
+          pagination
+          paginationServer
+          paginationTotalRows={pagination.total || 0}
+          paginationPerPage={limit || PAGINATION_PER_PAGE}
+          paginationRowsPerPageOptions={PAGINATION_OPTIONS}
+          paginationDefaultPage={pagination.page || 1}
+          onChangePage={onPageChange}
+          onChangeRowsPerPage={(rows) => onLimitChange(rows)}
+          highlightOnHover
+          pointerOnHover={false}
+        />
+      </div>
     </div>
   );
 }
