@@ -16,7 +16,7 @@
       "video app"
     ],
     "orientation": "portrait",
-    "icon": "./assets/VidBuxApp-logo.png",
+    "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
@@ -25,16 +25,13 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/VidBuxApp-logo.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/app-icon.png",
+        "backgroundColor": "#0a0a0a"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.bharatplay.app",
       "usesCleartextTraffic": true,
       "permissions": []
-    },
-    "web": {
-      "favicon": "./assets/VidBuxApp-logo.png"
     },
     "plugins": [
       [

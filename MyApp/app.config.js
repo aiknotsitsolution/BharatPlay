@@ -60,10 +60,12 @@ module.exports = {
       [
         "expo-splash-screen",
         {
-          image: "./assets/VidBuxApp-logo.png",
-          imageWidth: 250,
-          resizeMode: "contain",
           backgroundColor: "#0a0a0a",
+          android: {
+            drawable: {
+              icon: "./assets/transparent-splash.xml",
+            },
+          },
           dark: {
             backgroundColor: "#0a0a0a",
           },
