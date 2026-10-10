@@ -25,6 +25,8 @@ import LogoutWarningModal from "../components/LogoutWarningModal";
 const { width } = Dimensions.get("window");
 const API_BASE_URL = API_ORIGIN;
 const HINTS_URL = `${API_BASE_URL}/api/uservideo/search/hints`;
+const DEFAULT_AVATAR_URL =
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400";
 
 const resolveAvatarUrl = (avatar) => {
   if (!avatar) return "";
@@ -70,20 +72,6 @@ export default function Navbar({ onMenuPress, points = 0 }) {
     user?.trustTier ||
     (trustScore >= 70 ? "premium" : trustScore >= 40 ? "medium" : "restricted");
 
-  // Check login
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = await AsyncStorage.getItem("token");
-      setIsLoggedIn(Boolean(token));
-      if (token) {
-        fetchProfile(token);
-      } else {
-        redirectToLogin();
-      }
-    };
-    checkAuth();
-  }, []);
-
   const fetchProfile = useCallback(async (token) => {
     if (!token) return;
     if (profileRequestInFlight.current === token) return;
@@ -100,12 +88,8 @@ export default function Navbar({ onMenuPress, points = 0 }) {
         throw new Error("Login data was not returned");
       }
 
-      const resolvedAvatar = resolveAvatarUrl(profile.avatar);
-      console.log("[Navbar] profile loaded", {
-        userId: profile._id,
-        avatar: profile.avatar,
-        resolvedAvatar,
-      });
+      const resolvedAvatar =
+        resolveAvatarUrl(profile.avatar) || DEFAULT_AVATAR_URL;
       setUser({ ...profile, avatar: resolvedAvatar });
     } catch (err) {
       await AsyncStorage.multiRemove(["token", "user"]);
@@ -124,8 +108,13 @@ export default function Navbar({ onMenuPress, points = 0 }) {
     useCallback(() => {
       let active = true;
       AsyncStorage.getItem("token").then((token) => {
-        if (active && token) {
+        if (!active) return;
+
+        setIsLoggedIn(Boolean(token));
+        if (token) {
           fetchProfile(token);
+        } else {
+          redirectToLogin();
         }
       });
       return () => {
@@ -264,7 +253,7 @@ export default function Navbar({ onMenuPress, points = 0 }) {
                   <ActivityIndicator size="small" color="#fff" />
                 ) : user?.avatar ? (
                   <Image
-                    source={{ uri: resolveAvatarUrl(user.avatar) }}
+                    source={{ uri: user.avatar }}
                     style={styles.avatar}
                     onError={(event) =>
                       console.log("[Navbar] avatar load failed", {

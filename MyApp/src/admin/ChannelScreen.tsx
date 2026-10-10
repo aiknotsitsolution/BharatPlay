@@ -11,7 +11,6 @@ import {
   Alert,
   StyleSheet,
   Platform,
-  SafeAreaView,
   KeyboardAvoidingView,
   Dimensions,
   FlatList,
@@ -33,7 +32,10 @@ import * as DocumentPicker from "expo-document-picker";
 import { API_ORIGIN } from "../../config/api";
 import Navbar from "./Navbar";
 import { useRoute } from "@react-navigation/native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 const { width } = Dimensions.get("window");
 
 const API_BASE = `${API_ORIGIN}/api`;

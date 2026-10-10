@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   FlatList,
-  SafeAreaView,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import {
@@ -32,7 +31,10 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_ORIGIN } from "../../config/api";
 import Navbar from "./Navbar";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 // ---------- Types ----------
 type ClaimType = "takedown" | "infringement";
 
