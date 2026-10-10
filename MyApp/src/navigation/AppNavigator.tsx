@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, AppState, View } from "react-native";
+import { AppState, Image, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -92,7 +92,12 @@ export default function AppNavigator() {
           justifyContent: "center",
         }}
       >
-        <ActivityIndicator size="large" color="#ef4444" />
+        <Image
+          source={require("../../assets/VidBuxApp-logo.png")}
+          style={{ width: 250, height: 207 }}
+          resizeMode="contain"
+          accessibilityLabel="VidBuxApp"
+        />
       </View>
     );
   }

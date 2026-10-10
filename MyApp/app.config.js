@@ -57,6 +57,18 @@ module.exports = {
     plugins: [
       ...(app.expo.plugins || []),
       ...(googlePlugin ? [googlePlugin] : []),
+      [
+        "expo-splash-screen",
+        {
+          image: "./assets/VidBuxApp-logo.png",
+          imageWidth: 250,
+          resizeMode: "contain",
+          backgroundColor: "#0a0a0a",
+          dark: {
+            backgroundColor: "#0a0a0a",
+          },
+        },
+      ],
     ],
     extra: {
       ...(app.expo.extra || {}),

@@ -19,11 +19,6 @@
     "icon": "./assets/VidBuxApp-logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/VidBuxApp-logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bharatplay.MyApp"
