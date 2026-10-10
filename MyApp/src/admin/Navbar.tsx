@@ -493,6 +493,14 @@ export default function Navbar({ onMenuPress, points = 0 }) {
               <View style={styles.divider} />
 
               <MenuItem icon="❓" label="FAQ" />
+              <MenuItem
+                icon="©️"
+                label="Copyright Center"
+                onPress={() => {
+                  setIsDropdownOpen(false);
+                  navigation.navigate("Copyright");
+                }}
+              />
               <MenuItem icon="💬" label="Feedback" />
               <MenuItem icon="📞" label="Customer Support" />
               <MenuItem
