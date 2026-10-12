@@ -556,6 +556,53 @@ export default function NetflixStylePage() {
 
   const goToViewAll = (type) => navigate(`/videos/${type}`);
 
+  // Top rows show the first batch only; each section's extras stack at the
+  // bottom under its own heading, without duplicates.
+  const HOME_BATCH = 5;
+  const splitBatch = (list) => {
+    const top = list.slice(0, HOME_BATCH);
+    const shown = new Set(top.map((v) => v.id));
+    const extras = list.slice(HOME_BATCH).filter((v) => {
+      if (shown.has(v.id)) return false;
+      shown.add(v.id);
+      return true;
+    });
+    return { top, extras };
+  };
+  const recommendedParts = splitBatch(recommended);
+  const trendingParts = splitBatch(trending);
+  const shortsParts = splitBatch(shorts);
+  const latestParts = splitBatch(latest);
+  const subscriptionsParts = splitBatch(subscriptions);
+
+  const extrasBlock = (parts, title, viewAll, kind) =>
+    parts.extras.length > 0 ? (
+      <div className={kind === "shorts" ? "mb-12" : "mb-10"}>
+        <SectionHeader title={title} onClick={() => goToViewAll(viewAll)} />
+        <div
+          className={
+            kind === "shorts"
+              ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+              : "grid grid-cols-2 gap-4 xl:grid-cols-4"
+          }
+        >
+          {parts.extras.map((item) =>
+            kind === "shorts" ? (
+              <ShortCard key={item.id} item={item} onClick={handleItemClick} />
+            ) : (
+              <MovieCard
+                key={item.id}
+                item={item}
+                onClick={handleItemClick}
+                onAddToWatchLater={addToWatchLater}
+                onRemoveFromWatchLater={removeFromWatchLater}
+              />
+            ),
+          )}
+        </div>
+      </div>
+    ) : null;
+
   return (
     <div className="min-h-screen bg-black text-white">
       <style>{`
@@ -577,8 +624,8 @@ export default function NetflixStylePage() {
           <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show">
             {loading && recommended.length === 0 ? (
               <VideoCardSkeletonRow />
-            ) : recommended.length > 0 ? (
-              recommended.map((item) => (
+            ) : recommendedParts.top.length > 0 ? (
+              recommendedParts.top.map((item) => (
                 <div key={item.id} className="shrink-0 w-64 md:w-72">
                   <MovieCard
                     item={item}
@@ -607,7 +654,7 @@ export default function NetflixStylePage() {
             {loading && trending.length === 0 ? (
               <VideoCardSkeletonRow />
             ) : trending.length > 0 ? (
-              trending.map((item) => (
+              trendingParts.top.map((item) => (
                 <div key={item.id} className="shrink-0 w-64 md:w-72">
                   <MovieCard
                     item={item}
@@ -636,7 +683,7 @@ export default function NetflixStylePage() {
             {loading && shorts.length === 0 ? (
               <ShortsCardSkeletonRow />
             ) : shorts.length > 0 ? (
-              shorts.map((item) => (
+              shortsParts.top.map((item) => (
                 <div
                   key={item.id}
                   className="shrink-0 w-40 sm:w-44 md:w-48 lg:w-52 snap-start"
@@ -662,7 +709,7 @@ export default function NetflixStylePage() {
             {loading && latest.length === 0 ? (
               <VideoCardSkeletonRow />
             ) : latest.length > 0 ? (
-              latest.map((item) => (
+              latestParts.top.map((item) => (
                 <div key={item.id} className="shrink-0 w-64 md:w-72">
                   <MovieCard
                     item={item}
@@ -691,7 +738,7 @@ export default function NetflixStylePage() {
             {loading && subscriptions.length === 0 ? (
               <VideoCardSkeletonRow />
             ) : subscriptions.length > 0 ? (
-              subscriptions.map((item) => (
+              subscriptionsParts.top.map((item) => (
                 <div key={item.id} className="shrink-0 w-64 md:w-72">
                   <MovieCard
                     item={item}
@@ -719,7 +766,7 @@ export default function NetflixStylePage() {
             {loading && shorts.length === 0 ? (
               <ShortsCardSkeletonRow />
             ) : shorts.length > 0 ? (
-              shorts.map((item) => (
+              shortsParts.top.map((item) => (
                 <div
                   key={item.id}
                   className="shrink-0 w-40 sm:w-44 md:w-48 lg:w-52 snap-start"
@@ -734,6 +781,13 @@ export default function NetflixStylePage() {
             )}
           </div>
         </div>
+
+        {extrasBlock(recommendedParts, "Recommended Videos", "recommended", "video")}
+        {extrasBlock(trendingParts, "Trending Videos", "trending", "video")}
+        {extrasBlock(shortsParts, "Trending Shorts", "shorts", "shorts")}
+        {extrasBlock(latestParts, "Latest Videos", "latest", "video")}
+        {extrasBlock(subscriptionsParts, "Subscription Videos", "subscriptions", "video")}
+        {extrasBlock(shortsParts, "Top Shorts", "top-shorts", "shorts")}
 
         <div
           ref={loadMoreRef}
