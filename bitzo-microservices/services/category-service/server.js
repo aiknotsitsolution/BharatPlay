@@ -1,0 +1,166 @@
+require("dotenv").config();
+
+const dns = require("node:dns");
+dns.setServers(["8.8.8.8", "1.1.1.1", "0.0.0.0"]);
+
+require("./config/validateEnv")();
+
+const express = require("express");
+const cookieParser = require("cookie-parser");
+const cors = require("cors");
+const mongoose = require("mongoose");
+const Category = require("./models/CategoryModel/category.model");
+const morgan = require("morgan");
+const startHashtagCron = require("./cron/checkHashtags");
+const route0 = require("./routes/categoryRoute/category.route");
+
+const app = express();
+const PORT = process.env.PORT || 4004;
+const configuredOrigins = process.env.CORS_ORIGINS?.trim();
+const isProduction = process.env.NODE_ENV === "production";
+const allowedOrigins =
+  configuredOrigins?.toLowerCase() === "true" && !isProduction
+    ? true
+    : configuredOrigins
+      ? configuredOrigins.split(",").map((origin) => origin.trim()).filter(Boolean)
+      : isProduction
+        ? []
+        : true;
+
+// =====================================================
+// LOGGING
+// =====================================================
+
+startHashtagCron();
+
+morgan.token("body", (req) => {
+  try {
+    const body = { ...(req.body || {}) };
+    for (const key of [
+      "password",
+      "newPassword",
+      "oldPassword",
+      "token",
+      "resetToken",
+      "credential",
+      "registerKey",
+    ]) {
+      if (body[key] !== undefined) body[key] = "[REDACTED]";
+    }
+    return JSON.stringify(body);
+  } catch (_) {
+    return "{}";
+  }
+});
+app.use(
+  morgan(":method :url :status :res[content-length] - :response-time ms :body"),
+);
+
+// =====================================================
+// MONGODB
+// =====================================================
+if (require.main === module) {
+  mongoose
+    .connect(process.env.MONGO_URI)
+    .then(async () => {
+      console.log("✅ [category-service] MongoDB Connected");
+      if ((await Category.estimatedDocumentCount()) === 0) {
+        await Category.insertMany([
+          { name: "Gaming", slug: "gaming", isMain: true },
+          { name: "Education", slug: "education", isMain: true },
+          { name: "Entertainment", slug: "entertainment", isMain: true },
+          { name: "Music", slug: "music", isMain: true },
+          { name: "Technology", slug: "technology", isMain: true },
+          { name: "Sports", slug: "sports", isMain: true },
+          { name: "Cooking", slug: "cooking", isMain: true },
+          { name: "Travel", slug: "travel", isMain: true },
+          {
+            name: "Creative Corner",
+            slug: "creative-corner",
+            isCreativeCorner: true,
+          },
+        ]);
+        console.log("✅ [category-service] Default categories seeded");
+      }
+
+      await Category.findOneAndUpdate(
+        { $or: [{ slug: "creative-corner" }, { name: "Creative Corner" }] },
+        {
+          $set: {
+            name: "Creative Corner",
+            slug: "creative-corner",
+            isCreativeCorner: true,
+            isMain: false,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
+    })
+    .catch((err) => {
+      console.error("❌ [category-service] MongoDB Connection Error:", err);
+      process.exit(1);
+    });
+}
+
+// =====================================================
+// MIDDLEWARES
+// =====================================================
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+    ],
+    exposedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+
+// =====================================================
+// ROUTES
+// =====================================================
+app.use("/api/category", route0);
+
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    service: "category-service",
+    message: "🚀 category-service is running",
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "category-service",
+    uptime: process.uptime(),
+  });
+});
+
+// =====================================================
+// 404 + ERROR HANDLER
+// =====================================================
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: "Route not found" });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ success: false, message: "Internal Server Error" });
+});
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🌐 category-service running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
