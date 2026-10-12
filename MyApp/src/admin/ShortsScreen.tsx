@@ -32,7 +32,12 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import {
+  RouteProp,
+  useIsFocused,
+  useNavigation,
+  useRoute,
+} from "@react-navigation/native";
 
 import { API_ORIGIN, API_USERVIDEO } from "../../config/api";
 import { getViewSocket } from "../utils/viewSocket";
@@ -246,7 +251,9 @@ function ShortVideo({
   muted: boolean;
   onProgress: (currentTime: number, duration: number) => void;
 }) {
+  const navigation = useNavigation<any>();
   const [paused, setPaused] = useState(false);
+  const sourceRef = useRef(item.videoUrl);
 
   const player = useVideoPlayer(item.videoUrl, (videoPlayer) => {
     videoPlayer.loop = true;
@@ -256,26 +263,55 @@ function ShortVideo({
   });
 
   useEffect(() => {
-    if (!item.videoUrl) return;
-    try {
-      player.replace(item.videoUrl);
-    } catch (error) {
-      console.warn("Short video source error:", error);
-    }
+    const pauseIfActive = () => {
+      if (!isActive) return;
+
+      try {
+        player.pause();
+        player.muted = true;
+      } catch (error) {
+        console.warn("Short video pause on navigation error:", error);
+      }
+    };
+
+    const removeBlurListener = navigation.addListener("blur", pauseIfActive);
+    const removeBeforeRemoveListener = navigation.addListener(
+      "beforeRemove",
+      pauseIfActive,
+    );
+
+    return () => {
+      removeBlurListener();
+      removeBeforeRemoveListener();
+    };
+  }, [isActive, navigation, player]);
+
+  useEffect(() => {
+    if (!item.videoUrl || sourceRef.current === item.videoUrl) return;
+    sourceRef.current = item.videoUrl;
+    let isCurrentSource = true;
+    player.replaceAsync(item.videoUrl).catch((error) => {
+      if (isCurrentSource) {
+        console.warn("Short video source error:", error);
+      }
+    });
+
+    return () => {
+      isCurrentSource = false;
+    };
   }, [item.videoUrl, player]);
 
   /* -------------------------------------------------------
      PLAY / PAUSE
   ------------------------------------------------------- */
-
   useEffect(() => {
     try {
-      player.muted = muted;
-
       if (isActive && !paused) {
+        player.muted = muted;
         player.play();
       } else {
         player.pause();
+        if (!isActive) player.muted = true;
       }
     } catch (error) {
       console.warn("Video play/pause error:", error);
@@ -380,6 +416,7 @@ function CommentAvatar({ comment }: { comment: ShortComment }) {
 export default function ShortsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<ShortsRouteParams, "Shorts">>();
+  const isFocused = useIsFocused();
 
   const selectedVideo = route?.params?.video;
 
@@ -1071,10 +1108,10 @@ export default function ShortsScreen() {
 
           <ShortVideo
             item={item}
-            isActive={isActive}
+            isActive={isFocused && isActive}
             muted={muted}
             onProgress={(currentTime, duration) => {
-              if (isActive) {
+              if (isFocused && isActive) {
                 trackView(item, currentTime, duration);
               }
             }}
