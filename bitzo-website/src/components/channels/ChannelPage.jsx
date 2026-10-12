@@ -9,6 +9,7 @@ import {
   Play,
   Users,
   Search,
+  Loader2,
 } from "lucide-react";
 import { API_BASE, API_ORIGIN } from "../../config/api";
 import { authFetch } from "../../utils/session";
@@ -90,6 +91,7 @@ export default function ChannelPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   // Video player modal
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
@@ -441,6 +443,7 @@ export default function ChannelPage() {
 
     try {
       setCreateError("");
+      setCreating(true);
 
       const formData = new FormData();
       formData.append("name", newChannel.name.trim());
@@ -505,6 +508,8 @@ export default function ChannelPage() {
     } catch (error) {
       console.error("Channel creation error:", error);
       setCreateError(error.message || "Failed to create channel.");
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -1148,9 +1153,11 @@ export default function ChannelPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-full text-sm transition"
+                  disabled={creating}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-full text-sm transition flex items-center justify-center gap-2"
                 >
-                  Create channel
+                  {creating && <Loader2 size={15} className="animate-spin" />}
+                  {creating ? "Creating..." : "Create channel"}
                 </button>
               </div>
             </form>
