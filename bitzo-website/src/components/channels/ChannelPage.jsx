@@ -33,6 +33,18 @@ const isCreativeCornerCategory = (cat) =>
   cat?.slug === "creative-corner" ||
   cat?.name?.toLowerCase() === "creative corner";
 
+const isShortVideo = (video) => {
+  const rawTypes = video?.videoType ?? video?.raw?.videoType ?? [];
+  const types = (Array.isArray(rawTypes) ? rawTypes : [rawTypes])
+    .filter(Boolean)
+    .map((type) => String(type).toLowerCase());
+
+  return (
+    Boolean(video?.isShort) ||
+    types.some((type) => type === "short" || type === "shorts")
+  );
+};
+
 // Static fallback categories
 const STATIC_CATEGORIES = [
   { _id: "1", name: "Gaming" },
@@ -54,6 +66,7 @@ export default function ChannelPage() {
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Videos");
+  const [videoTypeFilter, setVideoTypeFilter] = useState("all");
   const [loading, setLoading] = useState(true);
 
   // Subscription State
@@ -673,6 +686,20 @@ export default function ChannelPage() {
       return;
     }
 
+    if (isShortVideo(video)) {
+      navigate(`/shorts/${videoId}`, {
+        state: {
+          video: {
+            ...video,
+            id: videoId,
+            videoUrl: video.videoUrl || video.videofile || video.url || "",
+            thumbnail: video.thumbnail || video.thumb || "",
+          },
+        },
+      });
+      return;
+    }
+
     navigate(`/video/${videoId}`, {
       state: {
         video: {
@@ -712,6 +739,15 @@ export default function ChannelPage() {
   const displayCategories = categories.filter(
     (cat) => isValidObjectId(cat._id) || isCreativeCornerCategory(cat),
   );
+  const channelVideos = currentChannel.videos || [];
+  const filteredChannelVideos =
+    videoTypeFilter === "all"
+      ? channelVideos
+      : channelVideos.filter((video) =>
+          videoTypeFilter === "short"
+            ? isShortVideo(video)
+            : !isShortVideo(video),
+        );
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-white pb-20">
@@ -867,46 +903,82 @@ export default function ChannelPage() {
       {/* Tab Content */}
       <div className="px-6 md:px-12 lg:px-24 py-10">
         {activeTab === "Videos" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 md:gap-6">
-            {currentChannel.videos?.length > 0 ? (
-              currentChannel.videos.map((video) => (
-                <div
-                  key={video._id}
-                  className="cursor-pointer group"
-                  onClick={() => handlePlayVideo(video)}
+          <div>
+            <div
+              className="mb-6 flex flex-wrap items-center gap-2"
+              role="group"
+              aria-label="Filter channel videos by type"
+            >
+              {[
+                { value: "all", label: `All (${channelVideos.length})` },
+                {
+                  value: "long",
+                  label: `Videos (${channelVideos.filter((video) => !isShortVideo(video)).length})`,
+                },
+                {
+                  value: "short",
+                  label: `Shorts (${channelVideos.filter(isShortVideo).length})`,
+                },
+              ].map((filter) => (
+                <button
+                  key={filter.value}
+                  type="button"
+                  onClick={() => setVideoTypeFilter(filter.value)}
+                  aria-pressed={videoTypeFilter === filter.value}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                    videoTypeFilter === filter.value
+                      ? "bg-white text-black"
+                      : "bg-[#272727] text-gray-300 hover:bg-[#3a3a3a] hover:text-white"
+                  }`}
                 >
-                  <div className="relative rounded-xl overflow-hidden bg-black aspect-video shadow-lg">
-                    <img
-                      src={getThumbnailUrl(video.thumbnail)}
-                      alt={video.title || video.name}
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center">
-                        <Play
-                          size={28}
-                          fill="white"
-                          className="text-white ml-1"
-                        />
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 md:gap-6">
+              {filteredChannelVideos.length > 0 ? (
+                filteredChannelVideos.map((video) => (
+                  <div
+                    key={video._id}
+                    className="cursor-pointer group"
+                    onClick={() => handlePlayVideo(video)}
+                  >
+                    <div className="relative rounded-xl overflow-hidden bg-black aspect-video shadow-lg">
+                      <img
+                        src={getThumbnailUrl(video.thumbnail)}
+                        alt={video.title || video.name}
+                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center">
+                          <Play
+                            size={28}
+                            fill="white"
+                            className="text-white ml-1"
+                          />
+                        </div>
                       </div>
                     </div>
+                    <div className="mt-3">
+                      <h3 className="font-medium line-clamp-2 group-hover:text-blue-400 transition-colors">
+                        {video.title || video.name}
+                      </h3>
+                      <p className="text-sm text-gray-400 mt-1.5">
+                        {video.views?.toLocaleString() || 0} views •{" "}
+                        {video.uploaded || "recent"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-3">
-                    <h3 className="font-medium line-clamp-2 group-hover:text-blue-400 transition-colors">
-                      {video.title || video.name}
-                    </h3>
-                    <p className="text-sm text-gray-400 mt-1.5">
-                      {video.views?.toLocaleString() || 0} views •{" "}
-                      {video.uploaded || "recent"}
-                    </p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-center text-gray-400 py-10 col-span-full">
-                No videos yet
-              </p>
-            )}
+                ))
+              ) : (
+                <p className="text-center text-gray-400 py-10 col-span-full">
+                  {channelVideos.length === 0
+                    ? "No videos yet"
+                    : `No ${videoTypeFilter === "short" ? "Shorts" : "long videos"} yet`}
+                </p>
+              )}
+            </div>
           </div>
         )}
 
