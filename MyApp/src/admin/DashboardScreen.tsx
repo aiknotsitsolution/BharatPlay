@@ -38,6 +38,7 @@ const SHORT_HEIGHT = SHORT_WIDTH * (16 / 9);
 const BACKEND_URL = API_ORIGIN;
 const API_BASE = `${BACKEND_URL}/api/uservideo`;
 const FEED_PAGE_SIZE = 8;
+const TRENDING_HOME_LIMIT = 5;
 
 function AutoplayPreview({ uri, style }) {
   const player = useVideoPlayer(uri, (instance) => {
@@ -357,11 +358,13 @@ export default function NetflixStylePage() {
             limit: FEED_PAGE_SIZE,
             category: selectedCategoryId || undefined,
           }),
-          fetchWithAuth("trending", {
-            page,
-            limit: FEED_PAGE_SIZE,
-            category: selectedCategoryId || undefined,
-          }),
+          append
+            ? Promise.resolve({ videos: [] })
+            : fetchWithAuth("trending", {
+                page: 1,
+                limit: TRENDING_HOME_LIMIT,
+                category: selectedCategoryId || undefined,
+              }),
           fetchWithAuth("latest", {
             page,
             limit: FEED_PAGE_SIZE,
@@ -395,23 +398,50 @@ export default function NetflixStylePage() {
           setShorts(sh);
         }
 
-        // YouTube-style mixed algorithmic feed
-        // Priority: Recommended → Trending → Latest (interleaved)
-        const mixed = [];
-        const maxLen = Math.max(rec.length, tren.length, lat.length);
-
-        for (let i = 0; i < maxLen; i++) {
-          if (rec[i]) mixed.push({ ...rec[i], feedType: "recommended" });
-          if (tren[i]) mixed.push({ ...tren[i], feedType: "trending" });
-          if (lat[i]) mixed.push({ ...lat[i], feedType: "latest" });
-        }
+        const mixed = [
+          ...rec.map((item) => ({ ...item, feedType: "recommended" })),
+          ...(!append && tren.length
+            ? [
+                {
+                  id: "trending-feed-heading",
+                  isFeedSectionHeader: true,
+                  title: "Trending Videos",
+                  feedType: "trending-header",
+                },
+              ]
+            : []),
+          ...tren.map((item) => ({ ...item, feedType: "trending" })),
+          ...(!append
+            ? [
+                {
+                  id: "latest-feed-heading",
+                  isFeedSectionHeader: true,
+                  title: "Latest Videos",
+                  feedType: "latest-header",
+                  sectionType: "latest",
+                },
+                ...(lat.length
+                  ? []
+                  : [
+                      {
+                        id: "latest-feed-empty",
+                        isFeedEmptyMessage: true,
+                        title: "No latest videos available right now.",
+                        feedType: "latest-empty",
+                      },
+                    ]),
+              ]
+            : []),
+          ...lat.map((item) => ({ ...item, feedType: "latest" })),
+        ];
 
         // Remove duplicates by id
         const unique = [];
         const seen = new Set();
         for (const item of mixed) {
-          if (!seen.has(item.id)) {
-            seen.add(item.id);
+          const itemKey = `${item.feedType}:${item.id}`;
+          if (!seen.has(itemKey)) {
+            seen.add(itemKey);
             unique.push(item);
           }
         }
@@ -419,15 +449,19 @@ export default function NetflixStylePage() {
         setMixedFeed((current) => {
           if (!append) return unique;
 
-          const existingIds = new Set(current.map((item) => item.id));
+          const existingIds = new Set(
+            current.map((item) => `${item.feedType}:${item.id}`),
+          );
           return [
             ...current,
-            ...unique.filter((item) => !existingIds.has(item.id)),
+            ...unique.filter(
+              (item) => !existingIds.has(`${item.feedType}:${item.id}`),
+            ),
           ];
         });
         nextPageRef.current = page;
           setHasMore(
-            [recommendedData, trendingData, latestData].some((payload) => {
+            [recommendedData, latestData].some((payload) => {
               const count = getArrayFromPayload(payload).length;
               return (
                 count >= FEED_PAGE_SIZE ||
@@ -699,6 +733,23 @@ export default function NetflixStylePage() {
 
   // ──── YouTube-style Vertical Mixed Feed Card (with autoplay) ────
   const renderVerticalFeedItem = ({ item }) => {
+    if (item.isFeedEmptyMessage) {
+      return <Text style={styles.emptyText}>{item.title}</Text>;
+    }
+
+    if (item.isFeedSectionHeader) {
+      return (
+        <View style={styles.feedSectionHeader}>
+          <SectionHeader
+            title={item.title}
+            onPress={() =>
+              handleSectionPress(item.sectionType || "trending")
+            }
+          />
+        </View>
+      );
+    }
+
     const isActive =
       isFocused && activeVideoId === item.id && !!item.videoUrl;
     const progress = Math.min(100, Math.max(0, item.watchedPercent || 0));
@@ -812,21 +863,7 @@ export default function NetflixStylePage() {
                 </Text>
               </TouchableOpacity>
             )}
-            {renderHorizontalSection(
-              "Trending Videos",
-              trending,
-              "No trending videos available right now.",
-              "trending",
-              true,
-            )}
             {renderShortsGrid("Trending Shorts")}
-            {renderHorizontalSection(
-              "Latest Videos",
-              latest,
-              "No latest videos available right now.",
-              "latest",
-              true,
-            )}
             {renderHorizontalSection(
               "From Your Subscriptions",
               subscriptions,
@@ -864,6 +901,10 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 28,
+  },
+  feedSectionHeader: {
+    marginTop: 12,
+    marginBottom: 4,
   },
   sectionHeader: {
     flexDirection: "row",
