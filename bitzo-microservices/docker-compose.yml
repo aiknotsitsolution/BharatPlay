@@ -45,7 +45,7 @@ services:
       COPYRIGHT_SERVICE_URL: http://copyright-service:4008
       SECURITY_SERVICE_URL: http://security-service:4009
     ports:
-      - "127.0.0.1:4000:4000"
+      - "${GATEWAY_BIND_ADDRESS:-127.0.0.1}:4000:4000"
     depends_on:
       auth-service:
         condition: service_healthy

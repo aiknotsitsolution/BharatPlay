@@ -166,6 +166,20 @@ TLS-terminating reverse proxy on the host and point the frontend to that HTTPS
 domain. Configure the MongoDB provider's network allowlist for the host and
 keep database backups enabled.
 
+For local Android/iOS testing on a physical device, the Expo app discovers the
+Metro host and uses port `4000`. Keep the phone and development computer on the
+same network, allow inbound TCP port `4000` in the computer's firewall, and
+start Compose with the gateway bound to the LAN interfaces:
+
+```powershell
+$env:GATEWAY_BIND_ADDRESS = "0.0.0.0"
+docker compose up --build -d
+```
+
+Unset `GATEWAY_BIND_ADDRESS` when LAN access is not needed; the default bind is
+loopback-only. For production app builds, set
+`EXPO_PUBLIC_API_BASE_URL` to the deployed HTTPS API origin.
+
 ```bash
 docker compose config --quiet
 docker compose up --build -d

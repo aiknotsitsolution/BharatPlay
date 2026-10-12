@@ -74,6 +74,8 @@ module.exports = {
     ],
     extra: {
       ...(app.expo.extra || {}),
+      apiBaseUrl: getEnv("API_BASE_URL"),
+      apiSocketBaseUrl: getEnv("API_SOCKET_BASE_URL"),
       google: {
         webClientId: googleWebClientId,
         androidClientId: googleAndroidClientId,
