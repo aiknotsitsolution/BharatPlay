@@ -74,6 +74,29 @@ const withVisibleVideoFilter = async (filter = {}) => {
   };
 };
 
+const withUnwatchedVideoFilter = async (req, filter = {}) => {
+  const visibleFilter = await withVisibleVideoFilter(filter);
+  if (req.query.excludeWatched !== "true") return visibleFilter;
+
+  const userId = req.user?.id || req.user?.userId || req.user?._id;
+  if (!userId) return visibleFilter;
+
+  const [user, sessionVideoIds] = await Promise.all([
+    User.findById(userId).select("viewedVideos").lean(),
+    WatchSession.distinct("videoId", { userId }),
+  ]);
+  const watchedVideoIds = [
+    ...new Set([
+      ...(user?.viewedVideos || []).map((id) => id.toString()),
+      ...sessionVideoIds.map((id) => id.toString()),
+    ]),
+  ];
+
+  return {
+    $and: [visibleFilter, { _id: { $nin: watchedVideoIds } }],
+  };
+};
+
 const withVisibleChannelFilter = async (filter = {}) => {
   const { userIds } = await getRestrictedContentIds();
   return {
@@ -1162,8 +1185,51 @@ const recommendedVideos = async (req, res) => {
     const category = getCategoryFilter(req);
     const { page, limit, skip } = getPagination(req);
 
-    const filter = await withVisibleVideoFilter({ videoType: "long" });
+    const filter = await withUnwatchedVideoFilter(req, { videoType: "long" });
     if (category) filter.category = category;
+
+    if (req.query.includeShorts === "true") {
+      const shortFilter = await withUnwatchedVideoFilter(req, {
+        videoType: "short",
+      });
+      if (category) shortFilter.category = category;
+
+      const perTypeLimit = Math.max(Math.floor(limit / 2), 1);
+      const [longVideos, shorts, longTotal, shortTotal] = await Promise.all([
+        Video.find(filter)
+          .sort({ createdAt: -1 })
+          .skip((page - 1) * perTypeLimit)
+          .limit(perTypeLimit)
+          .populate("channel", "name channelImage")
+          .populate({ path: "uploadedBy", select: "name avatar", model: User }),
+        Video.find(shortFilter)
+          .sort({ views: -1, createdAt: -1 })
+          .skip((page - 1) * perTypeLimit)
+          .limit(perTypeLimit)
+          .populate("channel", "name channelImage")
+          .populate({ path: "uploadedBy", select: "name avatar", model: User }),
+        Video.countDocuments(filter),
+        Video.countDocuments(shortFilter),
+      ]);
+
+      const videos = [];
+      const maxLength = Math.max(longVideos.length, shorts.length);
+      for (let index = 0; index < maxLength; index += 1) {
+        if (longVideos[index]) videos.push(longVideos[index]);
+        if (shorts[index]) videos.push(shorts[index]);
+      }
+
+      return res.status(200).json({
+        success: true,
+        videos,
+        page,
+        limit,
+        total: longTotal + shortTotal,
+        hasMore:
+          longTotal > page * perTypeLimit ||
+          shortTotal > page * perTypeLimit,
+      });
+    }
 
     const videos = await Video.find(filter)
       .sort({ createdAt: -1 })
@@ -1291,7 +1357,7 @@ const getRelatedVideos = async (req, res) => {
 
 const trendingVideos = async (req, res) => {
   try {
-    const filter = await withVisibleVideoFilter({ videoType: "long" });
+    const filter = await withUnwatchedVideoFilter(req, { videoType: "long" });
     const category = getCategoryFilter(req);
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
@@ -1323,7 +1389,7 @@ const trendingVideos = async (req, res) => {
 
 const LatestVideos = async (req, res) => {
   try {
-    const filter = await withVisibleVideoFilter({ videoType: "long" });
+    const filter = await withUnwatchedVideoFilter(req, { videoType: "long" });
     const category = getCategoryFilter(req);
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
@@ -1355,7 +1421,7 @@ const LatestVideos = async (req, res) => {
 
 const trendingShorts = async (req, res) => {
   try {
-    const filter = await withVisibleVideoFilter({ videoType: "short" });
+    const filter = await withUnwatchedVideoFilter(req, { videoType: "short" });
     const category = getCategoryFilter(req);
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
@@ -1424,7 +1490,7 @@ const trendingShorts = async (req, res) => {
 
 const topShorts = async (req, res) => {
   try {
-    const filter = await withVisibleVideoFilter({ videoType: "short" });
+    const filter = await withUnwatchedVideoFilter(req, { videoType: "short" });
     const category = getCategoryFilter(req);
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
@@ -2305,7 +2371,7 @@ const getSubscribedVideos = async (req, res) => {
       .filter((id) => mongoose.Types.ObjectId.isValid(id))
       .map((id) => new mongoose.Types.ObjectId(id));
 
-    const filter = await withVisibleVideoFilter({
+    const filter = await withUnwatchedVideoFilter(req, {
       channel: { $in: channelObjectIds },
     });
     const category = getCategoryFilter(req);

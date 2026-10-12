@@ -1265,7 +1265,7 @@
 //     fontWeight: "600",
 //   },
 // });
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -1280,8 +1280,6 @@ import {
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import {
-  ChevronLeft,
-  ChevronRight,
   ArrowLeft,
   Home,
   Play,
@@ -1532,32 +1530,66 @@ export default function ViewAll() {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  const [loadMoreError, setLoadMoreError] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [pageRequest, setPageRequest] = useState(0);
+  const loadingMoreRef = useRef(false);
 
   const [selectedTopic, setSelectedTopic] = useState("For you");
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
-
-  const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
+  const previousTypeRef = useRef(type);
 
   useEffect(() => {
+    if (previousTypeRef.current !== type) {
+      previousTypeRef.current = type;
+      setItems([]);
+      setTotal(0);
+      setHasMore(true);
+      setError(null);
+      setLoadMoreError(null);
+      if (page === 1) {
+        setPageRequest((request) => request + 1);
+      } else {
+        setPage(1);
+      }
+      return;
+    }
     if (!section) return;
 
     let active = true;
 
     const fetchData = async () => {
       try {
-        setLoading(true);
-        setError(null);
+        const append = page > 1;
+        if (append) {
+          setLoadingMore(true);
+          setLoadMoreError(null);
+        } else {
+          setLoading(true);
+          setError(null);
+        }
 
         const token = await AsyncStorage.getItem("token");
         if (!token) {
-          setError("Please login to view videos.");
-          setLoading(false);
-          return;
+          throw new Error("Please login to view videos.");
+        }
+
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(PAGE_SIZE),
+          excludeWatched: "true",
+        });
+        if (type === "recommended") {
+          params.set("includeShorts", "true");
+        }
+        if (selectedCategoryId) {
+          params.set("category", String(selectedCategoryId));
         }
 
         const res = await fetch(
-          `${API_BASE}/${section.endpoint}?page=${page}&limit=${PAGE_SIZE}`,
+          `${API_BASE}/${section.endpoint}?${params.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           },
@@ -1583,15 +1615,51 @@ export default function ViewAll() {
               ? data
               : [];
 
-        setItems(list.map(section.normalize));
+        const normalized = list.map((video) => {
+          if (type !== "recommended") return section.normalize(video);
+          const rawTypes = Array.isArray(video.videoType)
+            ? video.videoType
+            : [video.videoType];
+          const isShort = rawTypes.some((videoType) =>
+            String(videoType || "")
+              .toLowerCase()
+              .includes("short"),
+          );
+          return isShort ? normalizeShort(video) : normalizeVideoListItem(video);
+        });
+        setItems((current) => {
+          if (page === 1) return normalized;
+          const existingIds = new Set(current.map((item) => String(item.id)));
+          return [
+            ...current,
+            ...normalized.filter(
+              (item) => !existingIds.has(String(item.id)),
+            ),
+          ];
+        });
         setTotal(Number(data.total) || list.length);
+        setHasMore(
+          typeof data.hasMore === "boolean"
+            ? data.hasMore
+            : Number(data.total) > page * PAGE_SIZE ||
+                list.length >= PAGE_SIZE,
+        );
       } catch (err) {
         if (active) {
-          setError(err.message || "Failed to load videos.");
-          setItems([]);
+          const message = err.message || "Failed to load videos.";
+          if (page > 1) {
+            setLoadMoreError(message);
+          } else {
+            setError(message);
+            setItems([]);
+          }
         }
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+          setLoadingMore(false);
+          loadingMoreRef.current = false;
+        }
       }
     };
 
@@ -1600,7 +1668,28 @@ export default function ViewAll() {
     return () => {
       active = false;
     };
-  }, [type, page, section]);
+  }, [type, page, pageRequest, section, selectedCategoryId]);
+
+  const loadNextPage = () => {
+    if (
+      !hasMore ||
+      loading ||
+      loadingMoreRef.current ||
+      loadMoreError
+    ) {
+      return;
+    }
+    loadingMoreRef.current = true;
+    setPage((currentPage) => currentPage + 1);
+  };
+
+  const retryLoadingMore = () => {
+    if (loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadMoreError(null);
+    setLoadingMore(true);
+    setPageRequest((request) => request + 1);
+  };
 
   const handleItemClick = (item) => {
     if (section?.isShort) {
@@ -1646,8 +1735,16 @@ export default function ViewAll() {
 
       <TopicChips
         onTopicChange={(topic, categoryId) => {
+          const nextCategoryId = categoryId || null;
           setSelectedTopic(topic);
-          setSelectedCategoryId(categoryId || null);
+          if (nextCategoryId === selectedCategoryId) return;
+          setSelectedCategoryId(nextCategoryId);
+          setItems([]);
+          setTotal(0);
+          setPage(1);
+          setHasMore(true);
+          setError(null);
+          setLoadMoreError(null);
         }}
       />
 
@@ -1700,6 +1797,29 @@ export default function ViewAll() {
             ]}
             columnWrapperStyle={styles.columnWrapper}
             showsVerticalScrollIndicator={false}
+            onEndReached={loadNextPage}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              <View
+                style={{
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  paddingBottom: TAB_BAR_HEIGHT + 24,
+                }}
+              >
+                {loadingMore && <ActivityIndicator color="#FF0000" />}
+                {loadMoreError && (
+                  <TouchableOpacity onPress={retryLoadingMore}>
+                    <Text style={styles.errorText}>
+                      {loadMoreError} Tap to retry.
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {!hasMore && items.length > 0 && (
+                  <Text style={styles.pageInfo}>You&apos;re all caught up.</Text>
+                )}
+              </View>
+            }
             renderItem={({ item }) =>
               section.isShort ? (
                 <ShortCard item={item} onPress={handleItemClick} />
@@ -1708,51 +1828,6 @@ export default function ViewAll() {
               )
             }
           />
-
-          {/* Pagination */}
-          <View style={[styles.pagination, { marginBottom: TAB_BAR_HEIGHT }]}>
-            <TouchableOpacity
-              style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}
-              onPress={() => setPage((p) => Math.max(p - 1, 1))}
-              disabled={page <= 1}
-            >
-              <ChevronLeft size={16} color={page <= 1 ? "#555" : "#fff"} />
-              <Text
-                style={[
-                  styles.pageBtnText,
-                  page <= 1 && styles.pageBtnTextDisabled,
-                ]}
-              >
-                Previous
-              </Text>
-            </TouchableOpacity>
-
-            <Text style={styles.pageInfo}>
-              Page {page} of {totalPages}
-            </Text>
-
-            <TouchableOpacity
-              style={[
-                styles.pageBtn,
-                page >= totalPages && styles.pageBtnDisabled,
-              ]}
-              onPress={() => setPage((p) => Math.min(p + 1, totalPages))}
-              disabled={page >= totalPages}
-            >
-              <Text
-                style={[
-                  styles.pageBtnText,
-                  page >= totalPages && styles.pageBtnTextDisabled,
-                ]}
-              >
-                Next
-              </Text>
-              <ChevronRight
-                size={16}
-                color={page >= totalPages ? "#555" : "#fff"}
-              />
-            </TouchableOpacity>
-          </View>
         </>
       )}
 

@@ -12,7 +12,7 @@ import {
   RefreshControl,
   FlatList,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { ChevronRight, Play, Plus, Check } from "lucide-react-native";
 import Toast from "react-native-toast-message";
@@ -158,11 +158,18 @@ const fetchWithAuth = async (endpoint, params = {}) => {
         headers,
       },
     );
-    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(`${endpoint} request failed (${res.status})`);
+    }
+
+    const data = await res.json();
+    if (data?.success === false) {
+      throw new Error(data.message || `${endpoint} request failed`);
+    }
     return data;
   } catch (e) {
     console.warn(`Fetch error (${endpoint}):`, e);
-    return { videos: [] };
+    throw e;
   }
 };
 
@@ -269,6 +276,7 @@ function MovieCard({ item, onPress, onAddToWatchLater, twoColumn = false }) {
 // ────────────────────────────────────────────────
 export default function NetflixStylePage() {
   const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
 
   const [recommended, setRecommended] = useState([]);
   const [trending, setTrending] = useState([]);
@@ -281,6 +289,7 @@ export default function NetflixStylePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [feedLoadError, setFeedLoadError] = useState("");
 
   // Mixed feed for YouTube-like continuous scroll
   const [mixedFeed, setMixedFeed] = useState([]);
@@ -314,7 +323,12 @@ export default function NetflixStylePage() {
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems && viewableItems.length > 0) {
       // Pick the most visible item
-      const mostVisible = viewableItems[0];
+      const mostVisible = viewableItems.reduce((mostVisibleItem, item) =>
+        (item?.percentVisible ?? 0) >
+        (mostVisibleItem?.percentVisible ?? 0)
+          ? item
+          : mostVisibleItem,
+      );
       const item = mostVisible?.item;
 
       if (item?.id && !isShortContent(item) && item.videoUrl) {
@@ -330,6 +344,7 @@ export default function NetflixStylePage() {
   const loadHomeData = useCallback(
     async (page = 1, append = false) => {
       try {
+        setFeedLoadError("");
         const [
           recommendedData,
           trendingData,
@@ -411,13 +426,20 @@ export default function NetflixStylePage() {
           ];
         });
         nextPageRef.current = page;
-        setHasMore(
-          [recommendedData, trendingData, latestData].some(
-            (payload) => getArrayFromPayload(payload).length === FEED_PAGE_SIZE,
-          ),
-        );
+          setHasMore(
+            [recommendedData, trendingData, latestData].some((payload) => {
+              const count = getArrayFromPayload(payload).length;
+              return (
+                count >= FEED_PAGE_SIZE ||
+                Number(payload?.total) > page * FEED_PAGE_SIZE
+              );
+            }),
+          );
       } catch (error) {
         console.warn("Home videos load error:", error);
+        setFeedLoadError(
+          error instanceof Error ? error.message : "Could not load videos.",
+        );
       }
     },
     [selectedCategoryId],
@@ -482,25 +504,41 @@ export default function NetflixStylePage() {
     nextPageRef.current = 1;
     setHasMore(true);
     setActiveVideoId(null); // stop any playing preview
-    await loadHomeData();
-    setRefreshing(false);
+    try {
+      await loadHomeData();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  const loadMoreFeed = async () => {
+  const loadMoreFeed = async (retry = false) => {
     if (
       loading ||
       loadingMoreRef.current ||
       !hasMore ||
-      mixedFeed.length === 0
+      mixedFeed.length === 0 ||
+      (feedLoadError && !retry)
     ) {
       return;
     }
 
     loadingMoreRef.current = true;
     setLoadingMore(true);
-    await loadHomeData(nextPageRef.current + 1, true);
-    loadingMoreRef.current = false;
-    setLoadingMore(false);
+    try {
+      await loadHomeData(nextPageRef.current + 1, true);
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  };
+
+  const retryHomeFeed = async () => {
+    setLoading(true);
+    try {
+      await loadHomeData(1, false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleItemClick = (item) => {
@@ -661,7 +699,8 @@ export default function NetflixStylePage() {
 
   // ──── YouTube-style Vertical Mixed Feed Card (with autoplay) ────
   const renderVerticalFeedItem = ({ item }) => {
-    const isActive = activeVideoId === item.id && !!item.videoUrl;
+    const isActive =
+      isFocused && activeVideoId === item.id && !!item.videoUrl;
     const progress = Math.min(100, Math.max(0, item.watchedPercent || 0));
 
     return (
@@ -729,7 +768,7 @@ export default function NetflixStylePage() {
         renderItem={renderVerticalFeedItem}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        onEndReached={loadMoreFeed}
+        onEndReached={() => loadMoreFeed()}
         onEndReachedThreshold={0.6}
         // YouTube-style autoplay when scroll stops
         onViewableItemsChanged={onViewableItemsChanged}
@@ -744,9 +783,17 @@ export default function NetflixStylePage() {
               <ActivityIndicator color="#fff" style={{ marginVertical: 24 }} />
             )}
             {!loading && mixedFeed.length === 0 && (
-              <Text style={styles.emptyText}>
-                No recommendations available right now.
-              </Text>
+              feedLoadError ? (
+                <TouchableOpacity onPress={retryHomeFeed}>
+                  <Text style={styles.emptyText}>
+                    {feedLoadError} Tap to retry.
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.emptyText}>
+                  No recommendations available right now.
+                </Text>
+              )
             )}
           </View>
         }
@@ -754,6 +801,16 @@ export default function NetflixStylePage() {
           <>
             {loadingMore && (
               <ActivityIndicator color="#fff" style={styles.loadingMore} />
+            )}
+            {feedLoadError && mixedFeed.length > 0 && (
+              <TouchableOpacity
+                onPress={() => loadMoreFeed(true)}
+                style={{ alignItems: "center", padding: 16 }}
+              >
+                <Text style={styles.emptyText}>
+                  {feedLoadError} Tap to retry.
+                </Text>
+              </TouchableOpacity>
             )}
             {renderHorizontalSection(
               "Trending Videos",
