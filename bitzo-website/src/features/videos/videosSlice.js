@@ -65,6 +65,31 @@ const getVideosArray = (payload) => {
 
 let homeFetchRequestId = 0;
 
+// The home feed loops the same six sections over and over. Each section pulls
+// its videos from one shared "buffer"; the newest page is appended and the UI
+// hands out rows of 5, never repeating a video anywhere in the feed.
+export const HOME_SECTIONS = [
+  "recommended",
+  "trending",
+  "latest",
+  "subscriptions",
+  "shorts",
+];
+
+const HOME_SECTION_ENDPOINTS = {
+  recommended: "recommended",
+  trending: "trending",
+  latest: "latest",
+  subscriptions: "subscriptions",
+  shorts: "trending-shorts",
+};
+
+const makeSectionMap = (value) =>
+  HOME_SECTIONS.reduce((acc, section) => {
+    acc[section] = typeof value === "function" ? value(section) : value;
+    return acc;
+  }, {});
+
 export const fetchHomeVideos = createAsyncThunk(
   "videos/fetchHomeVideos",
   async ({ category, page = 1, limit = 5 } = {}, { rejectWithValue }) => {
@@ -147,6 +172,53 @@ export const fetchHomeVideos = createAsyncThunk(
       };
     } catch (error) {
       return rejectWithValue(error.message || "Failed to load videos");
+    }
+  },
+);
+
+// Fetches the next page of a single home section (used to fill partially
+// consumed rows and to grow the feed with fresh loop rows while scrolling).
+export const fetchNextHomeSection = createAsyncThunk(
+  "videos/fetchNextHomeSection",
+  async ({ section, limit = 5 } = {}, { getState, rejectWithValue }) => {
+    const endpoint = HOME_SECTION_ENDPOINTS[section];
+    if (!endpoint) return rejectWithValue(`Unknown home section: ${section}`);
+
+    const token = localStorage.getItem("token");
+    if (!token) return rejectWithValue("Please login first");
+
+    const videosState = getState().videos;
+    const page = (videosState.sectionPages[section] || 0) + 1;
+    const category = videosState.selectedCategory;
+
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    if (category) params.set("category", category);
+
+    try {
+      const res = await fetch(`${API_BASE}/${endpoint}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({ videos: [] }));
+      if (!res.ok) {
+        return rejectWithValue(data.message || `Failed to load ${section}`);
+      }
+
+      const normalize =
+        section === "shorts" ? normalizeShort : normalizeVideoListItem;
+      const list = getVideosArray(data);
+      return {
+        section,
+        page,
+        limit,
+        category,
+        items: list.map(normalize),
+        total: Number(data?.total) || 0,
+      };
+    } catch (error) {
+      return rejectWithValue(error.message || `Failed to load ${section}`);
     }
   },
 );
@@ -237,6 +309,9 @@ const initialState = {
   shorts: [],
   homePage: 0,
   homeHasMore: true,
+  sectionPages: makeSectionMap(0),
+  sectionHasMore: makeSectionMap(false),
+  sectionFetching: makeSectionMap(false),
   myVideos: [],
   selectedCategory: null,
   loading: false,
@@ -275,6 +350,9 @@ const videosSlice = createSlice({
       state.shorts = [];
       state.homePage = 0;
       state.homeHasMore = true;
+      state.sectionPages = makeSectionMap(0);
+      state.sectionHasMore = makeSectionMap(false);
+      state.sectionFetching = makeSectionMap(false);
       state.loading = true;
       state.error = null;
     },
@@ -311,10 +389,49 @@ const videosSlice = createSlice({
           action.payload.subscriptions,
           action.payload.shorts,
         ].some((section) => section.hasMore);
+        // Sync the per-section loop trackers with this load.
+        const loadedPage = action.payload.page || 0;
+        state.sectionPages = makeSectionMap(loadedPage);
+        state.sectionHasMore = makeSectionMap(
+          (section) => Boolean(action.payload[section]?.hasMore),
+        );
+        state.sectionFetching = makeSectionMap(false);
+        state.homeHasMore = Object.values(state.sectionHasMore).some(Boolean);
       })
       .addCase(fetchHomeVideos.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || "Failed to load videos";
+      })
+      .addCase(fetchNextHomeSection.pending, (state, action) => {
+        const { section } = action.meta.arg;
+        if (HOME_SECTIONS.includes(section)) {
+          state.sectionFetching[section] = true;
+        }
+      })
+      .addCase(fetchNextHomeSection.fulfilled, (state, action) => {
+        const { section, page, limit, items, total, category } =
+          action.payload;
+        if (!HOME_SECTIONS.includes(section)) return;
+        state.sectionFetching[section] = false;
+        // Ignore pages that were requested before a category switch.
+        if (category !== state.selectedCategory) return;
+
+        const existingIds = new Set(state[section].map((video) => video.id));
+        const freshItems = items.filter((video) => !existingIds.has(video.id));
+        state[section] = [...state[section], ...freshItems];
+        state.sectionPages[section] = page;
+        state.sectionHasMore[section] =
+          total > page * limit || items.length === limit;
+        state.homePage = Math.max(state.homePage || 0, page);
+        state.homeHasMore = Object.values(state.sectionHasMore).some(Boolean);
+      })
+      .addCase(fetchNextHomeSection.rejected, (state, action) => {
+        const { section } = action.meta.arg;
+        if (!HOME_SECTIONS.includes(section)) return;
+        state.sectionFetching[section] = false;
+        // Stop feeding this section so the feed can settle.
+        state.sectionHasMore[section] = false;
+        state.homeHasMore = Object.values(state.sectionHasMore).some(Boolean);
       })
       .addCase(fetchMyVideos.pending, (state) => {
         state.myVideosLoading = true;
