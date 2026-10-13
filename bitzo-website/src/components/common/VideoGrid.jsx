@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -10,7 +10,10 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { fetchHomeVideos } from "../../features/videos/videosSlice";
+import {
+  fetchHomeVideos,
+  fetchNextHomeSection,
+} from "../../features/videos/videosSlice";
 import { addToWatchLater, removeFromWatchLater } from "../../api/watchLater";
 import { formatTime } from "../player/utils";
 import ShortCard from "./ShortCard";
@@ -499,8 +502,8 @@ export default function NetflixStylePage() {
     shorts,
     loading,
     selectedCategory,
-    homePage,
-    homeHasMore,
+    sectionHasMore,
+    sectionFetching,
   } = useSelector((state) => state.videos);
   const loadMoreRef = useRef(null);
 
@@ -508,19 +511,24 @@ export default function NetflixStylePage() {
     dispatch(fetchHomeVideos({ category: selectedCategory, page: 1 }));
   }, [dispatch, selectedCategory]);
 
+  const anyHomeHasMore = Object.values(sectionHasMore).some(Boolean);
+  const anySectionFetching = Object.values(sectionFetching).some(Boolean);
+
   useEffect(() => {
     const loadMore = loadMoreRef.current;
-    if (!loadMore || !homeHasMore) return undefined;
+    if (!loadMore || !anyHomeHasMore || anySectionFetching || loading)
+      return undefined;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !loading) {
-          dispatch(
-            fetchHomeVideos({
-              category: selectedCategory,
-              page: homePage + 1,
-            }),
-          );
+        if (entry.isIntersecting) {
+          // Grow the feed by one loop: pull the next page of every section
+          // that still has videos left.
+          Object.keys(sectionHasMore).forEach((section) => {
+            if (sectionHasMore[section]) {
+              dispatch(fetchNextHomeSection({ section }));
+            }
+          });
         }
       },
       { rootMargin: "500px 0px" },
@@ -528,7 +536,7 @@ export default function NetflixStylePage() {
 
     observer.observe(loadMore);
     return () => observer.disconnect();
-  }, [dispatch, homeHasMore, homePage, loading, selectedCategory]);
+  }, [dispatch, sectionHasMore, anySectionFetching, loading]);
 
   const isShortContent = (item) => {
     const rawTypes = item?.videoType ?? item?.raw?.videoType ?? [];
@@ -556,52 +564,141 @@ export default function NetflixStylePage() {
 
   const goToViewAll = (type) => navigate(`/videos/${type}`);
 
-  // Top rows show the first batch only; each section's extras stack at the
-  // bottom under its own heading, without duplicates.
-  const HOME_BATCH = 5;
-  const splitBatch = (list) => {
-    const top = list.slice(0, HOME_BATCH);
-    const shown = new Set(top.map((v) => v.id));
-    const extras = list.slice(HOME_BATCH).filter((v) => {
-      if (shown.has(v.id)) return false;
-      shown.add(v.id);
-      return true;
-    });
-    return { top, extras };
-  };
-  const recommendedParts = splitBatch(recommended);
-  const trendingParts = splitBatch(trending);
-  const shortsParts = splitBatch(shorts);
-  const latestParts = splitBatch(latest);
-  const subscriptionsParts = splitBatch(subscriptions);
+  // The home feed repeats the same six sections as single horizontal rows.
+  // Every section walks its own list: row 1 gets its first 5 videos, row 2
+  // the next 5, and so on — so a section never repeats its own videos.
+  // (Trending Shorts and Top Shorts share the shorts list, taking their
+  // batches one after another.) A row pulls the next page of its section
+  // whenever it needs more videos.
+  const HOME_ROW_SIZE = 5;
+  const HOME_SECTIONS = [
+    {
+      buffer: "recommended",
+      title: "Recommended for you",
+      viewAll: "recommended",
+      kind: "video",
+      emptyText: "No recommended videos available right now.",
+    },
+    {
+      buffer: "trending",
+      title: "Trending Videos",
+      viewAll: "trending",
+      kind: "video",
+      emptyText: "No trending videos available right now.",
+    },
+    {
+      buffer: "shorts",
+      title: "Trending Shorts",
+      viewAll: "shorts",
+      kind: "shorts",
+      emptyText: "No trending shorts available right now.",
+    },
+    {
+      buffer: "latest",
+      title: "Latest Videos",
+      viewAll: "latest",
+      kind: "video",
+      emptyText: "No latest videos available right now.",
+    },
+    {
+      buffer: "subscriptions",
+      title: "Subscription Videos",
+      viewAll: "subscriptions",
+      kind: "video",
+      emptyText: "Subscribe to channels to see their videos here.",
+    },
+    {
+      buffer: "shorts",
+      title: "Top Shorts",
+      viewAll: "top-shorts",
+      kind: "shorts",
+      emptyText: "No top shorts available right now.",
+    },
+  ];
 
-  const extrasBlock = (parts, title, viewAll, kind) =>
-    parts.extras.length > 0 ? (
-      <div className={kind === "shorts" ? "mb-12" : "mb-10"}>
-        <SectionHeader title={title} onClick={() => goToViewAll(viewAll)} />
-        <div
-          className={
-            kind === "shorts"
-              ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
-              : "grid grid-cols-2 gap-4 xl:grid-cols-4"
-          }
-        >
-          {parts.extras.map((item) =>
-            kind === "shorts" ? (
-              <ShortCard key={item.id} item={item} onClick={handleItemClick} />
-            ) : (
-              <MovieCard
-                key={item.id}
-                item={item}
-                onClick={handleItemClick}
-                onAddToWatchLater={addToWatchLater}
-                onRemoveFromWatchLater={removeFromWatchLater}
-              />
-            ),
-          )}
-        </div>
-      </div>
-    ) : null;
+  const buffers = { recommended, trending, latest, subscriptions, shorts };
+
+  const { homeRows, topUpSections } = useMemo(() => {
+    const ptr = { recommended: 0, trending: 0, latest: 0, subscriptions: 0, shorts: 0 };
+    const titleCounts = {};
+    const counters = {};
+    const rows = [];
+    let growing = true;
+    let loop = 0;
+
+    while (growing && loop < 200) {
+      growing = false;
+      loop += 1;
+      HOME_SECTIONS.forEach((section) => {
+        const list = buffers[section.buffer];
+        const items = [];
+        while (
+          ptr[section.buffer] < list.length &&
+          items.length < HOME_ROW_SIZE
+        ) {
+          // Each row takes the section's next videos in order — a video can
+          // never land in two rows of the same section.
+          items.push(list[ptr[section.buffer]]);
+          ptr[section.buffer] += 1;
+        }
+
+        // The first pass always emits a row (skeleton/empty message while the
+        // section is still loading); later loops only emit non-empty rows.
+        if (items.length === 0 && loop > 1) return;
+
+        const bufferCount = counters[section.buffer] || 0;
+        counters[section.buffer] = bufferCount + 1;
+        // Recommended rows get friendly naming: the first row greets, every
+        // repeat row asks for more.
+        const title =
+          section.buffer === "recommended"
+            ? bufferCount === 0
+              ? "Recommended for you"
+              : "More Recommended Videos"
+            : section.title;
+        const count = titleCounts[title] || 0;
+        titleCounts[title] = count + 1;
+        rows.push({
+          key: `${title}-${count}`,
+          buffer: section.buffer,
+          title,
+          viewAll: section.viewAll,
+          kind: section.kind,
+          emptyText: section.emptyText,
+          items,
+        });
+        if (items.length > 0) growing = true;
+      });
+    }
+
+    const lastRowLen = {};
+    rows.forEach((row) => {
+      if (row.items.length > 0) lastRowLen[row.buffer] = row.items.length;
+    });
+    const topUpSections = Object.keys(buffers).filter((buffer) => {
+      if (!sectionHasMore[buffer] || sectionFetching[buffer]) return false;
+      const lastLen = lastRowLen[buffer];
+      return lastLen === undefined || lastLen < HOME_ROW_SIZE;
+    });
+
+    return { homeRows: rows, topUpSections };
+  }, [
+    recommended,
+    trending,
+    latest,
+    subscriptions,
+    shorts,
+    sectionHasMore,
+    sectionFetching,
+  ]);
+
+  useEffect(() => {
+    if (loading) return;
+    // Fill any incomplete row (or start its first row) with the next page.
+    topUpSections.forEach((section) => {
+      dispatch(fetchNextHomeSection({ section }));
+    });
+  }, [dispatch, loading, topUpSections]);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -615,188 +712,71 @@ export default function NetflixStylePage() {
       `}</style>
 
       <div className="mx-auto max-w-screen-2xl px-4 pt-20 md:px-12 lg:px-16 -mt-24 relative z-10 pb-10">
-        {/* Recommended Videos */}
-        <div className="mb-10 pt-8">
-          <SectionHeader
-            title="Recommended Videos"
-            onClick={() => goToViewAll("recommended")}
-          />
-          <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show">
-            {loading && recommended.length === 0 ? (
-              <VideoCardSkeletonRow />
-            ) : recommendedParts.top.length > 0 ? (
-              recommendedParts.top.map((item) => (
-                <div key={item.id} className="shrink-0 w-64 md:w-72">
-                  <MovieCard
-                    item={item}
-                    onClick={handleItemClick}
-                    onAddToWatchLater={addToWatchLater}
-                    onRemoveFromWatchLater={removeFromWatchLater}
-                    progress={70}
-                  />
+        {homeRows.map((row, index) => (
+          <section
+            key={row.key}
+            className={`${row.kind === "shorts" ? "mb-12" : "mb-10"}${
+              index === 0 ? " pt-8" : ""
+            }`}
+          >
+            <SectionHeader
+              title={row.title}
+              onClick={() => goToViewAll(row.viewAll)}
+            />
+            <div
+              className={
+                row.kind === "shorts"
+                  ? "flex gap-3 sm:gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show snap-x snap-mandatory"
+                  : "flex gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show"
+              }
+            >
+              {row.items.length > 0 ? (
+                row.items.map((item) =>
+                  row.kind === "shorts" ? (
+                    <div
+                      key={item.id}
+                      className="shrink-0 w-40 sm:w-44 md:w-48 lg:w-52 snap-start"
+                    >
+                      <ShortCard item={item} onClick={handleItemClick} />
+                    </div>
+                  ) : (
+                    <div key={item.id} className="shrink-0 w-64 md:w-72">
+                      <MovieCard
+                        item={item}
+                        onClick={handleItemClick}
+                        onAddToWatchLater={addToWatchLater}
+                        onRemoveFromWatchLater={removeFromWatchLater}
+                        progress={70}
+                      />
+                    </div>
+                  ),
+                )
+              ) : (
+                <div className="w-full">
+                  {loading ? (
+                    row.kind === "shorts" ? (
+                      <ShortsCardSkeletonRow />
+                    ) : (
+                      <VideoCardSkeletonRow />
+                    )
+                  ) : (
+                    <p className="text-sm text-gray-400">{row.emptyText}</p>
+                  )}
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-400">
-                No recommended videos available right now.
-              </p>
-            )}
-          </div>
-        </div>
+              )}
+            </div>
+          </section>
+        ))}
 
-        {/* Trending Videos */}
-        <div className="mb-10">
-          <SectionHeader
-            title="Trending Videos"
-            onClick={() => goToViewAll("trending")}
-          />
-          <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show">
-            {loading && trending.length === 0 ? (
-              <VideoCardSkeletonRow />
-            ) : trending.length > 0 ? (
-              trendingParts.top.map((item) => (
-                <div key={item.id} className="shrink-0 w-64 md:w-72">
-                  <MovieCard
-                    item={item}
-                    onClick={handleItemClick}
-                    onAddToWatchLater={addToWatchLater}
-                    onRemoveFromWatchLater={removeFromWatchLater}
-                    progress={70}
-                  />
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-400">
-                No trending videos available right now.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Trending Shorts */}
-        <div className="mb-12">
-          <SectionHeader
-            title="Trending Shorts"
-            onClick={() => goToViewAll("shorts")}
-          />
-          <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show snap-x snap-mandatory">
-            {loading && shorts.length === 0 ? (
-              <ShortsCardSkeletonRow />
-            ) : shorts.length > 0 ? (
-              shortsParts.top.map((item) => (
-                <div
-                  key={item.id}
-                  className="shrink-0 w-40 sm:w-44 md:w-48 lg:w-52 snap-start"
-                >
-                  <ShortCard item={item} onClick={handleItemClick} />
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-400">
-                No trending shorts available right now.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Latest Videos */}
-        <div className="mb-10">
-          <SectionHeader
-            title="Latest Videos"
-            onClick={() => goToViewAll("latest")}
-          />
-          <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show">
-            {loading && latest.length === 0 ? (
-              <VideoCardSkeletonRow />
-            ) : latest.length > 0 ? (
-              latestParts.top.map((item) => (
-                <div key={item.id} className="shrink-0 w-64 md:w-72">
-                  <MovieCard
-                    item={item}
-                    onClick={handleItemClick}
-                    onAddToWatchLater={addToWatchLater}
-                    onRemoveFromWatchLater={removeFromWatchLater}
-                    progress={70}
-                  />
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-400">
-                No latest videos available right now.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Subscription Videos */}
-        <div className="mb-10">
-          <SectionHeader
-            title="Subscription Videos"
-            onClick={() => goToViewAll("subscriptions")}
-          />
-          <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show">
-            {loading && subscriptions.length === 0 ? (
-              <VideoCardSkeletonRow />
-            ) : subscriptions.length > 0 ? (
-              subscriptionsParts.top.map((item) => (
-                <div key={item.id} className="shrink-0 w-64 md:w-72">
-                  <MovieCard
-                    item={item}
-                    onClick={handleItemClick}
-                    onAddToWatchLater={addToWatchLater}
-                    onRemoveFromWatchLater={removeFromWatchLater}
-                  />
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-400">
-                Subscribe to channels to see their videos here.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Top Shorts */}
-        <div className="mb-12">
-          <SectionHeader
-            title="Top Shorts"
-            onClick={() => goToViewAll("top-shorts")}
-          />
-          <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show snap-x snap-mandatory">
-            {loading && shorts.length === 0 ? (
-              <ShortsCardSkeletonRow />
-            ) : shorts.length > 0 ? (
-              shortsParts.top.map((item) => (
-                <div
-                  key={item.id}
-                  className="shrink-0 w-40 sm:w-44 md:w-48 lg:w-52 snap-start"
-                >
-                  <ShortCard item={item} onClick={handleItemClick} />
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-400">
-                No top shorts available right now.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {extrasBlock(recommendedParts, "Recommended Videos", "recommended", "video")}
-        {extrasBlock(trendingParts, "Trending Videos", "trending", "video")}
-        {extrasBlock(shortsParts, "Trending Shorts", "shorts", "shorts")}
-        {extrasBlock(latestParts, "Latest Videos", "latest", "video")}
-        {extrasBlock(subscriptionsParts, "Subscription Videos", "subscriptions", "video")}
-        {extrasBlock(shortsParts, "Top Shorts", "top-shorts", "shorts")}
 
         <div
           ref={loadMoreRef}
           className="flex min-h-12 items-center justify-center"
         >
-          {loading && homePage > 0 && (
+          {anySectionFetching && (
             <p className="text-sm text-gray-400">Loading more videos...</p>
           )}
-          {!loading && !homeHasMore && homePage > 0 && (
+          {!loading && !anySectionFetching && !anyHomeHasMore && (
             <p className="text-sm text-gray-500">You&apos;re all caught up.</p>
           )}
         </div>
