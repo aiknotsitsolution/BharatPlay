@@ -1,9 +1,18 @@
 {
   "expo": {
     "name": "VidBuxApp",
-    "slug": "vidbuxapp",
+    "slug": "MyApp",
     "scheme": "vidbuxapp",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f6070fe6-3a5f-4b4c-9fd4-4cc8d261ddab",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    },
     "description": "VidBuxApp is a creator-first video app for watching, discovering, uploading, and sharing short and long-form entertainment.",
     "keywords": [
       "VidBuxApp",
@@ -34,6 +43,7 @@
       "permissions": []
     },
     "plugins": [
+      "expo-updates",
       [
         "expo-image-picker",
         {

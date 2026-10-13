@@ -22,7 +22,11 @@ import {
   Pressable,
   Modal,
 } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import {
+  useIsFocused,
+  useNavigation,
+  useRoute,
+} from "@react-navigation/native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { useEvent } from "expo";
 import Slider from "@react-native-community/slider";
@@ -104,6 +108,7 @@ const getGuestId = async () => {
 export default function VideoDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const routeId = route?.params?.id ?? route?.params?.videoId ?? 1;
   const routeVideo = route?.params?.item ?? route?.params?.video ?? null;
@@ -168,6 +173,7 @@ export default function VideoDetailScreen() {
   const viewRequestInFlight = useRef(false);
   const latestTimeRef = useRef(0);
   const latestDurationRef = useRef(0);
+  const isScreenFocusedRef = useRef(isFocused);
 
   useEffect(() => {
     if (!isShortVideo(routeVideo)) return;
@@ -302,7 +308,6 @@ export default function VideoDetailScreen() {
     p.loop = false;
     p.muted = false;
     p.timeUpdateEventInterval = 0.5; // ← MUST ADD THIS
-    p.play();
   });
 
   useEffect(() => {
@@ -327,6 +332,22 @@ export default function VideoDetailScreen() {
     setUpNextOverlay(null);
     setCountdownLeft(null);
   }, []);
+
+  useEffect(() => {
+    isScreenFocusedRef.current = isFocused;
+    if (isFocused || !player) return;
+
+    player.pause();
+    setIsPlaying(false);
+    cancelCountdown();
+  }, [isFocused, player, cancelCountdown]);
+
+  const handleBack = useCallback(() => {
+    player?.pause();
+    setIsPlaying(false);
+    cancelCountdown();
+    navigation.goBack();
+  }, [player, cancelCountdown, navigation]);
 
   const getNextUpNext = useCallback(() => {
     if (!suggestedVideos || suggestedVideos.length === 0) return null;
@@ -419,14 +440,18 @@ export default function VideoDetailScreen() {
 
   // Reload video when URL changes
   useEffect(() => {
-    if (!player || !resolvedVideoUrl) return;
+    if (!player || !resolvedVideoUrl || !isFocused) return;
     const load = async () => {
       try {
         await player.replaceAsync(resolvedVideoUrl);
-        player.play();
+        if (isScreenFocusedRef.current) {
+          player.play();
+          setIsPlaying(true);
+        }
       } catch (e) {
         console.warn("Video load error:", e);
       }
+      if (!isScreenFocusedRef.current) return;
       setCurrentTime(0);
       setDuration(0);
       setIsPlaying(true);
@@ -437,7 +462,7 @@ export default function VideoDetailScreen() {
       cancelCountdown();
     };
     load();
-  }, [player, resolvedVideoUrl, cancelCountdown]);
+  }, [player, resolvedVideoUrl, cancelCountdown, isFocused]);
 
   // Mute
   useEffect(() => {
@@ -656,7 +681,7 @@ export default function VideoDetailScreen() {
   }, []);
 
   const handleTogglePlayPause = useCallback(() => {
-    if (!player) return;
+    if (!player || !isScreenFocusedRef.current) return;
     try {
       if (isPlaying) {
         player.pause();
@@ -928,7 +953,7 @@ export default function VideoDetailScreen() {
   };
 
   const handleReplay = () => {
-    if (player) {
+    if (player && isScreenFocusedRef.current) {
       player.currentTime = 0;
       player.play();
       setIsPlaying(true);
@@ -1036,7 +1061,7 @@ export default function VideoDetailScreen() {
                 if (fullscreenMode) {
                   setIsFullscreen(false);
                 } else {
-                  navigation.goBack();
+                  handleBack();
                 }
               }}
             >
