@@ -4928,6 +4928,18 @@ const BACKEND_URL = API_ORIGIN;
 const API_BASE = `${BACKEND_URL}/api/uservideo`;
 const LIMIT = 5;
 
+const hasMorePages = (
+  payload: any,
+  page: number,
+  limit: number,
+  count: number,
+) => {
+  if (typeof payload?.hasMore === "boolean") return payload.hasMore;
+  const total = Number(payload?.total ?? payload?.pagination?.total);
+  if (Number.isFinite(total)) return total > page * limit;
+  return count >= limit;
+};
+
 function AutoplayPreview({ uri, style }: { uri: string; style: any }) {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
@@ -5018,6 +5030,33 @@ const fetchWithAuth = async (endpoint: string, params: any = {}) => {
   const data = await res.json();
   if (data?.success === false) throw new Error(data.message || "Failed");
   return data;
+};
+
+const fetchAllCategoryPages = async (
+  endpoint: string,
+  categoryId: string | null,
+) => {
+  const pageSize = 20;
+  const items: any[] = [];
+  let page = 1;
+
+  while (true) {
+    const payload = await fetchWithAuth(endpoint, {
+      page,
+      limit: pageSize,
+      category: categoryId || undefined,
+    });
+    const pageItems = getArray(payload);
+    items.push(...pageItems);
+
+    if (
+      pageItems.length === 0 ||
+      !hasMorePages(payload, page, pageSize, pageItems.length)
+    ) {
+      return items;
+    }
+    page += 1;
+  }
 };
 
 const formatViews = (v: number = 0) => {
@@ -5205,13 +5244,13 @@ export default function DashboardScreen() {
   const [moreTrending, setMoreTrending] = useState<any[]>([]);
   const [moreLatest, setMoreLatest] = useState<any[]>([]);
   const [moreTrendingShorts, setMoreTrendingShorts] = useState<any[]>([]);
+  const [moreTopShorts, setMoreTopShorts] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
-
-  const seenIds = useRef(new Set<string>());
+  const loadRequestIdRef = useRef(0);
 
   const isShort = (item: any) => {
     const t = item?.videoType ?? item?.raw?.videoType ?? [];
@@ -5220,82 +5259,68 @@ export default function DashboardScreen() {
   };
 
   const loadAll = useCallback(async () => {
+    const requestId = ++loadRequestIdRef.current;
     try {
       setLoading(true);
-      seenIds.current.clear();
-
       const [
-        recData,
-        trenData,
-        latData,
-        shortData,
+        allRecommended,
+        allTrending,
+        allLatest,
+        allTrendingShorts,
+        allTopShorts,
         subData,
-        topShortData,
-        moreRecData,
-        moreTrenData,
-        moreLatData,
-        moreShortData,
       ] = await Promise.all([
-        fetchWithAuth("recommended", { page: 1, limit: LIMIT, category: selectedCategoryId || undefined }),
-        fetchWithAuth("trending", { page: 1, limit: LIMIT, category: selectedCategoryId || undefined }),
-        fetchWithAuth("latest", { page: 1, limit: LIMIT, category: selectedCategoryId || undefined }),
-        fetchWithAuth("trending-shorts", { page: 1, limit: LIMIT }),
+        fetchAllCategoryPages("recommended", selectedCategoryId),
+        fetchAllCategoryPages("trending", selectedCategoryId),
+        fetchAllCategoryPages("latest", selectedCategoryId),
+        fetchAllCategoryPages("trending-shorts", selectedCategoryId),
+        fetchAllCategoryPages("top-shorts", selectedCategoryId),
         fetchWithAuth("subscribed-channels"),
-        fetchWithAuth("trending-shorts", { page: 2, limit: LIMIT }),
-        fetchWithAuth("recommended", { page: 2, limit: LIMIT, category: selectedCategoryId || undefined }),
-        fetchWithAuth("trending", { page: 2, limit: LIMIT, category: selectedCategoryId || undefined }),
-        fetchWithAuth("latest", { page: 2, limit: LIMIT, category: selectedCategoryId || undefined }),
-        fetchWithAuth("trending-shorts", { page: 3, limit: LIMIT }),
       ]);
+      if (requestId !== loadRequestIdRef.current) return;
 
-      const mark = (list: any[]) =>
-        list.forEach((i) => i?.id && seenIds.current.add(String(i.id)));
+      const splitFirstBatch = (videos: any[], normalize: (video: any) => any) => {
+        const normalized = videos.map(normalize);
+        const firstBatch = normalized.slice(0, LIMIT);
+        const firstBatchIds = new Set(
+          firstBatch.map((item) => String(item.id)),
+        );
+        const more = normalized.slice(LIMIT).filter((item) => {
+          const id = String(item.id);
+          if (!item.id || firstBatchIds.has(id)) return false;
+          firstBatchIds.add(id);
+          return true;
+        });
+        return { firstBatch, more };
+      };
 
-      const rec = getArray(recData).map(normalizeVideo);
-      const tren = getArray(trenData).map(normalizeVideo);
-      const lat = getArray(latData).map(normalizeVideo);
-      const shorts = getArray(shortData).map(normalizeShort);
+      const recommendedBatches = splitFirstBatch(allRecommended, normalizeVideo);
+      const trendingBatches = splitFirstBatch(allTrending, normalizeVideo);
+      const latestBatches = splitFirstBatch(allLatest, normalizeVideo);
+      const trendingShortBatches = splitFirstBatch(
+        allTrendingShorts,
+        normalizeShort,
+      );
+      const topShortBatches = splitFirstBatch(allTopShorts, normalizeShort);
       const subs = getArray(subData).map(normalizeChannel).slice(0, LIMIT);
-      const topS = getArray(topShortData).map(normalizeShort);
 
-      const moreRec = getArray(moreRecData)
-        .map(normalizeVideo)
-        .filter((i) => !seenIds.current.has(String(i.id)));
-      const moreTren = getArray(moreTrenData)
-        .map(normalizeVideo)
-        .filter((i) => !seenIds.current.has(String(i.id)));
-      const moreLat = getArray(moreLatData)
-        .map(normalizeVideo)
-        .filter((i) => !seenIds.current.has(String(i.id)));
-      const moreShorts = getArray(moreShortData)
-        .map(normalizeShort)
-        .filter((i) => !seenIds.current.has(String(i.id)));
-
-      mark(rec);
-      mark(tren);
-      mark(lat);
-      mark(shorts);
-      mark(topS);
-      mark(moreRec);
-      mark(moreTren);
-      mark(moreLat);
-      mark(moreShorts);
-
-      setRecommended(rec);
-      setTrending(tren);
-      setLatest(lat);
-      setTrendingShorts(shorts);
+      setRecommended(recommendedBatches.firstBatch);
+      setTrending(trendingBatches.firstBatch);
+      setLatest(latestBatches.firstBatch);
+      setTrendingShorts(trendingShortBatches.firstBatch);
       setSubscriptions(subs);
-      setTopShorts(topS);
-      setMoreRecommended(moreRec);
-      setMoreTrending(moreTren);
-      setMoreLatest(moreLat);
-      setMoreTrendingShorts(moreShorts);
+      setTopShorts(topShortBatches.firstBatch);
+      setMoreRecommended(recommendedBatches.more);
+      setMoreTrending(trendingBatches.more);
+      setMoreLatest(latestBatches.more);
+      setMoreTrendingShorts(trendingShortBatches.more);
+      setMoreTopShorts(topShortBatches.more);
     } catch (e) {
+      if (requestId !== loadRequestIdRef.current) return;
       console.warn(e);
       Toast.show({ type: "error", text1: "Failed to load feed" });
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestIdRef.current) setLoading(false);
     }
   }, [selectedCategoryId]);
 
@@ -5325,6 +5350,7 @@ export default function DashboardScreen() {
         setTrendingShorts((p) => upd(p));
         setTopShorts((p) => upd(p));
         setMoreTrendingShorts((p) => upd(p));
+        setMoreTopShorts((p) => upd(p));
       };
       socket.on("view-count-updated", handler);
     });
@@ -5404,6 +5430,7 @@ export default function DashboardScreen() {
       { id: "more-trending", title: "Trending Videos", type: "trending", data: moreTrending, isShorts: false },
       { id: "more-latest", title: "Latest Videos", type: "latest", data: moreLatest, isShorts: false },
       { id: "more-trending-shorts", title: "Trending Shorts", type: "shorts", data: moreTrendingShorts, isShorts: true },
+      { id: "more-top-shorts", title: "Top Shorts", type: "top-shorts", data: moreTopShorts, isShorts: true },
     ];
 
     return sections.flatMap((section) => {
@@ -5417,15 +5444,15 @@ export default function DashboardScreen() {
       };
 
       if (section.isShorts) {
-        // Shorts → grid row
-        return [
-          header,
-          {
-            id: `${section.id}-grid`,
+        const gridRows = [];
+        for (let index = 0; index < section.data.length; index += 2) {
+          gridRows.push({
+            id: `${section.id}-grid-${index / 2}`,
             type: "shorts-grid",
-            data: section.data,
-          },
-        ];
+            data: section.data.slice(index, index + 2),
+          });
+        }
+        return [header, ...gridRows];
       }
 
       // Normal videos
@@ -5450,6 +5477,7 @@ export default function DashboardScreen() {
     moreTrending,
     moreLatest,
     moreTrendingShorts,
+    moreTopShorts,
   ]);
 
   const renderItem = useCallback(
@@ -5506,7 +5534,9 @@ export default function DashboardScreen() {
 
       <TopicChips
         onTopicChange={(_, categoryId) =>
-          setSelectedCategoryId(categoryId || null)
+          setSelectedCategoryId(
+            categoryId && categoryId !== "all" ? String(categoryId) : null,
+          )
         }
       />
 
