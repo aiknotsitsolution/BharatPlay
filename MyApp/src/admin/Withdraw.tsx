@@ -6,11 +6,9 @@ import {
   TextInput,
   ScrollView,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ToastAndroid,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,6 +26,7 @@ import {
 } from "lucide-react-native";
 import { API_BASE } from "../../config/api";
 import Navbar from "./Navbar";
+import { showToast } from "../utils/notifications";
 
 const WITHDRAWALS_ENABLED = false;
 
@@ -97,7 +96,7 @@ export default function WithdrawScreen() {
         }
       } catch (err) {
         console.warn(err);
-        Alert.alert("Error", "Could not load balance");
+        showToast("error", "Error", "Could not load balance");
       } finally {
         setLoading(false);
       }
@@ -113,14 +112,6 @@ export default function WithdrawScreen() {
     setAccountNumber("");
     setIfsc("");
     setBankName("");
-  };
-
-  const showToast = (message) => {
-    if (Platform.OS === "android") {
-      ToastAndroid.show(message, ToastAndroid.LONG);
-    } else {
-      Alert.alert("Success", message);
-    }
   };
 
   const handleWithdraw = async () => {
@@ -217,14 +208,9 @@ export default function WithdrawScreen() {
 
       // Success Toast
       showToast(
+        "success",
+        "Request Submitted",
         `₹${withdrawAmount.toFixed(2)} withdrawal request submitted! Money will be credited within 45 working days.`,
-      );
-
-      // Also show Alert for better visibility
-      Alert.alert(
-        "Request Submitted ✅",
-        `Your withdrawal request of ₹${withdrawAmount.toFixed(2)} via ${selectedMethod.name} has been submitted successfully.\n\nYou will receive the money in your account within 45 working days.`,
-        [{ text: "OK" }],
       );
 
       setAmount("");

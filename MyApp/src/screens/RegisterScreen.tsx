@@ -1,9 +1,10 @@
 import React from "react";
-import { View, Text, Alert } from "react-native";
+import { View, Text } from "react-native";
 import CustomInput from "../components/CustomInput";
 import CustomButton from "../components/CustomButton";
 import styles from "../styles/globalStyles";
 import { API_BASE, API_PLATFORM_HEADER } from "../../config/api";
+import { showToast } from "../utils/notifications";
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = React.useState("");
@@ -12,7 +13,7 @@ export default function RegisterScreen({ navigation }) {
 
   const handleRegister = async () => {
     if (!email || !password) {
-      Alert.alert("Please fill in all fields");
+      showToast("error", "Please fill in all fields");
       return;
     }
 
@@ -34,14 +35,14 @@ export default function RegisterScreen({ navigation }) {
       const data = await response.json();
       console.log(data);
       if (response.ok) {
-        Alert.alert("Registration Successful");
+        showToast("success", "Registration Successful");
         navigation.replace("Login");
       } else {
-        Alert.alert(data.message || "Registration Failed");
+        showToast("error", data.message || "Registration Failed");
       }
     } catch (error) {
       console.log(error);
-      Alert.alert("Server Error");
+      showToast("error", "Server Error");
     } finally {
       setLoading(false);
     }

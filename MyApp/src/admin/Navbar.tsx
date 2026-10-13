@@ -9,7 +9,6 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Animated,
   Dimensions,
   Platform,
@@ -19,6 +18,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { API_ORIGIN } from "../../config/api";
+import { showToast } from "../utils/notifications";
 // import LogoutWarningModal from "../components/LogoutWarningModal";
 import LogoutWarningModal from "../components/LogoutWarningModal";
 
@@ -166,7 +166,8 @@ export default function Navbar({ onMenuPress, points = 0 }) {
   const handleMicClick = () => {
     // Voice search placeholder
     // Install @react-native-voice/voice or expo-speech for real implementation
-    Alert.alert(
+    showToast(
+      "info",
       "Voice Search",
       "Install @react-native-voice/voice for voice search support.",
     );

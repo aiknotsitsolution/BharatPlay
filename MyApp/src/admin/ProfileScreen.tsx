@@ -29,6 +29,7 @@ import * as Device from "expo-device";
 import { fetch as expoFetch } from "expo/fetch";
 import { File } from "expo-file-system";
 import { API_ORIGIN } from "../../config/api";
+import { showToast } from "../utils/notifications";
 // import LogoutWarningModal from "../components/LogoutWarningModal";
 import LogoutWarningModal from "../components/LogoutWarningModal";
 import {
@@ -398,7 +399,8 @@ export function ProfileScreen() {
               );
               setHistoryTotal((total) => Math.max(0, total - 1));
             } catch (err) {
-              Alert.alert(
+              showToast(
+                "error",
                 "Error",
                 err.message || "Could not remove history item",
               );
@@ -469,7 +471,7 @@ export function ProfileScreen() {
     try {
       const token = await AsyncStorage.getItem("token");
       if (!token) {
-        Alert.alert("Login required", "Please login again.");
+        showToast("error", "Login required", "Please login again.");
         return;
       }
 
@@ -497,7 +499,8 @@ export function ProfileScreen() {
           : prev,
       );
     } catch (err) {
-      Alert.alert(
+      showToast(
+        "error",
         "Watch Later",
         err.message || "Could not remove from Watch Later.",
       );
@@ -636,7 +639,7 @@ export function ProfileScreen() {
   const pickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission required", "Please allow photo access.");
+      showToast("error", "Permission required", "Please allow photo access.");
       return;
     }
 
@@ -755,11 +758,13 @@ export function ProfileScreen() {
 
       setPhoneOtpSent(true);
       setPhoneOtp("");
-      Alert.alert(
+      showToast(
+        "info",
         "Verification code sent",
         data.otpCode
           ? `Development OTP: ${data.otpCode}`
           : "Check your account email for the 6-digit code.",
+        10000,
       );
     } catch (err: any) {
       setEditError(err.message || "Could not send verification code.");
@@ -805,7 +810,7 @@ export function ProfileScreen() {
       }));
       setPhoneOtp("");
       setPhoneOtpSent(false);
-      Alert.alert("Verified", "Phone number verified successfully.");
+      showToast("success", "Verified", "Phone number verified successfully.");
     } catch (err: any) {
       setEditError(err.message || "Could not verify phone number.");
     } finally {
@@ -950,13 +955,14 @@ export function ProfileScreen() {
       if (phoneChanged) {
         setPhoneOtp("");
         setPhoneOtpSent(false);
-        Alert.alert(
+        showToast(
+          "success",
           "Profile updated",
           "Send a verification code to verify your new phone number.",
         );
       } else {
         setIsEditOpen(false);
-        Alert.alert("Success", "Profile updated successfully!");
+        showToast("success", "Success", "Profile updated successfully!");
       }
     } catch (err: any) {
       console.log("Upload Error →", err);

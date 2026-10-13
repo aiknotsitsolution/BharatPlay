@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   StyleSheet,
   Dimensions,
-  Alert,
   StatusBar,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -24,6 +23,7 @@ import {
   ArrowLeft,
 } from "lucide-react-native";
 import { API_ORIGIN } from "../../config/api";
+import { showToast } from "../utils/notifications";
 import Navbar from "./Navbar";
 import TopicChips from "./TopicChips";
 
@@ -182,7 +182,7 @@ export default function SubscribedChannels() {
     const token = await AsyncStorage.getItem("token");
 
     if (!token) {
-      Alert.alert("Login required", "Please login to subscribe");
+      showToast("error", "Login required", "Please login to subscribe");
       setSubscribeLoading(false);
       return;
     }
@@ -210,7 +210,7 @@ export default function SubscribedChannels() {
       }
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Something went wrong");
+      showToast("error", "Something went wrong");
     } finally {
       setSubscribeLoading(false);
     }

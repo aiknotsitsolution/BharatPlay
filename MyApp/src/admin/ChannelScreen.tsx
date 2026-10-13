@@ -8,7 +8,6 @@ import {
   Modal,
   Image,
   ActivityIndicator,
-  Alert,
   StyleSheet,
   Platform,
   KeyboardAvoidingView,
@@ -30,6 +29,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { API_ORIGIN } from "../../config/api";
+import { showToast } from "../utils/notifications";
 import Navbar from "./Navbar";
 import { useRoute } from "@react-navigation/native";
 import {
@@ -399,7 +399,7 @@ export default function ChannelScreen({ navigation }) {
       setSelectedUploadChannelId(result.channel._id);
       setShowUploadModal(true);
 
-      Alert.alert("Success", "Channel created successfully!");
+      showToast("success", "Channel created successfully!");
     } catch (error) {
       console.log("Create channel error →", error);
       if (error.status === 401) {
@@ -507,7 +507,7 @@ export default function ChannelScreen({ navigation }) {
         xhr.send(formData);
       });
 
-      Alert.alert("Success", "Video uploaded successfully!");
+      showToast("success", "Video uploaded successfully!");
 
       // Refresh videos
       const videosRes = await fetch(

@@ -36,6 +36,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getViewSocket } from "../utils/viewSocket";
 import { API_ORIGIN } from "../../config/api";
+import { showToast } from "../utils/notifications";
 import Navbar from "./Navbar";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -743,7 +744,7 @@ export default function VideoDetailScreen() {
   const handleLike = async () => {
     const token = await AsyncStorage.getItem("token");
     if (!token) {
-      Alert.alert("Login required", "Please login to like this video.");
+      showToast("error", "Login required", "Please login to like this video.");
       return;
     }
     try {
@@ -774,14 +775,18 @@ export default function VideoDetailScreen() {
           : data.reaction === "dislike" || data.userReaction === "dislike",
       );
     } catch (e) {
-      Alert.alert("Error", "Unable to update like. Please try again.");
+      showToast("error", "Error", "Unable to update like. Please try again.");
     }
   };
 
   const handleDislike = async () => {
     const token = await AsyncStorage.getItem("token");
     if (!token) {
-      Alert.alert("Login required", "Please login to dislike this video.");
+      showToast(
+        "error",
+        "Login required",
+        "Please login to dislike this video.",
+      );
       return;
     }
     try {
@@ -812,14 +817,22 @@ export default function VideoDetailScreen() {
           : data.reaction === "dislike" || data.userReaction === "dislike",
       );
     } catch (e) {
-      Alert.alert("Error", "Unable to update dislike. Please try again.");
+      showToast(
+        "error",
+        "Error",
+        "Unable to update dislike. Please try again.",
+      );
     }
   };
 
   const handleWatchLater = async () => {
     const token = await AsyncStorage.getItem("token");
     if (!token) {
-      Alert.alert("Login required", "Please login to use Watch Later.");
+      showToast(
+        "error",
+        "Login required",
+        "Please login to use Watch Later.",
+      );
       return;
     }
 
@@ -841,7 +854,8 @@ export default function VideoDetailScreen() {
         ? false
         : Boolean(data.added ?? data.isWatchLater ?? true);
       setIsWatchLater(nextIsWatchLater);
-      Alert.alert(
+      showToast(
+        "success",
         "Watch Later",
         data.message ||
           (nextIsWatchLater
@@ -849,7 +863,11 @@ export default function VideoDetailScreen() {
             : "Removed from Watch Later"),
       );
     } catch (e) {
-      Alert.alert("Watch Later", "Something went wrong. Please try again.");
+      showToast(
+        "error",
+        "Watch Later",
+        "Something went wrong. Please try again.",
+      );
     } finally {
       setWatchLaterLoading(false);
     }
@@ -861,7 +879,7 @@ export default function VideoDetailScreen() {
 
     const token = await AsyncStorage.getItem("token");
     if (!token) {
-      Alert.alert("Login required", "Please login to subscribe.");
+      showToast("error", "Login required", "Please login to subscribe.");
       return;
     }
 
@@ -909,7 +927,7 @@ export default function VideoDetailScreen() {
     if (!commentText.trim() || !routeId) return;
     const token = await AsyncStorage.getItem("token");
     if (!token) {
-      Alert.alert("Login required", "Please login to comment.");
+      showToast("error", "Login required", "Please login to comment.");
       return;
     }
     try {

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -15,6 +14,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { API_ORIGIN } from "../../config/api";
+import { showToast } from "../utils/notifications";
 
 type StrikeStatus = "active" | "expired" | "disputed" | "removed" | string;
 
@@ -141,9 +141,10 @@ export default function CopyrightScreen() {
 
   const handleDispute = async (strikeId: string) => {
     if (!disputeReason.trim()) {
-      Alert.alert(
+      showToast(
+        "error",
         "Reason Required",
-        "Please explain why you believe this strike was issued in error."
+        "Please explain why you believe this strike was issued in error.",
       );
       return;
     }
@@ -151,7 +152,7 @@ export default function CopyrightScreen() {
     const token = await getToken();
 
     if (!token) {
-      Alert.alert("Login Required", "Please login first.");
+      showToast("error", "Login Required", "Please login first.");
       return;
     }
 
@@ -177,9 +178,10 @@ export default function CopyrightScreen() {
       const data = await response.json();
 
       if (data.success) {
-        Alert.alert(
+        showToast(
+          "success",
           "Submitted",
-          "Your counter-notification has been submitted successfully."
+          "Your counter-notification has been submitted successfully.",
         );
 
         setDisputeStrikeId(null);
@@ -187,17 +189,19 @@ export default function CopyrightScreen() {
 
         await fetchStrikes();
       } else {
-        Alert.alert(
+        showToast(
+          "error",
           "Submission Failed",
-          data.message || "Failed to submit counter-notification."
+          data.message || "Failed to submit counter-notification.",
         );
       }
     } catch (err) {
       console.log("Failed to submit dispute:", err);
 
-      Alert.alert(
+      showToast(
+        "error",
         "Error",
-        "Failed to submit counter-notification. Please try again."
+        "Failed to submit counter-notification. Please try again.",
       );
     } finally {
       setSubmitting(false);

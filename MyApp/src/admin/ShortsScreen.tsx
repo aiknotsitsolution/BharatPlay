@@ -41,6 +41,7 @@ import {
 
 import { API_ORIGIN, API_USERVIDEO } from "../../config/api";
 import { getViewSocket } from "../utils/viewSocket";
+import { showToast } from "../utils/notifications";
 
 const { height, width } = Dimensions.get("window");
 
@@ -620,7 +621,7 @@ export default function ShortsScreen() {
     const token = await AsyncStorage.getItem("token");
 
     if (!token) {
-      Alert.alert("Login Required", "Please login to like this short.");
+      showToast("error", "Login Required", "Please login to like this short.");
 
       return;
     }
@@ -688,7 +689,7 @@ export default function ShortsScreen() {
         [item.id]: previousCount,
       }));
 
-      Alert.alert("Error", "Unable to update like.");
+      showToast("error", "Error", "Unable to update like.");
     } finally {
       setLoadingAction(null);
     }
@@ -833,7 +834,7 @@ export default function ShortsScreen() {
     const token = await AsyncStorage.getItem("token");
 
     if (!token) {
-      Alert.alert("Login Required", "Please login to subscribe.");
+      showToast("error", "Login Required", "Please login to subscribe.");
 
       return;
     }
@@ -841,7 +842,7 @@ export default function ShortsScreen() {
     const channelId = getChannelId(item);
 
     if (!channelId) {
-      Alert.alert("Error", "Channel not found.");
+      showToast("error", "Error", "Channel not found.");
 
       return;
     }
@@ -869,12 +870,12 @@ export default function ShortsScreen() {
           [item.id]: Number(data.subscribersCount) || 0,
         }));
       } else {
-        Alert.alert("Error", data.message || "Failed to subscribe");
+        showToast("error", "Error", data.message || "Failed to subscribe");
       }
     } catch (error) {
       console.warn("Subscribe error:", error);
 
-      Alert.alert("Error", "Something went wrong.");
+      showToast("error", "Error", "Something went wrong.");
     } finally {
       setLoadingAction(null);
     }
@@ -916,7 +917,7 @@ export default function ShortsScreen() {
 
       setComments([]);
 
-      Alert.alert("Error", "Unable to load comments.");
+      showToast("error", "Error", "Unable to load comments.");
     } finally {
       setCommentsLoading(false);
     }
@@ -948,7 +949,7 @@ export default function ShortsScreen() {
     const token = await AsyncStorage.getItem("token");
 
     if (!token) {
-      Alert.alert("Login Required", "Please login to comment.");
+      showToast("error", "Login Required", "Please login to comment.");
 
       return;
     }
@@ -1033,7 +1034,11 @@ export default function ShortsScreen() {
     } catch (error: any) {
       console.warn("Comment submit error:", error);
 
-      Alert.alert("Comment Failed", error?.message || "Please try again.");
+      showToast(
+        "error",
+        "Comment Failed",
+        error?.message || "Please try again.",
+      );
     } finally {
       setCommentSubmitting(false);
     }

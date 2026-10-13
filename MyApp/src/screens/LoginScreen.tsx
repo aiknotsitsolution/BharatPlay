@@ -1450,8 +1450,6 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
-      <Toast />
     </SafeAreaView>
   );
 }
