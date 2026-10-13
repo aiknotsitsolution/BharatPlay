@@ -28,6 +28,7 @@ const HINTS_URL = `${API_BASE_URL}/api/uservideo/search/hints`;
 const DEFAULT_AVATAR_URL =
   "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400";
 
+  
 const resolveAvatarUrl = (avatar) => {
   if (!avatar) return "";
   const normalized = String(avatar).replace(/\\/g, "/").trim();
