@@ -2,7 +2,7 @@ name: VidBuxApp
 
 x-app-environment: &app-environment
   NODE_ENV: production
-  CORS_ORIGINS: "${CORS_ORIGINS:?Set CORS_ORIGINS to the comma-separated HTTPS frontend origins}"
+  CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174}"
 
 x-app-defaults: &app-defaults
   init: true
@@ -30,7 +30,9 @@ x-app-defaults: &app-defaults
 services:
   gateway:
     <<: *app-defaults
-    build: ./gateway
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
     env_file: ./gateway/.env
     environment:
       <<: *app-environment
@@ -68,7 +70,9 @@ services:
 
   auth-service:
     <<: *app-defaults
-    build: ./services/auth-service
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
     env_file: ./services/auth-service/.env
     environment:
       <<: *app-environment
@@ -76,7 +80,9 @@ services:
 
   admin-service:
     <<: *app-defaults
-    build: ./services/admin-service
+    build:
+      context: .
+      dockerfile: services/admin-service/Dockerfile
     env_file: ./services/admin-service/.env
     environment:
       <<: *app-environment
@@ -84,7 +90,9 @@ services:
 
   video-service:
     <<: *app-defaults
-    build: ./services/video-service
+    build:
+      context: .
+      dockerfile: services/video-service/Dockerfile
     env_file: ./services/video-service/.env
     environment:
       <<: *app-environment
@@ -92,7 +100,9 @@ services:
 
   category-service:
     <<: *app-defaults
-    build: ./services/category-service
+    build:
+      context: .
+      dockerfile: services/category-service/Dockerfile
     env_file: ./services/category-service/.env
     environment:
       <<: *app-environment
@@ -100,7 +110,9 @@ services:
 
   leaderboard-service:
     <<: *app-defaults
-    build: ./services/leaderboard-service
+    build:
+      context: .
+      dockerfile: services/leaderboard-service/Dockerfile
     env_file: ./services/leaderboard-service/.env
     environment:
       <<: *app-environment
@@ -108,7 +120,9 @@ services:
 
   notification-service:
     <<: *app-defaults
-    build: ./services/notification-service
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
     env_file: ./services/notification-service/.env
     environment:
       <<: *app-environment
@@ -116,7 +130,9 @@ services:
 
   player-ad-service:
     <<: *app-defaults
-    build: ./services/player-ad-service
+    build:
+      context: .
+      dockerfile: services/player-ad-service/Dockerfile
     env_file: ./services/player-ad-service/.env
     environment:
       <<: *app-environment
@@ -124,7 +140,9 @@ services:
 
   copyright-service:
     <<: *app-defaults
-    build: ./services/copyright-service
+    build:
+      context: .
+      dockerfile: services/copyright-service/Dockerfile
     env_file: ./services/copyright-service/.env
     environment:
       <<: *app-environment
@@ -132,7 +150,9 @@ services:
 
   security-service:
     <<: *app-defaults
-    build: ./services/security-service
+    build:
+      context: .
+      dockerfile: services/security-service/Dockerfile
     env_file: ./services/security-service/.env
     environment:
       <<: *app-environment

@@ -158,8 +158,12 @@ used:
 | copyright-service | `ADMIN_DB_URI`, `NOTIFICATION_DB_URI`, `AUTH_DB_URI`, `VIDEO_DB_URI`, `SECURITY_DB_URI` |
 | security-service | `AUTH_DB_URI`, `COPYRIGHT_DB_URI` |
 
-The Compose configuration requires `CORS_ORIGINS` to be set before running
-`docker compose config` or starting the stack.
+For local frontend development, Compose defaults `CORS_ORIGINS` to
+`http://localhost:5173,http://localhost:5174` (the website and admin Vite
+ports). This lets the stack start locally without weakening the origin
+allowlist. For deployment, explicitly set `CORS_ORIGINS` to the comma-separated
+HTTPS origins of the deployed frontend and admin panel; do not use the local
+default in production.
 
 The gateway is published only on `127.0.0.1:4000`. Put it behind a
 TLS-terminating reverse proxy on the host and point the frontend to that HTTPS
