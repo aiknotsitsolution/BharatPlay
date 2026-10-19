@@ -3,7 +3,7 @@ import { setupAdminAxiosAuth } from "./utils/session";
 
 // Base URL from env (VITE_API_BASE_URL), production fallback for deployed builds.
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
+  import.meta.env.VITE_API_BASE_URL || "https://bharatplay-production.up.railway.app/api";
 
 const API = axios.create({
   baseURL: API_BASE_URL,
