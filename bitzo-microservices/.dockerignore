@@ -4,3 +4,8 @@
 **/coverage
 **/.git
 *.log
+
+# Per-service config travels with the single-image monolith build
+# (monolith.js reads each folder's own .env at boot). The root .env stays out.
+!gateway/.env
+!services/*/.env

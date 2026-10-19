@@ -1,0 +1,34 @@
+# Single-image deployment of the whole stack (gateway + all 9 services),
+# supervised by monolith.js. Build context: bitzo-microservices/
+FROM node:20-alpine
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+
+# Manifests first so dependency installs stay layer-cached.
+COPY gateway/package.json gateway/package-lock.json ./gateway/
+COPY services/auth-service/package.json services/auth-service/package-lock.json ./services/auth-service/
+COPY services/admin-service/package.json services/admin-service/package-lock.json ./services/admin-service/
+COPY services/video-service/package.json services/video-service/package-lock.json ./services/video-service/
+COPY services/category-service/package.json services/category-service/package-lock.json ./services/category-service/
+COPY services/leaderboard-service/package.json services/leaderboard-service/package-lock.json ./services/leaderboard-service/
+COPY services/notification-service/package.json services/notification-service/package-lock.json ./services/notification-service/
+COPY services/player-ad-service/package.json services/player-ad-service/package-lock.json ./services/player-ad-service/
+COPY services/copyright-service/package.json services/copyright-service/package-lock.json ./services/copyright-service/
+COPY services/security-service/package.json services/security-service/package-lock.json ./services/security-service/
+
+# Install every dependency tree (parallel).
+RUN for d in gateway services/*/; do (cd "$d" && npm ci --omit=dev --no-audit --no-fund) & done; wait
+
+# Application code. .env files are excluded by .dockerignore — provide all
+# configuration through the platform's environment variables.
+COPY monolith.js ./
+COPY gateway/ ./gateway/
+COPY services/ ./services/
+
+ENV NODE_ENV=production
+EXPOSE 4000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=4 \
+  CMD wget -qO- "http://127.0.0.1:${PORT:-4000}/health" >/dev/null 2>&1 || exit 1
+
+CMD ["node", "monolith.js"]
