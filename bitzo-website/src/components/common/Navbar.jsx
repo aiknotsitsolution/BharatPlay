@@ -319,7 +319,7 @@ export default function Navbar({ toggleSidebar }) {
       setIsNotificationsOpen(false);
       dispatch(resetNotifications());
       window.dispatchEvent(new Event("auth-change"));
-      navigate("/login");
+      navigate("/");
     }
   };
 

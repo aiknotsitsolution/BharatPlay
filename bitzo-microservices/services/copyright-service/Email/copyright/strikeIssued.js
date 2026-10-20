@@ -80,7 +80,7 @@ function getCopyrightStrikeIssuedMailOptions(
           <span class="detail-value">${expiryFormatted}</span>
         </div>
       </div>
-      <a href="${process.env.WEBSITE_URL || "https://VidBuxApp.com"}/copyright" class="cta">Manage This Strike</a>
+      <a href="${process.env.WEBSITE_URL || "https://vidbuxapp.com"}/copyright" class="cta">Manage This Strike</a>
     </div>
     <div class="footer">
       &copy; 2026 VidBuxApp. All rights reserved.

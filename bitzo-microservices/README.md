@@ -6,18 +6,18 @@ par chalti hai, aur **apne alag MongoDB database** ki owner hai.
 
 ## Services & Ports
 
-| Service              | Port | Owns (its own DB)                              | DB name             |
-|----------------------|------|-------------------------------------------------|---------------------|
-| **gateway**           | 4000 | -                                                | -                   |
-| auth-service         | 4001 | User, RefreshToken, Device, DeviceFingerprint   | `bitzo_auth`        |
-| admin-service        | 4002 | Admin (employees)                               | `bitzo_admin`       |
-| video-service        | 4003 | Video, Channel, WatchSession                    | `bitzo_video`       |
-| category-service     | 4004 | Category                                        | `bitzo_category`    |
-| leaderboard-service  | 4005 | (read-only aggregator, no owned data)           | `bitzo_leaderboard` |
-| notification-service | 4006 | Notification                                    | `bitzo_notification`|
-| player-ad-service    | 4007 | AdNetwork, AdFillRate, AdImpression             | `bitzo_playerad`    |
-| copyright-service    | 4008 | CopyrightCase, CopyrightStrike                  | `bitzo_copyright`   |
-| security-service     | 4009 | FraudEvent, TrustScoreLog, AuditEvent, UserDevice | `bitzo_security`  |
+| Service              | Port | Owns (its own DB)                                 | DB name              |
+| -------------------- | ---- | ------------------------------------------------- | -------------------- |
+| **gateway**          | 4000 | -                                                 | -                    |
+| auth-service         | 4001 | User, RefreshToken, Device, DeviceFingerprint     | `bitzo_auth`         |
+| admin-service        | 4002 | Admin (employees)                                 | `bitzo_admin`        |
+| video-service        | 4003 | Video, Channel, WatchSession                      | `bitzo_video`        |
+| category-service     | 4004 | Category                                          | `bitzo_category`     |
+| leaderboard-service  | 4005 | (read-only aggregator, no owned data)             | `bitzo_leaderboard`  |
+| notification-service | 4006 | Notification                                      | `bitzo_notification` |
+| player-ad-service    | 4007 | AdNetwork, AdFillRate, AdImpression               | `bitzo_playerad`     |
+| copyright-service    | 4008 | CopyrightCase, CopyrightStrike                    | `bitzo_copyright`    |
+| security-service     | 4009 | FraudEvent, TrustScoreLog, AuditEvent, UserDevice | `bitzo_security`     |
 
 The **gateway** (port 4000) is the single entry point your frontend should
 talk to — it proxies every request to the right service, so `/api/...` and
@@ -33,7 +33,7 @@ of that code needed a real fix, not just a copy-paste:
 1. **Foreign models use a secondary connection.**
    Every service's `models/` folder still contains the model files it
    needs (e.g. `admin-service/models/usermodel.js`), but if that service
-   doesn't *own* the data, the model file's last line binds it to a
+   doesn't _own_ the data, the model file's last line binds it to a
    **secondary connection** to the owning service's database instead of
    the service's own primary connection. This is set up in every
    service's `config/connections.js`. Nothing above the model file
@@ -101,6 +101,7 @@ npm run dev
 ```
 
 Or start any single service on its own for development:
+
 ```bash
 cd services/video-service
 npm install
@@ -146,17 +147,17 @@ services also require `IMAGEKIT_PUBLIC_KEY`, `IMAGEKIT_PRIVATE_KEY`, and
 `IMAGEKIT_URL_ENDPOINT`. Configure these cross-service database URIs where
 used:
 
-| Service | Additional database URI keys |
-|---------|-------------------------------|
-| auth-service | `ADMIN_DB_URI`, `NOTIFICATION_DB_URI`, `SECURITY_DB_URI`, `VIDEO_DB_URI` |
-| admin-service | `AUTH_DB_URI`, `NOTIFICATION_DB_URI`, `SECURITY_DB_URI`, `VIDEO_DB_URI`, `CATEGORY_DB_URI`, `COPYRIGHT_DB_URI`, `PLAYERAD_DB_URI` |
-| video-service | `ADMIN_DB_URI`, `NOTIFICATION_DB_URI`, `AUTH_DB_URI`, `SECURITY_DB_URI`, `CATEGORY_DB_URI` |
-| category-service | `ADMIN_DB_URI` |
-| leaderboard-service | `AUTH_DB_URI`, `VIDEO_DB_URI` |
-| notification-service | `AUTH_DB_URI`, `VIDEO_DB_URI` |
-| player-ad-service | `AUTH_DB_URI`, `SECURITY_DB_URI` |
-| copyright-service | `ADMIN_DB_URI`, `NOTIFICATION_DB_URI`, `AUTH_DB_URI`, `VIDEO_DB_URI`, `SECURITY_DB_URI` |
-| security-service | `AUTH_DB_URI`, `COPYRIGHT_DB_URI` |
+| Service              | Additional database URI keys                                                                                                      |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| auth-service         | `ADMIN_DB_URI`, `NOTIFICATION_DB_URI`, `SECURITY_DB_URI`, `VIDEO_DB_URI`                                                          |
+| admin-service        | `AUTH_DB_URI`, `NOTIFICATION_DB_URI`, `SECURITY_DB_URI`, `VIDEO_DB_URI`, `CATEGORY_DB_URI`, `COPYRIGHT_DB_URI`, `PLAYERAD_DB_URI` |
+| video-service        | `ADMIN_DB_URI`, `NOTIFICATION_DB_URI`, `AUTH_DB_URI`, `SECURITY_DB_URI`, `CATEGORY_DB_URI`                                        |
+| category-service     | `ADMIN_DB_URI`                                                                                                                    |
+| leaderboard-service  | `AUTH_DB_URI`, `VIDEO_DB_URI`                                                                                                     |
+| notification-service | `AUTH_DB_URI`, `VIDEO_DB_URI`                                                                                                     |
+| player-ad-service    | `AUTH_DB_URI`, `SECURITY_DB_URI`                                                                                                  |
+| copyright-service    | `ADMIN_DB_URI`, `NOTIFICATION_DB_URI`, `AUTH_DB_URI`, `VIDEO_DB_URI`, `SECURITY_DB_URI`                                           |
+| security-service     | `AUTH_DB_URI`, `COPYRIGHT_DB_URI`                                                                                                 |
 
 For local frontend development, Compose defaults `CORS_ORIGINS` to
 `http://localhost:5173,http://localhost:5174` (the website and admin Vite
@@ -202,11 +203,11 @@ and cloud-provider credentials before deploying, and revoke the old values.
 
 ## Frontend changes needed
 
-None, if you point your frontend at the gateway (`http://localhost:4000`)
+None, if you point your frontend at the gateway (`https://vidbuxapp.com`)
 instead of the old monolith's URL — every route path is unchanged
 (`/api/...`, `/v1/player/...`, `/test-vpn`). If your frontend currently
 talks to `http://localhost:8000` directly, just change that base URL to
-`http://localhost:4000`.
+`https://vidbuxapp.com`.
 
 ## Operational notes
 

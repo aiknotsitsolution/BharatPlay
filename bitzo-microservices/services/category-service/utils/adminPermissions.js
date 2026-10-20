@@ -15,6 +15,7 @@ const ROLE_PERMISSIONS = {
     "employee:create",
     "employee:delete",
     "dashboard:read",
+    "settings:read",
     "content:read",
     "copyright:read",
     "copyright:write",

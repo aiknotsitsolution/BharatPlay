@@ -11,8 +11,8 @@ const { requirePermission } = require("../../middlewares/checkAdminPermission");
 
 const router = express.Router();
 
-router.get("/", getAllCategorys);
-router.get("/:id", getCategoryById);
+router.get("/", requireAdmin, requirePermission("settings:read"), getAllCategorys);
+router.get("/:id", requireAdmin, requirePermission("settings:read"), getCategoryById);
 router.post("/", requireAdmin, requirePermission("settings:write"), createCategory);
 router.put("/:id", requireAdmin, requirePermission("settings:write"), updateCategory);
 router.delete("/:id", requireAdmin, requirePermission("settings:write"), deleteCategory);
