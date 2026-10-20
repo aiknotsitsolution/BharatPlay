@@ -176,6 +176,40 @@ export const fetchHomeVideos = createAsyncThunk(
   },
 );
 
+export const fetchShortsFeed = createAsyncThunk(
+  "videos/fetchShortsFeed",
+  async ({ limit = 100 } = {}, { getState, rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("token");
+      const category = getState().videos.selectedCategory;
+      const params = new URLSearchParams({ page: "1", limit: String(limit) });
+      if (category) params.set("category", category);
+
+      const response = await fetch(
+        `${API_BASE}/trending-shorts?${params.toString()}`,
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return rejectWithValue(data.message || "Failed to load Shorts");
+      }
+
+      const items = getVideosArray(data).map(normalizeShort);
+      return {
+        category,
+        items,
+        page: Number(data.page) || 1,
+        limit: Number(data.limit) || limit,
+        total: Number(data.total) || 0,
+      };
+    } catch (error) {
+      return rejectWithValue(error.message || "Failed to load Shorts");
+    }
+  },
+);
+
 // Fetches the next page of a single home section (used to fill partially
 // consumed rows and to grow the feed with fresh loop rows while scrolling).
 export const fetchNextHomeSection = createAsyncThunk(
@@ -185,7 +219,6 @@ export const fetchNextHomeSection = createAsyncThunk(
     if (!endpoint) return rejectWithValue(`Unknown home section: ${section}`);
 
     const token = localStorage.getItem("token");
-    if (!token) return rejectWithValue("Please login first");
 
     const videosState = getState().videos;
     const page = (videosState.sectionPages[section] || 0) + 1;
@@ -199,7 +232,7 @@ export const fetchNextHomeSection = createAsyncThunk(
 
     try {
       const res = await fetch(`${API_BASE}/${endpoint}?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json().catch(() => ({ videos: [] }));
       if (!res.ok) {
@@ -312,6 +345,7 @@ const initialState = {
   sectionPages: makeSectionMap(0),
   sectionHasMore: makeSectionMap(false),
   sectionFetching: makeSectionMap(false),
+  shortsFeedRequestId: null,
   myVideos: [],
   selectedCategory: null,
   loading: false,
@@ -402,10 +436,33 @@ const videosSlice = createSlice({
         state.loading = false;
         state.error = action.payload || "Failed to load videos";
       })
+      .addCase(fetchShortsFeed.pending, (state, action) => {
+        state.shortsFeedRequestId = action.meta.requestId;
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchShortsFeed.fulfilled, (state, action) => {
+        if (action.meta.requestId !== state.shortsFeedRequestId) return;
+        const { category, items, page, limit, total } = action.payload;
+        state.loading = false;
+        if (category !== state.selectedCategory) return;
+        state.error = null;
+        state.shorts = items;
+        state.sectionPages.shorts = page;
+        state.sectionHasMore.shorts =
+          total > page * limit || items.length === limit;
+        state.sectionFetching.shorts = false;
+      })
+      .addCase(fetchShortsFeed.rejected, (state, action) => {
+        if (action.meta.requestId !== state.shortsFeedRequestId) return;
+        state.loading = false;
+        state.error = action.payload || "Failed to load Shorts";
+      })
       .addCase(fetchNextHomeSection.pending, (state, action) => {
         const { section } = action.meta.arg;
         if (HOME_SECTIONS.includes(section)) {
           state.sectionFetching[section] = true;
+          if (section === "shorts") state.error = null;
         }
       })
       .addCase(fetchNextHomeSection.fulfilled, (state, action) => {
@@ -431,6 +488,7 @@ const videosSlice = createSlice({
         state.sectionFetching[section] = false;
         // Stop feeding this section so the feed can settle.
         state.sectionHasMore[section] = false;
+        state.error = action.payload || `Failed to load ${section}`;
         state.homeHasMore = Object.values(state.sectionHasMore).some(Boolean);
       })
       .addCase(fetchMyVideos.pending, (state) => {

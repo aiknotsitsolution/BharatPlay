@@ -48,7 +48,7 @@ describe("client hardware account binding", () => {
       ok: false,
       status: 403,
       code: "DEVICE_BINDING_VIOLATION",
-      message: "Ek phone me sirf ek hi account allowed hai",
+      message: "Only one account is allowed per phone.",
     });
   });
 

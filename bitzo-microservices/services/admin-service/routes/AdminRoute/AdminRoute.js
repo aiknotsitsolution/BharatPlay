@@ -164,105 +164,90 @@ router.get(
   "/users/:id",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getUserById,
 );
 router.get(
   "/users/:id/overview",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getUserOverview,
 );
 router.get(
   "/users/:id/channels",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getAdminUserChannels,
 );
 router.get(
   "/users/:id/videos",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getAdminUserVideos,
 );
 router.get(
   "/users/:id/shorts",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getAdminUserShorts,
 );
 router.get(
   "/users/:id/activity",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getUserActivity,
 );
 router.get(
   "/users/:id/watch-history",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getUserWatchHistory,
 );
 router.get(
   "/users/:id/subscriptions",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getUserSubscriptions,
 );
 router.get(
   "/users/:id/liked-videos",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getUserLikedVideos,
 );
 router.get(
   "/users/:id/disliked-videos",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getUserDislikedVideos,
 );
 router.get(
   "/users/:id/watch-later",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getUserWatchLater,
 );
 router.get(
   "/users/:id/notifications",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getUserNotifications,
 );
 router.get(
   "/users/:id/devices",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getUserDevices,
 );
 router.get(
   "/users/:id/fraud-events",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getUserFraudEvents,
 );
 router.get(
   "/users/:id/engagement",
   requireAdmin,
   requirePermission("users:read"),
-  adminUserLimiter,
   getUserEngagement,
 );
 

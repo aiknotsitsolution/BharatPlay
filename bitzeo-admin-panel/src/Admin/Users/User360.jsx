@@ -1696,6 +1696,46 @@ const TABS = [
   { key: "security", label: "Security", icon: Shield },
 ];
 
+const getNotificationText = (notification) => {
+  const actorName = notification.actor?.name || "Someone";
+  const videoTitle = notification.video?.title || "your video";
+
+  switch (notification.type) {
+    case "subscribe":
+      return `${actorName} subscribed to your channel`;
+    case "like":
+      return `${actorName} liked your video`;
+    case "comment":
+      return `${actorName} commented on your video`;
+    case "upload":
+      return `${actorName} uploaded a new video`;
+    case "copyright_takedown_received":
+      return `A copyright takedown request has been filed for "${videoTitle}"`;
+    case "copyright_takedown_approved":
+      return `Your video "${videoTitle}" was removed due to a copyright takedown`;
+    case "copyright_takedown_rejected":
+      return `A copyright takedown request on "${videoTitle}" was rejected`;
+    case "copyright_strike_received":
+      return `Your video "${videoTitle}" received a copyright strike`;
+    case "copyright_dispute_filed":
+      return `A dispute was filed for the copyright claim on "${videoTitle}"`;
+    case "copyright_dispute_resolved":
+      return `Your copyright dispute for "${videoTitle}" was resolved`;
+    case "copyright_case_assigned":
+      return `The copyright case involving "${videoTitle}" was assigned for review`;
+    case "copyright_case_created":
+      return `A new copyright claim was filed on "${videoTitle}"`;
+    case "copyright_case_resolved":
+      return `A copyright case involving "${videoTitle}" was resolved`;
+    case "support_reply":
+      return "The support team replied to your request";
+    case "support_status":
+      return "Your support request status was updated";
+    default:
+      return "You have a new notification";
+  }
+};
+
 export default function User360() {
   const { userId } = useParams();
   const navigate = useNavigate();
@@ -2721,11 +2761,7 @@ export default function User360() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-800">
-                        <span className="font-medium">{n.actor?.name || "User"}</span>{" "}
-                        {n.type === "subscribe" && "subscribed to your channel"}
-                        {n.type === "like" && "liked your video"}
-                        {n.type === "comment" && "commented on your video"}
-                        {n.type === "upload" && "uploaded a new video"}
+                        {getNotificationText(n)}
                       </p>
                       <p className="text-[11px] text-slate-400">{formatDateTime(n.createdAt)}</p>
                     </div>

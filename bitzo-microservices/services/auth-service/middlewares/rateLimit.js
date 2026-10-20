@@ -1,4 +1,8 @@
-const rateLimit = require("express-rate-limit");
+// Set ENABLE_RATE_LIMITS=false to disable protected middleware limits.
+const rateLimit =
+  process.env.ENABLE_RATE_LIMITS === "false"
+    ? () => (_req, _res, next) => next()
+    : require("express-rate-limit");
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -28,15 +32,7 @@ const adminLoginLimiter = rateLimit({
 });
 
 const registerLimiter = rateLimit({
-  windowMs: 1 * HOUR,
-  limit: 5,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  message: jsonMessage("Too many registration attempts. Please try again later."),
-});
-
-const adminRegisterLimiter = rateLimit({
-  windowMs: 1 * HOUR,
+  windowMs: 2 * MINUTE,
   limit: 5,
   standardHeaders: "draft-8",
   legacyHeaders: false,
@@ -168,7 +164,6 @@ module.exports = {
   loginLimiter,
   adminLoginLimiter,
   registerLimiter,
-  adminRegisterLimiter,
   passwordLimiter,
   googleLimiter,
   refreshLimiter,

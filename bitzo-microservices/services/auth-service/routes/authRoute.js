@@ -276,7 +276,7 @@ router.get("/profile", authMiddleware, async (req, res) => {
     });
   }
 });
-// Deprecated: use /api/admin/alluser instead (has rate limiting + requireAdmin)
+// Deprecated: use /api/admin/alluser instead.
 // router.get("/alluser", requireAdmin, getAllUsers);
 
 router.put("/user/:id", authMiddleware, imageUpload.single("avatar"), UserEdit);

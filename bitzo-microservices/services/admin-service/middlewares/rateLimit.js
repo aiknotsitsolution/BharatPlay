@@ -1,4 +1,8 @@
-const rateLimit = require("express-rate-limit");
+// Set ENABLE_RATE_LIMITS=false to disable protected middleware limits.
+const rateLimit =
+  process.env.ENABLE_RATE_LIMITS === "false"
+    ? () => (_req, _res, next) => next()
+    : require("express-rate-limit");
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -7,6 +11,7 @@ const jsonMessage = (message) => ({
   success: false,
   message,
 });
+const passThroughLimiter = (_req, _res, next) => next();
 
 // Single-instance in-memory rate limiting (Phase 4 / F18).
 // Upgrade path: swap the default MemoryStore for a Redis adapter when the
@@ -112,13 +117,7 @@ const viewLimiter = rateLimit({
 });
 
 // Admin user list (read-only, generous — table view + search + pagination)
-const adminUserListLimiter = rateLimit({
-  windowMs: 15 * MINUTE,
-  limit: 200,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  message: jsonMessage("Too many requests. Please try again later."),
-});
+const adminUserListLimiter = passThroughLimiter;
 
 // Admin user detail / 360° endpoints (read-heavy, many sub-requests per user)
 const adminUserLimiter = rateLimit({

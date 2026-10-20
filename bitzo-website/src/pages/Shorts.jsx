@@ -9,7 +9,10 @@ import React, {
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProfileData } from "../features/profile/profileSlice";
-import { fetchHomeVideos } from "../features/videos/videosSlice";
+import {
+  fetchShortsFeed,
+  fetchNextHomeSection,
+} from "../features/videos/videosSlice";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useSwipeable } from "react-swipeable"; // ← install: npm install react-swipeable
@@ -90,7 +93,14 @@ export default function Shorts() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const stateShort = location.state?.video || null;
-  const { shorts: reduxShorts, loading } = useSelector((state) => state.videos);
+  const {
+    shorts: reduxShorts,
+    loading,
+    selectedCategory,
+    error,
+    sectionHasMore,
+    sectionFetching,
+  } = useSelector((state) => state.videos);
   const profileUser = useSelector((state) => state.profile?.user || null);
   const commenter = resolveCommenter(profileUser);
 
@@ -143,6 +153,8 @@ export default function Shorts() {
   const isProgrammaticScrollRef = useRef(false);
   const pendingInitialScrollRef = useRef(null);
   const lastSyncedUrlIdRef = useRef(null);
+  const processedShortsRef = useRef(null);
+  const activeShortIdRef = useRef(null);
   const currentIndexRef = useRef(0);
   const lastActiveIndexRef = useRef(-1);
   const playAttemptsRef = useRef({});
@@ -317,8 +329,39 @@ export default function Shorts() {
 
   // ─── Load real shorts from backend ───
   useEffect(() => {
-    dispatch(fetchHomeVideos());
-  }, [dispatch]);
+    dispatch(fetchShortsFeed({ limit: 100 }));
+  }, [dispatch, selectedCategory]);
+
+  useEffect(() => {
+    if (error) toast.error(error);
+  }, [error]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      loadingState ||
+      shorts.length === 0 ||
+      currentIndex < shorts.length - 2 ||
+      !sectionHasMore.shorts ||
+      sectionFetching.shorts
+    ) {
+      return;
+    }
+
+    dispatch(fetchNextHomeSection({ section: "shorts", limit: 100 }));
+  }, [
+    currentIndex,
+    dispatch,
+    loading,
+    loadingState,
+    sectionFetching.shorts,
+    sectionHasMore.shorts,
+    shorts.length,
+  ]);
+
+  useEffect(() => {
+    activeShortIdRef.current = shorts[currentIndex]?.id || null;
+  }, [currentIndex, shorts]);
 
   // ─── Resolve the URL short by id when not already in state/Redux ───
   useEffect(() => {
@@ -371,15 +414,26 @@ export default function Shorts() {
       return;
     }
 
-    if (urlId && lastSyncedUrlIdRef.current === urlId) {
+    const feedChanged = processedShortsRef.current !== reduxShorts;
+    if (
+      urlId &&
+      lastSyncedUrlIdRef.current === urlId &&
+      !feedChanged
+    ) {
       return;
     }
 
+    processedShortsRef.current = reduxShorts;
     const list = (reduxShorts || [])
       .map(normalizeShort)
       .filter((short) => short.videoUrl);
 
     if (!list.length && !primaryShort) {
+      setShorts([]);
+      setLiked({});
+      setSubscribed({});
+      setCurrentIndex(0);
+      pendingInitialScrollRef.current = null;
       setLoadingState(false);
       return;
     }
@@ -387,7 +441,13 @@ export default function Shorts() {
     let queue = list;
     let startIndex = 0;
 
-    if (primaryShort) {
+    const activeShortIndex = feedChanged && activeShortIdRef.current
+      ? list.findIndex((short) => short.id === activeShortIdRef.current)
+      : -1;
+
+    if (activeShortIndex >= 0) {
+      startIndex = activeShortIndex;
+    } else if (primaryShort) {
       const primaryId = String(primaryShort.id || primaryShort._id);
       const existingIdx = list.findIndex(
         (short) => String(short.id) === primaryId,
@@ -409,6 +469,20 @@ export default function Shorts() {
       if (clicked.videoUrl) {
         queue = [clicked];
         startIndex = 0;
+      }
+    }
+
+    if (
+      primaryShort &&
+      !queue.some(
+        (short) =>
+          String(short.id) === String(primaryShort.id || primaryShort._id),
+      )
+    ) {
+      const clicked = normalizeShort(primaryShort);
+      if (clicked.videoUrl) {
+        queue = [clicked, ...queue];
+        if (activeShortIndex >= 0) startIndex += 1;
       }
     }
 
@@ -873,7 +947,7 @@ export default function Shorts() {
                 ) : shorts.length === 0 ? (
                   <div className="flex h-full w-full items-center justify-center">
                     <p className="text-white/70 text-sm">
-                      No shorts available yet.
+                      {error || "No shorts available yet."}
                     </p>
                   </div>
                 ) : (

@@ -1,7 +1,7 @@
 const ClientHardwareBinding = require("../models/ClientHardwareBinding");
 const User = require("../models/usermodel");
 
-const MESSAGE = "Ek phone me sirf ek hi account allowed hai";
+const MESSAGE = "Only one account is allowed per phone.";
 
 const invalidUuidResult = () => ({
   ok: false,
