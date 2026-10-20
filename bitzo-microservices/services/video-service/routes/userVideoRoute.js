@@ -93,9 +93,9 @@ router.get("/channel/:id", optionalAuth, getChannelById);
 router.get("/channel/:id/videos", isAuthenticated, getvideosByChannel);
 router.delete("/channel/:id", isAuthenticated, deleteChannel);
 
-router.get("/recommended", isAuthenticated, recommendedVideos);
-router.get("/trending", isAuthenticated, trendingVideos);
-router.get("/latest", isAuthenticated, LatestVideos);
+router.get("/recommended", optionalAuth, recommendedVideos);
+router.get("/trending", optionalAuth, trendingVideos);
+router.get("/latest", optionalAuth, LatestVideos);
 router.get("/subscriptions", isAuthenticated, getSubscribedVideos);
 router.get("/trending-shorts", optionalAuth, trendingShorts);
 router.get("/top-shorts", optionalAuth, topShorts);
@@ -109,9 +109,9 @@ router.get("/search/hints", getSearchHints);
 // Watch Later (jo aapne diya tha)
 router.delete("/watch-later/:videoId", isAuthenticated, RemoveFromWatchLater);
 router.post("/watch-later/:videoId", isAuthenticated, addToWatchLater);
-router.get("/:id/related", isAuthenticated, getRelatedVideos);
-router.get("/:id", isAuthenticated, getVideoById);
-router.post("/:videoId/view", viewLimiter, optionalAuth, addView);
+router.get("/:id/related", optionalAuth, getRelatedVideos);
+router.get("/:id", optionalAuth, getVideoById);
+router.post("/:videoId/view", viewLimiter, isAuthenticated, addView);
 router.post("/:videoId/like", isAuthenticated, likeVideo);
 router.post("/:videoId/dislike", isAuthenticated, dislikeVideo);
 router.get("/:videoId/interaction", getVideoInteraction);

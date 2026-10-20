@@ -96,20 +96,23 @@ export default function AppRoutes() {
       <Route path="/login" element={<AuthPageV2 />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
+      <Route element={<MainLayout />}>
+        <Route index element={<Home />} />
+        <Route path="home" element={<Home />} />
+        <Route path="shorts" element={<Shorts />} />
+        <Route path="shorts/:id" element={<Shorts />} />
+        <Route path="video/:id" element={<FullVideo />} />
+        <Route path="videos/:type" element={<ViewAllRoute />} />
+      </Route>
+
       <Route element={<ProtectedLayout />}>
         <Route element={<MainLayout />}>
-          <Route index element={<Home />} />
-          <Route path="home" element={<Home />} />
-          <Route path="shorts" element={<Shorts />} />
-          <Route path="shorts/:id" element={<Shorts />} />
           <Route path="trending" element={<Trending />} />
           <Route path="watch/:id" element={<WatchPage />} />
           <Route path="withdraw" element={<WithdrawPage />} />
           <Route path="uploadvideo" element={<UploadVideo />} />
           <Route path="reel" element={<ReelPlayerPage />} />
-          <Route path="videos/:type" element={<ViewAllRoute />} />
           <Route path="search" element={<SearchPage />} />
-          <Route path="video/:id" element={<FullVideo />} />
           <Route path="profile" element={<Profile />} />
           <Route path="subscribechannel/:id" element={<SubscribedChannels />} />
 

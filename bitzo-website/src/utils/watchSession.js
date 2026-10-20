@@ -140,6 +140,7 @@ const getWatchSession = (videoEl, options) => {
   const existing = sessions.get(videoEl);
   if (existing && existing.videoId === options.id) return existing;
   if (existing) existing.destroy();
+  if (!localStorage.getItem("token")) return null;
   const session = createSession(videoEl, options);
   sessions.set(videoEl, session);
   return session;

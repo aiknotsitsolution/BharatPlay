@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -10,6 +10,7 @@ import {
 import { addToWatchLater, removeFromWatchLater } from "../api/watchLater";
 import { MovieCard } from "../components/common/VideoGrid";
 import ShortCard from "../components/common/ShortCard";
+import { promptLogin } from "../utils/loginPrompt";
 
 const PAGE_SIZE = 20;
 
@@ -55,6 +56,7 @@ const SECTIONS = {
 const ViewAll = () => {
   const { type } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const section = SECTIONS[type];
   const selectedCategory = useSelector(
     (state) => state.videos.selectedCategory,
@@ -63,19 +65,19 @@ const ViewAll = () => {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(
-    () => !localStorage.getItem("token"),
-  );
-  const [error, setError] = useState(() =>
-    localStorage.getItem("token") ? null : "Please login to view videos.",
-  );
+  const [loadedRequestKey, setLoadedRequestKey] = useState(null);
+  const [error, setError] = useState(null);
 
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
+  const needsLogin =
+    type === "subscriptions" && !localStorage.getItem("token");
+  const requestKey = `${type}-${page}-${selectedCategory || "all"}`;
+  const loading = !needsLogin && loadedRequestKey !== requestKey;
 
   useEffect(() => {
     if (!section) return;
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (type === "subscriptions" && !token) return;
 
     let active = true;
     const categoryParam = selectedCategory
@@ -85,7 +87,7 @@ const ViewAll = () => {
     fetch(
       `${API_BASE}${section.endpoint}?page=${page}&limit=${PAGE_SIZE}${categoryParam}`,
       {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       },
     )
       .then((res) => {
@@ -108,13 +110,13 @@ const ViewAll = () => {
         if (active) setError(err.message || "Failed to load videos.");
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setLoadedRequestKey(requestKey);
       });
 
     return () => {
       active = false;
     };
-  }, [type, page, section, selectedCategory]);
+  }, [type, page, section, selectedCategory, requestKey]);
 
   const handleItemClick = (item) => {
     if (section.isShort) {
@@ -125,6 +127,8 @@ const ViewAll = () => {
   };
 
   const handleAddToWatchLater = addToWatchLater;
+  const handleRemoveFromWatchLater = removeFromWatchLater;
+  const requestLogin = () => promptLogin(navigate, location);
 
   if (!section) {
     return (
@@ -144,12 +148,24 @@ const ViewAll = () => {
           </span>
         </div>
 
-        {loading ? (
+        {needsLogin ? (
+          <div className="text-center">
+            <p className="text-sm text-gray-300">
+              Sign in to view videos from subscribed channels.
+            </p>
+            <button
+              onClick={requestLogin}
+              className="mt-3 rounded-full border border-blue-500 px-4 py-2 text-sm text-blue-400 hover:bg-blue-500/10"
+            >
+              Sign in
+            </button>
+          </div>
+        ) : loading ? (
           <p className="text-sm text-gray-400">
             Loading {section.title.toLowerCase()}...
           </p>
         ) : error ? (
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-sm text-gray-300">{error}</p>
         ) : items.length > 0 ? (
           <>
             {section.isShort ? (
@@ -169,8 +185,14 @@ const ViewAll = () => {
                     key={item.id}
                     item={item}
                     onClick={handleItemClick}
-                    onAddToWatchLater={handleAddToWatchLater}
-                    onRemoveFromWatchLater={removeFromWatchLater}
+                    onAddToWatchLater={(item) => {
+                      if (requestLogin()) return { success: false };
+                      return handleAddToWatchLater(item);
+                    }}
+                    onRemoveFromWatchLater={(item) => {
+                      if (requestLogin()) return { success: false };
+                      return handleRemoveFromWatchLater(item);
+                    }}
                   />
                 ))}
               </div>

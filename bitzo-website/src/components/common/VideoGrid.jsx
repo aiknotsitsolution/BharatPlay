@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   BadgeCheck,
@@ -19,6 +19,7 @@ import { formatTime } from "../player/utils";
 import ShortCard from "./ShortCard";
 import { ShortsCardSkeletonRow, VideoCardSkeletonRow } from "./Skeletons";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
+import { promptLogin } from "../../utils/loginPrompt";
 
 const supportsHover =
   typeof window !== "undefined" &&
@@ -492,6 +493,7 @@ export function MovieCard({
 
 export default function NetflixStylePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useWidth() < 768;
   const dispatch = useDispatch();
   const {
@@ -563,6 +565,14 @@ export default function NetflixStylePage() {
   };
 
   const goToViewAll = (type) => navigate(`/videos/${type}`);
+  const handleAddToWatchLater = (item) => {
+    if (promptLogin(navigate, location)) return { success: false };
+    return addToWatchLater(item);
+  };
+  const handleRemoveFromWatchLater = (item) => {
+    if (promptLogin(navigate, location)) return { success: false };
+    return removeFromWatchLater(item);
+  };
 
   // The home feed repeats the same six sections as single horizontal rows.
   // Every section walks its own list: row 1 gets its first 5 videos, row 2
@@ -744,8 +754,8 @@ export default function NetflixStylePage() {
                       <MovieCard
                         item={item}
                         onClick={handleItemClick}
-                        onAddToWatchLater={addToWatchLater}
-                        onRemoveFromWatchLater={removeFromWatchLater}
+                        onAddToWatchLater={handleAddToWatchLater}
+                        onRemoveFromWatchLater={handleRemoveFromWatchLater}
                         progress={70}
                       />
                     </div>

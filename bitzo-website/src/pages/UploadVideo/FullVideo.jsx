@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { formatTimeAgo } from "../../utils/timeAgo";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
+import { promptLogin } from "../../utils/loginPrompt";
 
 const API_BASE = `${BACKEND_URL}/api/uservideo`;
 
@@ -215,7 +216,7 @@ export default function YouTubeLikeVideoPage() {
   // Ensure the profile (which carries the real avatar) is loaded so comment
   // avatars show even if the user never visited their profile this session.
   useEffect(() => {
-    if (!profileUser) {
+    if (!profileUser && localStorage.getItem("token")) {
       dispatch(fetchProfileData());
     }
   }, [dispatch, profileUser]);
@@ -437,7 +438,7 @@ export default function YouTubeLikeVideoPage() {
 
   // View tracking (initial hit — registers a "view attempt", not a counted view)
   useEffect(() => {
-    if (!id || viewTracked.current) return;
+    if (!id || !localStorage.getItem("token") || viewTracked.current) return;
 
     viewTracked.current = true;
     const token = localStorage.getItem("token");
@@ -468,7 +469,7 @@ export default function YouTubeLikeVideoPage() {
 
   // Watch percentage tracking + view count when 80% watched
   useEffect(() => {
-    if (!id || !duration) return;
+    if (!id || !duration || !localStorage.getItem("token")) return;
 
     const percent = Math.min(100, Math.round((currentTime / duration) * 100));
 
@@ -504,6 +505,7 @@ export default function YouTubeLikeVideoPage() {
   // ==================== LIKE / DISLIKE (Correct) ====================
   const handleReaction = async (type) => {
     if (!id || reactionLoading) return;
+    if (promptLogin(navigate, location)) return;
 
     setReactionLoading(true);
     const token = localStorage.getItem("token");
@@ -534,6 +536,7 @@ export default function YouTubeLikeVideoPage() {
 
   // ==================== SUBSCRIBE ====================
   const handleSubscribe = async () => {
+    if (promptLogin(navigate, location)) return;
     const channelId = videoDetails?.channel?._id || videoDetails?.channel?.id;
     if (!channelId) return;
 
@@ -577,6 +580,7 @@ export default function YouTubeLikeVideoPage() {
 
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
+    if (promptLogin(navigate, location)) return;
     if (!id || !commentText.trim()) return;
 
     setCommentLoading(true);
@@ -613,6 +617,11 @@ export default function YouTubeLikeVideoPage() {
     } finally {
       setCommentLoading(false);
     }
+  };
+
+  const handleSaveClick = () => {
+    if (promptLogin(navigate, location)) return;
+    setSaved((prev) => !prev);
   };
 
   const openVideo = useCallback(
@@ -1039,7 +1048,7 @@ export default function YouTubeLikeVideoPage() {
               {/* Save (future) */}
               <button
                 type="button"
-                onClick={() => setSaved((prev) => !prev)}
+                onClick={handleSaveClick}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/10 text-sm font-semibold hover:bg-white/15 transition-colors flex-shrink-0"
               >
                 <Bookmark size={18} fill={saved ? "currentColor" : "none"} />

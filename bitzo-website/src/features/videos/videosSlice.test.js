@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import videosReducer, {
+  fetchHomeVideos,
   fetchNextHomeSection,
   fetchShortsFeed,
 } from "./videosSlice";
@@ -58,5 +59,71 @@ describe("Shorts feed pagination", () => {
     expect(store.getState().videos.shorts).toHaveLength(150);
     expect(store.getState().videos.sectionHasMore.shorts).toBe(false);
     expect(requestCount).toBe(2);
+  });
+
+  it("loads public Home sections without a login token", async () => {
+    const requestedUrls = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        requestedUrls.push(String(url));
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            page: 1,
+            limit: 5,
+            total: 1,
+            videos: [{ _id: "public-video", title: "Public video" }],
+          }),
+        };
+      }),
+    );
+
+    await store.dispatch(fetchHomeVideos({ limit: 5 })).unwrap();
+
+    expect(store.getState().videos.recommended).toHaveLength(1);
+    expect(store.getState().videos.trending).toHaveLength(1);
+    expect(store.getState().videos.latest).toHaveLength(1);
+    expect(store.getState().videos.shorts).toHaveLength(1);
+    expect(store.getState().videos.subscriptions).toHaveLength(0);
+    expect(requestedUrls).toHaveLength(4);
+    expect(requestedUrls.some((url) => url.includes("/subscriptions"))).toBe(
+      false,
+    );
+  });
+
+  it("keeps Home and video sections available after login", async () => {
+    localStorage.setItem("token", "test-token");
+    const requestedUrls = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url, options) => {
+        requestedUrls.push({ url: String(url), options });
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            page: 1,
+            limit: 5,
+            total: 1,
+            videos: [{ _id: "signed-in-video", title: "Signed-in video" }],
+          }),
+        };
+      }),
+    );
+
+    await store.dispatch(fetchHomeVideos({ limit: 5 })).unwrap();
+
+    expect(store.getState().videos.recommended).toHaveLength(1);
+    expect(store.getState().videos.trending).toHaveLength(1);
+    expect(store.getState().videos.latest).toHaveLength(1);
+    expect(store.getState().videos.subscriptions).toHaveLength(1);
+    expect(requestedUrls).toHaveLength(5);
+    expect(
+      requestedUrls.every(
+        ({ options }) => options.headers.Authorization === "Bearer test-token",
+      ),
+    ).toBe(true);
   });
 });

@@ -96,14 +96,6 @@ export const fetchHomeVideos = createAsyncThunk(
     const requestId = ++homeFetchRequestId;
     try {
       const token = localStorage.getItem("token");
-      if (!token)
-        return {
-          recommended: [],
-          trending: [],
-          latest: [],
-          subscriptions: [],
-          shorts: [],
-        };
 
       const params = new URLSearchParams({
         page: String(page),
@@ -116,25 +108,26 @@ export const fetchHomeVideos = createAsyncThunk(
         recommendedRes,
         trendingRes,
         latestRes,
-        subscriptionsRes,
         shortsRes,
       ] = await Promise.all([
         fetch(`${API_BASE}/recommended${categoryParam}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         }),
         fetch(`${API_BASE}/trending${categoryParam}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         }),
         fetch(`${API_BASE}/latest${categoryParam}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE}/subscriptions${categoryParam}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         }),
         fetch(`${API_BASE}/trending-shorts${categoryParam}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         }),
       ]);
+      const subscriptionsRes = token
+        ? await fetch(`${API_BASE}/subscriptions${categoryParam}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        : null;
 
       if (requestId !== homeFetchRequestId) return { cancelled: true };
 
@@ -142,15 +135,16 @@ export const fetchHomeVideos = createAsyncThunk(
         recommendedData,
         trendingData,
         latestData,
-        subscriptionsData,
         shortsData,
       ] = await Promise.all([
         recommendedRes.json().catch(() => ({ videos: [] })),
         trendingRes.json().catch(() => ({ videos: [] })),
         latestRes.json().catch(() => ({ videos: [] })),
-        subscriptionsRes.json().catch(() => ({ videos: [] })),
         shortsRes.json().catch(() => ({ videos: [] })),
       ]);
+      const subscriptionsData = subscriptionsRes
+        ? await subscriptionsRes.json().catch(() => ({ videos: [] }))
+        : { videos: [], total: 0 };
 
       if (requestId !== homeFetchRequestId) return { cancelled: true };
 
@@ -223,6 +217,17 @@ export const fetchNextHomeSection = createAsyncThunk(
     const videosState = getState().videos;
     const page = (videosState.sectionPages[section] || 0) + 1;
     const category = videosState.selectedCategory;
+
+    if (section === "subscriptions" && !token) {
+      return {
+        section,
+        page,
+        limit,
+        category,
+        items: [],
+        total: 0,
+      };
+    }
 
     const params = new URLSearchParams({
       page: String(page),

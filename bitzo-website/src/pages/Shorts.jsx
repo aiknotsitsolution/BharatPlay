@@ -17,6 +17,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useSwipeable } from "react-swipeable"; // ← install: npm install react-swipeable
 import { getWatchSession, flushAllSessions } from "../utils/watchSession";
+import { promptLogin } from "../utils/loginPrompt";
 import ShortVideo from "../components/shorts/ShortVideo";
 import ShortOverlay from "../components/shorts/ShortOverlay";
 import ActionRail from "../components/shorts/ActionRail";
@@ -107,7 +108,7 @@ export default function Shorts() {
   // Ensure the profile (which carries the real avatar) is loaded so comment
   // avatars show even if the user never visited their profile this session.
   useEffect(() => {
-    if (!profileUser) {
+    if (!profileUser && localStorage.getItem("token")) {
       dispatch(fetchProfileData());
     }
   }, [dispatch, profileUser]);
@@ -210,6 +211,7 @@ export default function Shorts() {
   };
 
   const handleSubscribe = async (short) => {
+    if (promptLogin(navigate, location)) return;
     const channelId = getChannelId(short);
     const token = localStorage.getItem("token");
     if (!channelId) return;
@@ -276,6 +278,8 @@ export default function Shorts() {
 
   const trackShortProgress = async (short, videoEl) => {
     if (!short?.id || !videoEl) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
     getWatchSession(videoEl, { id: short.id, videoType: "short" })?.tick();
 
@@ -297,7 +301,6 @@ export default function Shorts() {
 
     reportedPercentRef.current[short.id] = percent;
 
-    const token = localStorage.getItem("token");
     const rawUser = localStorage.getItem("user");
     const parsedUser = rawUser ? JSON.parse(rawUser) : null;
     const userId = parsedUser?._id || parsedUser?.id || null;
@@ -681,6 +684,7 @@ export default function Shorts() {
   };
 
   const toggleLike = async (short) => {
+    if (promptLogin(navigate, location)) return;
     const token = localStorage.getItem("token");
     if (!token || !short.id || pendingLike[short.id]) return;
 
@@ -740,6 +744,7 @@ export default function Shorts() {
   };
 
   const handleCommentOpen = async (short) => {
+    if (promptLogin(navigate, location)) return;
     if (commentOpenForId === short.id) {
       setCommentOpenForId(null);
       return;
@@ -753,6 +758,7 @@ export default function Shorts() {
 
   const handleCommentSubmit = async (e, short) => {
     e.preventDefault();
+    if (promptLogin(navigate, location)) return;
     const token = localStorage.getItem("token");
     const text = (commentTextById[short.id] || "").trim();
 
