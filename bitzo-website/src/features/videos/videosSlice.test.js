@@ -4,6 +4,8 @@ import videosReducer, {
   fetchHomeVideos,
   fetchNextHomeSection,
   fetchShortsFeed,
+  rankShortsByEngagement,
+  shuffleAfterPinnedItems,
 } from "./videosSlice";
 
 describe("Shorts feed pagination", () => {
@@ -18,6 +20,251 @@ describe("Shorts feed pagination", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("keeps pinned items in place and shuffles the rest", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const items = ["top-1", "top-2", "top-3", "other-1", "other-2"];
+
+    expect(shuffleAfterPinnedItems(items, 3)).toEqual([
+      "top-1",
+      "top-2",
+      "top-3",
+      "other-2",
+      "other-1",
+    ]);
+    expect(items).toEqual([
+      "top-1",
+      "top-2",
+      "top-3",
+      "other-1",
+      "other-2",
+    ]);
+  });
+
+  it("keeps the top five Shorts fixed and shuffles the rest", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        const section = new URL(url).pathname.split("/").pop();
+        return {
+          ok: true,
+          json: async () => ({
+            total: section === "trending-shorts" ? 7 : 5,
+            videos:
+              section === "trending-shorts"
+                ? Array.from({ length: 7 }, (_, index) => ({
+                    _id: `short-${index + 1}`,
+                    views: index + 1,
+                    likesCount: index + 1,
+                    comments: Array(index + 1).fill({}),
+                  }))
+                : Array.from({ length: 5 }, (_, index) => ({
+                    _id: `${section}-${index + 1}`,
+                  })),
+          }),
+        };
+      }),
+    );
+
+    await store.dispatch(fetchHomeVideos({ limit: 5 })).unwrap();
+    const { recommended, trending, shorts } = store.getState().videos;
+
+    expect(recommended.map((item) => item.id)).not.toEqual([
+      "recommended-1",
+      "recommended-2",
+      "recommended-3",
+      "recommended-4",
+      "recommended-5",
+    ]);
+    expect(trending.map((item) => item.id)).toEqual([
+      "trending-1",
+      "trending-2",
+      "trending-3",
+      "trending-5",
+      "trending-4",
+    ]);
+    expect(shorts.map((item) => item.id)).toEqual([
+      "short-7",
+      "short-6",
+      "short-5",
+      "short-4",
+      "short-3",
+      "short-1",
+      "short-2",
+    ]);
+  });
+
+  it("ranks Shorts by balanced views, likes, and comments performance", () => {
+    const shorts = [
+      { id: "views-heavy", views: 1000, likes: 1, comments: 1 },
+      { id: "balanced", views: 500, likes: 100, comments: 100 },
+      { id: "likes-heavy", views: 1, likes: 1000, comments: 1 },
+      { id: "comments-heavy", views: 1, likes: 1, comments: 1000 },
+    ];
+
+    expect(rankShortsByEngagement(shorts).map((short) => short.id)).toEqual([
+      "balanced",
+      "views-heavy",
+      "likes-heavy",
+      "comments-heavy",
+    ]);
+  });
+
+  it("loads and shuffles the full Recommended list for Home", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const recommendedPages = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        const parsedUrl = new URL(url);
+        const section = parsedUrl.pathname.split("/").pop();
+        const page = Number(parsedUrl.searchParams.get("page"));
+        const limit = Number(parsedUrl.searchParams.get("limit"));
+        if (section === "trending-shorts") {
+          const start = (page - 1) * limit;
+          const count = Math.min(limit, 235 - start);
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              total: 235,
+              videos: Array.from({ length: count }, (_, index) => ({
+                _id: `short-${start + index + 1}`,
+                views: start + index + 1,
+                likesCount: start + index + 1,
+                comments: start + index + 1,
+              })),
+            }),
+          };
+        }
+
+        if (section === "recommended") {
+          recommendedPages.push({ page, limit });
+          const start = (page - 1) * limit;
+          const count = Math.min(limit, 235 - start);
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              total: 235,
+              videos: Array.from({ length: count }, (_, index) => ({
+                _id: `recommended-${start + index + 1}`,
+              })),
+            }),
+          };
+        }
+
+        return {
+          ok: true,
+          json: async () => ({ success: true, total: 0, videos: [] }),
+        };
+      }),
+    );
+
+    await store.dispatch(fetchHomeVideos({ limit: 5 })).unwrap();
+
+    const { recommended, shorts, sectionHasMore } = store.getState().videos;
+    expect(recommended).toHaveLength(235);
+    expect(new Set(recommended.map((video) => video.id)).size).toBe(235);
+    expect(recommended.map((video) => video.id)).not.toEqual(
+      Array.from({ length: 235 }, (_, index) => `recommended-${index + 1}`),
+    );
+    expect(recommendedPages).toEqual([
+      { page: 1, limit: 100 },
+      { page: 2, limit: 100 },
+      { page: 3, limit: 100 },
+    ]);
+    expect(sectionHasMore.recommended).toBe(false);
+    expect(shorts).toHaveLength(235);
+    expect(shorts.slice(0, 5).map((short) => short.id)).toEqual([
+      "short-235",
+      "short-234",
+      "short-233",
+      "short-232",
+      "short-231",
+    ]);
+    expect(new Set(shorts.map((short) => short.id)).size).toBe(235);
+    expect(sectionHasMore.shorts).toBe(false);
+  });
+
+  it("reshuffles the complete recommended list as more pages load", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        const parsedUrl = new URL(url);
+        const section = parsedUrl.pathname.split("/").pop();
+        const page = Number(parsedUrl.searchParams.get("page"));
+
+        return {
+          ok: true,
+          json: async () => ({
+            total: section === "recommended" ? 10 : 0,
+            videos:
+              section === "recommended"
+                ? Array.from({ length: 5 }, (_, index) => ({
+                    _id: `recommended-${(page - 1) * 5 + index + 1}`,
+                  }))
+                : [],
+          }),
+        };
+      }),
+    );
+
+    await store.dispatch(fetchHomeVideos({ limit: 5 })).unwrap();
+    const firstPageOrder = store
+      .getState()
+      .videos.recommended.map((item) => item.id);
+    await store
+      .dispatch(fetchNextHomeSection({ section: "recommended", limit: 5 }))
+      .unwrap();
+
+    const allRecommended = store
+      .getState()
+      .videos.recommended.map((item) => item.id);
+    expect(allRecommended).toHaveLength(10);
+    expect(new Set(allRecommended)).toEqual(
+      new Set(Array.from({ length: 10 }, (_, index) => `recommended-${index + 1}`)),
+    );
+    expect(allRecommended).not.toEqual([
+      ...firstPageOrder,
+      "recommended-6",
+      "recommended-7",
+      "recommended-8",
+      "recommended-9",
+      "recommended-10",
+    ]);
+  });
+
+  it("keeps the top three Shorts fixed and shuffles the remaining Shorts feed", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          page: 1,
+          limit: 5,
+          total: 5,
+          videos: Array.from({ length: 5 }, (_, index) => ({
+            _id: `short-${index + 1}`,
+          })),
+        }),
+      })),
+    );
+
+    await store.dispatch(fetchShortsFeed({ limit: 5 })).unwrap();
+
+    expect(store.getState().videos.shorts.map((item) => item.id)).toEqual([
+      "short-1",
+      "short-2",
+      "short-3",
+      "short-5",
+      "short-4",
+    ]);
   });
 
   it("loads and appends every page from the Shorts API", async () => {

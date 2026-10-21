@@ -6,10 +6,12 @@ import {
   API_BASE,
   normalizeVideoListItem,
   normalizeShort,
+  shuffleAfterPinnedItems,
 } from "../features/videos/videosSlice";
 import { addToWatchLater, removeFromWatchLater } from "../api/watchLater";
 import { MovieCard } from "../components/common/VideoGrid";
 import ShortCard from "../components/common/ShortCard";
+import { fetchAllRecommendedVideos } from "../utils/fetchAllRecommendedVideos";
 import { promptLogin } from "../utils/loginPrompt";
 
 const PAGE_SIZE = 20;
@@ -71,7 +73,8 @@ const ViewAll = () => {
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
   const needsLogin =
     type === "subscriptions" && !localStorage.getItem("token");
-  const requestKey = `${type}-${page}-${selectedCategory || "all"}`;
+  const requestPage = type === "recommended" ? 1 : page;
+  const requestKey = `${type}-${requestPage}-${selectedCategory || "all"}`;
   const loading = !needsLogin && loadedRequestKey !== requestKey;
 
   useEffect(() => {
@@ -80,12 +83,39 @@ const ViewAll = () => {
     if (type === "subscriptions" && !token) return;
 
     let active = true;
+    if (type === "recommended") {
+      fetchAllRecommendedVideos({
+        apiBase: API_BASE,
+        category: selectedCategory,
+        token,
+      })
+        .then((videos) => {
+          if (!active) return;
+          const shuffledVideos = shuffleAfterPinnedItems(
+            videos.map(section.normalize),
+          );
+          setItems(shuffledVideos);
+          setTotal(shuffledVideos.length);
+          setError(null);
+        })
+        .catch((err) => {
+          if (active) setError(err.message || "Failed to load videos.");
+        })
+        .finally(() => {
+          if (active) setLoadedRequestKey(requestKey);
+        });
+
+      return () => {
+        active = false;
+      };
+    }
+
     const categoryParam = selectedCategory
       ? `&category=${selectedCategory}`
       : "";
 
     fetch(
-      `${API_BASE}${section.endpoint}?page=${page}&limit=${PAGE_SIZE}${categoryParam}`,
+      `${API_BASE}${section.endpoint}?page=${requestPage}&limit=${PAGE_SIZE}${categoryParam}`,
       {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       },
@@ -102,7 +132,17 @@ const ViewAll = () => {
           throw new Error(data.message || "Failed to load videos");
         }
         const list = Array.isArray(data.videos) ? data.videos : [];
-        setItems(list.map(section.normalize));
+        const pinnedCount =
+          requestPage === 1 &&
+          ["trending", "shorts", "top-shorts"].includes(type)
+            ? 3
+            : 0;
+        setItems(
+          shuffleAfterPinnedItems(
+            list.map(section.normalize),
+            pinnedCount,
+          ),
+        );
         setTotal(Number(data.total) || list.length);
         setError(null);
       })
@@ -116,7 +156,12 @@ const ViewAll = () => {
     return () => {
       active = false;
     };
-  }, [type, page, section, selectedCategory, requestKey]);
+  }, [type, requestPage, section, selectedCategory, requestKey]);
+
+  const visibleItems =
+    type === "recommended"
+      ? items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+      : items;
 
   const handleItemClick = (item) => {
     if (section.isShort) {
@@ -166,11 +211,11 @@ const ViewAll = () => {
           </p>
         ) : error ? (
           <p className="text-sm text-gray-300">{error}</p>
-        ) : items.length > 0 ? (
+        ) : visibleItems.length > 0 ? (
           <>
             {section.isShort ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                {items.map((item) => (
+                {visibleItems.map((item) => (
                   <ShortCard
                     key={item.id}
                     item={item}
@@ -180,7 +225,7 @@ const ViewAll = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {items.map((item) => (
+                {visibleItems.map((item) => (
                   <MovieCard
                     key={item.id}
                     item={item}

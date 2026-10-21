@@ -1,5 +1,9 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
+import {
+  fetchAllRecommendedVideos,
+  fetchAllShortsVideos,
+} from "../../utils/fetchAllRecommendedVideos";
 export const API_BASE = `${BACKEND_URL}/api/uservideo`;
 
 export const normalizeVideoListItem = (video) => ({
@@ -63,6 +67,39 @@ const getVideosArray = (payload) => {
   return [];
 };
 
+export const shuffleAfterPinnedItems = (items, pinnedCount = 0) => {
+  const result = [...items];
+  for (let index = result.length - 1; index > pinnedCount; index -= 1) {
+    const swapIndex =
+      pinnedCount + Math.floor(Math.random() * (index - pinnedCount + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
+};
+
+export const rankShortsByEngagement = (shorts) => {
+  const metrics = ["views", "likes", "comments"];
+  const ranks = new Map(shorts.map((short) => [short.id, 0]));
+
+  metrics.forEach((metric) => {
+    [...shorts]
+      .sort((left, right) => right[metric] - left[metric])
+      .forEach((short, index) => {
+        ranks.set(short.id, ranks.get(short.id) + index);
+      });
+  });
+
+  return [...shorts].sort((left, right) => {
+    const rankDifference = ranks.get(left.id) - ranks.get(right.id);
+    if (rankDifference) return rankDifference;
+    return (
+      right.views - left.views ||
+      right.likes - left.likes ||
+      right.comments - left.comments
+    );
+  });
+};
+
 let homeFetchRequestId = 0;
 
 // The home feed loops the same six sections over and over. Each section pulls
@@ -105,13 +142,15 @@ export const fetchHomeVideos = createAsyncThunk(
       const categoryParam = `?${params.toString()}`;
 
       const [
-        recommendedRes,
+        recommendedVideos,
         trendingRes,
         latestRes,
-        shortsRes,
+        shortsVideos,
       ] = await Promise.all([
-        fetch(`${API_BASE}/recommended${categoryParam}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        fetchAllRecommendedVideos({
+          apiBase: API_BASE,
+          category,
+          token,
         }),
         fetch(`${API_BASE}/trending${categoryParam}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -119,8 +158,10 @@ export const fetchHomeVideos = createAsyncThunk(
         fetch(`${API_BASE}/latest${categoryParam}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }),
-        fetch(`${API_BASE}/trending-shorts${categoryParam}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        fetchAllShortsVideos({
+          apiBase: API_BASE,
+          category,
+          token,
         }),
       ]);
       const subscriptionsRes = token
@@ -132,37 +173,58 @@ export const fetchHomeVideos = createAsyncThunk(
       if (requestId !== homeFetchRequestId) return { cancelled: true };
 
       const [
-        recommendedData,
         trendingData,
         latestData,
-        shortsData,
       ] = await Promise.all([
-        recommendedRes.json().catch(() => ({ videos: [] })),
         trendingRes.json().catch(() => ({ videos: [] })),
         latestRes.json().catch(() => ({ videos: [] })),
-        shortsRes.json().catch(() => ({ videos: [] })),
       ]);
+      const shortsData = {
+        videos: rankShortsByEngagement(shortsVideos.map(normalizeShort)),
+        total: shortsVideos.length,
+        allPagesLoaded: true,
+      };
+      const recommendedData = {
+        videos: recommendedVideos,
+        total: recommendedVideos.length,
+        allPagesLoaded: true,
+      };
       const subscriptionsData = subscriptionsRes
         ? await subscriptionsRes.json().catch(() => ({ videos: [] }))
         : { videos: [], total: 0 };
 
       if (requestId !== homeFetchRequestId) return { cancelled: true };
 
-      const getSection = (data, normalize) => {
+      const getSection = (
+        data,
+        normalize,
+        pinnedCount = 0,
+        allPagesLoaded = false,
+      ) => {
         const list = getVideosArray(data);
         return {
-          items: list.map(normalize),
-          hasMore: Number(data?.total) > page * limit || list.length === limit,
+          items: shuffleAfterPinnedItems(
+            list.map(normalize),
+            page === 1 ? pinnedCount : 0,
+          ),
+          hasMore:
+            !allPagesLoaded &&
+            (Number(data?.total) > page * limit || list.length === limit),
         };
       };
 
       return {
         page,
-        recommended: getSection(recommendedData, normalizeVideoListItem),
-        trending: getSection(trendingData, normalizeVideoListItem),
+        recommended: getSection(
+          recommendedData,
+          normalizeVideoListItem,
+          0,
+          true,
+        ),
+        trending: getSection(trendingData, normalizeVideoListItem, 3),
         latest: getSection(latestData, normalizeVideoListItem),
         subscriptions: getSection(subscriptionsData, normalizeVideoListItem),
-        shorts: getSection(shortsData, normalizeShort),
+        shorts: getSection(shortsData, (short) => short, 5, true),
       };
     } catch (error) {
       return rejectWithValue(error.message || "Failed to load videos");
@@ -190,7 +252,10 @@ export const fetchShortsFeed = createAsyncThunk(
         return rejectWithValue(data.message || "Failed to load Shorts");
       }
 
-      const items = getVideosArray(data).map(normalizeShort);
+      const items = shuffleAfterPinnedItems(
+        getVideosArray(data).map(normalizeShort),
+        3,
+      );
       return {
         category,
         items,
@@ -217,6 +282,7 @@ export const fetchNextHomeSection = createAsyncThunk(
     const videosState = getState().videos;
     const page = (videosState.sectionPages[section] || 0) + 1;
     const category = videosState.selectedCategory;
+    const existingItems = videosState[section];
 
     if (section === "subscriptions" && !token) {
       return {
@@ -224,7 +290,8 @@ export const fetchNextHomeSection = createAsyncThunk(
         page,
         limit,
         category,
-        items: [],
+        orderedItems: existingItems,
+        receivedCount: 0,
         total: 0,
       };
     }
@@ -247,12 +314,22 @@ export const fetchNextHomeSection = createAsyncThunk(
       const normalize =
         section === "shorts" ? normalizeShort : normalizeVideoListItem;
       const list = getVideosArray(data);
+      const existingIds = new Set(existingItems.map((video) => video.id));
+      const freshItems = list
+        .map(normalize)
+        .filter((video) => !existingIds.has(video.id));
+      const pinnedCount =
+        section === "trending" || section === "shorts" ? 3 : 0;
       return {
         section,
         page,
         limit,
         category,
-        items: list.map(normalize),
+        orderedItems: shuffleAfterPinnedItems(
+          [...existingItems, ...freshItems],
+          pinnedCount,
+        ),
+        receivedCount: list.length,
         total: Number(data?.total) || 0,
       };
     } catch (error) {
@@ -471,19 +548,25 @@ const videosSlice = createSlice({
         }
       })
       .addCase(fetchNextHomeSection.fulfilled, (state, action) => {
-        const { section, page, limit, items, total, category } =
+        const {
+          section,
+          page,
+          limit,
+          orderedItems,
+          receivedCount,
+          total,
+          category,
+        } =
           action.payload;
         if (!HOME_SECTIONS.includes(section)) return;
         state.sectionFetching[section] = false;
         // Ignore pages that were requested before a category switch.
         if (category !== state.selectedCategory) return;
 
-        const existingIds = new Set(state[section].map((video) => video.id));
-        const freshItems = items.filter((video) => !existingIds.has(video.id));
-        state[section] = [...state[section], ...freshItems];
+        state[section] = orderedItems;
         state.sectionPages[section] = page;
         state.sectionHasMore[section] =
-          total > page * limit || items.length === limit;
+          total > page * limit || receivedCount === limit;
         state.homePage = Math.max(state.homePage || 0, page);
         state.homeHasMore = Object.values(state.sectionHasMore).some(Boolean);
       })

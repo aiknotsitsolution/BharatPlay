@@ -13,22 +13,10 @@ import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { toast } from "react-toastify";
 import { v4 as uuidv4 } from "uuid";
 import { AUTH_API } from "../../config/api";
+import { isLikelyPrivateBrowsing } from "../../utils/privateBrowsing";
 import AnimatedBackground from "./AnimatedBackground";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-const PRIVATE_STORAGE_QUOTA_LIMIT = 2 * 1024 * 1024 * 1024;
-
-const isLikelyPrivateBrowsing = async () => {
-  const isChromium = /Chrome|Chromium/.test(navigator.userAgent);
-  if (!isChromium || !navigator.storage?.estimate) return false;
-
-  const { quota } = await navigator.storage.estimate();
-  return (
-    Number.isFinite(quota) &&
-    quota > 0 &&
-    quota <= PRIVATE_STORAGE_QUOTA_LIMIT
-  );
-};
 
 const getClientHardwareUuid = () => {
   let clientHardwareUuid = localStorage.getItem("clientHardwareUuid");
@@ -77,7 +65,7 @@ export default function AuthPageV2() {
 
   useEffect(() => {
     let active = true;
-    isLikelyPrivateBrowsing()
+    isLikelyPrivateBrowsing(navigator.userAgent, navigator.storage)
       .then((isPrivate) => {
         if (active) setPrivateModeStatus(isPrivate ? "blocked" : "available");
       })
