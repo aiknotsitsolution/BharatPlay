@@ -9,3 +9,7 @@ Android signup now requires a Play Integrity token from the official app build. 
 5. Test signup using a Play-distributed build. Development builds, sideloaded APKs, unsupported devices, or missing cloud configuration fail closed and cannot register.
 
 The server validates the package name, one-time nonce, token age, recognized app/device verdicts, and rejects reused tokens. Play Integrity and browser private-mode checks are risk signals, not guarantees against every modified device, network, or browser implementation.
+
+## Account binding by public IP
+
+Authentication binds a public IP to the first account that successfully signs in from it, across web and app clients. This catches another browser on the same home/work network even when its browser storage and device cookie are new. Authentication fails when a verifiable public IP is unavailable. It is intentionally strict: other people sharing that public IP may be unable to sign in to a different account, and a device using another public IP cannot be recognized as the same physical computer by a website.

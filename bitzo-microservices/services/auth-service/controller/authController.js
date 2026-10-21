@@ -32,6 +32,10 @@ const {
   isSignupIpDuplicateError,
 } = require("../services/signupPolicy");
 const {
+  checkIpAccountBinding,
+  claimIpAccountBinding,
+} = require("../services/ipAccountBindingService");
+const {
   logFraudEvent,
   analyzeBehavior,
   applyRiskToUser,
@@ -674,6 +678,15 @@ exports.loginUser = async (req, res) => {
         });
       }
 
+      const ipBindingCheck = await checkIpAccountBinding(req, user._id);
+      if (!ipBindingCheck.ok) {
+        return res.status(ipBindingCheck.status).json({
+          success: false,
+          code: ipBindingCheck.code,
+          message: ipBindingCheck.message,
+        });
+      }
+
       const hardwareBindingCheck = await checkClientHardwareBinding({
         clientHardwareUuid: req.body.clientHardwareUuid,
         userId: user._id,
@@ -684,28 +697,6 @@ exports.loginUser = async (req, res) => {
           code: hardwareBindingCheck.code,
           message: hardwareBindingCheck.message,
         });
-      }
-
-      let signupCheck = null;
-      if (!user) {
-        signupCheck = await evaluateSignupRequest(req);
-        if (!signupCheck.ok) {
-          return res.status(signupCheck.status).json({
-            success: false,
-            code: signupCheck.code,
-            message: signupCheck.message,
-          });
-        }
-        if (String(req.headers["x-client-platform"] || "").toLowerCase() === "app") {
-          const integrityCheck = await requireAndroidSignupIntegrity(req);
-          if (!integrityCheck.ok) {
-            return res.status(integrityCheck.status).json({
-              success: false,
-              code: integrityCheck.code,
-              message: integrityCheck.message,
-            });
-          }
-        }
       }
 
       const deviceCheck = await registerOrVerifyDevice({
@@ -760,7 +751,7 @@ exports.loginUser = async (req, res) => {
       );
 
       // ---------- VPN / Proxy check ----------
-      const vpnInfo = signupCheck?.vpnInfo || (await detectVPN(ip));
+      const vpnInfo = await detectVPN(ip);
       if (vpnInfo.isVPN || vpnInfo.isProxy) {
         await logFraudEvent({
           userId: user._id,
@@ -856,6 +847,15 @@ exports.loginUser = async (req, res) => {
         success: false,
         code: hardwareBinding.code,
         message: hardwareBinding.message,
+      });
+    }
+
+    const ipBinding = await claimIpAccountBinding(req, user._id);
+    if (!ipBinding.ok) {
+      return res.status(ipBinding.status).json({
+        success: false,
+        code: ipBinding.code,
+        message: ipBinding.message,
       });
     }
 
@@ -1073,6 +1073,15 @@ exports.googleLogin = async (req, res) => {
       });
     }
 
+    const ipBindingCheck = await checkIpAccountBinding(req, user?._id || null);
+    if (!ipBindingCheck.ok) {
+      return res.status(ipBindingCheck.status).json({
+        success: false,
+        code: ipBindingCheck.code,
+        message: ipBindingCheck.message,
+      });
+    }
+
     let signupCheck = null;
     if (!user) {
       signupCheck = await evaluateSignupRequest(req);
@@ -1215,6 +1224,22 @@ exports.googleLogin = async (req, res) => {
         success: false,
         code: hardwareBinding.code,
         message: hardwareBinding.message,
+      });
+    }
+
+    const ipBinding = await claimIpAccountBinding(req, user._id);
+    if (!ipBinding.ok) {
+      if (isNewAccount) {
+        await User.deleteOne({ _id: user._id });
+        await Device.updateOne(
+          { device_id: deviceId, linked_user_id: user._id },
+          { $set: { linked_user_id: null } },
+        );
+      }
+      return res.status(ipBinding.status).json({
+        success: false,
+        code: ipBinding.code,
+        message: ipBinding.message,
       });
     }
 
