@@ -43,7 +43,7 @@ describe("Shorts feed pagination", () => {
     ]);
   });
 
-  it("keeps the top five Shorts fixed and shuffles the rest", async () => {
+  it("keeps only the top two Shorts fixed and shuffles all the rest", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     vi.stubGlobal(
       "fetch",
@@ -86,14 +86,16 @@ describe("Shorts feed pagination", () => {
       "trending-5",
       "trending-4",
     ]);
-    expect(shorts.map((item) => item.id)).toEqual([
+    expect(shorts.slice(0, 2).map((item) => item.id)).toEqual([
       "short-7",
       "short-6",
-      "short-5",
+    ]);
+    expect(shorts.slice(2).map((item) => item.id)).toEqual([
       "short-4",
       "short-3",
-      "short-1",
       "short-2",
+      "short-1",
+      "short-5",
     ]);
   });
 
@@ -179,13 +181,13 @@ describe("Shorts feed pagination", () => {
     ]);
     expect(sectionHasMore.recommended).toBe(false);
     expect(shorts).toHaveLength(235);
-    expect(shorts.slice(0, 5).map((short) => short.id)).toEqual([
+    expect(shorts.slice(0, 2).map((short) => short.id)).toEqual([
       "short-235",
       "short-234",
-      "short-233",
-      "short-232",
-      "short-231",
     ]);
+    expect(shorts.slice(2).map((short) => short.id)).not.toEqual(
+      Array.from({ length: 233 }, (_, index) => `short-${233 - index}`),
+    );
     expect(new Set(shorts.map((short) => short.id)).size).toBe(235);
     expect(sectionHasMore.shorts).toBe(false);
   });

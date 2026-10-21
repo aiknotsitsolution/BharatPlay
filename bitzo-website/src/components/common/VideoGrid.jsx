@@ -745,11 +745,10 @@ export default function NetflixStylePage() {
     const counters = {};
     const rows = [];
     let growing = true;
-    let loop = 0;
 
-    while (growing && loop < 200) {
+    while (growing) {
       growing = false;
-      loop += 1;
+      const isFirstPass = rows.length === 0;
       HOME_SECTIONS.forEach((section) => {
         const list = buffers[section.buffer];
         const items = [];
@@ -765,7 +764,7 @@ export default function NetflixStylePage() {
 
         // The first pass always emits a row (skeleton/empty message while the
         // section is still loading); later loops only emit non-empty rows.
-        if (items.length === 0 && loop > 1) return;
+        if (items.length === 0 && !isFirstPass) return;
 
         const bufferCount = counters[section.buffer] || 0;
         counters[section.buffer] = bufferCount + 1;

@@ -200,13 +200,17 @@ export const fetchHomeVideos = createAsyncThunk(
         normalize,
         pinnedCount = 0,
         allPagesLoaded = false,
+        shuffle = true,
       ) => {
         const list = getVideosArray(data);
+        const items = list.map(normalize);
         return {
-          items: shuffleAfterPinnedItems(
-            list.map(normalize),
-            page === 1 ? pinnedCount : 0,
-          ),
+          items: shuffle
+            ? shuffleAfterPinnedItems(
+                items,
+                page === 1 ? pinnedCount : 0,
+              )
+            : items,
           hasMore:
             !allPagesLoaded &&
             (Number(data?.total) > page * limit || list.length === limit),
@@ -224,7 +228,7 @@ export const fetchHomeVideos = createAsyncThunk(
         trending: getSection(trendingData, normalizeVideoListItem, 3),
         latest: getSection(latestData, normalizeVideoListItem),
         subscriptions: getSection(subscriptionsData, normalizeVideoListItem),
-        shorts: getSection(shortsData, (short) => short, 5, true),
+        shorts: getSection(shortsData, (short) => short, 2, true),
       };
     } catch (error) {
       return rejectWithValue(error.message || "Failed to load videos");
