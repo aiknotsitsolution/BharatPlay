@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, test } from "vitest";
 import { Provider } from "react-redux";
 import { store } from "./store/store";
 import App from "./App";
@@ -8,7 +9,7 @@ describe("App", () => {
     localStorage.clear();
   });
 
-  test("renders the public home route without crashing", () => {
+  test("renders the public home route without crashing", async () => {
     window.history.pushState({}, "", "/advanced-settings");
 
     render(
@@ -17,10 +18,12 @@ describe("App", () => {
       </Provider>,
     );
 
-    expect(screen.getByRole("main")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("main")).toBeInTheDocument();
+    });
   });
 
-  test("renders the not-found page for an unknown route", () => {
+  test("renders the not-found page for an unknown route", async () => {
     window.history.pushState({}, "", "/route-that-does-not-exist");
 
     render(
@@ -29,6 +32,10 @@ describe("App", () => {
       </Provider>,
     );
 
-    expect(screen.getByText(/page not found|not found/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText(/page not found|not found/i),
+      ).toBeInTheDocument();
+    });
   });
 });

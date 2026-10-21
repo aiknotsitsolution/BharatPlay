@@ -1,59 +1,90 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 
 import MainLayout from "../components/layout/MainLayout";
 import ProtectedLayout from "../pages/Login.jsx/ProtectiveRoute/ProtectedRoute";
-import Home from "../pages/Home";
-import Shorts from "../pages/Shorts";
-import Trending from "../pages/Trending";
-import NotFound from "../pages/NotFound";
-import WatchPage from "../components/common/WatchPage";
-import WithdrawPage from "../components/common/WithdrawPage";
-import UploadVideo from "../pages/UploadVideo/UploadVideoScreen";
-import Profile from "../pages/MyProfile";
-import ReelPlayerPage from "../components/common/ReelPlayerPage";
-import FullVideo from "../pages/UploadVideo/FullVideo";
+const Home = lazy(() => import("../pages/Home"));
+const Shorts = lazy(() => import("../pages/Shorts"));
+const Trending = lazy(() => import("../pages/Trending"));
+const NotFound = lazy(() => import("../pages/NotFound"));
+const WatchPage = lazy(() => import("../components/common/WatchPage"));
+const WithdrawPage = lazy(() => import("../components/common/WithdrawPage"));
+const UploadVideo = lazy(() => import("../pages/UploadVideo/UploadVideoScreen"));
+const Profile = lazy(() => import("../pages/MyProfile"));
+const ReelPlayerPage = lazy(() => import("../components/common/ReelPlayerPage"));
+const FullVideo = lazy(() => import("../pages/UploadVideo/FullVideo"));
 
 // OLD LOGIN DESIGN — KEPT FOR EASY ROLLBACK
 // import AuthPage from "../pages/Login.jsx/AuthPage";
 
 // NEW LOGIN DESIGN — 3D + GLASSMORPHISM
-import AuthPageV2 from "../pages/LoginV2/AuthPageV2";
-import ForgotPassword from "../pages/LoginV2/ForgotPassword";
-import WatchHistoryTab from "../pages/Settings/WatchHistoryTab";
-import LikedVideosTab from "../pages/Settings/LikedVideosTab";
-import YourVideosTab from "../pages/Settings/YourVideosTab";
-import WatchLaterTab from "../pages/Settings/WatchLaterTab";
-import ChannelPage from "../components/channels/ChannelPage";
-import ChannelCustomization from "../components/channels/ChannelCustomization";
-import Leaderboard from "../pages/Settings/Leaderboard";
-import SubscribedChannels from "../pages/UploadVideo/SubscribedChannels";
-import ViewAll from "../pages/ViewAll";
-import SearchPage from "../pages/SearchPage";
-import CopyrightPage from "../pages/CopyrightPage";
-import CopyrightClaimPage from "../pages/CopyrightClaimPage";
-import MyClaimsPage from "../pages/MyClaimsPage";
-import FAQPage from "../pages/FAQPage";
-import FeedbackPage from "../pages/FeedbackPage";
-import VidBuxAppStudio from "../pages/Studio/VidBuxAppStudio";
-import MySupportRequests from "../pages/MySupportRequests";
+const AuthPageV2 = lazy(() => import("../pages/LoginV2/AuthPageV2"));
+const ForgotPassword = lazy(() => import("../pages/LoginV2/ForgotPassword"));
+const WatchHistoryTab = lazy(() => import("../pages/Settings/WatchHistoryTab"));
+const LikedVideosTab = lazy(() => import("../pages/Settings/LikedVideosTab"));
+const YourVideosTab = lazy(() => import("../pages/Settings/YourVideosTab"));
+const WatchLaterTab = lazy(() => import("../pages/Settings/WatchLaterTab"));
+const ChannelPage = lazy(() => import("../components/channels/ChannelPage"));
+const ChannelCustomization = lazy(
+  () => import("../components/channels/ChannelCustomization"),
+);
+const Leaderboard = lazy(() => import("../pages/Settings/Leaderboard"));
+const SubscribedChannels = lazy(
+  () => import("../pages/UploadVideo/SubscribedChannels"),
+);
+const ViewAll = lazy(() => import("../pages/ViewAll"));
+const SearchPage = lazy(() => import("../pages/SearchPage"));
+const CopyrightPage = lazy(() => import("../pages/CopyrightPage"));
+const CopyrightClaimPage = lazy(() => import("../pages/CopyrightClaimPage"));
+const MyClaimsPage = lazy(() => import("../pages/MyClaimsPage"));
+const FAQPage = lazy(() => import("../pages/FAQPage"));
+const FeedbackPage = lazy(() => import("../pages/FeedbackPage"));
+const VidBuxAppStudio = lazy(() => import("../pages/Studio/VidBuxAppStudio"));
+const MySupportRequests = lazy(() => import("../pages/MySupportRequests"));
 
 // Public company website
 import PublicLayout from "../components/public/PublicLayout";
-import HomePage from "../pages/Settings/advanced-settings/HomePage";
-import AboutPage from "../pages/Settings/advanced-settings/AboutPage";
-import PrivacyPolicyPage from "../pages/Settings/advanced-settings/PrivacyPolicyPage";
-import TermsConditionsPage from "../pages/Settings/advanced-settings/TermsConditionsPage";
-import ContactPage from "../pages/Settings/advanced-settings/ContactPage";
-import DeleteAccountPage from "../pages/Settings/advanced-settings/DeleteAccountPage";
-import AppsPage from "../pages/Settings/advanced-settings/AppsPage";
-import CommunityGuidelinesPage from "../pages/Settings/advanced-settings/CommunityGuidelinesPage";
-import ContentPolicyPage from "../pages/Settings/advanced-settings/ContentPolicyPage";
-import CopyrightPolicyPage from "../pages/Settings/advanced-settings/CopyrightPolicyPage";
-import HelpSupportPage from "../pages/Settings/advanced-settings/HelpSupportPage";
-import ForBusinessPage from "../pages/Settings/advanced-settings/ForBusinessPage";
-import DevelopersPage from "../pages/Settings/advanced-settings/DevelopersPage";
-import AdvertisingPage from "../pages/Settings/advanced-settings/AdvertisingPage";
+const HomePage = lazy(
+  () => import("../pages/Settings/advanced-settings/HomePage"),
+);
+const AboutPage = lazy(
+  () => import("../pages/Settings/advanced-settings/AboutPage"),
+);
+const PrivacyPolicyPage = lazy(
+  () => import("../pages/Settings/advanced-settings/PrivacyPolicyPage"),
+);
+const TermsConditionsPage = lazy(
+  () => import("../pages/Settings/advanced-settings/TermsConditionsPage"),
+);
+const ContactPage = lazy(
+  () => import("../pages/Settings/advanced-settings/ContactPage"),
+);
+const DeleteAccountPage = lazy(
+  () => import("../pages/Settings/advanced-settings/DeleteAccountPage"),
+);
+const AppsPage = lazy(() => import("../pages/Settings/advanced-settings/AppsPage"));
+const CommunityGuidelinesPage = lazy(
+  () => import("../pages/Settings/advanced-settings/CommunityGuidelinesPage"),
+);
+const ContentPolicyPage = lazy(
+  () => import("../pages/Settings/advanced-settings/ContentPolicyPage"),
+);
+const CopyrightPolicyPage = lazy(
+  () => import("../pages/Settings/advanced-settings/CopyrightPolicyPage"),
+);
+const HelpSupportPage = lazy(
+  () => import("../pages/Settings/advanced-settings/HelpSupportPage"),
+);
+const ForBusinessPage = lazy(
+  () => import("../pages/Settings/advanced-settings/ForBusinessPage"),
+);
+const DevelopersPage = lazy(
+  () => import("../pages/Settings/advanced-settings/DevelopersPage"),
+);
+const AdvertisingPage = lazy(
+  () => import("../pages/Settings/advanced-settings/AdvertisingPage"),
+);
 
 function ViewAllRoute() {
   const { type } = useParams();
@@ -65,6 +96,13 @@ function ViewAllRoute() {
 
 export default function AppRoutes() {
   return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#0f0f0f] text-white grid place-items-center">
+          Loading...
+        </div>
+      }
+    >
     <Routes>
       {/* PUBLIC COMPANY SITE — no authentication required */}
       <Route element={<PublicLayout />}>
@@ -140,5 +178,6 @@ export default function AppRoutes() {
       {/* 404 */}
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </Suspense>
   );
 }

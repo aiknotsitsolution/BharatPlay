@@ -113,6 +113,146 @@ const normalizeChannel = (channel: any = {}) => ({
   raw: channel,
 });
 
+function AdPlayback({
+  videoId,
+  advertisement,
+}: {
+  videoId: string;
+  advertisement: { mediaUrl: string; networkId: string; networkName: string };
+}) {
+  const [started, setStarted] = useState(false);
+  const impressionTracked = useRef(false);
+  const player = useVideoPlayer(advertisement.mediaUrl, (instance) => {
+    instance.loop = false;
+    instance.muted = true;
+  });
+
+  const trackEvent = useCallback(
+    (event: string) => {
+      fetch(`${BACKEND_URL}/v1/player/ad-impression`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoId,
+          networkId: advertisement.networkId,
+          event,
+        }),
+      }).catch((error) => {
+        console.warn(`Could not track ad ${event}:`, error);
+      });
+    },
+    [advertisement.networkId, videoId],
+  );
+
+  useEffect(() => {
+    const subscription = player.addListener("playToEnd", () =>
+      trackEvent("complete"),
+    );
+    return () => subscription.remove();
+  }, [player, trackEvent]);
+
+  return (
+    <View style={styles.adCard}>
+      <View style={styles.adHeader}>
+        <Text style={styles.adLabel}>Sponsored</Text>
+        <Text style={styles.adNetwork}>
+          {advertisement.networkName || "Advertisement"}
+        </Text>
+      </View>
+      {started ? (
+        <VideoView
+          player={player}
+          style={styles.adVideo}
+          contentFit="contain"
+          nativeControls
+          allowsPictureInPicture={false}
+        />
+      ) : (
+        <TouchableOpacity
+          style={styles.adPlay}
+          onPress={() => {
+            setStarted(true);
+            if (!impressionTracked.current) {
+              impressionTracked.current = true;
+              trackEvent("impression");
+            }
+            player.play();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Play sponsored video"
+        >
+          <Text style={styles.adPlayText}>Play advertisement</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+function FeedAdvertisement({ videoId }: { videoId: string }) {
+  const [advertisement, setAdvertisement] = useState<{
+    mediaUrl: string;
+    networkId: string;
+    networkName: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadAdvertisement = async () => {
+      try {
+        const response = await fetch(
+          `${BACKEND_URL}/v1/player/manifest/${encodeURIComponent(videoId)}`,
+        );
+        if (!response.ok) {
+          throw new Error(`Ad manifest request failed (${response.status})`);
+        }
+        const payload = await response.json();
+        if (!payload.adAvailable || !payload.ad?.vastXml) return;
+
+        const mediaFiles = Array.from(
+          payload.ad.vastXml.matchAll(
+            /<MediaFile\b([^>]*)>([\s\S]*?)<\/MediaFile>/gi,
+          ),
+          ([, attributes, content]) => ({
+            attributes,
+            url: content
+              .replace(/<!\[CDATA\[|\]\]>/g, "")
+              .trim()
+              .replace(/&amp;/g, "&"),
+          }),
+        );
+        const mediaFile =
+          mediaFiles.find(
+            ({ attributes, url }) =>
+              url && /type=["']video\/mp4["']/i.test(attributes),
+          ) ||
+          mediaFiles.find(
+            ({ attributes, url }) =>
+              url &&
+              (/type=["']video\//i.test(attributes) ||
+                /\.(mp4|webm)(?:[?#]|$)/i.test(url)),
+          );
+        if (!mediaFile || cancelled) return;
+
+        setAdvertisement({
+          mediaUrl: mediaFile.url,
+          networkId: payload.ad.networkId,
+          networkName: payload.ad.networkName,
+        });
+      } catch (error) {
+        console.warn("Could not load feed advertisement:", error);
+      }
+    };
+
+    loadAdvertisement();
+    return () => {
+      cancelled = true;
+    };
+  }, [videoId]);
+
+  if (!advertisement) return null;
+  return <AdPlayback videoId={videoId} advertisement={advertisement} />;
+}
+
 const getArray = (payload: any) => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.videos)) return payload.videos;
@@ -541,7 +681,7 @@ export default function DashboardScreen() {
       { id: "more-top-shorts", title: "Top Shorts", type: "top-shorts", data: moreTopShorts, isShorts: true },
     ];
 
-    return sections.flatMap((section) => {
+    return sections.flatMap((section, sectionIndex) => {
       if (!section.data || section.data.length === 0) return [];
 
       const header = {
@@ -571,6 +711,15 @@ export default function DashboardScreen() {
           type: "video",
           rowKey: `${section.id}:${String(item.id)}`,
         })),
+        ...(sectionIndex === 2 || sectionIndex === 7
+          ? [
+              {
+                id: `${section.id}-ad`,
+                type: "feed-ad",
+                videoId: `app-feed-${section.id}`,
+              },
+            ]
+          : []),
       ];
     });
   }, [
@@ -621,6 +770,10 @@ export default function DashboardScreen() {
             ))}
           </View>
         );
+      }
+
+      if (item.type === "feed-ad") {
+        return <FeedAdvertisement videoId={item.videoId} />;
       }
 
       // ===== Normal Video =====
@@ -680,6 +833,46 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 8,
+  },
+  adCard: {
+    marginHorizontal: 12,
+    marginVertical: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#27272a",
+    borderRadius: 12,
+    backgroundColor: "#09090b",
+  },
+  adHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  adLabel: {
+    color: "#a1a1aa",
+    fontSize: 12,
+  },
+  adNetwork: {
+    color: "#a1a1aa",
+    fontSize: 12,
+  },
+  adVideo: {
+    width: "100%",
+    height: SCREEN_WIDTH * 0.56,
+    backgroundColor: "#000",
+  },
+  adPlay: {
+    minHeight: SCREEN_WIDTH * 0.5,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#18181b",
+  },
+  adPlayText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
   },
   sectionHeader: {
     flexDirection: "row",

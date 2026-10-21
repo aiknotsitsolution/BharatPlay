@@ -12,6 +12,7 @@ const {
 } = require("../utils/tokenService");
 const bcrypt = require("bcryptjs"); // ΓåÉ make sure this is installed
 const crypto = require("crypto");
+const { OAuth2Client } = require("google-auth-library");
 const mongoose = require("mongoose");
 const imagekit = require("../utils/imagekit.js");
 const path = require("path");
@@ -93,6 +94,7 @@ const issueOtpToDevice = async ({ deviceId, user, purpose = "login" }) => {
         pendingOtp: otp,
         otpExpiresAt: expiresAt,
         otpPurpose: purpose,
+        pendingOtpEmail: String(user.email).trim().toLowerCase(),
         lastOtpSentAt: new Date(),
       },
     },
@@ -105,7 +107,14 @@ const issueOtpToDevice = async ({ deviceId, user, purpose = "login" }) => {
   if (!mailResult.sent) {
     await DeviceFingerprint.updateOne(
       { deviceId },
-      { $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 } },
+      {
+        $unset: {
+          pendingOtp: 1,
+          otpExpiresAt: 1,
+          otpPurpose: 1,
+          pendingOtpEmail: 1,
+        },
+      },
     );
 
     const error = new Error("OTP email could not be sent");
@@ -120,8 +129,21 @@ const issueOtpToDevice = async ({ deviceId, user, purpose = "login" }) => {
 exports.registerUser = async (req, res) => {
   try {
     const { name, email, password, otp } = req.body;
+    const normalizedName = typeof name === "string" ? name.trim() : "";
     const normalizedEmail =
       typeof email === "string" ? email.trim().toLowerCase() : "";
+    const phoneInput =
+      typeof req.body.phone === "string" ? req.body.phone.trim() : "";
+    const phoneDigits =
+      typeof req.body.phone === "string"
+        ? req.body.phone.replace(/\D/g, "")
+        : "";
+    const phone =
+      phoneDigits.length === 10
+        ? `+91${phoneDigits}`
+        : phoneDigits.length === 12 && phoneDigits.startsWith("91")
+          ? `+${phoneDigits}`
+          : "";
 
     // Which client registered this user — used by the admin panel to
     // show/filter "Website" vs "App" signups. The mobile app sends an
@@ -135,10 +157,15 @@ exports.registerUser = async (req, res) => {
     const platform =
       bodyPlatform === "app" || headerPlatform === "app" ? "app" : "website";
 
-    if (!name || !normalizedEmail || !password) {
+    if (
+      !normalizedName ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) ||
+      !password ||
+      (phoneInput && !phone)
+    ) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required",
+        message: "Enter your name, a valid email, and a password.",
       });
     }
 
@@ -192,6 +219,16 @@ exports.registerUser = async (req, res) => {
         message: "Email already registered",
       });
     }
+    const phoneExists = phone
+      ? await User.findOne({ phone }).select("_id").lean()
+      : null;
+    if (phoneExists) {
+      return res.status(409).json({
+        success: false,
+        code: "PHONE_ALREADY_REGISTERED",
+        message: "This mobile number is already linked to an account.",
+      });
+    }
 
     const vpnInfo = await detectVPN(ip);
     if (vpnInfo.isVPN || vpnInfo.isProxy) {
@@ -224,7 +261,8 @@ exports.registerUser = async (req, res) => {
       if (
         !fingerprintRecord ||
         !fingerprintRecord.pendingOtp ||
-        fingerprintRecord.otpPurpose !== "register"
+        fingerprintRecord.otpPurpose !== "register" ||
+        fingerprintRecord.pendingOtpEmail !== normalizedEmail
       ) {
         return res.status(401).json({
           success: false,
@@ -244,13 +282,35 @@ exports.registerUser = async (req, res) => {
         });
       }
 
+      const duplicateAccount = await User.findOne({
+        $or: [
+          { email: normalizedEmail },
+          ...(phone ? [{ phone }] : []),
+        ],
+      })
+        .select("_id")
+        .lean();
+      if (duplicateAccount) {
+        await DeviceFingerprint.updateOne(
+          { deviceId },
+          { $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 } },
+        );
+        return res.status(409).json({
+          success: false,
+          message: "This email or mobile number is already linked to an account.",
+        });
+      }
+
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
 
       const user = await User.create({
-        name: String(name).trim(),
+        name: normalizedName,
         email: normalizedEmail,
         password: hashedPassword,
+        emailVerified: true,
+        phone: phone || null,
+        phoneVerified: false,
         deviceId,
         deviceVerified: true,
         ipAddress: ip,
@@ -282,7 +342,12 @@ exports.registerUser = async (req, res) => {
             lastSeen: new Date(),
           },
           $addToSet: { associatedUsers: user._id },
-          $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 },
+          $unset: {
+            pendingOtp: 1,
+            otpExpiresAt: 1,
+            otpPurpose: 1,
+            pendingOtpEmail: 1,
+          },
         },
       );
 
@@ -317,10 +382,14 @@ exports.registerUser = async (req, res) => {
           _id: user._id,
           name: user.name,
           email: user.email,
+          phone: user.phone,
+          phoneVerified: user.phoneVerified,
+          emailVerified: user.emailVerified,
           role: user.role,
           trustScore: user.trustScore,
           avatar: user.avatar || null,
           platform: user.platform,
+          needsPhoneBinding: !user.phone,
         },
       });
     }
@@ -329,7 +398,7 @@ exports.registerUser = async (req, res) => {
       deviceId,
       user: {
         email: normalizedEmail,
-        name: String(name).trim(),
+        name: normalizedName,
       },
       purpose: "register",
     });
@@ -337,8 +406,7 @@ exports.registerUser = async (req, res) => {
     return res.status(200).json({
       success: true,
       requiresOtp: true,
-      message:
-        "OTP has been sent to your email. Verify it to complete registration.",
+      message: "Email OTP has been sent. Verify it to complete registration.",
       otpCode: process.env.NODE_ENV !== "production" ? otpCode : undefined,
     });
   } catch (error) {
@@ -521,8 +589,10 @@ exports.saveDeviceFingerprint = async (req, res) => {
 exports.loginUser = async (req, res) => {
   try {
     const { email, password, otp } = req.body;
+    const normalizedEmail =
+      typeof email === "string" ? email.trim().toLowerCase() : "";
 
-    if (!email) {
+    if (!normalizedEmail) {
       return res.status(400).json({
         success: false,
         message: "Email is required",
@@ -533,7 +603,7 @@ exports.loginUser = async (req, res) => {
     const ua = req.headers["user-agent"] || "unknown";
     let deviceId = resolveDeviceId(req, res);
 
-    const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email: normalizedEmail }).select("+password");
     if (!user) {
       await logFraudEvent({
         userId: null,
@@ -712,7 +782,12 @@ exports.loginUser = async (req, res) => {
     }
 
     const fingerprintRecord = await DeviceFingerprint.findOne({ deviceId });
-    if (!fingerprintRecord || !fingerprintRecord.pendingOtp) {
+    if (
+      !fingerprintRecord ||
+      !fingerprintRecord.pendingOtp ||
+      fingerprintRecord.otpPurpose !== "login" ||
+      fingerprintRecord.pendingOtpEmail !== normalizedEmail
+    ) {
       return res.status(401).json({
         success: false,
         message: "OTP session expired. Please log in again.",
@@ -746,7 +821,14 @@ exports.loginUser = async (req, res) => {
     // Clear OTP
     await DeviceFingerprint.updateOne(
       { deviceId },
-      { $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 } },
+      {
+        $unset: {
+          pendingOtp: 1,
+          otpExpiresAt: 1,
+          otpPurpose: 1,
+          pendingOtpEmail: 1,
+        },
+      },
     );
 
     // Final device binding after successful OTP
@@ -836,9 +918,16 @@ exports.loginUser = async (req, res) => {
     setRefreshCookie(res, refreshToken, "user");
 
     const now = new Date();
+    user.emailVerified = true;
     await User.updateOne(
       { _id: user._id },
-      { $set: { lastLoginAt: now, lastActivityAt: now } },
+      {
+        $set: {
+          emailVerified: true,
+          lastLoginAt: now,
+          lastActivityAt: now,
+        },
+      },
     );
 
     return res.status(200).json({
@@ -849,6 +938,10 @@ exports.loginUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone || null,
+        phoneVerified: Boolean(user.phoneVerified),
+        emailVerified: true,
+        needsPhoneBinding: !user.phone,
         role: user.role,
         token: token,
         trustScore: user.trustScore,
@@ -863,6 +956,299 @@ exports.loginUser = async (req, res) => {
         error.statusCode === 503
           ? "OTP could not be sent. Please try again later."
           : "Internal server error",
+    });
+  }
+};
+
+exports.googleLogin = async (req, res) => {
+  try {
+    const credential =
+      typeof req.body?.credential === "string" ? req.body.credential : "";
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!credential) {
+      return res.status(400).json({
+        success: false,
+        message: "Google credential is required.",
+      });
+    }
+    if (!clientId) {
+      console.error("Google sign-in is unavailable: GOOGLE_CLIENT_ID is missing.");
+      return res.status(503).json({
+        success: false,
+        message: "Google sign-in is temporarily unavailable.",
+      });
+    }
+
+    let ticket;
+    try {
+      ticket = await new OAuth2Client(clientId).verifyIdToken({
+        idToken: credential,
+        audience: clientId,
+      });
+    } catch {
+      return res.status(401).json({
+        success: false,
+        message: "Google credential is invalid or expired.",
+      });
+    }
+    const payload = ticket.getPayload();
+    if (
+      !payload?.sub ||
+      !payload.email ||
+      payload.email_verified !== true
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: "Google account email must be verified.",
+      });
+    }
+
+    const email = payload.email.trim().toLowerCase();
+    const ip = getClientIp(req);
+    const userAgent = req.headers["user-agent"] || "unknown";
+    let deviceId = resolveDeviceId(req, res);
+
+    let user = await User.findOne({ googleId: payload.sub });
+    if (user && user.email !== email) {
+      return res.status(409).json({
+        success: false,
+        message: "This Google account is linked to a different email.",
+      });
+    }
+    if (!user) {
+      user = await User.findOne({ email });
+      if (user?.googleId && user.googleId !== payload.sub) {
+        return res.status(409).json({
+          success: false,
+          message: "This email is linked to a different Google account.",
+        });
+      }
+    }
+
+    if (user?.status && user.status !== "active") {
+      return res.status(403).json({
+        success: false,
+        message: "This account is not available.",
+      });
+    }
+
+    const hardwareBindingCheck = await checkClientHardwareBinding({
+      clientHardwareUuid: req.body.clientHardwareUuid,
+      userId: user?._id || null,
+    });
+    if (!hardwareBindingCheck.ok) {
+      return res.status(hardwareBindingCheck.status).json({
+        success: false,
+        code: hardwareBindingCheck.code,
+        message: hardwareBindingCheck.message,
+      });
+    }
+
+    const deviceCheck = await registerOrVerifyDevice({
+      req,
+      userId: user?._id || null,
+    });
+    if (!deviceCheck.ok) {
+      return res.status(deviceCheck.status).json({
+        success: false,
+        code: deviceCheck.code,
+        message: deviceCheck.message,
+      });
+    }
+    if (!deviceCheck.legacy && deviceCheck.deviceId) {
+      deviceId = deviceCheck.deviceId;
+    }
+
+    const vpnInfo = await detectVPN(ip);
+    if (vpnInfo.isVPN || vpnInfo.isProxy) {
+      await logFraudEvent({
+        userId: user?._id || null,
+        eventType: vpnInfo.isVPN ? "VPN_DETECTED" : "PROXY_DETECTED",
+        severity: "high",
+        ip,
+        deviceId,
+        userAgent,
+        isVPN: vpnInfo.isVPN,
+        isProxy: vpnInfo.isProxy,
+        riskScoreImpact: 25,
+        metadata: {
+          country: vpnInfo.country,
+          action: user ? "blocked_login" : "blocked_register",
+        },
+      });
+      return res.status(403).json({
+        success: false,
+        code: "VPN_OR_PROXY_DETECTED",
+        message:
+          "Sign-in is not allowed over VPN or proxy. Please disable it and try again.",
+      });
+    }
+
+    let isNewAccount = !user;
+    if (!user) {
+      const generatedPassword = crypto.randomBytes(32).toString("hex");
+      try {
+        user = await User.create({
+          name:
+            typeof payload.name === "string" && payload.name.trim()
+              ? payload.name.trim()
+              : email.split("@")[0],
+          email,
+          password: await bcrypt.hash(generatedPassword, 10),
+          googleId: payload.sub,
+          emailVerified: true,
+          deviceId,
+          deviceVerified: true,
+          ipAddress: ip,
+          platform: "website",
+        });
+      } catch (error) {
+        if (error.code !== 11000) throw error;
+        user = await User.findOne({
+          $or: [{ googleId: payload.sub }, { email }],
+        });
+        if (!user || (user.googleId && user.googleId !== payload.sub)) {
+          return res.status(409).json({
+            success: false,
+            message: "This email is already linked to another account.",
+          });
+        }
+        isNewAccount = false;
+      }
+    }
+
+    if (user.status && user.status !== "active") {
+      if (isNewAccount) await User.deleteOne({ _id: user._id });
+      return res.status(403).json({
+        success: false,
+        message: "This account is not available.",
+      });
+    }
+
+    const boundDevice = await registerOrVerifyDevice({ req, userId: user._id });
+    if (!boundDevice.ok) {
+      if (isNewAccount) await User.deleteOne({ _id: user._id });
+      return res.status(boundDevice.status).json({
+        success: false,
+        code: boundDevice.code,
+        message: boundDevice.message,
+      });
+    }
+    if (!boundDevice.legacy && boundDevice.deviceId) {
+      deviceId = boundDevice.deviceId;
+    }
+
+    const hardwareBinding = await bindClientHardwareUuid({
+      clientHardwareUuid: req.body.clientHardwareUuid,
+      userId: user._id,
+    });
+    if (!hardwareBinding.ok) {
+      if (isNewAccount) {
+        await User.deleteOne({ _id: user._id });
+        await Device.updateOne(
+          { device_id: deviceId, linked_user_id: user._id },
+          { $set: { linked_user_id: null } },
+        );
+      }
+      return res.status(hardwareBinding.status).json({
+        success: false,
+        code: hardwareBinding.code,
+        message: hardwareBinding.message,
+      });
+    }
+
+    const deviceChanged = Boolean(user.deviceId && user.deviceId !== deviceId);
+    if (deviceChanged) {
+      await RefreshToken.updateMany(
+        { userId: user._id, kind: "user", revokedAt: null },
+        { $set: { revokedAt: new Date() } },
+      );
+      await applyTrustRule(
+        user._id,
+        "DEVICE_CHANGE",
+        "Verified Google sign-in from a changed device",
+        {
+          deviceId,
+          ipAddress: ip,
+          eventKey: `device-change:${user._id}:${deviceId}`,
+        },
+      );
+    }
+
+    await User.updateMany(
+      { deviceId, _id: { $ne: user._id } },
+      { $unset: { deviceId: 1 } },
+    );
+    user.googleId = payload.sub;
+    user.emailVerified = true;
+    user.deviceId = deviceId;
+    user.lastLoginAt = new Date();
+    user.lastActivityAt = new Date();
+    await user.save();
+
+    await DeviceFingerprint.findOneAndUpdate(
+      { deviceId },
+      {
+        $set: {
+          userId: user._id,
+          lastIp: ip,
+          userAgent,
+          lastSeen: new Date(),
+        },
+        $addToSet: { associatedUsers: user._id },
+      },
+      { upsert: true },
+    );
+    await logAuditEvent({
+      userId: user._id,
+      eventType: isNewAccount ? "REGISTER" : "USER_LOGIN",
+      ip,
+      deviceId,
+      userAgent,
+      metadata: { email: user.email, method: "google" },
+    });
+
+    const token = signAccessToken({
+      userId: user._id,
+      role: user.role,
+      deviceId,
+    });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    const refreshToken = await createAuthSession(user._id, "user");
+    setRefreshCookie(res, refreshToken, "user");
+
+    if (isNewAccount) {
+      await sendMailSafely(getRegisterMailOptions(user.email, user.name));
+    } else {
+      await sendMailSafely(getLoginMailOptions(user.email, user.name));
+    }
+
+    return res.status(isNewAccount ? 201 : 200).json({
+      success: true,
+      message: isNewAccount ? "Google account registered" : "Login successful",
+      token,
+      needsPhoneBinding: !user.phone,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || null,
+        phoneVerified: Boolean(user.phoneVerified),
+        emailVerified: true,
+        role: user.role,
+        avatar: user.avatar || null,
+      },
+    });
+  } catch (error) {
+    console.error("Google sign-in error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Google sign-in failed. Please try again.",
     });
   }
 };
@@ -977,7 +1363,12 @@ exports.claimDevice = async (req, res) => {
           lastSeen: new Date(),
         },
         $addToSet: { associatedUsers: user._id },
-        $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 },
+        $unset: {
+          pendingOtp: 1,
+          otpExpiresAt: 1,
+          otpPurpose: 1,
+          pendingOtpEmail: 1,
+        },
       },
       { upsert: true, new: true },
     );
@@ -1050,6 +1441,8 @@ exports.getMyProfile = async (req, res) => {
     }
 
     const populatedUser = user.toObject();
+    populatedUser.email = user.emailVerified ? user.email : null;
+    populatedUser.emailVerified = user.emailVerified === true;
     populatedUser.totalVideos = populatedUser.videos?.length || 0;
     populatedUser.totalViews = Number(populatedUser.totalViews || 0);
     populatedUser.totalEarnings = Number(populatedUser.totalEarnings || 0);
@@ -1091,6 +1484,77 @@ const normalizePhone = (phone) =>
   typeof phone === "string" ? phone.trim().replace(/[\s()-]/g, "") : "";
 
 const isValidPhone = (phone) => /^\+?[1-9]\d{7,14}$/.test(phone);
+
+exports.mapRegistrationPhone = async (req, res) => {
+  try {
+    const phone = normalizePhone(req.body?.phone);
+    if (!/^\+91[6-9]\d{9}$/.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Enter a valid 10-digit Indian mobile number.",
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        success: false,
+        message: "Verify your email address before adding a mobile number.",
+      });
+    }
+    if (user.phone && user.phone !== phone) {
+      return res.status(409).json({
+        success: false,
+        message: "A mobile number is already linked to this account.",
+      });
+    }
+
+    const phoneInUse = await User.findOne({
+      phone,
+      _id: { $ne: user._id },
+    })
+      .select("_id")
+      .lean();
+    if (phoneInUse) {
+      return res.status(409).json({
+        success: false,
+        code: "PHONE_ALREADY_REGISTERED",
+        message: "This mobile number is already linked to another account.",
+      });
+    }
+
+    user.phone = phone;
+    user.phoneVerified = false;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        _id: user._id,
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        emailVerified: user.emailVerified === true,
+        phone: user.phone,
+        phoneVerified: false,
+        role: user.role,
+        avatar: user.avatar || null,
+      },
+    });
+  } catch (error) {
+    console.error("Registration phone mapping failed:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Could not save your mobile number. Please try again.",
+    });
+  }
+};
 
 exports.requestPhoneVerification = async (req, res) => {
   try {
@@ -1392,6 +1856,13 @@ exports.UserEdit = async (req, res) => {
       }
 
       if (newEmail !== user.email) {
+        if (user.phoneVerified) {
+          return res.status(403).json({
+            success: false,
+            code: "EMAIL_VERIFICATION_REQUIRED",
+            message: "Verify the new email address before changing your profile email.",
+          });
+        }
         const emailExists = await User.findOne({ email: newEmail }).lean();
         if (emailExists) {
           return res

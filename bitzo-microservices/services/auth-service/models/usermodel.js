@@ -17,6 +17,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    emailVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
     password: {
       type: String,
       required: [true, "Password is required"],
@@ -336,6 +342,13 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.index({ createdAt: -1 });
+userSchema.index(
+  { phone: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { phoneVerified: true, phone: { $type: "string" } },
+  },
+);
 
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);

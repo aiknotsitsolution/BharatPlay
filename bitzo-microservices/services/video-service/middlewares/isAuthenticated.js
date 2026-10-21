@@ -25,7 +25,9 @@ const isAuthenticated = async (req, res, next) => {
 
     // Check user account status — suspended, banned, or deleted users
     // must not access protected resources.
-    const user = await User.findById(userId).select("status deviceId").lean();
+    const user = await User.findById(userId)
+      .select("status deviceId emailVerified")
+      .lean();
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -60,6 +62,14 @@ const isAuthenticated = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: "Unauthorized - Account no longer exists",
+      });
+    }
+
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        success: false,
+        code: "EMAIL_VERIFICATION_REQUIRED",
+        message: "Verify your email address in your profile to continue.",
       });
     }
 

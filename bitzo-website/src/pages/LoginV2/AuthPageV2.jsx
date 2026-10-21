@@ -9,12 +9,26 @@ import {
   ArrowRight,
   ShieldAlert,
 } from "lucide-react";
-import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { toast } from "react-toastify";
 import { v4 as uuidv4 } from "uuid";
 import { AUTH_API } from "../../config/api";
 import AnimatedBackground from "./AnimatedBackground";
+
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+const PRIVATE_STORAGE_QUOTA_LIMIT = 2 * 1024 * 1024 * 1024;
+
+const isLikelyPrivateBrowsing = async () => {
+  const isChromium = /Chrome|Chromium/.test(navigator.userAgent);
+  if (!isChromium || !navigator.storage?.estimate) return false;
+
+  const { quota } = await navigator.storage.estimate();
+  return (
+    Number.isFinite(quota) &&
+    quota > 0 &&
+    quota <= PRIVATE_STORAGE_QUOTA_LIMIT
+  );
+};
 
 const getClientHardwareUuid = () => {
   let clientHardwareUuid = localStorage.getItem("clientHardwareUuid");
@@ -29,23 +43,24 @@ export default function AuthPageV2() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [privateModeStatus, setPrivateModeStatus] = useState("checking");
   const [error, setError] = useState("");
   const [otpRequired, setOtpRequired] = useState(false);
+  const [registrationPhoneRequired, setRegistrationPhoneRequired] =
+    useState(false);
+  const [pendingRegistration, setPendingRegistration] = useState(null);
   const [otp, setOtp] = useState("");
   const [otpCountdown, setOtpCountdown] = useState(0);
   const [resendingOtp, setResendingOtp] = useState(false);
-
-  const [deviceLocked, setDeviceLocked] = useState(false);
-  const [deviceLockEmail, setDeviceLockEmail] = useState("");
-  const [claimPassword, setClaimPassword] = useState("");
-  const [showClaimModal, setShowClaimModal] = useState(false);
-  const [claiming, setClaiming] = useState(false);
-  const [claimError, setClaimError] = useState("");
+  const [migrationMode, setMigrationMode] = useState(false);
+  const [migrationEmailOtp, setMigrationEmailOtp] = useState("");
+  const [migrationPhoneOtp, setMigrationPhoneOtp] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
+    phone: "",
   });
 
   const navigate = useNavigate();
@@ -53,11 +68,35 @@ export default function AuthPageV2() {
   const from = location.state?.from?.pathname || "/";
 
   useEffect(() => {
+    if (privateModeStatus !== "available") return;
     const token = localStorage.getItem("token");
     if (token) {
       navigate(from, { replace: true });
     }
-  }, [navigate, from]);
+  }, [navigate, from, privateModeStatus]);
+
+  useEffect(() => {
+    let active = true;
+    isLikelyPrivateBrowsing()
+      .then((isPrivate) => {
+        if (active) setPrivateModeStatus(isPrivate ? "blocked" : "available");
+      })
+      .catch((checkError) => {
+        console.warn("Could not check private browsing mode:", checkError);
+        const supportsPrivateCheck =
+          /Chrome|Chromium/.test(navigator.userAgent) &&
+          Boolean(navigator.storage?.estimate);
+        if (active) {
+          setPrivateModeStatus(
+            supportsPrivateCheck ? "blocked" : "available",
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!otpRequired || otpCountdown <= 0) return;
@@ -78,109 +117,249 @@ export default function AuthPageV2() {
     setOtp("");
     setOtpCountdown(0);
     setResendingOtp(false);
-    setDeviceLocked(false);
-    setClaimError("");
   };
 
-  const handleAuthSuccess = (data) => {
+  const handlePhoneChange = (e) => {
+    setFormData((current) => ({
+      ...current,
+      phone: e.target.value.replace(/\D/g, "").slice(0, 10),
+    }));
+    setError("");
+    setOtpRequired(false);
+    setOtp("");
+    setOtpCountdown(0);
+  };
+
+  const handleAuthSuccess = (data, destination = from) => {
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
     window.dispatchEvent(new Event("auth-change"));
     toast.success("Welcome! Authentication successful.");
-    navigate(from, { replace: true });
+    navigate(data.needsEmailBinding ? "/profile" : destination, {
+      replace: true,
+    });
   };
 
-  const performLogin = async (email, password) => {
-    const res = await fetch(AUTH_API.login, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        email,
-        password,
-        clientHardwareUuid: getClientHardwareUuid(),
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Authentication failed");
-    handleAuthSuccess(data);
+  const handleGoogleSuccess = async (credentialResponse) => {
+    if (privateModeStatus !== "available") return;
+    setLoading(true);
+    setError("");
+
+    try {
+      if (!credentialResponse.credential) {
+        throw new Error("Google sign-in did not return a credential.");
+      }
+      const response = await fetch(AUTH_API.google, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          credential: credentialResponse.credential,
+          clientHardwareUuid: getClientHardwareUuid(),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Google sign-in failed.");
+      }
+
+      if (data.needsPhoneBinding) {
+        setPendingRegistration(data);
+        setRegistrationPhoneRequired(true);
+        setFormData((current) => ({
+          ...current,
+          name: data.user?.name || current.name,
+          email: data.user?.email || current.email,
+        }));
+        toast.success("Google account verified. Add your mobile number to continue.");
+        return;
+      }
+
+      handleAuthSuccess(data, "/");
+    } catch (err) {
+      setError(err.message || "Google sign-in failed.");
+      toast.error(err.message || "Google sign-in failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    const message = "Google sign-in failed. Please try again.";
+    setError(message);
+    toast.error(message);
   };
 
   const handleEmailSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (privateModeStatus !== "available") return;
     setLoading(true);
     setError("");
 
-    if (!formData.email || !formData.password) {
-      setError("Email and password are required");
-      setLoading(false);
-      return;
-    }
-
-    if (!isLogin && !formData.name) {
-      setError("Full name is required");
-      setLoading(false);
-      return;
-    }
-
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters");
-      setLoading(false);
-      return;
-    }
-
-    if (otpRequired && !otp) {
-      setError("Please enter the OTP sent to your email.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      const endpoint = isLogin ? AUTH_API.login : AUTH_API.register;
-      const body = {
-        clientHardwareUuid: getClientHardwareUuid(),
-        ...(isLogin
-          ? { email: formData.email, password: formData.password }
-          : { ...formData }),
-        ...(otpRequired ? { otp } : {}),
-      };
-
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (res.status === 403 && data.code === "DEVICE_LOCKED") {
-          setDeviceLocked(true);
-          setDeviceLockEmail(formData.email);
-          setClaimPassword(formData.password);
-          setError(data.message || "Authentication failed");
+      if (migrationMode) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+          throw new Error("Enter your existing account email.");
+        }
+        if (!formData.password || !/^\d{10}$/.test(formData.phone.replace(/\D/g, ""))) {
+          throw new Error("Enter your existing password and 10-digit Indian mobile number.");
+        }
+        const endpoint = otpRequired
+          ? AUTH_API.verifyLegacyMigration
+          : AUTH_API.legacyMigration;
+        const body = otpRequired
+          ? {
+              email: formData.email,
+              phone: formData.phone,
+              emailOtp: migrationEmailOtp,
+              phoneOtp: migrationPhoneOtp,
+              clientHardwareUuid: getClientHardwareUuid(),
+            }
+          : {
+              email: formData.email,
+              password: formData.password,
+              phone: formData.phone,
+              clientHardwareUuid: getClientHardwareUuid(),
+            };
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || "Account migration failed");
+        if (data.requiresOtp) {
+          setOtpRequired(true);
+          setOtp("");
+          setMigrationEmailOtp("");
+          setMigrationPhoneOtp("");
+          startOtpCountdown(data.retryAfterSeconds || 60);
+          setError(data.message);
           return;
         }
-        throw new Error(data.message || "Authentication failed");
-      }
-
-      if (data.requiresOtp) {
-        setOtpRequired(true);
-        setOtp("");
-        startOtpCountdown(60);
-        setError(
-          isLogin
-            ? "OTP sent to your email. Enter the 6-digit code to continue."
-            : "OTP sent to your email. Verify it to complete registration.",
-        );
-        toast.info("OTP sent to your email. Please verify it.");
+        handleAuthSuccess(data);
         return;
       }
 
-      handleAuthSuccess(data);
+      if (registrationPhoneRequired) {
+        if (!pendingRegistration?.token) {
+          throw new Error("Your account setup session expired. Please sign in again.");
+        }
+        if (!/^\d{10}$/.test(formData.phone)) {
+          throw new Error("Enter a valid 10-digit Indian mobile number.");
+        }
+        const response = await fetch(AUTH_API.mapPhone, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${pendingRegistration.token}`,
+          },
+          credentials: "include",
+          body: JSON.stringify({ phone: `+91${formData.phone}` }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Could not save your mobile number.");
+        }
+        setRegistrationPhoneRequired(false);
+        handleAuthSuccess({
+          ...pendingRegistration,
+          user: data.user,
+          needsPhoneBinding: false,
+        }, "/");
+        return;
+      }
+
+      if (isLogin) {
+        const identifier = formData.email.trim().toLowerCase();
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+        if (!isEmail) {
+          throw new Error("Enter a valid email address.");
+        }
+        if (!otpRequired && !formData.password) {
+          throw new Error("Password is required.");
+        }
+        if (otpRequired && !/^\d{6}$/.test(otp)) {
+          throw new Error("Enter the six-digit OTP sent to your email.");
+        }
+        const response = await fetch(AUTH_API.login, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Client-Platform": "website",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            email: identifier,
+            ...(otpRequired ? { otp } : { password: formData.password }),
+            clientHardwareUuid: getClientHardwareUuid(),
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Authentication failed");
+        }
+        if (data.requiresOtp) {
+          setOtpRequired(true);
+          setOtp("");
+          startOtpCountdown(data.retryAfterSeconds || 60);
+          setError("A verification code was sent to your email.");
+          toast.info("A verification code was sent to your email.");
+          return;
+        }
+        handleAuthSuccess(data, "/");
+        return;
+      }
+
+      if (!formData.name.trim()) {
+        throw new Error("Full name is required.");
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+        throw new Error("Enter a valid email address.");
+      }
+      if (formData.password.length < 8) {
+        throw new Error("Password must be at least 8 characters.");
+      }
+      if (otpRequired && !/^\d{6}$/.test(otp)) {
+        throw new Error("Enter the six-digit OTP sent to your email.");
+      }
+
+      const res = await fetch(AUTH_API.register, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Client-Platform": "website",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email.trim(),
+          password: formData.password,
+          ...(otpRequired ? { otp } : {}),
+          clientHardwareUuid: getClientHardwareUuid(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Authentication failed");
+      }
+      if (data.requiresOtp) {
+        setOtpRequired(true);
+        setOtp("");
+        startOtpCountdown(data.retryAfterSeconds || 60);
+        setError("OTP sent to your email address.");
+        toast.info("OTP sent to your email address.");
+        return;
+      }
+      setOtpRequired(false);
+      setOtp("");
+      setRegistrationPhoneRequired(true);
+      setPendingRegistration(data);
+      setError("");
+      toast.success("Email verified. Add your mobile number to continue.");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Authentication failed");
       toast.error(err.message || "Authentication failed");
     } finally {
       setLoading(false);
@@ -188,40 +367,54 @@ export default function AuthPageV2() {
   };
 
   const handleResendOtp = async () => {
-    if (!formData.email || otpCountdown > 0) return;
+    if (privateModeStatus !== "available") return;
+    if (registrationPhoneRequired || otpCountdown > 0) return;
     setResendingOtp(true);
     setError("");
 
     try {
-      const endpoint = isLogin ? AUTH_API.login : AUTH_API.register;
-      const payload = isLogin
+      const endpoint = migrationMode
+        ? AUTH_API.legacyMigration
+        : isLogin
+          ? AUTH_API.login
+          : AUTH_API.register;
+      const payload = migrationMode
         ? {
             email: formData.email,
             password: formData.password,
+            phone: formData.phone,
             clientHardwareUuid: getClientHardwareUuid(),
           }
-        : {
-            name: formData.name,
-            email: formData.email,
-            password: formData.password,
-            clientHardwareUuid: getClientHardwareUuid(),
-          };
-
+        : isLogin
+          ? {
+              email: formData.email.trim().toLowerCase(),
+              password: formData.password,
+              clientHardwareUuid: getClientHardwareUuid(),
+            }
+          : {
+              name: formData.name,
+              email: formData.email.trim(),
+              password: formData.password,
+              clientHardwareUuid: getClientHardwareUuid(),
+            };
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Client-Platform": "website",
+        },
         credentials: "include",
         body: JSON.stringify(payload),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Could not resend OTP");
-
       if (data.requiresOtp) {
         setOtpRequired(true);
         setOtp("");
-        startOtpCountdown(60);
-        toast.info("A new OTP has been sent to your email.");
+        setMigrationEmailOtp("");
+        setMigrationPhoneOtp("");
+        startOtpCountdown(data.retryAfterSeconds || 60);
+        toast.info(data.message || "A new OTP has been sent.");
         return;
       }
       handleAuthSuccess(data);
@@ -233,120 +426,18 @@ export default function AuthPageV2() {
     }
   };
 
-  const handleClaimDevice = async () => {
-    const email = deviceLockEmail;
-    const password = claimPassword;
-    if (!email || !password) return;
-    setClaiming(true);
-    setClaimError("");
-
-    try {
-      const res = await fetch(AUTH_API.claimDevice, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok)
-        throw new Error(data.message || "Could not continue on this device");
-
-      setShowClaimModal(false);
-      setDeviceLocked(false);
-      setClaimError("");
-      setClaimPassword("");
-      toast.success(
-        "All other sessions have been signed out. Signing you in...",
-      );
-      setFormData((f) => ({ ...f, email }));
-      await performLogin(email, password);
-    } catch (err) {
-      setClaimError(
-        err.message || "Could not continue on this device. Please try again.",
-      );
-      toast.error("Could not continue on this device. Please try again.");
-    } finally {
-      setClaiming(false);
-    }
-  };
-
-  const decodeGoogleEmail = (credential) => {
-    try {
-      const payload = credential
-        .split(".")[1]
-        .replace(/-/g, "+")
-        .replace(/_/g, "/");
-      return JSON.parse(atob(payload)).email || "";
-    } catch (_) {
-      return "";
-    }
-  };
-
-  const handleGoogleSuccess = async (credentialResponse) => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const credential = credentialResponse?.credential?.trim();
-      if (!credential) {
-        throw new Error(
-          "Google did not return an ID token. Check the OAuth client ID and authorized website origin.",
-        );
-      }
-
-      const res = await fetch(AUTH_API.google, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          credential,
-          clientHardwareUuid: getClientHardwareUuid(),
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        if (res.status === 403 && data.code === "DEVICE_LOCKED") {
-          setDeviceLocked(true);
-          setDeviceLockEmail(decodeGoogleEmail(credentialResponse.credential));
-          setClaimPassword("");
-          setError(data.message || "Google login failed");
-          return;
-        }
-        throw new Error(data.message || "Google login failed");
-      }
-      handleAuthSuccess(data);
-    } catch (err) {
-      const message = err.message || "Could not sign in with Google";
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleError = () => {
-    const message =
-      "Google blocked sign-in for this account or website. Check that your account is an OAuth test user and this website origin is authorized in Google Cloud.";
-    setError(message);
-    toast.error(message);
-  };
-
   const resetAllModals = () => {
-    setDeviceLocked(false);
-    setShowClaimModal(false);
-    setClaimError("");
     setOtpRequired(false);
     setOtp("");
     setOtpCountdown(0);
+    setRegistrationPhoneRequired(false);
+    setPendingRegistration(null);
   };
 
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      {/* h-screen + overflow-hidden → no page scroll */}
-      <div className="h-screen w-full relative flex items-center justify-center px-3 sm:px-4 overflow-hidden">
-        <AnimatedBackground />
+    <>
+    <div className="h-screen w-full relative flex items-center justify-center px-3 sm:px-4 overflow-hidden">
+      <AnimatedBackground />
 
         <div className="loginv2-card relative z-10 w-full max-w-[400px] px-5 py-5 sm:px-7 sm:py-6 rounded-2xl animate-cardIn">
           {/* Header - logo + tagline (brand name lives inside the logo art) */}
@@ -357,17 +448,23 @@ export default function AuthPageV2() {
               className="mx-auto h-16 w-auto object-contain drop-shadow-lg"
             />
             <p className="text-gray-400 mt-2 text-xs sm:text-sm">
-              {isLogin ? "Sign in to continue" : "Create your account"}
+              {registrationPhoneRequired
+                ? "Add your mobile number to finish setup"
+                : isLogin
+                  ? "Sign in to continue"
+                  : "Create your account"}
             </p>
           </div>
 
           {/* Tabs - compact */}
+          {!registrationPhoneRequired && !otpRequired && (
           <div className="flex rounded-lg bg-white/[0.03] border border-white/[0.06] p-0.5 mb-5">
             <button
               onClick={() => {
                 resetAllModals();
                 setIsLogin(true);
               }}
+              disabled={privateModeStatus !== "available"}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-300 ${
                 isLogin
                   ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20"
@@ -381,6 +478,7 @@ export default function AuthPageV2() {
                 resetAllModals();
                 setIsLogin(false);
               }}
+              disabled={privateModeStatus !== "available"}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-300 ${
                 !isLogin
                   ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20"
@@ -390,111 +488,57 @@ export default function AuthPageV2() {
               Register
             </button>
           </div>
+          )}
 
           <div className="space-y-3">
-            {deviceLocked && (
-              <div
-                role="alert"
-                className="relative overflow-hidden rounded-xl border border-amber-400/25 bg-gradient-to-br from-amber-500/[0.12] via-red-500/[0.06] to-transparent p-4 shadow-lg shadow-black/20 backdrop-blur-sm"
-              >
-                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-400/[0.08] blur-2xl" />
-                <div className="relative flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-300/10">
-                    <ShieldAlert size={20} className="text-amber-300" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-amber-200">
-                      Account already active on another device
-                    </p>
-                    <p className="mt-1.5 text-xs leading-relaxed text-gray-300">
-                      This account is currently linked to another browser or
-                      device. Continue here to sign out its other active
-                      sessions.
-                    </p>
-                    <span className="mt-3 inline-flex items-center rounded-full border border-amber-300/20 bg-amber-300/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
-                      Secure device access
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {!deviceLocked && error && (
+            {error && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-sm text-red-300 backdrop-blur-sm animate-shake">
                 {error}
               </div>
             )}
 
-            {deviceLocked && (
-              <button
-                type="button"
-                onClick={() => {
-                  setClaimError("");
-                  setShowClaimModal(true);
-                }}
-                disabled={claiming}
-                className="w-full py-2.5 rounded-xl font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-50 text-white text-sm transition-all duration-300 hover:shadow-lg hover:shadow-red-600/25 active:scale-[0.98]"
-              >
-                Continue on this device
-              </button>
+            {privateModeStatus === "checking" && (
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-gray-300">
+                Checking browser storage availability...
+              </div>
             )}
-
-            {/* Custom Google Button */}
-            {GOOGLE_CLIENT_ID && (
-              <div className="relative w-full">
-                <div
-                  className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl
-                    bg-white/[0.07] hover:bg-white/[0.11] border border-white/[0.12]
-                    text-white text-sm font-medium transition-all duration-300
-                    hover:border-white/25 active:scale-[0.98] cursor-pointer
-                    pointer-events-none"
-                >
-                  <svg width="16" height="16" viewBox="0 0 48 48">
-                    <path
-                      fill="#EA4335"
-                      d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-                    />
-                    <path
-                      fill="#4285F4"
-                      d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-                    />
-                  </svg>
-                  <span>
-                    {isLogin ? "Sign in with Google" : "Sign up with Google"}
-                  </span>
-                </div>
-
-                <div className="absolute inset-0 opacity-0 cursor-pointer">
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={handleGoogleError}
-                    theme="filled_black"
-                    text={isLogin ? "signin_with" : "signup_with"}
-                    shape="rectangular"
-                    width="100%"
-                  />
-                </div>
+            {privateModeStatus === "blocked" && (
+              <div
+                role="alert"
+                className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200"
+              >
+                Login and registration are unavailable in a likely private or
+                Incognito window. Open VidBux in a regular browser window.
               </div>
             )}
 
-            <div className="relative flex py-1 items-center">
-              <div className="flex-grow border-t border-white/[0.08]"></div>
-              <span className="flex-shrink mx-3 text-gray-500 text-xs uppercase tracking-wider">
-                or
-              </span>
-              <div className="flex-grow border-t border-white/[0.08]"></div>
-            </div>
+            {GOOGLE_CLIENT_ID &&
+              privateModeStatus === "available" &&
+              !registrationPhoneRequired &&
+              !otpRequired &&
+              !migrationMode && (
+                <>
+                  <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+                    <div className="flex justify-center">
+                      <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={handleGoogleError}
+                        text={isLogin ? "signin_with" : "signup_with"}
+                        shape="rectangular"
+                        width="100%"
+                      />
+                    </div>
+                  </GoogleOAuthProvider>
+                  <div className="relative flex items-center py-1">
+                    <div className="flex-grow border-t border-white/10" />
+                    <span className="mx-3 text-xs text-gray-500">or</span>
+                    <div className="flex-grow border-t border-white/10" />
+                  </div>
+                </>
+              )}
 
             <form onSubmit={handleEmailSubmit} className="space-y-3">
-              {!isLogin && (
+              {!registrationPhoneRequired && !isLogin && !migrationMode && (
                 <div className="relative group">
                   <User
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-400 transition-colors duration-300"
@@ -506,49 +550,159 @@ export default function AuthPageV2() {
                     placeholder="Full Name"
                     value={formData.name}
                     onChange={handleChange}
+                    disabled={otpRequired}
                     className="loginv2-input w-full pl-10 pr-4 py-2.5"
                   />
                 </div>
               )}
 
-              <div className="relative group">
-                <Mail
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-400 transition-colors duration-300"
-                  size={16}
-                />
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Email address"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="loginv2-input w-full pl-10 pr-4 py-2.5"
-                />
-              </div>
+              {!registrationPhoneRequired && !isLogin && !migrationMode && (
+                <div className="relative group">
+                  <Mail
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-400 transition-colors duration-300"
+                    size={16}
+                  />
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Email address"
+                    value={formData.email}
+                    onChange={handleChange}
+                    autoComplete="email"
+                    disabled={otpRequired}
+                    required
+                    className="loginv2-input w-full pl-10 pr-4 py-2.5"
+                  />
+                </div>
+              )}
 
-              <div className="relative group">
-                <Lock
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-400 transition-colors duration-300"
-                  size={16}
-                />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  placeholder="Password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="loginv2-input w-full pl-10 pr-11 py-2.5"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors duration-200"
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
+              {!registrationPhoneRequired && !migrationMode && isLogin && (
+                <div className="relative group">
+                  <Mail
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-400 transition-colors duration-300"
+                    size={16}
+                  />
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Email address"
+                    value={formData.email}
+                    onChange={handleChange}
+                    autoComplete="email"
+                    disabled={otpRequired}
+                    required
+                    className="loginv2-input w-full pl-10 pr-4 py-2.5"
+                  />
+                </div>
+              )}
 
-              {isLogin && !otpRequired && (
+              {!registrationPhoneRequired &&
+                !migrationMode &&
+                !otpRequired && (
+                  <div className="relative group">
+                    <Lock
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-400 transition-colors duration-300"
+                      size={16}
+                    />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      placeholder={
+                        isLogin
+                          ? "Password"
+                          : "Create password (min. 8 characters)"
+                      }
+                      value={formData.password}
+                      onChange={handleChange}
+                      disabled={otpRequired}
+                      autoComplete={isLogin ? "current-password" : "new-password"}
+                      required
+                      minLength={isLogin ? undefined : 8}
+                      className="loginv2-input w-full pl-10 pr-11 py-2.5"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                )}
+
+              {migrationMode && !otpRequired && (
+                <>
+                  <div className="relative group">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                    <input
+                      type="email"
+                      name="email"
+                      placeholder="Existing account email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="loginv2-input w-full pl-10 pr-4 py-2.5"
+                    />
+                  </div>
+                  <div className="relative group">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      placeholder="Existing account password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="loginv2-input w-full pl-10 pr-11 py-2.5"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {registrationPhoneRequired && !migrationMode && (
+                <div className="relative group">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold">+91</span>
+                  <input
+                    type="tel"
+                    name="phone"
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="Indian mobile number"
+                    value={formData.phone}
+                    onChange={handlePhoneChange}
+                    required
+                    className="loginv2-input w-full pl-12 pr-4 py-2.5"
+                  />
+                </div>
+              )}
+
+              {migrationMode && (
+                <div className="relative group">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold">+91</span>
+                  <input
+                    type="tel"
+                    name="phone"
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="New Indian mobile number"
+                    value={formData.phone}
+                    onChange={handlePhoneChange}
+                    disabled={otpRequired}
+                    className="loginv2-input w-full pl-12 pr-4 py-2.5"
+                  />
+                </div>
+              )}
+
+              {!registrationPhoneRequired &&
+                !migrationMode &&
+                isLogin &&
+                !otpRequired && (
                 <div className="text-right animate-fadeIn">
                   <button
                     type="button"
@@ -562,17 +716,40 @@ export default function AuthPageV2() {
 
               {otpRequired && (
                 <div className="space-y-2.5 animate-fadeIn">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder="Enter 6-digit OTP"
-                    value={otp}
-                    onChange={(e) =>
-                      setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
-                    }
-                    className="loginv2-input w-full py-2.5 px-4 text-center tracking-[0.3em] text-base"
-                  />
+                  {migrationMode ? (
+                    <>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="Email OTP"
+                        value={migrationEmailOtp}
+                        onChange={(e) => setMigrationEmailOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        className="loginv2-input w-full py-2.5 px-4 text-center tracking-[0.3em] text-base"
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="Mobile OTP"
+                        value={migrationPhoneOtp}
+                        onChange={(e) => setMigrationPhoneOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        className="loginv2-input w-full py-2.5 px-4 text-center tracking-[0.3em] text-base"
+                      />
+                    </>
+                  ) : (
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="Enter 6-digit email OTP"
+                      value={otp}
+                      onChange={(e) =>
+                        setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                      }
+                      className="loginv2-input w-full py-2.5 px-4 text-center tracking-[0.3em] text-base"
+                    />
+                  )}
                   <div className="flex items-center justify-between gap-3 text-xs text-gray-400">
                     <span>
                       {otpCountdown > 0
@@ -593,14 +770,20 @@ export default function AuthPageV2() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || privateModeStatus !== "available"}
                 className="loginv2-button w-full py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 text-sm"
               >
                 {loading ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    {otpRequired
+                    {migrationMode
+                      ? otpRequired
+                        ? "Verify & Migrate Account"
+                        : "Send Migration Codes"
+                      : registrationPhoneRequired
+                      ? "Save number & continue"
+                      : otpRequired
                       ? isLogin
                         ? "Verify OTP & Sign In"
                         : "Verify OTP & Create Account"
@@ -613,8 +796,23 @@ export default function AuthPageV2() {
               </button>
             </form>
 
+            {!registrationPhoneRequired && !otpRequired && (
             <div className="text-center text-xs text-gray-500 pt-1">
-              {isLogin ? (
+              {migrationMode ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMigrationMode(false);
+                    setOtpRequired(false);
+                    setMigrationEmailOtp("");
+                    setMigrationPhoneOtp("");
+                    setFormData({ name: "", email: "", password: "", phone: "" });
+                  }}
+                  className="text-red-400 hover:text-red-300 font-medium"
+                >
+                  Back to mobile login
+                </button>
+              ) : isLogin ? (
                 <>
                   Don&apos;t have an account?{" "}
                   <button
@@ -644,61 +842,26 @@ export default function AuthPageV2() {
                 </>
               )}
             </div>
+            )}
+            {!registrationPhoneRequired &&
+              !otpRequired &&
+              !migrationMode &&
+              isLogin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMigrationMode(true);
+                  setOtpRequired(false);
+                  setError("");
+                }}
+                className="w-full text-center text-xs text-gray-400 hover:text-white pt-2"
+              >
+                Existing email account? Migrate to mobile login
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Claim Device Modal */}
-        {showClaimModal && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-            <div className="loginv2-card w-full max-w-md p-5 space-y-4 animate-cardIn">
-              <h2 className="text-lg font-semibold text-white">
-                Continue on this device?
-              </h2>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                This will sign you out from all other browsers and devices where
-                this account is currently active.
-              </p>
-
-              <div className="space-y-2">
-                <label className="block text-xs text-gray-400 font-medium">
-                  Account: {deviceLockEmail || "your account"}
-                </label>
-                <input
-                  type="password"
-                  placeholder="Enter your password to continue"
-                  value={claimPassword}
-                  onChange={(e) => setClaimPassword(e.target.value)}
-                  className="loginv2-input w-full py-2.5 px-4"
-                />
-              </div>
-
-              {claimError && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-sm text-red-300 backdrop-blur-sm">
-                  {claimError}
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowClaimModal(false)}
-                  disabled={claiming}
-                  className="flex-1 py-2.5 rounded-xl font-medium bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-gray-300 text-sm transition-all duration-300 active:scale-[0.98]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClaimDevice}
-                  disabled={claiming || !deviceLockEmail || !claimPassword}
-                  className="flex-1 py-2.5 rounded-xl font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-50 text-white text-sm transition-all duration-300 hover:shadow-lg hover:shadow-red-600/25 active:scale-[0.98]"
-                >
-                  {claiming ? "Signing out..." : "Continue"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <style>{`
@@ -880,7 +1043,7 @@ export default function AuthPageV2() {
           }
         }
       `}</style>
-    </GoogleOAuthProvider>
+    </>
   );
 }
 

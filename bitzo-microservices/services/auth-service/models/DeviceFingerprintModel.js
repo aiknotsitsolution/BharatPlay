@@ -23,6 +23,7 @@ const deviceFingerprintSchema = new mongoose.Schema(
       enum: ["login", "register", "device", "phone"],
       default: null,
     },
+    pendingOtpEmail: { type: String, default: null },
     lastOtpSentAt: { type: Date, default: null },
     lastSeen: Date,
   },

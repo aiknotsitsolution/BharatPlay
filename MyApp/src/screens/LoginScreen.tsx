@@ -63,6 +63,9 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
   const [otpRequired, setOtpRequired] = useState(false);
   const [otp, setOtp] = useState("");
   const [developmentOtp, setDevelopmentOtp] = useState("");
+  const [migrationMode, setMigrationMode] = useState(false);
+  const [migrationEmailOtp, setMigrationEmailOtp] = useState("");
+  const [migrationPhoneOtp, setMigrationPhoneOtp] = useState("");
   const [otpCountdown, setOtpCountdown] = useState(0);
   const [resendingOtp, setResendingOtp] = useState(false);
 
@@ -70,6 +73,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     name: "",
     email: "",
     password: "",
+    phone: "",
   });
   const [resetStep, setResetStep] = useState(0);
   const [resetEmail, setResetEmail] = useState("");
@@ -83,14 +87,6 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [resetResending, setResetResending] = useState(false);
-  const [deviceLocked, setDeviceLocked] = useState(false);
-  const [deviceLockCode, setDeviceLockCode] = useState("");
-  const [deviceLockEmail, setDeviceLockEmail] = useState("");
-  const [claimPassword, setClaimPassword] = useState("");
-  const [showClaimModal, setShowClaimModal] = useState(false);
-  const [claiming, setClaiming] = useState(false);
-  const [claimError, setClaimError] = useState("");
-
   // ========== Animations ==========
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -267,15 +263,17 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
   const handleChange = (field, value) => {
     setFormData((previous) => ({ ...previous, [field]: value }));
     if (error) setError("");
-    setDeviceLocked(false);
-    setDeviceLockCode("");
-    setDeviceLockEmail("");
-    setShowClaimModal(false);
-    setClaimError("");
-    if (field === "email" || field === "password" || field === "name") {
+    if (
+      field === "email" ||
+      field === "password" ||
+      field === "name" ||
+      field === "phone"
+    ) {
       setOtpRequired(false);
       setDevelopmentOtp("");
       setOtp("");
+      setMigrationEmailOtp("");
+      setMigrationPhoneOtp("");
       setOtpCountdown(0);
     }
   };
@@ -294,7 +292,10 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
       await AsyncStorage.setItem("token", String(token));
       await AsyncStorage.setItem("user", JSON.stringify(user));
       onAuthenticated?.();
-      navigation.replace("AdminPanel");
+      navigation.replace(
+        "AdminPanel",
+        data.needsEmailBinding ? { screen: "Profile" } : undefined,
+      );
 
       Toast.show({
         type: "success",
@@ -481,93 +482,101 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     }
   };
 
-  // ========== Email / Password + OTP ==========
+  // ========== Indian mobile OTP authentication ==========
   const handleSubmit = async () => {
-    if (!formData.email || !formData.password) {
-      setError("Email and password are required");
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Email and password are required",
-      });
-      return;
-    }
-    if (!isLogin && !formData.name) {
-      setError("Full name is required");
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Full name is required",
-      });
-      return;
-    }
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters");
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Password must be at least 8 characters",
-      });
-      return;
-    }
-
-    if (otpRequired && !otp) {
-      setError("Please enter the 6-digit OTP");
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Please enter the OTP sent to your email",
-      });
-      return;
-    }
-
     setLoading(true);
     setError("");
 
     try {
-      const endpoint = isLogin ? "/login" : "/register";
       const clientHardwareUuid = await getClientHardwareUuid();
+      const phoneDigits = formData.phone.replace(/\D/g, "");
+      if (migrationMode) {
+        const email = formData.email.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          throw new Error("Enter your existing account email.");
+        }
+        if (!formData.password || !/^\d{10}$/.test(phoneDigits)) {
+          throw new Error("Enter your existing password and 10-digit Indian mobile number.");
+        }
+        if (otpRequired && (!/^\d{6}$/.test(migrationEmailOtp) || !/^\d{6}$/.test(migrationPhoneOtp))) {
+          throw new Error("Enter both six-digit verification codes.");
+        }
+        const response = await fetch(
+          `${API_BASE}/phone-auth/migrate${otpRequired ? "/verify" : ""}`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              ...API_PLATFORM_HEADER,
+            },
+            body: JSON.stringify(
+              otpRequired
+                ? {
+                    email,
+                    phone: phoneDigits,
+                    emailOtp: migrationEmailOtp,
+                    phoneOtp: migrationPhoneOtp,
+                    clientHardwareUuid,
+                  }
+                : {
+                    email,
+                    password: formData.password,
+                    phone: phoneDigits,
+                    clientHardwareUuid,
+                  },
+            ),
+          },
+        );
+        const migrationData = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(migrationData.message || "Account migration failed.");
+        }
+        if (migrationData.requiresOtp) {
+          setOtpRequired(true);
+          setMigrationEmailOtp("");
+          setMigrationPhoneOtp("");
+          setOtpCountdown(migrationData.retryAfterSeconds || 60);
+          Toast.show({
+            type: "info",
+            text1: "Codes sent",
+            text2: "Check your existing email and mobile for verification codes.",
+          });
+          return;
+        }
+        await handleAuthSuccess(migrationData);
+        return;
+      }
 
-      const body = isLogin
-        ? {
-            email: formData.email,
-            password: formData.password,
-            clientHardwareUuid,
-            ...(otpRequired ? { otp } : {}),
-          }
-        : {
-            name: formData.name.trim(),
-            email: formData.email,
-            password: formData.password,
-            clientHardwareUuid,
-            ...(otpRequired ? { otp } : {}),
-          };
-
-      const res = await fetch(`${API_BASE}${endpoint}`, {
+      if (!/^\d{10}$/.test(phoneDigits)) {
+        throw new Error("Enter a valid 10-digit Indian mobile number.");
+      }
+      if (!isLogin && !formData.name.trim()) {
+        throw new Error("Full name is required.");
+      }
+      if (otpRequired && !/^\d{6}$/.test(otp)) {
+        throw new Error("Enter the six-digit OTP sent to your phone.");
+      }
+      const res = await fetch(
+        `${API_BASE}/phone-auth/${otpRequired ? "verify-otp" : "request-otp"}`,
+        {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
           ...API_PLATFORM_HEADER,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          phone: phoneDigits,
+          intent: isLogin ? "login" : "signup",
+          name: formData.name.trim(),
+          otp,
+          clientHardwareUuid,
+        }),
       });
 
       const data = await res.json();
-
       if (!res.ok) {
-        if (
-          res.status === 403 &&
-          ["DEVICE_LOCKED", "DEVICE_ALREADY_LINKED"].includes(data.code)
-        ) {
-          setDeviceLocked(true);
-          setDeviceLockCode(data.code);
-          setDeviceLockEmail(formData.email);
-          setClaimPassword(formData.password);
-          throw new Error(
-            data.message || "Account is active on another device.",
-          );
-        }
         if (data.code === "VPN_OR_PROXY_DETECTED") {
           throw new Error(
             "Login/Register not allowed over VPN or Proxy. Please disable it.",
@@ -578,14 +587,14 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
       if (data.requiresOtp) {
         setOtpRequired(true);
-        setDevelopmentOtp(data.otpCode ? String(data.otpCode) : "");
+        setDevelopmentOtp("");
         setOtp("");
-        setOtpCountdown(60);
+        setOtpCountdown(data.retryAfterSeconds || 60);
         setError("");
         Toast.show({
           type: "info",
           text1: "OTP Sent",
-          text2: "Check your email for the 6-digit code",
+          text2: "Check your mobile for the 6-digit code",
           visibilityTime: 4000,
         });
         return;
@@ -608,22 +617,23 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     setError("");
 
     try {
-      const endpoint = isLogin ? "/login" : "/register";
       const clientHardwareUuid = await getClientHardwareUuid();
-
-      const body = isLogin
+      const endpoint = migrationMode
+        ? "/phone-auth/migrate"
+        : "/phone-auth/request-otp";
+      const body = migrationMode
         ? {
-            email: formData.email,
+            email: formData.email.trim().toLowerCase(),
             password: formData.password,
+            phone: formData.phone.replace(/\D/g, ""),
             clientHardwareUuid,
           }
         : {
+            phone: formData.phone.replace(/\D/g, ""),
+            intent: isLogin ? "login" : "signup",
             name: formData.name.trim(),
-            email: formData.email,
-            password: formData.password,
             clientHardwareUuid,
           };
-
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         credentials: "include",
@@ -639,13 +649,14 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
       if (!res.ok) throw new Error(data.message || "Could not resend OTP");
 
       if (data.requiresOtp) {
-        setDevelopmentOtp(data.otpCode ? String(data.otpCode) : "");
         setOtp("");
-        setOtpCountdown(60);
+        setMigrationEmailOtp("");
+        setMigrationPhoneOtp("");
+        setOtpCountdown(data.retryAfterSeconds || 60);
         Toast.show({
           type: "info",
           text1: "New OTP Sent",
-          text2: "Please check your email",
+          text2: data.message || "Please check your phone",
         });
       }
     } catch (err) {
@@ -660,76 +671,14 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     }
   };
 
-  const handleClaimDevice = async () => {
-    const email = deviceLockEmail;
-    const password = claimPassword;
-    if (!email || !password || claiming) return;
-
-    setClaiming(true);
-    setClaimError("");
-    try {
-      const claimResponse = await fetch(`${API_BASE}/claim-device`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const claimData = await claimResponse.json().catch(() => ({}));
-      if (!claimResponse.ok) {
-        throw new Error(
-          claimData.message || "Could not continue on this device.",
-        );
-      }
-
-      const clientHardwareUuid = await getClientHardwareUuid();
-      const loginResponse = await fetch(`${API_BASE}/login`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, clientHardwareUuid }),
-      });
-      const loginData = await loginResponse.json().catch(() => ({}));
-      if (!loginResponse.ok) {
-        throw new Error(
-          loginData.message || "Could not sign in on this device.",
-        );
-      }
-
-      setShowClaimModal(false);
-      setDeviceLocked(false);
-      setClaimError("");
-      if (loginData.requiresOtp) {
-        setFormData((previous) => ({ ...previous, email }));
-        setOtpRequired(true);
-        setOtp("");
-        setOtpCountdown(60);
-        setError("OTP sent to your email. Enter the 6-digit code to continue.");
-        return;
-      }
-
-      await handleAuthSuccess(loginData);
-    } catch (err: any) {
-      setClaimError(
-        err.message || "Could not continue on this device. Please try again.",
-      );
-    } finally {
-      setClaiming(false);
-    }
-  };
-
   const toggleMode = () => {
     animateFormSwitch(() => {
       setIsLogin(!isLogin);
-      setDeviceLocked(false);
-      setDeviceLockCode("");
-      setDeviceLockEmail("");
-      setShowClaimModal(false);
-      setClaimError("");
       setOtpRequired(false);
       setOtp("");
       setOtpCountdown(0);
       setError("");
-      setFormData({ name: "", email: "", password: "" });
+      setFormData({ name: "", email: "", password: "", phone: "" });
     });
   };
 
@@ -825,35 +774,6 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                     <Text style={styles.errorText}>{error}</Text>
                   </Animated.View>
                 ) : null}
-                {deviceLocked && (
-                  <View style={styles.deviceLockedBox}>
-                    <Text style={styles.deviceLockedTitle}>
-                      {deviceLockCode === "DEVICE_ALREADY_LINKED"
-                        ? "This device is already linked to another account"
-                        : "Account active on another device"}
-                    </Text>
-                    <Text style={styles.deviceLockedText}>
-                      {deviceLockCode === "DEVICE_ALREADY_LINKED"
-                        ? "You can sign out the account currently linked here and log in with this account."
-                        : "Sign out other sessions to continue on this device."}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setClaimError("");
-                        setShowClaimModal(true);
-                      }}
-                      disabled={claiming}
-                      style={styles.deviceLockedButton}
-                    >
-                      <Text style={styles.deviceLockedButtonText}>
-                        {deviceLockCode === "DEVICE_ALREADY_LINKED"
-                          ? "Login here"
-                          : "Continue on this device"}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
                 <Animated.View
                   style={[
                     styles.form,
@@ -866,7 +786,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                   {resetStep === 0 ? (
                     <>
                       {/* Name field */}
-                      {!isLogin && !otpRequired && (
+                      {!isLogin && !otpRequired && !migrationMode && (
                         <View style={styles.inputWrapper}>
                           <User size={20} color="#6b7280" style={styles.icon} />
                           <TextInput
@@ -880,12 +800,11 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                         </View>
                       )}
 
-                      {/* Email */}
-                      {!otpRequired && (
+                      {migrationMode && !otpRequired && (
                         <View style={styles.inputWrapper}>
                           <Mail size={20} color="#6b7280" style={styles.icon} />
                           <TextInput
-                            placeholder="Email address"
+                            placeholder="Existing account email"
                             value={formData.email}
                             onChangeText={(text) => handleChange("email", text)}
                             keyboardType="email-address"
@@ -897,12 +816,11 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                         </View>
                       )}
 
-                      {/* Password */}
-                      {!otpRequired && (
+                      {migrationMode && !otpRequired && (
                         <View style={styles.inputWrapper}>
                           <Lock size={20} color="#6b7280" style={styles.icon} />
                           <TextInput
-                            placeholder="Password"
+                            placeholder="Existing account password"
                             value={formData.password}
                             onChangeText={(text) =>
                               handleChange("password", text)
@@ -932,7 +850,26 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                         </View>
                       )}
 
-                      {!otpRequired && isLogin && (
+                      {!otpRequired && (
+                        <View style={styles.inputWrapper}>
+                          <Text style={[styles.icon, { color: "#a1a1aa", fontWeight: "700" }]}>
+                            +91
+                          </Text>
+                          <TextInput
+                            placeholder={migrationMode ? "New mobile number" : "10-digit Indian mobile number"}
+                            value={formData.phone}
+                            onChangeText={(text) =>
+                              handleChange("phone", text.replace(/\D/g, "").slice(0, 10))
+                            }
+                            keyboardType="phone-pad"
+                            editable={!otpRequired}
+                            style={styles.input}
+                            placeholderTextColor="#6b7280"
+                          />
+                        </View>
+                      )}
+
+                      {!migrationMode && !otpRequired && isLogin && (
                         <TouchableOpacity
                           onPress={startPasswordReset}
                           style={styles.forgotPasswordButton}
@@ -968,34 +905,58 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                             },
                           ]}
                         >
-                          <Text style={styles.otpTitle}>Enter OTP</Text>
+                          <Text style={styles.otpTitle}>
+                            {migrationMode ? "Verify existing account" : "Enter OTP"}
+                          </Text>
                           <Text style={styles.otpSubtitle}>
-                            We sent a 6-digit code to{"\n"}
+                            {migrationMode
+                              ? "Enter the codes sent to your existing email and new mobile."
+                              : "We sent a 6-digit code to your mobile."}
+                            {"\n"}
                             <Text
                               style={{ color: "#ef4444", fontWeight: "600" }}
                             >
-                              {formData.email}
+                              +91 {formData.phone}
                             </Text>
                           </Text>
-                          {developmentOtp ? (
-                            <Text style={styles.developmentOtp}>
-                              Development OTP: {developmentOtp}
-                            </Text>
-                          ) : null}
-
-                          <TextInput
-                            style={styles.otpInput}
-                            placeholder="••••••"
-                            placeholderTextColor="#4b5563"
-                            value={otp}
-                            onChangeText={(text) =>
-                              setOtp(text.replace(/\D/g, "").slice(0, 6))
-                            }
-                            keyboardType="number-pad"
-                            maxLength={6}
-                            textAlign="center"
-                            autoFocus
-                          />
+                          {migrationMode ? (
+                            <>
+                              <TextInput
+                                style={styles.otpInput}
+                                placeholder="Email OTP"
+                                placeholderTextColor="#4b5563"
+                                value={migrationEmailOtp}
+                                onChangeText={(text) => setMigrationEmailOtp(text.replace(/\D/g, "").slice(0, 6))}
+                                keyboardType="number-pad"
+                                maxLength={6}
+                                textAlign="center"
+                              />
+                              <TextInput
+                                style={styles.otpInput}
+                                placeholder="Mobile OTP"
+                                placeholderTextColor="#4b5563"
+                                value={migrationPhoneOtp}
+                                onChangeText={(text) => setMigrationPhoneOtp(text.replace(/\D/g, "").slice(0, 6))}
+                                keyboardType="number-pad"
+                                maxLength={6}
+                                textAlign="center"
+                              />
+                            </>
+                          ) : (
+                            <TextInput
+                              style={styles.otpInput}
+                              placeholder="••••••"
+                              placeholderTextColor="#4b5563"
+                              value={otp}
+                              onChangeText={(text) =>
+                                setOtp(text.replace(/\D/g, "").slice(0, 6))
+                              }
+                              keyboardType="number-pad"
+                              maxLength={6}
+                              textAlign="center"
+                              autoFocus
+                            />
+                          )}
 
                           <View style={styles.otpRow}>
                             <Text style={styles.otpHint}>
@@ -1046,7 +1007,11 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                           ) : (
                             <View style={styles.buttonContent}>
                               <Text style={styles.buttonText}>
-                                {otpRequired
+                                {migrationMode
+                                  ? otpRequired
+                                    ? "Verify & Migrate Account"
+                                    : "Send Migration Codes"
+                                  : otpRequired
                                   ? "Verify OTP & Continue"
                                   : isLogin
                                     ? "Sign In"
@@ -1076,39 +1041,39 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                         </TouchableOpacity>
                       )}
 
-                      {/* Divider + Google */}
-                      {!otpRequired && (
-                        <>
-                          <View style={styles.dividerContainer}>
-                            <View style={styles.divider} />
-                            <Text style={styles.dividerText}>OR</Text>
-                            <View style={styles.divider} />
-                          </View>
-
-                          <TouchableOpacity
-                            onPress={handleGoogleSignIn}
-                            disabled={
-                              !GOOGLE_CONFIGURED ||
-                              !request ||
-                              loading ||
-                              googleLoading
-                            }
-                            activeOpacity={0.85}
-                            style={[
-                              styles.googleButton,
-                              (loading || googleLoading) &&
-                                styles.buttonDisabled,
-                            ]}
-                          >
-                            {googleLoading ? (
-                              <ActivityIndicator color="#111" size="small" />
-                            ) : (
-                              <Text style={styles.googleButtonText}>
-                                Continue with Google
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                        </>
+                      {isLogin && !otpRequired && !migrationMode && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setMigrationMode(true);
+                            setError("");
+                          }}
+                          style={styles.forgotPasswordButton}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.forgotPasswordText}>
+                            Existing email account? Migrate to mobile login
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                      {migrationMode && !otpRequired && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setMigrationMode(false);
+                            setFormData({
+                              name: "",
+                              email: "",
+                              password: "",
+                              phone: "",
+                            });
+                            setError("");
+                          }}
+                          style={styles.forgotPasswordButton}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.forgotPasswordText}>
+                            Back to mobile login
+                          </Text>
+                        </TouchableOpacity>
                       )}
                     </>
                   ) : (
@@ -1374,9 +1339,11 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                       {isLogin
                         ? "Don't have an account? "
                         : "Already have an account? "}
-                      <Text style={styles.toggleLink} onPress={toggleMode}>
-                        {isLogin ? "Sign up" : "Sign in"}
-                      </Text>
+                      {!migrationMode && (
+                        <Text style={styles.toggleLink} onPress={toggleMode}>
+                          {isLogin ? "Sign up" : "Sign in"}
+                        </Text>
+                      )}
                     </Text>
                   </View>
                 )}
@@ -1386,70 +1353,6 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <Modal
-        visible={showClaimModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowClaimModal(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.claimModalOverlay}
-        >
-          <View style={styles.claimModal}>
-            <Text style={styles.claimModalTitle}>
-              {deviceLockCode === "DEVICE_ALREADY_LINKED"
-                ? "Log in on this device?"
-                : "Continue on this device?"}
-            </Text>
-            <Text style={styles.claimModalDescription}>
-              {deviceLockCode === "DEVICE_ALREADY_LINKED"
-                ? "This will sign out the account currently linked to this device, then continue logging in to your account."
-                : "This will sign out other devices using this account."}
-            </Text>
-            <Text style={styles.claimModalEmail}>
-              Account: {deviceLockEmail || "your account"}
-            </Text>
-            <TextInput
-              value={claimPassword}
-              onChangeText={setClaimPassword}
-              placeholder="Confirm your password"
-              placeholderTextColor="#6b7280"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!claiming}
-              style={styles.claimPasswordInput}
-            />
-            {claimError ? (
-              <Text style={styles.claimErrorText}>{claimError}</Text>
-            ) : null}
-            <View style={styles.claimModalActions}>
-              <TouchableOpacity
-                onPress={() => setShowClaimModal(false)}
-                disabled={claiming}
-                style={styles.claimCancelButton}
-              >
-                <Text style={styles.claimCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleClaimDevice}
-                disabled={claiming || !claimPassword}
-                style={[
-                  styles.claimContinueButton,
-                  (claiming || !claimPassword) && styles.buttonDisabled,
-                ]}
-              >
-                {claiming ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.claimContinueText}>Continue</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
     </SafeAreaView>
   );
 }

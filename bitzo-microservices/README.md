@@ -159,6 +159,22 @@ used:
 | copyright-service    | `ADMIN_DB_URI`, `NOTIFICATION_DB_URI`, `AUTH_DB_URI`, `VIDEO_DB_URI`, `SECURITY_DB_URI`                                           |
 | security-service     | `AUTH_DB_URI`, `COPYRIGHT_DB_URI`                                                                                                 |
 
+Mobile OTP authentication also requires `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID`,
+and a strong `OTP_HASH_SECRET` in the auth-service deployment environment.
+Configure the MSG91 template and Indian DLT registration to match the six-digit
+OTP message. Email verification uses the auth service's existing `EMAIL`,
+`EMAIL_PASSWORD`, and optional `EMAIL_HOST`/`EMAIL_PORT` SMTP settings. The auth
+service logs whether SMTP accepted the message; this does not guarantee inbox
+delivery, so monitor provider delivery/bounce records and spam placement.
+Google sign-in requires the same OAuth web client ID in the auth service's
+`GOOGLE_CLIENT_ID` and the website build's `VITE_GOOGLE_CLIENT_ID` settings.
+The auth service validates the ID token audience and verified email.
+
+The website and app request ads through `/v1/player/manifest/:video_id`.
+Configure active ad networks with VAST tags containing a playable `MediaFile`;
+feed ads are skipped when inventory is unavailable or the VAST response has no
+supported video media.
+
 For local frontend development, Compose defaults `CORS_ORIGINS` to
 `http://localhost:5173,http://localhost:5174` (the website and admin Vite
 ports). This lets the stack start locally without weakening the origin
@@ -203,11 +219,11 @@ and cloud-provider credentials before deploying, and revoke the old values.
 
 ## Frontend changes needed
 
-None, if you point your frontend at the gateway (`https://vidbuxapp.com`)
+None, if you point your frontend at the gateway (`http://localhost:4000`)
 instead of the old monolith's URL — every route path is unchanged
 (`/api/...`, `/v1/player/...`, `/test-vpn`). If your frontend currently
 talks to `http://localhost:8000` directly, just change that base URL to
-`https://vidbuxapp.com`.
+`http://localhost:4000`.
 
 ## Operational notes
 

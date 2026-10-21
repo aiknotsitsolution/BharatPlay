@@ -107,6 +107,8 @@ export default function Profile() {
   const [editError, setEditError] = useState(null);
   const [phoneOtp, setPhoneOtp] = useState("");
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+  const [emailOtp, setEmailOtp] = useState("");
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [phoneVerifyLoading, setPhoneVerifyLoading] = useState(false);
 
   // Change Password Modal States
@@ -267,12 +269,22 @@ export default function Profile() {
       if (!trimmedName) {
         throw new Error("Name cannot be empty");
       }
+      if (!user.phone) {
+        throw new Error("Add your mobile number before saving your profile.");
+      }
+      if (!user.emailVerified) {
+        throw new Error("Verify your email address before saving your profile.");
+      }
+      if (
+        editForm.phone.trim().replace(/[\s()-]/g, "") !==
+        String(user.phone || "").replace(/[\s()-]/g, "")
+      ) {
+        throw new Error("Verify the new mobile number before saving your profile.");
+      }
 
       const formData = new FormData();
 
-      // Always send name & email (prevents empty / incomplete form issues)
       formData.append("name", trimmedName);
-      formData.append("email", trimmedEmail);
       if (editForm.phone.trim())
         formData.append("phone", editForm.phone.trim());
       formData.append("advertisingId", editForm.advertisingId.trim());
@@ -341,6 +353,54 @@ export default function Profile() {
     setAvatarPreview(null);
     setPhoneOtp("");
     setPhoneOtpSent(false);
+    setEmailOtp("");
+    setEmailOtpSent(false);
+  };
+
+  const requestEmailOtp = async () => {
+    try {
+      setPhoneVerifyLoading(true);
+      setEditError(null);
+      const response = await authFetch(`${API_BASE}/phone-auth/email/request-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: editForm.email }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Could not send email verification code");
+      }
+      setEmailOtpSent(true);
+      toast.info("Verification code sent to your email.");
+    } catch (err) {
+      setEditError(err.message || "Could not send email verification code");
+    } finally {
+      setPhoneVerifyLoading(false);
+    }
+  };
+
+  const verifyEmailOtp = async () => {
+    try {
+      setPhoneVerifyLoading(true);
+      setEditError(null);
+      const response = await authFetch(`${API_BASE}/phone-auth/email/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: editForm.email, otp: emailOtp }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Invalid email verification code");
+      }
+      setEmailOtpSent(false);
+      setEmailOtp("");
+      await dispatch(fetchProfileData());
+      toast.success("Email address verified successfully.");
+    } catch (err) {
+      setEditError(err.message || "Could not verify email address");
+    } finally {
+      setPhoneVerifyLoading(false);
+    }
   };
 
   const requestPhoneOtp = async () => {
@@ -357,11 +417,7 @@ export default function Profile() {
         throw new Error(data.message || "Could not send verification code");
       }
       setPhoneOtpSent(true);
-      toast.info(
-        data.otpCode
-          ? `Development OTP: ${data.otpCode}`
-          : "Verification code sent to your account email",
-      );
+      toast.info("Verification code sent to your mobile number.");
     } catch (err) {
       setEditError(err.message);
     } finally {
@@ -873,11 +929,57 @@ export default function Profile() {
                   type="email"
                   value={editForm.email}
                   onChange={(e) =>
-                    setEditForm({ ...editForm, email: e.target.value })
+                    {
+                      setEditForm({ ...editForm, email: e.target.value });
+                      setEmailOtpSent(false);
+                      setEmailOtp("");
+                    }
                   }
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-red-600"
                   placeholder="your@email.com"
                 />
+                {user.emailVerified ? (
+                  <span className="text-xs text-green-400 mt-1 inline-block">
+                    Email verified
+                  </span>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={requestEmailOtp}
+                        disabled={phoneVerifyLoading || !editForm.email.trim()}
+                        className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs disabled:opacity-50"
+                      >
+                        {phoneVerifyLoading ? "Sending..." : "Send email code"}
+                      </button>
+                      {emailOtpSent && (
+                        <>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            value={emailOtp}
+                            onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ""))}
+                            className="flex-1 min-w-0 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm"
+                            placeholder="Email code"
+                          />
+                          <button
+                            type="button"
+                            onClick={verifyEmailOtp}
+                            disabled={phoneVerifyLoading || emailOtp.length !== 6}
+                            className="px-3 py-2 bg-green-700 hover:bg-green-600 rounded-lg text-xs disabled:opacity-50"
+                          >
+                            Verify
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-xs text-amber-300">
+                      Verify an email address to continue using your account.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -939,7 +1041,7 @@ export default function Profile() {
                   </div>
                 )}
                 <p className="text-xs text-zinc-500 mt-1">
-                  Verification code is sent to your account email.
+                  Verification code is sent by SMS to this mobile number.
                 </p>
               </div>
 

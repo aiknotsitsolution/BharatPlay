@@ -57,7 +57,7 @@ function getCopyrightTakedownApprovedMailOptions(
         }
       </div>
       <p>If you believe this action was taken in error, you have the right to file a counter-notification. You can manage this from your copyright dashboard.</p>
-      <a href="${process.env.WEBSITE_URL || "https://vidbuxapp.com"}/copyright" class="cta">View Your Copyright Dashboard</a>
+      <a href="${process.env.WEBSITE_URL || "http://localhost:4000"}/copyright" class="cta">View Your Copyright Dashboard</a>
     </div>
     <div class="footer">
       &copy; 2026 VidBuxApp. All rights reserved.

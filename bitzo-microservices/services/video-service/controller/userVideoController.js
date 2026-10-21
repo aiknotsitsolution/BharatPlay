@@ -97,6 +97,91 @@ const withUnwatchedVideoFilter = async (req, filter = {}) => {
   };
 };
 
+const personalizeFeed = async (req, videos) => {
+  if (!videos.length) return videos;
+
+  const userId = req.user?.id || req.user?.userId || req.user?._id;
+  const categoryScores = new Map();
+  const subscribedChannels = new Set();
+  const likedVideoIds = new Set();
+  const dislikedVideoIds = new Set();
+
+  if (userId) {
+    const [user, recentSessions] = await Promise.all([
+      User.findById(userId)
+        .select("likedVideos dislikedVideos subscribedChannels")
+        .lean(),
+      WatchSession.find({ userId })
+        .sort({ lastActiveAt: -1 })
+        .limit(100)
+        .populate("videoId", "category")
+        .lean(),
+    ]);
+
+    const addVideoIds = (target, ids = []) => {
+      for (const id of ids) target.add(String(id));
+    };
+    addVideoIds(likedVideoIds, user?.likedVideos);
+    addVideoIds(dislikedVideoIds, user?.dislikedVideos);
+    addVideoIds(subscribedChannels, user?.subscribedChannels);
+
+    for (const [index, session] of recentSessions.entries()) {
+      const category = session.videoId?.category;
+      if (!category) continue;
+      const categoryId = String(category);
+      const completion = Number(session.watchedPercent) || 0;
+      const engagementScore =
+        completion < 10 ? -1.5 : completion >= 60 ? 1.5 : 0.5;
+      categoryScores.set(
+        categoryId,
+        (categoryScores.get(categoryId) || 0) +
+          (engagementScore * 1) / (1 + index / 10),
+      );
+    }
+
+    if (likedVideoIds.size) {
+      const likedVideos = await Video.find({
+        _id: { $in: [...likedVideoIds] },
+      })
+        .select("category")
+        .lean();
+      for (const video of likedVideos) {
+        if (video.category) {
+          const categoryId = String(video.category);
+          categoryScores.set(
+            categoryId,
+            (categoryScores.get(categoryId) || 0) + 3,
+          );
+        }
+      }
+    }
+  }
+
+  return videos
+    .map((video) => {
+      const categoryId = video.category ? String(video.category) : "";
+      const channelId = video.channel?._id || video.channel;
+      const videoId = String(video._id || video.id);
+      const interestScore = categoryScores.get(categoryId) || 0;
+      const channelScore =
+        channelId && subscribedChannels.has(String(channelId)) ? 2 : 0;
+      const likeScore = likedVideoIds.has(videoId) ? -2 : 0;
+      const dislikeScore = dislikedVideoIds.has(videoId) ? -5 : 0;
+
+      return {
+        video,
+        score:
+          interestScore +
+          channelScore +
+          likeScore +
+          dislikeScore +
+          Math.random() * 2,
+      };
+    })
+    .sort((left, right) => right.score - left.score)
+    .map(({ video }) => video);
+};
+
 const withVisibleChannelFilter = async (filter = {}) => {
   const { userIds } = await getRestrictedContentIds();
   return {
@@ -1218,10 +1303,11 @@ const recommendedVideos = async (req, res) => {
         if (longVideos[index]) videos.push(longVideos[index]);
         if (shorts[index]) videos.push(shorts[index]);
       }
+      const personalizedVideos = await personalizeFeed(req, videos);
 
       return res.status(200).json({
         success: true,
-        videos,
+        videos: personalizedVideos,
         page,
         limit,
         total: longTotal + shortTotal,
@@ -1237,12 +1323,13 @@ const recommendedVideos = async (req, res) => {
       .limit(limit)
       .populate("channel", "name channelImage")
       .populate({ path: "uploadedBy", select: "name avatar", model: User });
+    const personalizedVideos = await personalizeFeed(req, videos);
 
     const total = await Video.countDocuments(filter);
 
     res.status(200).json({
       success: true,
-      videos,
+      videos: personalizedVideos,
       page,
       limit,
       total,
@@ -1368,12 +1455,13 @@ const trendingVideos = async (req, res) => {
       .limit(limit)
       .populate("channel", "name channelImage subscribedBy")
       .populate({ path: "uploadedBy", select: "name avatar", model: User });
+    const personalizedVideos = await personalizeFeed(req, videos);
 
     const total = await Video.countDocuments(filter);
 
     res.status(200).json({
       success: true,
-      videos,
+      videos: personalizedVideos,
       page,
       limit,
       total,
@@ -1400,12 +1488,13 @@ const LatestVideos = async (req, res) => {
       .limit(limit)
       .populate("channel", "name channelImage")
       .populate({ path: "uploadedBy", select: "name avatar", model: User });
+    const personalizedVideos = await personalizeFeed(req, videos);
 
     const total = await Video.countDocuments(filter);
 
     res.status(200).json({
       success: true,
-      videos,
+      videos: personalizedVideos,
       page,
       limit,
       total,
@@ -1432,6 +1521,7 @@ const trendingShorts = async (req, res) => {
       .limit(limit)
       .populate("channel", "name channelImage subscribedBy")
       .populate({ path: "uploadedBy", select: "name avatar", model: User });
+    const personalizedVideos = await personalizeFeed(req, videos);
 
     const total = await Video.countDocuments(filter);
 
@@ -1449,7 +1539,7 @@ const trendingShorts = async (req, res) => {
       (user?.dislikedVideos || []).map((id) => id.toString()),
     );
 
-    const videosWithReaction = videos.map((video) => {
+    const videosWithReaction = personalizedVideos.map((video) => {
       const videoId = video._id?.toString();
       let userReaction = null;
 
@@ -1501,12 +1591,13 @@ const topShorts = async (req, res) => {
       .limit(limit)
       .populate("channel", "name channelImage")
       .populate({ path: "uploadedBy", select: "name avatar", model: User });
+    const personalizedVideos = await personalizeFeed(req, videos);
 
     const total = await Video.countDocuments(filter);
 
     res.status(200).json({
       success: true,
-      videos,
+      videos: personalizedVideos,
       page,
       limit,
       total,

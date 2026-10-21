@@ -18,7 +18,7 @@ export const options = {
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || "https://vidbuxapp.com";
+const BASE_URL = __ENV.BASE_URL || "http://localhost:4000";
 
 export default function () {
   // 1. Health check

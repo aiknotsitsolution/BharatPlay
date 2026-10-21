@@ -51,7 +51,10 @@ describe("gateway API", () => {
       .options("/api/login")
       .set("Origin", "https://app.example.com")
       .set("Access-Control-Request-Method", "POST")
-      .set("Access-Control-Request-Headers", "content-type");
+      .set(
+        "Access-Control-Request-Headers",
+        "content-type,x-client-platform",
+      );
 
     expect(response.status).toBe(204);
     expect(response.headers["access-control-allow-origin"]).toBe(
@@ -59,5 +62,8 @@ describe("gateway API", () => {
     );
     expect(response.headers["access-control-allow-credentials"]).toBe("true");
     expect(response.headers["access-control-allow-methods"]).toContain("POST");
+    expect(response.headers["access-control-allow-headers"]).toContain(
+      "X-Client-Platform",
+    );
   });
 });

@@ -491,6 +491,117 @@ export function MovieCard({
   );
 }
 
+function FeedAdvertisementCard({ videoId }) {
+  const [advertisement, setAdvertisement] = useState(null);
+  const impressionTracked = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadAdvertisement = async () => {
+      try {
+        const response = await fetch(
+          `${BACKEND_URL}/v1/player/manifest/${encodeURIComponent(videoId)}`,
+        );
+        if (!response.ok) {
+          throw new Error(`Ad manifest request failed (${response.status})`);
+        }
+        const payload = await response.json();
+        if (!payload.adAvailable || !payload.ad?.vastXml) return;
+
+        const xml = new DOMParser().parseFromString(
+          payload.ad.vastXml,
+          "application/xml",
+        );
+        if (xml.querySelector("parsererror")) {
+          throw new Error("The ad provider returned invalid VAST XML");
+        }
+        const mediaFile = Array.from(xml.querySelectorAll("MediaFile"))
+          .map((node) => ({
+            url: node.textContent.trim(),
+            type: node.getAttribute("type") || "",
+          }))
+          .find(
+            (media) =>
+              media.url &&
+              (media.type.startsWith("video/") ||
+                /\.(mp4|webm)(?:[?#]|$)/i.test(media.url)),
+          );
+        if (!mediaFile) return;
+
+        const clickThrough =
+          xml.querySelector("ClickThrough")?.textContent.trim() || "";
+        if (!cancelled) {
+          impressionTracked.current = false;
+          setAdvertisement({
+            mediaUrl: mediaFile.url,
+            networkId: payload.ad.networkId,
+            networkName: payload.ad.networkName,
+            clickThrough,
+          });
+        }
+      } catch (error) {
+        console.warn("Could not load feed advertisement:", error);
+      }
+    };
+
+    loadAdvertisement();
+    return () => {
+      cancelled = true;
+    };
+  }, [videoId]);
+
+  if (!advertisement) return null;
+
+  const trackEvent = (event) => {
+    fetch(`${BACKEND_URL}/v1/player/ad-impression`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        videoId,
+        networkId: advertisement.networkId,
+        event,
+      }),
+    }).catch((error) => {
+      console.warn(`Could not track ad ${event}:`, error);
+    });
+  };
+
+  return (
+    <section className="mx-auto mb-10 w-full max-w-screen-2xl px-4 md:px-12 lg:px-16">
+      <div className="max-w-xl overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
+        <div className="flex items-center justify-between px-4 py-2 text-xs text-zinc-400">
+          <span>Sponsored</span>
+          <span>{advertisement.networkName || "Advertisement"}</span>
+        </div>
+        <video
+          src={advertisement.mediaUrl}
+          controls
+          playsInline
+          preload="metadata"
+          className="aspect-video w-full bg-black"
+          onPlay={() => {
+            if (!impressionTracked.current) {
+              impressionTracked.current = true;
+              trackEvent("impression");
+            }
+          }}
+          onEnded={() => trackEvent("complete")}
+        />
+        {advertisement.clickThrough ? (
+          <a
+            href={advertisement.clickThrough}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block px-4 py-3 text-sm font-medium text-white hover:bg-zinc-900"
+          >
+            Visit advertiser
+          </a>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export default function NetflixStylePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -723,59 +834,63 @@ export default function NetflixStylePage() {
 
       <div className="mx-auto max-w-screen-2xl px-4 pt-20 md:px-12 lg:px-16 -mt-24 relative z-10 pb-10">
         {homeRows.map((row, index) => (
-          <section
-            key={row.key}
-            className={`${row.kind === "shorts" ? "mb-12" : "mb-10"}${
-              index === 0 ? " pt-8" : ""
-            }`}
-          >
-            <SectionHeader
-              title={row.title}
-              onClick={() => goToViewAll(row.viewAll)}
-            />
-            <div
-              className={
-                row.kind === "shorts"
-                  ? "flex gap-3 sm:gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show snap-x snap-mandatory"
-                  : "flex gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show"
-              }
+          <div key={row.key}>
+            <section
+              className={`${row.kind === "shorts" ? "mb-12" : "mb-10"}${
+                index === 0 ? " pt-8" : ""
+              }`}
             >
-              {row.items.length > 0 ? (
-                row.items.map((item) =>
-                  row.kind === "shorts" ? (
-                    <div
-                      key={item.id}
-                      className="shrink-0 w-40 sm:w-44 md:w-48 lg:w-52 snap-start"
-                    >
-                      <ShortCard item={item} onClick={handleItemClick} />
-                    </div>
-                  ) : (
-                    <div key={item.id} className="shrink-0 w-64 md:w-72">
-                      <MovieCard
-                        item={item}
-                        onClick={handleItemClick}
-                        onAddToWatchLater={handleAddToWatchLater}
-                        onRemoveFromWatchLater={handleRemoveFromWatchLater}
-                        progress={70}
-                      />
-                    </div>
-                  ),
-                )
-              ) : (
-                <div className="w-full">
-                  {loading ? (
+              <SectionHeader
+                title={row.title}
+                onClick={() => goToViewAll(row.viewAll)}
+              />
+              <div
+                className={
+                  row.kind === "shorts"
+                    ? "flex gap-3 sm:gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show snap-x snap-mandatory"
+                    : "flex gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show"
+                }
+              >
+                {row.items.length > 0 ? (
+                  row.items.map((item) =>
                     row.kind === "shorts" ? (
-                      <ShortsCardSkeletonRow />
+                      <div
+                        key={item.id}
+                        className="shrink-0 w-40 sm:w-44 md:w-48 lg:w-52 snap-start"
+                      >
+                        <ShortCard item={item} onClick={handleItemClick} />
+                      </div>
                     ) : (
-                      <VideoCardSkeletonRow />
-                    )
-                  ) : (
-                    <p className="text-sm text-gray-400">{row.emptyText}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
+                      <div key={item.id} className="shrink-0 w-64 md:w-72">
+                        <MovieCard
+                          item={item}
+                          onClick={handleItemClick}
+                          onAddToWatchLater={handleAddToWatchLater}
+                          onRemoveFromWatchLater={handleRemoveFromWatchLater}
+                          progress={70}
+                        />
+                      </div>
+                    ),
+                  )
+                ) : (
+                  <div className="w-full">
+                    {loading ? (
+                      row.kind === "shorts" ? (
+                        <ShortsCardSkeletonRow />
+                      ) : (
+                        <VideoCardSkeletonRow />
+                      )
+                    ) : (
+                      <p className="text-sm text-gray-400">{row.emptyText}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+            {index > 0 && index % 3 === 2 && row.items.length > 0 ? (
+              <FeedAdvertisementCard videoId={`home-feed-${row.key}`} />
+            ) : null}
+          </div>
         ))}
 
 

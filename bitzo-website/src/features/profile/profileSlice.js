@@ -119,6 +119,7 @@ export const fetchProfileData = createAsyncThunk(
           name: profile.name || "User",
           handle: `@${(profile.name || "user").toLowerCase().replace(/\s+/g, "")}`,
           email: profile.email || "",
+          emailVerified: Boolean(profile.emailVerified),
           phone: profile.phone || "",
           phoneVerified: Boolean(profile.phoneVerified),
           deviceVerified: Boolean(profile.deviceVerified),
@@ -217,7 +218,7 @@ const profileSlice = createSlice({
         if (action.payload?.user) {
           try {
             localStorage.setItem("user", JSON.stringify(action.payload.user));
-          } catch (_) {
+          } catch {
             // ignore storage quota / privacy issues
           }
         }

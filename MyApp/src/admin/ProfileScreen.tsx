@@ -140,6 +140,8 @@ export function ProfileScreen() {
   const [phoneOtp, setPhoneOtp] = useState("");
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [phoneVerifyLoading, setPhoneVerifyLoading] = useState(false);
+  const [emailOtp, setEmailOtp] = useState("");
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
 
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
@@ -266,6 +268,7 @@ export function ProfileScreen() {
             .toLowerCase()
             .replace(/\s+/g, "")}`,
           email: profile.email || "",
+          emailVerified: Boolean(profile.emailVerified),
           avatar: getAvatarSource(profile.avatar),
           createdAt: profile.createdAt
             ? new Date(profile.createdAt).toLocaleDateString("en-IN", {
@@ -730,6 +733,83 @@ export function ProfileScreen() {
     }
   };
 
+  const requestEmailOtp = async () => {
+    const email = editForm.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEditError("Enter a valid email address.");
+      return;
+    }
+    try {
+      setPhoneVerifyLoading(true);
+      setEditError(null);
+      const token = await AsyncStorage.getItem("token");
+      if (!token) throw new Error("Please login again.");
+      const response = await fetch(`${API_BASE}/phone-auth/email/request-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `******`,
+        },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Could not send email verification code.");
+      }
+      setEmailOtpSent(true);
+      setEmailOtp("");
+      showToast("info", "Email code sent", "Check your inbox for the verification code.");
+    } catch (err: any) {
+      setEditError(err.message || "Could not send email verification code.");
+    } finally {
+      setPhoneVerifyLoading(false);
+    }
+  };
+
+  const verifyEmailOtp = async () => {
+    if (!/^\d{6}$/.test(emailOtp)) {
+      setEditError("Enter the 6-digit email verification code.");
+      return;
+    }
+    try {
+      setPhoneVerifyLoading(true);
+      setEditError(null);
+      const token = await AsyncStorage.getItem("token");
+      if (!token) throw new Error("Please login again.");
+      const response = await fetch(`${API_BASE}/phone-auth/email/verify-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `******`,
+        },
+        body: JSON.stringify({
+          email: editForm.email.trim().toLowerCase(),
+          otp: emailOtp,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Invalid email verification code.");
+      }
+      setUser((previous) => ({
+        ...previous,
+        email: data.user?.email || editForm.email.trim().toLowerCase(),
+        emailVerified: true,
+      }));
+      setEditForm((previous) => ({
+        ...previous,
+        email: data.user?.email || editForm.email.trim().toLowerCase(),
+      }));
+      setEmailOtp("");
+      setEmailOtpSent(false);
+      showToast("success", "Verified", "Email address verified successfully.");
+    } catch (err: any) {
+      setEditError(err.message || "Could not verify email address.");
+    } finally {
+      setPhoneVerifyLoading(false);
+    }
+  };
+
   const requestPhoneOtp = async () => {
     const phone = editForm.phone.trim().replace(/[\s()-]/g, "");
     if (!/^\+?[1-9]\d{7,14}$/.test(phone)) {
@@ -761,9 +841,7 @@ export function ProfileScreen() {
       showToast(
         "info",
         "Verification code sent",
-        data.otpCode
-          ? `Development OTP: ${data.otpCode}`
-          : "Check your account email for the 6-digit code.",
+        "Check your mobile for the 6-digit code.",
         10000,
       );
     } catch (err: any) {
@@ -829,7 +907,6 @@ export function ProfileScreen() {
 
       const formData = new FormData();
       const trimmedName = editForm.name?.trim();
-      const trimmedEmail = editForm.email?.trim().toLowerCase();
       const normalizedPhone = editForm.phone.trim().replace(/[\s()-]/g, "");
       const previousPhone = String(user.phone || "").replace(/[\s()-]/g, "");
       const phoneChanged = Boolean(
@@ -841,17 +918,18 @@ export function ProfileScreen() {
         throw new Error("Name cannot be empty");
       }
 
-      if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-        throw new Error("Enter a valid email address");
+      if (!user.phoneVerified) {
+        throw new Error("Verify your mobile number before saving your profile.");
+      }
+      if (!user.emailVerified) {
+        throw new Error("Verify your email address before saving your profile.");
+      }
+      if (phoneChanged) {
+        throw new Error("Verify the new mobile number before saving your profile.");
       }
 
       if (trimmedName && trimmedName !== user.name) {
         formData.append("name", trimmedName);
-        hasChanges = true;
-      }
-
-      if (trimmedEmail && trimmedEmail !== (user.email || "").toLowerCase()) {
-        formData.append("email", trimmedEmail);
         hasChanges = true;
       }
 
@@ -922,6 +1000,7 @@ export function ProfileScreen() {
         ...prev,
         name: data.user?.name || prev.name,
         email: data.user?.email || prev.email,
+        emailVerified: data.user?.emailVerified ?? prev.emailVerified,
         avatar: getMediaUrl(savedAvatar) || avatarUri || prev.avatar,
         phone: data.user?.phone ?? prev.phone,
         phoneVerified:
@@ -1770,15 +1849,76 @@ export function ProfileScreen() {
               />
 
               <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={editForm.email}
-                onChangeText={(t) => setEditForm({ ...editForm, email: t })}
-                placeholder="your@email.com"
-                placeholderTextColor="#71717a"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+              <View style={styles.phoneInputRow}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  value={editForm.email}
+                  onChangeText={(email) =>
+                    setEditForm((previous) => ({ ...previous, email }))
+                  }
+                  placeholder="your@email.com"
+                  placeholderTextColor="#71717a"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  editable={!user.emailVerified && !phoneVerifyLoading}
+                />
+                {user.emailVerified ? (
+                  <View style={styles.verifiedBadge}>
+                    <ShieldCheck size={14} color="#4ade80" />
+                    <Text style={styles.verifiedText}>Verified</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.verifyPhoneBtn}
+                    onPress={requestEmailOtp}
+                    disabled={
+                      phoneVerifyLoading ||
+                      editLoading ||
+                      !editForm.email.trim()
+                    }
+                  >
+                    {phoneVerifyLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.verifyPhoneText}>
+                        {emailOtpSent ? "Resend" : "Verify"}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+              {!user.emailVerified && emailOtpSent ? (
+                <View style={styles.phoneOtpRow}>
+                  <TextInput
+                    style={[styles.input, styles.phoneOtpInput]}
+                    value={emailOtp}
+                    onChangeText={(value) =>
+                      setEmailOtp(value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    placeholder="Email code"
+                    placeholderTextColor="#71717a"
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    editable={!phoneVerifyLoading}
+                  />
+                  <TouchableOpacity
+                    style={styles.confirmPhoneBtn}
+                    onPress={verifyEmailOtp}
+                    disabled={phoneVerifyLoading || emailOtp.length !== 6}
+                  >
+                    {phoneVerifyLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.verifyPhoneText}>Confirm</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              {!user.emailVerified ? (
+                <Text style={styles.metadataHint}>
+                  Email verification is required to use your account.
+                </Text>
+              ) : null}
 
               <View style={styles.phoneLabelRow}>
                 <Text style={styles.label}>Phone number</Text>
@@ -1850,7 +1990,7 @@ export function ProfileScreen() {
                 </View>
               )}
               <Text style={styles.metadataHint}>
-                Verification code is sent to your account email.
+                Verification code is sent to your mobile number by SMS.
               </Text>
 
               <Text style={styles.metadataHeading}>Device information</Text>
