@@ -1361,7 +1361,54 @@ const getRelatedVideos = async (req, res) => {
 
     const currentVideo = await Video.findOne(
       await withVisibleVideoFilter({ _id: currentVideoId }),
-    ).select("category channel videoType");
+    ).select("category channel videoType createdAt");
+
+    let previousVideo = null;
+    let nextVideo = null;
+    if (currentVideo?.createdAt) {
+      const navigationVideoType = currentVideo.videoType?.some((type) =>
+        ["short", "shorts"].includes(String(type).toLowerCase()),
+      )
+        ? "short"
+        : "long";
+      const navigationBaseFilter = {
+        videoType: navigationVideoType,
+      };
+      const [previous, next] = await Promise.all([
+        Video.findOne({
+          ...(await withVisibleVideoFilter({
+            ...navigationBaseFilter,
+            $or: [
+              { createdAt: { $lt: currentVideo.createdAt } },
+              {
+                createdAt: currentVideo.createdAt,
+                _id: { $lt: currentVideoId },
+              },
+            ],
+          })),
+        })
+          .sort({ createdAt: -1, _id: -1 })
+          .populate("channel", "name channelImage")
+          .lean(),
+        Video.findOne({
+          ...(await withVisibleVideoFilter({
+            ...navigationBaseFilter,
+            $or: [
+              { createdAt: { $gt: currentVideo.createdAt } },
+              {
+                createdAt: currentVideo.createdAt,
+                _id: { $gt: currentVideoId },
+              },
+            ],
+          })),
+        })
+          .sort({ createdAt: 1, _id: 1 })
+          .populate("channel", "name channelImage")
+          .lean(),
+      ]);
+      previousVideo = previous;
+      nextVideo = next;
+    }
 
     const baseFilter = await withVisibleVideoFilter({ videoType: "long" });
     if (currentVideo) {
@@ -1432,6 +1479,8 @@ const getRelatedVideos = async (req, res) => {
     res.status(200).json({
       success: true,
       videos: videos.slice(0, RELATED_VIDEOS_LIMIT),
+      previousVideo,
+      nextVideo,
     });
   } catch (error) {
     console.error("Error in getRelatedVideos:", error);

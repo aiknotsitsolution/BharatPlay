@@ -194,6 +194,8 @@ export default function YouTubeLikeVideoPage() {
   const [upNextOverlay, setUpNextOverlay] = useState(null); // { video }
   const [countdownLeft, setCountdownLeft] = useState(null); // null => end screen
   const [upNextVideos, setUpNextVideos] = useState(UP_NEXT_VIDEOS);
+  const [previousVideo, setPreviousVideo] = useState(null);
+  const [nextVideo, setNextVideo] = useState(null);
 
   const playerRef = useRef(null);
   const viewTracked = useRef(false);
@@ -355,6 +357,7 @@ export default function YouTubeLikeVideoPage() {
       if (!id) return;
 
       try {
+        setPreviousVideo(null);
         const token = localStorage.getItem("token");
         const response = await fetch(`${API_BASE}/${id}/comments`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -396,6 +399,8 @@ export default function YouTubeLikeVideoPage() {
     let cancelled = false;
 
     const fetchRelated = async () => {
+      setPreviousVideo(null);
+      setNextVideo(null);
       try {
         const token = localStorage.getItem("token");
         const response = await fetch(`${API_BASE}/${id}/related`, {
@@ -407,6 +412,28 @@ export default function YouTubeLikeVideoPage() {
         }
         const related = Array.isArray(data.videos) ? data.videos : [];
         if (cancelled) return;
+        setPreviousVideo(
+          data.previousVideo
+            ? {
+                id: data.previousVideo._id || data.previousVideo.id,
+                title: data.previousVideo.title || "Untitled video",
+                videoUrl: data.previousVideo.videoUrl || "",
+                thumbnail: data.previousVideo.thumbnail || "",
+                channel: data.previousVideo.channel || "Channel",
+              }
+            : null,
+        );
+        setNextVideo(
+          data.nextVideo
+            ? {
+                id: data.nextVideo._id || data.nextVideo.id,
+                title: data.nextVideo.title || "Untitled video",
+                videoUrl: data.nextVideo.videoUrl || "",
+                thumbnail: data.nextVideo.thumbnail || "",
+                channel: data.nextVideo.channel || "Channel",
+              }
+            : null,
+        );
         if (related.length === 0) return;
 
         // The API only excludes the *current* video, so a just-watched video
@@ -673,19 +700,26 @@ export default function YouTubeLikeVideoPage() {
   // Walk the "Up next" queue for the player's previous/next buttons.
   const stepVideo = useCallback(
     (step) => {
+      if (step < 0) {
+        if (previousVideo) openVideo(previousVideo);
+        return;
+      }
+      if (step > 0) {
+        if (nextVideo) openVideo(nextVideo);
+        return;
+      }
       if (upNextVideos.length === 0) return;
       const idx = upNextVideos.findIndex(
         (vid) => String(vid.id) === String(videoData.id),
       );
-      const target =
+      const target = upNextVideos[
         idx >= 0
-          ? upNextVideos[
-              (idx + step + upNextVideos.length) % upNextVideos.length
-            ]
-          : upNextVideos[0];
+          ? (idx + step + upNextVideos.length) % upNextVideos.length
+          : 0
+      ];
       openVideo(target);
     },
-    [upNextVideos, videoData.id, openVideo],
+    [previousVideo, nextVideo, upNextVideos, videoData.id, openVideo],
   );
 
   // ==================== UP NEXT AUTOPLAY ====================
@@ -945,8 +979,10 @@ export default function YouTubeLikeVideoPage() {
               onTimeUpdate={setCurrentTime}
               onLoadedMetadata={handleLoadedMetadata}
               onVolumeChange={(isMuted) => setMuted(isMuted)}
-              onPrevious={() => stepVideo(-1)}
-              onNext={() => stepVideo(1)}
+              onPrevious={
+                previousVideo ? () => stepVideo(-1) : undefined
+              }
+              onNext={nextVideo ? () => stepVideo(1) : undefined}
               onTheaterModeChange={setTheaterMode}
               onError={(error) => console.error("Video player error:", error)}
               overlay={upNextOverlayNode}
