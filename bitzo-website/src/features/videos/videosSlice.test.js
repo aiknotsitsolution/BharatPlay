@@ -4,6 +4,7 @@ import videosReducer, {
   fetchHomeVideos,
   fetchNextHomeSection,
   fetchShortsFeed,
+  prioritizeCategoryChannels,
   rankShortsByEngagement,
   shuffleAfterPinnedItems,
 } from "./videosSlice";
@@ -41,6 +42,69 @@ describe("Shorts feed pagination", () => {
       "other-1",
       "other-2",
     ]);
+  });
+
+  it("puts matching channel categories first and shuffles both groups", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const videos = [
+      { id: "other-1", channel: { category: "category-b" } },
+      { id: "match-1", channel: { category: { _id: "category-a" } } },
+      { id: "other-2", channel: { category: "category-c" } },
+      { id: "match-2", channel: { category: "category-a" } },
+    ];
+
+    expect(
+      prioritizeCategoryChannels(videos, { _id: "category-a" }).map(
+        (video) => video.id,
+      ),
+    ).toEqual(["match-2", "match-1", "other-2", "other-1"]);
+    expect(prioritizeCategoryChannels(videos, null)).toHaveLength(4);
+  });
+
+  it("prioritizes selected-category channels in the Home Recommended section", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const recommendedUrls = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        const parsedUrl = new URL(url);
+        const section = parsedUrl.pathname.split("/").pop();
+        if (section === "recommended") {
+          recommendedUrls.push(parsedUrl);
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              total: 4,
+              videos: [
+                { _id: "other-1", channel: { category: "category-b" } },
+                {
+                  _id: "match-1",
+                  channel: { category: { _id: "category-a" } },
+                },
+                { _id: "other-2", channel: { category: "category-c" } },
+                { _id: "match-2", channel: { category: "category-a" } },
+              ],
+            }),
+          };
+        }
+
+        return {
+          ok: true,
+          json: async () => ({ success: true, total: 0, videos: [] }),
+        };
+      }),
+    );
+
+    await store
+      .dispatch(fetchHomeVideos({ category: "category-a", limit: 5 }))
+      .unwrap();
+
+    expect(store.getState().videos.recommended.map((video) => video.id)).toEqual(
+      ["match-2", "match-1", "other-2", "other-1"],
+    );
+    expect(recommendedUrls).toHaveLength(1);
+    expect(recommendedUrls[0].searchParams.has("category")).toBe(false);
   });
 
   it("keeps only the top two Shorts fixed and shuffles all the rest", async () => {

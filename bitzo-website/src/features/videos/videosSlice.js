@@ -79,6 +79,30 @@ export const shuffleAfterPinnedItems = (items, pinnedCount = 0) => {
   return result;
 };
 
+export const prioritizeCategoryChannels = (items, categoryId) => {
+  if (!categoryId) return shuffleAfterPinnedItems(items);
+
+  const getId = (value) =>
+    value && typeof value === "object" ? value._id || value.id : value;
+  const selectedId = String(getId(categoryId));
+  const matching = [];
+  const remaining = [];
+
+  items.forEach((item) => {
+    const channelCategoryId = getId(item.channel?.category);
+    if (channelCategoryId && String(channelCategoryId) === selectedId) {
+      matching.push(item);
+    } else {
+      remaining.push(item);
+    }
+  });
+
+  return [
+    ...shuffleAfterPinnedItems(matching),
+    ...shuffleAfterPinnedItems(remaining),
+  ];
+};
+
 export const rankShortsByEngagement = (shorts) => {
   const metrics = ["views", "likes", "comments"];
   const ranks = new Map(shorts.map((short) => [short.id, 0]));
@@ -151,7 +175,6 @@ export const fetchHomeVideos = createAsyncThunk(
       ] = await Promise.all([
         fetchAllRecommendedVideos({
           apiBase: API_BASE,
-          category,
           token,
         }),
         fetchAllTrendingVideos({
@@ -212,16 +235,16 @@ export const fetchHomeVideos = createAsyncThunk(
         pinnedCount = 0,
         allPagesLoaded = false,
         shuffle = true,
+        categoryPriority = null,
       ) => {
         const list = getVideosArray(data);
         const items = list.map(normalize);
         return {
-          items: shuffle
-            ? shuffleAfterPinnedItems(
-                items,
-                page === 1 ? pinnedCount : 0,
-              )
-            : items,
+          items: categoryPriority
+            ? prioritizeCategoryChannels(items, categoryPriority)
+            : shuffle
+              ? shuffleAfterPinnedItems(items, page === 1 ? pinnedCount : 0)
+              : items,
           hasMore:
             !allPagesLoaded &&
             (Number(data?.total) > page * limit || list.length === limit),
@@ -235,6 +258,8 @@ export const fetchHomeVideos = createAsyncThunk(
           normalizeVideoListItem,
           0,
           true,
+          true,
+          category,
         ),
         trending: getSection(
           trendingData,

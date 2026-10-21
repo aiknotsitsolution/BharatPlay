@@ -6,6 +6,7 @@ import {
   API_BASE,
   normalizeVideoListItem,
   normalizeShort,
+  prioritizeCategoryChannels,
   shuffleAfterPinnedItems,
 } from "../features/videos/videosSlice";
 import { addToWatchLater, removeFromWatchLater } from "../api/watchLater";
@@ -96,7 +97,7 @@ const ViewAll = () => {
       }[type];
       loadAllVideos({
         apiBase: API_BASE,
-        category: selectedCategory,
+        category: type === "recommended" ? undefined : selectedCategory,
         token,
       })
         .then((videos) => {
@@ -119,7 +120,10 @@ const ViewAll = () => {
                     ),
                     1,
                   )
-                : shuffleAfterPinnedItems(normalizedVideos);
+                : prioritizeCategoryChannels(
+                    normalizedVideos,
+                    selectedCategory,
+                  );
           setItems(orderedVideos);
           setTotal(orderedVideos.length);
           setError(null);

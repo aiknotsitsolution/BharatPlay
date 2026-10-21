@@ -1321,7 +1321,7 @@ const recommendedVideos = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("channel", "name channelImage")
+      .populate("channel", "name channelImage category")
       .populate({ path: "uploadedBy", select: "name avatar", model: User });
     const personalizedVideos = await personalizeFeed(req, videos);
 
