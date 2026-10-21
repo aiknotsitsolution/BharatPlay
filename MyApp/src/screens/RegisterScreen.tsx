@@ -5,6 +5,8 @@ import CustomButton from "../components/CustomButton";
 import styles from "../styles/globalStyles";
 import { API_BASE, API_PLATFORM_HEADER } from "../../config/api";
 import { showToast } from "../utils/notifications";
+import { getClientHardwareUuid } from "./deviceId";
+import { getSignupIntegrityProof } from "../utils/signupIntegrity";
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = React.useState("");
@@ -19,6 +21,8 @@ export default function RegisterScreen({ navigation }) {
 
     try {
       setLoading(true);
+      const clientHardwareUuid = await getClientHardwareUuid();
+      const integrityProof = await getSignupIntegrityProof();
 
       const response = await fetch(`${API_BASE}/register`, {
         method: "POST",
@@ -27,8 +31,11 @@ export default function RegisterScreen({ navigation }) {
           ...API_PLATFORM_HEADER,
         },
         body: JSON.stringify({
+          name: email.split("@")[0],
           email,
           password,
+          clientHardwareUuid,
+          ...integrityProof,
         }),
       });
 

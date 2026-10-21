@@ -33,6 +33,7 @@ import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import { API_BASE, API_PLATFORM_HEADER } from "../../config/api";
 import { getClientHardwareUuid } from "./deviceId";
+import { getSignupIntegrityProof } from "../utils/signupIntegrity";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -235,15 +236,27 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
       if (!idToken) throw new Error("Google token not received");
       const clientHardwareUuid = await getClientHardwareUuid();
+      const sendGoogleCredential = (integrityProof = {}) =>
+        fetch(`${API_BASE}/auth/google`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            ...API_PLATFORM_HEADER,
+          },
+          body: JSON.stringify({
+            credential: idToken,
+            clientHardwareUuid,
+            ...integrityProof,
+          }),
+        });
 
-      const res = await fetch(`${API_BASE}/auth/google`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential: idToken, clientHardwareUuid }),
-      });
-
-      const data = await res.json();
+      let res = await sendGoogleCredential();
+      let data = await res.json();
+      if (!res.ok && data.code === "PLAY_INTEGRITY_REQUIRED") {
+        res = await sendGoogleCredential(await getSignupIntegrityProof());
+        data = await res.json();
+      }
       if (!res.ok)
         throw new Error(data.message || "Google authentication failed");
 
@@ -572,6 +585,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
           name: formData.name.trim(),
           otp,
           clientHardwareUuid,
+        ...(!isLogin ? await getSignupIntegrityProof() : {}),
         }),
       });
 
@@ -633,6 +647,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
             intent: isLogin ? "login" : "signup",
             name: formData.name.trim(),
             clientHardwareUuid,
+            ...(!isLogin ? await getSignupIntegrityProof() : {}),
           };
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",

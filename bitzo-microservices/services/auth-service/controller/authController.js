@@ -23,7 +23,14 @@ const {
   clearRefreshCookie,
 } = require("../utils/refreshCookie");
 
-const { detectVPN } = require("../services/vpn.service/vpn.service.js");
+const {
+  detectVPN,
+  getClientIp,
+} = require("../services/vpn.service/vpn.service.js");
+const {
+  evaluateSignupRequest,
+  isSignupIpDuplicateError,
+} = require("../services/signupPolicy");
 const {
   logFraudEvent,
   analyzeBehavior,
@@ -31,7 +38,10 @@ const {
   applyTrustRule,
 } = require("../services/vpn.service/fraud.service.js");
 const { logAuditEvent } = require("../services/auditEventService");
-const { registerOrVerifyDevice } = require("../services/deviceSecurityService");
+const {
+  registerOrVerifyDevice,
+  requireAndroidSignupIntegrity,
+} = require("../services/deviceSecurityService");
 const {
   checkClientHardwareBinding,
   bindClientHardwareUuid,
@@ -41,16 +51,6 @@ const getRegisterMailOptions = require("../Email/register.js");
 const getLoginMailOptions = require("../Email/login.js");
 const getPasswordResetMailOptions = require("../Email/password.js");
 const getPasswordChangeConfirmationMailOptions = require("../Email/passwordReset.js");
-
-const getClientIp = (req) => {
-  return (
-    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-    req.headers["x-real-ip"] ||
-    req.connection?.remoteAddress ||
-    req.ip ||
-    "unknown"
-  );
-};
 
 // Creates a refresh-token session for a user/admin and returns the raw token.
 // Only the hash is persisted. The caller sets the httpOnly cookie.
@@ -180,6 +180,43 @@ exports.registerUser = async (req, res) => {
     const ip = getClientIp(req);
     const ua = req.headers["user-agent"] || "unknown";
 
+    const signupCheck = await evaluateSignupRequest(req);
+    if (!signupCheck.ok) {
+      if (signupCheck.code === "VPN_OR_PROXY_DETECTED") {
+        await logFraudEvent({
+          userId: null,
+          eventType: signupCheck.vpnInfo.isVPN
+            ? "VPN_DETECTED"
+            : "PROXY_DETECTED",
+          severity: "high",
+          ip,
+          deviceId,
+          userAgent: ua,
+          isVPN: signupCheck.vpnInfo.isVPN,
+          isProxy: signupCheck.vpnInfo.isProxy,
+          riskScoreImpact: 25,
+          metadata: { action: "blocked_register" },
+        });
+      }
+      return res.status(signupCheck.status).json({
+        success: false,
+        code: signupCheck.code,
+        message: signupCheck.message,
+      });
+    }
+    const { ipHash, vpnInfo } = signupCheck;
+
+    if (platform === "app") {
+      const integrityCheck = await requireAndroidSignupIntegrity(req);
+      if (!integrityCheck.ok) {
+        return res.status(integrityCheck.status).json({
+          success: false,
+          code: integrityCheck.code,
+          message: integrityCheck.message,
+        });
+      }
+    }
+
     const hardwareBindingCheck = await checkClientHardwareBinding({
       clientHardwareUuid: req.body.clientHardwareUuid,
       userId: null,
@@ -227,32 +264,6 @@ exports.registerUser = async (req, res) => {
         success: false,
         code: "PHONE_ALREADY_REGISTERED",
         message: "This mobile number is already linked to an account.",
-      });
-    }
-
-    const vpnInfo = await detectVPN(ip);
-    if (vpnInfo.isVPN || vpnInfo.isProxy) {
-      await logFraudEvent({
-        userId: null,
-        eventType: vpnInfo.isVPN ? "VPN_DETECTED" : "PROXY_DETECTED",
-        severity: "high",
-        ip,
-        deviceId,
-        userAgent: ua,
-        isVPN: vpnInfo.isVPN,
-        isProxy: vpnInfo.isProxy,
-        riskScoreImpact: 25,
-        metadata: {
-          country: vpnInfo.country,
-          action: "blocked_register",
-        },
-      });
-
-      return res.status(403).json({
-        success: false,
-        code: "VPN_OR_PROXY_DETECTED",
-        message:
-          "Registration is not allowed over VPN or proxy. Please disable it and try again.",
       });
     }
 
@@ -314,6 +325,7 @@ exports.registerUser = async (req, res) => {
         deviceId,
         deviceVerified: true,
         ipAddress: ip,
+        signupIpHash: ipHash,
         platform,
       });
 
@@ -412,6 +424,13 @@ exports.registerUser = async (req, res) => {
   } catch (error) {
     console.error("Register error:", error);
 
+    if (isSignupIpDuplicateError(error)) {
+      return res.status(409).json({
+        success: false,
+        code: "SIGNUP_IP_ALREADY_USED",
+        message: "Only one account can be registered from the same public IP address.",
+      });
+    }
     return res.status(500).json({
       success: false,
       message: "Registration failed",
@@ -667,6 +686,28 @@ exports.loginUser = async (req, res) => {
         });
       }
 
+      let signupCheck = null;
+      if (!user) {
+        signupCheck = await evaluateSignupRequest(req);
+        if (!signupCheck.ok) {
+          return res.status(signupCheck.status).json({
+            success: false,
+            code: signupCheck.code,
+            message: signupCheck.message,
+          });
+        }
+        if (String(req.headers["x-client-platform"] || "").toLowerCase() === "app") {
+          const integrityCheck = await requireAndroidSignupIntegrity(req);
+          if (!integrityCheck.ok) {
+            return res.status(integrityCheck.status).json({
+              success: false,
+              code: integrityCheck.code,
+              message: integrityCheck.message,
+            });
+          }
+        }
+      }
+
       const deviceCheck = await registerOrVerifyDevice({
         req,
         userId: user._id,
@@ -719,7 +760,7 @@ exports.loginUser = async (req, res) => {
       );
 
       // ---------- VPN / Proxy check ----------
-      const vpnInfo = await detectVPN(ip);
+      const vpnInfo = signupCheck?.vpnInfo || (await detectVPN(ip));
       if (vpnInfo.isVPN || vpnInfo.isProxy) {
         await logFraudEvent({
           userId: user._id,
@@ -1032,6 +1073,18 @@ exports.googleLogin = async (req, res) => {
       });
     }
 
+    let signupCheck = null;
+    if (!user) {
+      signupCheck = await evaluateSignupRequest(req);
+      if (!signupCheck.ok) {
+        return res.status(signupCheck.status).json({
+          success: false,
+          code: signupCheck.code,
+          message: signupCheck.message,
+        });
+      }
+    }
+
     const hardwareBindingCheck = await checkClientHardwareBinding({
       clientHardwareUuid: req.body.clientHardwareUuid,
       userId: user?._id || null,
@@ -1059,7 +1112,7 @@ exports.googleLogin = async (req, res) => {
       deviceId = deviceCheck.deviceId;
     }
 
-    const vpnInfo = await detectVPN(ip);
+    const vpnInfo = signupCheck?.vpnInfo || (await detectVPN(ip));
     if (vpnInfo.isVPN || vpnInfo.isProxy) {
       await logFraudEvent({
         userId: user?._id || null,
@@ -1100,9 +1153,17 @@ exports.googleLogin = async (req, res) => {
           deviceId,
           deviceVerified: true,
           ipAddress: ip,
+          signupIpHash: signupCheck.ipHash,
           platform: "website",
         });
       } catch (error) {
+        if (isSignupIpDuplicateError(error)) {
+          return res.status(409).json({
+            success: false,
+            code: "SIGNUP_IP_ALREADY_USED",
+            message: "Only one account can be registered from the same public IP address.",
+          });
+        }
         if (error.code !== 11000) throw error;
         user = await User.findOne({
           $or: [{ googleId: payload.sub }, { email }],

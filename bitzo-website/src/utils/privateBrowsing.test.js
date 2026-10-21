@@ -27,12 +27,30 @@ describe("isLikelyPrivateBrowsing", () => {
     await expect(isLikelyPrivateBrowsing(chromeUserAgent, storage)).resolves.toBe(false);
   });
 
-  it("does not apply the Chromium quota heuristic to other browsers", async () => {
-    const storage = { estimate: vi.fn() };
+  it("blocks other browsers when storage quota is unusually small", async () => {
+    const storage = {
+      estimate: vi.fn().mockResolvedValue({ quota: 1_000_000 }),
+    };
+
+    await expect(
+      isLikelyPrivateBrowsing("Mozilla/5.0 Firefox/130.0", storage),
+    ).resolves.toBe(true);
+    expect(storage.estimate).toHaveBeenCalledOnce();
+  });
+
+  it("fails closed when another browser cannot report storage quota", async () => {
+    await expect(
+      isLikelyPrivateBrowsing("Mozilla/5.0 Firefox/130.0", undefined),
+    ).resolves.toBe(true);
+  });
+
+  it("allows other browsers when storage quota is normal", async () => {
+    const storage = {
+      estimate: vi.fn().mockResolvedValue({ quota: 3 * 1024 * 1024 * 1024 }),
+    };
 
     await expect(
       isLikelyPrivateBrowsing("Mozilla/5.0 Firefox/130.0", storage),
     ).resolves.toBe(false);
-    expect(storage.estimate).not.toHaveBeenCalled();
   });
 });

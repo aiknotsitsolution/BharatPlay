@@ -71,14 +71,7 @@ export default function AuthPageV2() {
       })
       .catch((checkError) => {
         console.warn("Could not check private browsing mode:", checkError);
-        const supportsPrivateCheck =
-          /Chrome|Chromium/.test(navigator.userAgent) &&
-          Boolean(navigator.storage?.estimate);
-        if (active) {
-          setPrivateModeStatus(
-            supportsPrivateCheck ? "blocked" : "available",
-          );
-        }
+        if (active) setPrivateModeStatus("blocked");
       });
 
     return () => {

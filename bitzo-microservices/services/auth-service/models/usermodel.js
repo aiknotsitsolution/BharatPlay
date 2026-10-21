@@ -80,6 +80,11 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
+    signupIpHash: {
+      type: String,
+      select: false,
+    },
+
     country: {
       type: String,
       default: null,
@@ -342,6 +347,15 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.index({ createdAt: -1 });
+userSchema.index({ ipAddress: 1 });
+userSchema.index(
+  { signupIpHash: 1 },
+  {
+    name: "uniq_signup_ip_hash",
+    unique: true,
+    partialFilterExpression: { signupIpHash: { $type: "string" } },
+  },
+);
 userSchema.index(
   { phone: 1 },
   {

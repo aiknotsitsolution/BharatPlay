@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 const { GoogleAuth } = require("google-auth-library");
 const Device = require("../models/Device");
 const User = require("../models/usermodel");
+const PlayIntegrityToken = require("../models/PlayIntegrityToken");
 const { logFraudEvent } = require("./vpn.service/fraud.service");
 
 const getDeviceSignals = (body = {}) => ({
@@ -125,6 +126,129 @@ async function verifyPlayIntegrity(signals) {
   }
 }
 
+let integrityTokenIndexPromise;
+
+async function requireAndroidSignupIntegrity(req) {
+  const packageName = process.env.ANDROID_PACKAGE_NAME;
+  const credentials = process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS;
+  if (!packageName || !credentials) {
+    console.error("Android signup is blocked because Play Integrity is not configured.");
+    return {
+      ok: false,
+      status: 503,
+      code: "PLAY_INTEGRITY_UNAVAILABLE",
+      message: "Android registration security is temporarily unavailable.",
+    };
+  }
+
+  const token = String(req.body?.playIntegrityToken || "").trim();
+  const nonce = String(req.body?.integrityNonce || "").trim();
+  if (!token || nonce.length < 16 || nonce.length > 500) {
+    return {
+      ok: false,
+      status: 403,
+      code: "PLAY_INTEGRITY_REQUIRED",
+      message: "Verify the official app installation before registering.",
+    };
+  }
+
+  let payload;
+  try {
+    const auth = new GoogleAuth({
+      credentials: JSON.parse(credentials),
+      scopes: ["https://www.googleapis.com/auth/playintegrity"],
+    });
+    const client = await auth.getClient();
+    const response = await client.request({
+      url: `https://playintegrity.googleapis.com/v1/${packageName}:decodeIntegrityToken`,
+      method: "POST",
+      data: { integrity_token: token },
+    });
+    payload = response.data?.tokenPayloadExternal;
+  } catch (error) {
+    console.error(
+      "Play Integrity token verification failed:",
+      error.response?.data?.error?.message || error.message,
+    );
+    return {
+      ok: false,
+      status: 503,
+      code: "PLAY_INTEGRITY_UNAVAILABLE",
+      message: "Android registration security could not be verified. Try again later.",
+    };
+  }
+
+  const requestDetails = payload?.requestDetails || {};
+  const tokenTimestamp = Number(requestDetails.timestampMillis);
+  const timestampIsFresh =
+    Number.isFinite(tokenTimestamp) &&
+    Math.abs(Date.now() - tokenTimestamp) <= 2 * 60 * 1000;
+  const appVerdict = payload?.appIntegrity?.appRecognitionVerdict;
+  const deviceVerdicts =
+    payload?.deviceIntegrity?.deviceRecognitionVerdict || [];
+  const deviceIsTrusted =
+    Array.isArray(deviceVerdicts) &&
+    deviceVerdicts.some((verdict) =>
+      ["MEETS_DEVICE_INTEGRITY", "MEETS_STRONG_INTEGRITY"].includes(verdict),
+    );
+
+  if (
+    requestDetails.requestPackageName !== packageName ||
+    requestDetails.nonce !== nonce ||
+    !timestampIsFresh ||
+    appVerdict !== "PLAY_RECOGNIZED" ||
+    !deviceIsTrusted
+  ) {
+    return {
+      ok: false,
+      status: 403,
+      code: "PLAY_INTEGRITY_REJECTED",
+      message: "This device or app installation did not pass security verification.",
+    };
+  }
+
+  try {
+    if (!integrityTokenIndexPromise) {
+      integrityTokenIndexPromise = Promise.all([
+        PlayIntegrityToken.collection.createIndex(
+          { tokenHash: 1 },
+          { name: "uniq_play_integrity_token_hash", unique: true },
+        ),
+        PlayIntegrityToken.collection.createIndex(
+          { expiresAt: 1 },
+          { name: "expire_play_integrity_tokens", expireAfterSeconds: 0 },
+        ),
+      ]);
+    }
+    await integrityTokenIndexPromise;
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    await PlayIntegrityToken.create({
+      tokenHash,
+      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return {
+        ok: false,
+        status: 409,
+        code: "PLAY_INTEGRITY_REPLAYED",
+        message: "This security verification has already been used. Please try again.",
+      };
+    }
+    integrityTokenIndexPromise = null;
+    console.error("Could not persist Play Integrity replay protection:", error);
+    return {
+      ok: false,
+      status: 503,
+      code: "PLAY_INTEGRITY_UNAVAILABLE",
+      message: "Android registration security is temporarily unavailable.",
+    };
+  }
+
+  req.playIntegrityVerified = true;
+  return { ok: true };
+}
+
 async function registerOrVerifyDevice({ req, userId = null }) {
   const signals = getDeviceSignals(req.body);
   const deviceId =
@@ -151,7 +275,9 @@ async function registerOrVerifyDevice({ req, userId = null }) {
       };
     }
   }
-  const integrity = await verifyPlayIntegrity(signals);
+  const integrity = req.playIntegrityVerified
+    ? { verified: true, checked: true, reason: null }
+    : await verifyPlayIntegrity(signals);
   const serverVirtual = serverVirtualCheck(req, signals);
   const existing = await Device.findOne({ device_id: deviceId });
 
@@ -242,6 +368,7 @@ module.exports = {
   getDeviceSignals,
   verifyHmacRequest,
   verifyPlayIntegrity,
+  requireAndroidSignupIntegrity,
   registerOrVerifyDevice,
   serverVirtualCheck,
 };

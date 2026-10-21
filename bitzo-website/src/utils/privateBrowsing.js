@@ -1,8 +1,7 @@
 const PRIVATE_STORAGE_QUOTA_LIMIT = 2 * 1024 * 1024 * 1024;
 
 export const isLikelyPrivateBrowsing = async (userAgent, storage) => {
-  const isChromium = /Chrome|Chromium/.test(userAgent);
-  if (!isChromium) return false;
+  if (typeof userAgent !== "string" || !userAgent.trim()) return true;
   if (typeof storage?.estimate !== "function") return true;
 
   const estimate = await storage.estimate();

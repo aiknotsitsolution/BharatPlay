@@ -1,4 +1,5 @@
 const axios = require("axios");
+const net = require("node:net");
 
 /**
  * Normalize IP address
@@ -34,7 +35,7 @@ const normalizeIp = (ip) => {
     return "127.0.0.1";
   }
 
-  return cleaned;
+  return net.isIP(cleaned) ? cleaned : null;
 };
 
 /**
@@ -45,71 +46,34 @@ const isLocalOrPrivateIp = (ip) => {
     return true;
   }
 
-  // IPv4 localhost
-  if (ip === "127.0.0.1") {
-    return true;
+  if (net.isIPv4(ip)) {
+    const [first, second, third] = ip.split(".").map(Number);
+    return (
+      first === 0 ||
+      first === 10 ||
+      first === 127 ||
+      first >= 224 ||
+      (first === 100 && second >= 64 && second <= 127) ||
+      (first === 169 && second === 254) ||
+      (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 &&
+        (second === 0 || second === 2 || second === 168)) ||
+      (first === 198 &&
+        (second === 18 || second === 19 || second === 51)) ||
+      (first === 203 && second === 0 && third === 113)
+    );
   }
 
-  if (ip.startsWith("127.")) {
-    return true;
-  }
-
-  // Private networks
-  if (ip.startsWith("10.")) {
-    return true;
-  }
-
-  if (
-    ip.startsWith("172.16.") ||
-    ip.startsWith("172.17.") ||
-    ip.startsWith("172.18.") ||
-    ip.startsWith("172.19.") ||
-    ip.startsWith("172.20.") ||
-    ip.startsWith("172.21.") ||
-    ip.startsWith("172.22.") ||
-    ip.startsWith("172.23.") ||
-    ip.startsWith("172.24.") ||
-    ip.startsWith("172.25.") ||
-    ip.startsWith("172.26.") ||
-    ip.startsWith("172.27.") ||
-    ip.startsWith("172.28.") ||
-    ip.startsWith("172.29.") ||
-    ip.startsWith("172.30.") ||
-    ip.startsWith("172.31.")
-  ) {
-    return true;
-  }
-
-  // 192.168.x.x
-  if (ip.startsWith("192.168.")) {
-    return true;
-  }
-
-  // Link local
-  if (ip.startsWith("169.254.")) {
-    return true;
-  }
-
-  // CGNAT
-  if (ip.startsWith("100.64.")) {
-    return true;
-  }
-
-  // IPv6 localhost
-  if (ip === "::1") {
-    return true;
-  }
-
-  // IPv6 private/local
-  if (
-    ip.toLowerCase().startsWith("fc") ||
-    ip.toLowerCase().startsWith("fd") ||
-    ip.toLowerCase().startsWith("fe80")
-  ) {
-    return true;
-  }
-
-  return false;
+  const normalized = ip.toLowerCase();
+  return (
+    normalized === "::" ||
+    normalized === "::1" ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    /^fe[89ab]/i.test(normalized) ||
+    normalized.startsWith("ff") ||
+    normalized.startsWith("2001:db8:")
+  );
 };
 
 /**
@@ -120,32 +84,7 @@ const getClientIp = (req) => {
     return null;
   }
 
-  // Cloudflare
-  const cfIp = req.headers["cf-connecting-ip"];
-
-  if (cfIp) {
-    return normalizeIp(cfIp);
-  }
-
-  // X-Forwarded-For
-  const forwardedFor = req.headers["x-forwarded-for"];
-
-  if (forwardedFor) {
-    const firstIp = forwardedFor.split(",")[0].trim();
-
-    if (firstIp) {
-      return normalizeIp(firstIp);
-    }
-  }
-
-  // X-Real-IP
-  const realIp = req.headers["x-real-ip"];
-
-  if (realIp) {
-    return normalizeIp(realIp);
-  }
-
-  // Express detected IP
+  // Express resolves forwarded headers according to the configured trusted proxy.
   if (req.ip) {
     return normalizeIp(req.ip);
   }

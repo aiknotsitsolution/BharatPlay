@@ -59,6 +59,8 @@ morgan.token("body", (req) => {
       "token",
       "resetToken",
       "credential",
+      "playIntegrityToken",
+      "integrityNonce",
       "registerKey",
     ]) {
       if (body[key] !== undefined) body[key] = "[REDACTED]";

@@ -14,12 +14,19 @@ const {
 } = require("../utils/tokenService");
 const { resolveDeviceId } = require("../utils/deviceCookie");
 const { setRefreshCookie } = require("../utils/refreshCookie");
-const { registerOrVerifyDevice } = require("../services/deviceSecurityService");
+const {
+  registerOrVerifyDevice,
+  requireAndroidSignupIntegrity,
+} = require("../services/deviceSecurityService");
 const {
   checkClientHardwareBinding,
   bindClientHardwareUuid,
 } = require("../services/clientHardwareBindingService");
-const { detectVPN } = require("../services/vpn.service/vpn.service");
+const { getClientIp } = require("../services/vpn.service/vpn.service");
+const {
+  evaluateSignupRequest,
+  isSignupIpDuplicateError,
+} = require("../services/signupPolicy");
 
 const OTP_LIFETIME_MS = 5 * 60 * 1000;
 const OTP_COOLDOWN_MS = 60 * 1000;
@@ -323,6 +330,25 @@ exports.requestPhoneOtp = async (req, res) => {
         message: "This mobile number is already registered. Please log in.",
       });
     }
+    let signupCheck = null;
+    if (intent === "signup") {
+      signupCheck = await evaluateSignupRequest(req);
+      if (!signupCheck.ok) {
+        return res.status(signupCheck.status).json({
+          success: false,
+          code: signupCheck.code,
+          message: signupCheck.message,
+        });
+      }
+      const integrityCheck = await requireAndroidSignupIntegrity(req);
+      if (!integrityCheck.ok) {
+        return res.status(integrityCheck.status).json({
+          success: false,
+          code: integrityCheck.code,
+          message: integrityCheck.message,
+        });
+      }
+    }
     const deviceCheck = await checkDevice(req, res, user?._id || null);
     if (!deviceCheck.ok) {
       return res.status(deviceCheck.status).json({
@@ -331,19 +357,6 @@ exports.requestPhoneOtp = async (req, res) => {
         message: deviceCheck.message,
       });
     }
-    if (intent === "signup") {
-      const ip =
-        req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip;
-      const vpn = await detectVPN(ip);
-      if (vpn.isVPN || vpn.isProxy) {
-        return res.status(403).json({
-          success: false,
-          code: "VPN_OR_PROXY_DETECTED",
-          message: "Registration is not allowed over VPN or proxy.",
-        });
-      }
-    }
-
     await reserveAndSendCode({
       subject: phone,
       purpose: intent,
@@ -375,6 +388,26 @@ exports.verifyPhoneOtp = async (req, res) => {
         success: false,
         message: "A valid Indian mobile number and six-digit OTP are required.",
       });
+    }
+
+    let signupCheck = null;
+    if (intent === "signup") {
+      signupCheck = await evaluateSignupRequest(req);
+      if (!signupCheck.ok) {
+        return res.status(signupCheck.status).json({
+          success: false,
+          code: signupCheck.code,
+          message: signupCheck.message,
+        });
+      }
+      const integrityCheck = await requireAndroidSignupIntegrity(req);
+      if (!integrityCheck.ok) {
+        return res.status(integrityCheck.status).json({
+          success: false,
+          code: integrityCheck.code,
+          message: integrityCheck.message,
+        });
+      }
     }
 
     const verified = await verifyCode({ subject: phone, purpose: intent, code });
@@ -418,6 +451,8 @@ exports.verifyPhoneOtp = async (req, res) => {
         password: await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 12),
         phone,
         phoneVerified: true,
+        ipAddress: signupCheck.ip,
+        signupIpHash: signupCheck.ipHash,
         deviceId: deviceCheck.deviceId || resolveDeviceId(req, res),
         platform: req.headers["x-client-platform"] === "app" ? "app" : "website",
       });
@@ -475,6 +510,13 @@ exports.verifyPhoneOtp = async (req, res) => {
     return res.status(200).json(response);
   } catch (error) {
     console.error("Phone OTP verification failed:", error);
+    if (isSignupIpDuplicateError(error)) {
+      return res.status(409).json({
+        success: false,
+        code: "SIGNUP_IP_ALREADY_USED",
+        message: "Only one account can be registered from the same public IP address.",
+      });
+    }
     return res.status(500).json({
       success: false,
       message: "Could not verify OTP. Please try again.",
