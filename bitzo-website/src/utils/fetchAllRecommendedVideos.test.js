@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchAllRecommendedVideos } from "./fetchAllRecommendedVideos";
+import {
+  fetchAllLatestVideos,
+  fetchAllRecommendedVideos,
+} from "./fetchAllRecommendedVideos";
 
 describe("fetchAllRecommendedVideos", () => {
   it("loads every recommended video in API-supported batches", async () => {
@@ -59,5 +62,36 @@ describe("fetchAllRecommendedVideos", () => {
         fetchImpl,
       }),
     ).rejects.toThrow("Failed to load recommended videos (503)");
+  });
+
+  it("loads every Latest Videos page from the latest endpoint", async () => {
+    const fetchImpl = vi.fn(async (url) => {
+      const parsedUrl = new URL(url);
+      const page = Number(parsedUrl.searchParams.get("page"));
+      return {
+        ok: true,
+        json: async () => ({
+          total: 101,
+          videos: Array.from(
+            { length: page === 1 ? 100 : 1 },
+            (_, index) => ({ id: `latest-${(page - 1) * 100 + index + 1}` }),
+          ),
+        }),
+      };
+    });
+
+    const videos = await fetchAllLatestVideos({
+      apiBase: "http://localhost:4000/api/uservideo",
+      fetchImpl,
+    });
+
+    expect(videos).toHaveLength(101);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls.map(([url]) => new URL(url).pathname)).toEqual(
+      [
+        "/api/uservideo/latest",
+        "/api/uservideo/latest",
+      ],
+    );
   });
 });

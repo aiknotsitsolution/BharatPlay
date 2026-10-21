@@ -67,6 +67,20 @@ export const fetchAllRecommendedVideos = (options) =>
     label: "recommended videos",
   });
 
+export const fetchAllTrendingVideos = (options) =>
+  fetchAllVideoPages({
+    ...options,
+    endpoint: "trending",
+    label: "trending videos",
+  });
+
+export const fetchAllLatestVideos = (options) =>
+  fetchAllVideoPages({
+    ...options,
+    endpoint: "latest",
+    label: "latest videos",
+  });
+
 export const fetchAllShortsVideos = (options) =>
   fetchAllVideoPages({
     ...options,

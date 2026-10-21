@@ -3,6 +3,8 @@ import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 import {
   fetchAllRecommendedVideos,
   fetchAllShortsVideos,
+  fetchAllTrendingVideos,
+  fetchAllLatestVideos,
 } from "../../utils/fetchAllRecommendedVideos";
 export const API_BASE = `${BACKEND_URL}/api/uservideo`;
 
@@ -143,8 +145,8 @@ export const fetchHomeVideos = createAsyncThunk(
 
       const [
         recommendedVideos,
-        trendingRes,
-        latestRes,
+        trendingVideos,
+        latestVideos,
         shortsVideos,
       ] = await Promise.all([
         fetchAllRecommendedVideos({
@@ -152,11 +154,15 @@ export const fetchHomeVideos = createAsyncThunk(
           category,
           token,
         }),
-        fetch(`${API_BASE}/trending${categoryParam}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        fetchAllTrendingVideos({
+          apiBase: API_BASE,
+          category,
+          token,
         }),
-        fetch(`${API_BASE}/latest${categoryParam}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        fetchAllLatestVideos({
+          apiBase: API_BASE,
+          category,
+          token,
         }),
         fetchAllShortsVideos({
           apiBase: API_BASE,
@@ -172,13 +178,18 @@ export const fetchHomeVideos = createAsyncThunk(
 
       if (requestId !== homeFetchRequestId) return { cancelled: true };
 
-      const [
-        trendingData,
-        latestData,
-      ] = await Promise.all([
-        trendingRes.json().catch(() => ({ videos: [] })),
-        latestRes.json().catch(() => ({ videos: [] })),
-      ]);
+      const trendingData = {
+        videos: [...trendingVideos].sort(
+          (left, right) => Number(right.views || 0) - Number(left.views || 0),
+        ),
+        total: trendingVideos.length,
+        allPagesLoaded: true,
+      };
+      const latestData = {
+        videos: latestVideos,
+        total: latestVideos.length,
+        allPagesLoaded: true,
+      };
       const shortsData = {
         videos: rankShortsByEngagement(shortsVideos.map(normalizeShort)),
         total: shortsVideos.length,
@@ -225,8 +236,18 @@ export const fetchHomeVideos = createAsyncThunk(
           0,
           true,
         ),
-        trending: getSection(trendingData, normalizeVideoListItem, 3),
-        latest: getSection(latestData, normalizeVideoListItem),
+        trending: getSection(
+          trendingData,
+          normalizeVideoListItem,
+          2,
+          true,
+        ),
+        latest: getSection(
+          latestData,
+          normalizeVideoListItem,
+          1,
+          true,
+        ),
         subscriptions: getSection(subscriptionsData, normalizeVideoListItem),
         shorts: getSection(shortsData, (short) => short, 2, true),
       };

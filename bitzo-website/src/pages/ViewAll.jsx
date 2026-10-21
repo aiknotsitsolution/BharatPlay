@@ -11,7 +11,11 @@ import {
 import { addToWatchLater, removeFromWatchLater } from "../api/watchLater";
 import { MovieCard } from "../components/common/VideoGrid";
 import ShortCard from "../components/common/ShortCard";
-import { fetchAllRecommendedVideos } from "../utils/fetchAllRecommendedVideos";
+import {
+  fetchAllRecommendedVideos,
+  fetchAllTrendingVideos,
+  fetchAllLatestVideos,
+} from "../utils/fetchAllRecommendedVideos";
 import { promptLogin } from "../utils/loginPrompt";
 
 const PAGE_SIZE = 20;
@@ -73,7 +77,8 @@ const ViewAll = () => {
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
   const needsLogin =
     type === "subscriptions" && !localStorage.getItem("token");
-  const requestPage = type === "recommended" ? 1 : page;
+  const requestPage =
+    ["recommended", "trending", "latest"].includes(type) ? 1 : page;
   const requestKey = `${type}-${requestPage}-${selectedCategory || "all"}`;
   const loading = !needsLogin && loadedRequestKey !== requestKey;
 
@@ -83,19 +88,40 @@ const ViewAll = () => {
     if (type === "subscriptions" && !token) return;
 
     let active = true;
-    if (type === "recommended") {
-      fetchAllRecommendedVideos({
+    if (["recommended", "trending", "latest"].includes(type)) {
+      const loadAllVideos = {
+        recommended: fetchAllRecommendedVideos,
+        trending: fetchAllTrendingVideos,
+        latest: fetchAllLatestVideos,
+      }[type];
+      loadAllVideos({
         apiBase: API_BASE,
         category: selectedCategory,
         token,
       })
         .then((videos) => {
           if (!active) return;
-          const shuffledVideos = shuffleAfterPinnedItems(
-            videos.map(section.normalize),
-          );
-          setItems(shuffledVideos);
-          setTotal(shuffledVideos.length);
+          const normalizedVideos = videos.map(section.normalize);
+          const orderedVideos =
+            type === "trending"
+              ? shuffleAfterPinnedItems(
+                  [...normalizedVideos].sort(
+                    (left, right) => right.views - left.views,
+                  ),
+                  2,
+                )
+              : type === "latest"
+                ? shuffleAfterPinnedItems(
+                    [...normalizedVideos].sort(
+                      (left, right) =>
+                        new Date(right.uploadDate || 0).getTime() -
+                        new Date(left.uploadDate || 0).getTime(),
+                    ),
+                    1,
+                  )
+                : shuffleAfterPinnedItems(normalizedVideos);
+          setItems(orderedVideos);
+          setTotal(orderedVideos.length);
           setError(null);
         })
         .catch((err) => {
@@ -159,7 +185,7 @@ const ViewAll = () => {
   }, [type, requestPage, section, selectedCategory, requestKey]);
 
   const visibleItems =
-    type === "recommended"
+    ["recommended", "trending", "latest"].includes(type)
       ? items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
       : items;
 

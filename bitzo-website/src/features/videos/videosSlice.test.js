@@ -82,9 +82,9 @@ describe("Shorts feed pagination", () => {
     expect(trending.map((item) => item.id)).toEqual([
       "trending-1",
       "trending-2",
-      "trending-3",
-      "trending-5",
       "trending-4",
+      "trending-5",
+      "trending-3",
     ]);
     expect(shorts.slice(0, 2).map((item) => item.id)).toEqual([
       "short-7",
@@ -118,6 +118,8 @@ describe("Shorts feed pagination", () => {
   it("loads and shuffles the full Recommended list for Home", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     const recommendedPages = [];
+    const trendingPages = [];
+    const latestPages = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url) => {
@@ -138,6 +140,42 @@ describe("Shorts feed pagination", () => {
                 views: start + index + 1,
                 likesCount: start + index + 1,
                 comments: start + index + 1,
+              })),
+            }),
+          };
+        }
+
+        if (section === "trending") {
+          trendingPages.push({ page, limit });
+          const start = (page - 1) * limit;
+          const count = Math.min(limit, 235 - start);
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              total: 235,
+              videos: Array.from({ length: count }, (_, index) => ({
+                _id: `trending-${start + index + 1}`,
+                views: start + index + 1,
+              })),
+            }),
+          };
+        }
+
+        if (section === "latest") {
+          latestPages.push({ page, limit });
+          const start = (page - 1) * limit;
+          const count = Math.min(limit, 235 - start);
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              total: 235,
+              videos: Array.from({ length: count }, (_, index) => ({
+                _id: `latest-${235 - start - index}`,
+                createdAt: new Date(
+                  Date.UTC(2026, 0, 1) + (234 - start - index) * 1000,
+                ).toISOString(),
               })),
             }),
           };
@@ -168,7 +206,8 @@ describe("Shorts feed pagination", () => {
 
     await store.dispatch(fetchHomeVideos({ limit: 5 })).unwrap();
 
-    const { recommended, shorts, sectionHasMore } = store.getState().videos;
+    const { recommended, trending, latest, shorts, sectionHasMore } =
+      store.getState().videos;
     expect(recommended).toHaveLength(235);
     expect(new Set(recommended.map((video) => video.id)).size).toBe(235);
     expect(recommended.map((video) => video.id)).not.toEqual(
@@ -179,7 +218,34 @@ describe("Shorts feed pagination", () => {
       { page: 2, limit: 100 },
       { page: 3, limit: 100 },
     ]);
+    expect(trending).toHaveLength(235);
+    expect(trending.slice(0, 2).map((video) => video.id)).toEqual([
+      "trending-235",
+      "trending-234",
+    ]);
+    expect(trending.slice(2).map((video) => video.id)).not.toEqual(
+      Array.from({ length: 233 }, (_, index) => `trending-${233 - index}`),
+    );
+    expect(new Set(trending.map((video) => video.id)).size).toBe(235);
+    expect(trendingPages).toEqual([
+      { page: 1, limit: 100 },
+      { page: 2, limit: 100 },
+      { page: 3, limit: 100 },
+    ]);
     expect(sectionHasMore.recommended).toBe(false);
+    expect(sectionHasMore.trending).toBe(false);
+    expect(latest).toHaveLength(235);
+    expect(latest[0].id).toBe("latest-235");
+    expect(latest.slice(1).map((video) => video.id)).not.toEqual(
+      Array.from({ length: 234 }, (_, index) => `latest-${234 - index}`),
+    );
+    expect(new Set(latest.map((video) => video.id)).size).toBe(235);
+    expect(latestPages).toEqual([
+      { page: 1, limit: 100 },
+      { page: 2, limit: 100 },
+      { page: 3, limit: 100 },
+    ]);
+    expect(sectionHasMore.latest).toBe(false);
     expect(shorts).toHaveLength(235);
     expect(shorts.slice(0, 2).map((short) => short.id)).toEqual([
       "short-235",
