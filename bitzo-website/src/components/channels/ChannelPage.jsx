@@ -57,12 +57,13 @@ const STATIC_CATEGORIES = [
 ];
 
 export default function ChannelPage() {
-  const { handle: urlHandle } = useParams();
+  const { id: urlHandle } = useParams();
   const navigate = useNavigate();
 
   const [channels, setChannels] = useState([]);
   const [selectedChannelId, setSelectedChannelId] = useState(null);
   const [channel, setChannel] = useState(null);
+  const [isPublicChannel, setIsPublicChannel] = useState(false);
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Videos");
@@ -241,21 +242,21 @@ export default function ChannelPage() {
   useEffect(() => {
     const fetchUserChannels = async () => {
       const token = getToken();
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
-        const res = await authFetch(`${API_BASE}/uservideo/channel`, {
+        setChannel(null);
+        setIsPublicChannel(false);
+        let userChannels = [];
+        if (token) {
+          const res = await authFetch(`${API_BASE}/uservideo/channel`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (!res.ok) throw new Error("Failed to fetch channels");
+          if (!res.ok) throw new Error("Failed to fetch channels");
 
-        const data = await res.json();
-        const userChannels = data.channels || [];
+          const data = await res.json();
+          userChannels = data.channels || [];
+        }
 
         setChannels(userChannels);
 
@@ -263,10 +264,45 @@ export default function ChannelPage() {
         if (urlHandle) {
           const matched = userChannels.find(
             (ch) =>
+              String(ch._id) === urlHandle ||
               ch.name?.replace(/\s+/g, "").toLowerCase() ===
-              urlHandle.toLowerCase(),
+                urlHandle.toLowerCase(),
           );
           if (matched) initialChannelId = matched._id;
+        }
+
+        if (!initialChannelId && isValidObjectId(urlHandle)) {
+          const publicRes = await authFetch(
+            `${API_BASE}/uservideo/channel/${urlHandle}`,
+          );
+          const publicData = await publicRes.json();
+          if (!publicRes.ok || !publicData.success || !publicData.channel) {
+            throw new Error(
+              publicData.message || "Channel could not be loaded.",
+            );
+          }
+
+          const publicChannel = publicData.channel;
+          const videos = publicData.videos || [];
+          setChannel({
+            ...publicChannel,
+            handle:
+              publicChannel.handle ||
+              `@${publicChannel.name?.replace(/\s+/g, "") || publicChannel._id}`,
+            avatar: publicChannel.channelImage || "",
+            banner: publicChannel.channelBanner || "",
+            description:
+              publicChannel.description ||
+              publicChannel.channeldescription ||
+              "No description available",
+            videos,
+            videosCount: videos.length,
+          });
+          setSelectedChannelId(publicChannel._id);
+          setSubscribersCount(Number(publicChannel.subscribersCount) || 0);
+          setIsSubscribed(Boolean(publicChannel.isSubscribed));
+          setIsPublicChannel(true);
+          return;
         }
 
         if (!initialChannelId && userChannels.length > 0) {
@@ -344,10 +380,16 @@ export default function ChannelPage() {
   }, [selectedChannelId, channels, navigate]);
 
   useEffect(() => {
-    if (!loading && !showCreateModal && (!channel || channels.length === 0)) {
+    if (
+      getToken() &&
+      !isPublicChannel &&
+      !loading &&
+      !showCreateModal &&
+      (!channel || channels.length === 0)
+    ) {
       setShowCreateModal(true);
     }
-  }, [loading, channel, channels.length]);
+  }, [loading, channel, channels.length, isPublicChannel, showCreateModal]);
 
   // Handle Subscribe / Unsubscribe
   const handleSubscription = async () => {
@@ -748,6 +790,87 @@ export default function ChannelPage() {
             ? isShortVideo(video)
             : !isShortVideo(video),
         );
+
+  if (isPublicChannel) {
+    return (
+      <div className="min-h-screen bg-[#0f0f0f] px-4 py-8 text-white md:px-10">
+        <div className="mx-auto max-w-6xl">
+          <div className="relative h-40 overflow-hidden rounded-2xl bg-zinc-800 md:h-64">
+            {currentChannel.banner ? (
+              <img
+                src={getThumbnailUrl(currentChannel.banner)}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-4 py-6">
+            {currentChannel.avatar ? (
+              <img
+                src={getThumbnailUrl(currentChannel.avatar)}
+                alt=""
+                className="h-20 w-20 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-zinc-700 text-3xl font-bold">
+                {currentChannel.name?.charAt(0)?.toUpperCase() || "C"}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-bold md:text-3xl">
+                {currentChannel.name}
+              </h1>
+              <p className="mt-1 text-sm text-gray-400">
+                {subscribersCount.toLocaleString()} subscribers
+              </p>
+              {currentChannel.description ? (
+                <p className="mt-2 max-w-3xl text-sm text-gray-300">
+                  {currentChannel.description}
+                </p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={handleSubscription}
+              className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
+                isSubscribed
+                  ? "bg-zinc-700 hover:bg-zinc-600"
+                  : "bg-white text-black hover:bg-white/90"
+              }`}
+            >
+              {isSubscribed ? "Subscribed" : "Subscribe"}
+            </button>
+          </div>
+          <h2 className="mb-4 text-xl font-semibold">Videos</h2>
+          {channelVideos.length ? (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {channelVideos.map((video) => (
+                <button
+                  key={video._id || video.id}
+                  type="button"
+                  onClick={() => handlePlayVideo(video)}
+                  className="overflow-hidden rounded-xl bg-zinc-900 text-left transition hover:bg-zinc-800"
+                >
+                  <img
+                    src={getThumbnailUrl(video.thumbnail || video.thumb)}
+                    alt=""
+                    className="aspect-video w-full object-cover"
+                  />
+                  <span className="block line-clamp-2 p-3 text-sm font-medium">
+                    {video.title || "Untitled video"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="py-10 text-center text-gray-400">
+              This channel has no videos yet.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-white pb-20">

@@ -444,6 +444,7 @@ export default function VideoPlayer({
           type="button"
           className="bp-center-play-btn"
           aria-label={isPlaying ? "Pause" : "Play"}
+          title={isPlaying ? "Pause video" : "Play video"}
           onClick={togglePlay}
         >
           {isPlaying ? (

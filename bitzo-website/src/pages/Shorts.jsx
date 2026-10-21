@@ -138,6 +138,7 @@ export default function Shorts() {
   const [liked, setLiked] = useState({});
   const [pendingLike, setPendingLike] = useState({});
   const [subscribed, setSubscribed] = useState({});
+  const [pendingSubscribe, setPendingSubscribe] = useState({});
   const [commentOpenForId, setCommentOpenForId] = useState(null);
   const [commentsById, setCommentsById] = useState({});
   const [commentTextById, setCommentTextById] = useState({});
@@ -163,6 +164,7 @@ export default function Shorts() {
   const commentsOpenRef = useRef(false);
   const wasPlayingBeforeCommentsRef = useRef(false);
   const mountedRef = useRef(false);
+  const pendingSubscribeRef = useRef(new Set());
 
   useEffect(() => {
     mountedRef.current = true;
@@ -204,10 +206,18 @@ export default function Shorts() {
   };
 
   const getChannelId = (short) => {
-    const channel = short?.raw?.channel;
-    return typeof channel === "string"
-      ? channel
-      : channel?._id || channel?.id || null;
+    const raw = short?.raw || {};
+    const getValidChannelId = (value) => {
+      const id =
+        typeof value === "string" ? value : value?._id || value?.id;
+      return typeof id === "string" && /^[a-f\d]{24}$/i.test(id) ? id : null;
+    };
+
+    return (
+      getValidChannelId(raw.channel) ||
+      getValidChannelId(raw.channelId) ||
+      getValidChannelId(raw.channel_id)
+    );
   };
 
   const handleSubscribe = async (short) => {
@@ -219,10 +229,15 @@ export default function Shorts() {
       toast.error("Please login to subscribe");
       return;
     }
+    if (pendingSubscribeRef.current.has(channelId)) return;
+
     const wasSubscribed = Boolean(subscribed[channelId]);
+    const nextSubscribed = !wasSubscribed;
+    pendingSubscribeRef.current.add(channelId);
+    setPendingSubscribe((prev) => ({ ...prev, [channelId]: true }));
     setSubscribed((prev) => ({
       ...prev,
-      [channelId]: !prev[channelId],
+      [channelId]: nextSubscribed,
     }));
     try {
       const response = await fetch(`${API_BASE}/subscribe/${channelId}`, {
@@ -230,19 +245,25 @@ export default function Shorts() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
-      if (data.success) {
-        toast.success(
-          data.message ||
-            (data.subscribed ? "Subscribed" : "Unsubscribed"),
-        );
-      } else {
-        toast.error(data.message || "Failed to subscribe");
-        setSubscribed((prev) => ({ ...prev, [channelId]: wasSubscribed }));
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to update subscription");
       }
+
+      const isSubscribed =
+        typeof data.subscribed === "boolean"
+          ? data.subscribed
+          : nextSubscribed;
+      setSubscribed((prev) => ({ ...prev, [channelId]: isSubscribed }));
+      toast.success(
+        data.message || (isSubscribed ? "Subscribed" : "Unsubscribed"),
+      );
     } catch (error) {
       console.error("Subscribe error:", error);
-      toast.error("Something went wrong");
+      toast.error(error.message || "Something went wrong");
       setSubscribed((prev) => ({ ...prev, [channelId]: wasSubscribed }));
+    } finally {
+      pendingSubscribeRef.current.delete(channelId);
+      setPendingSubscribe((prev) => ({ ...prev, [channelId]: false }));
     }
   };
 
@@ -502,7 +523,7 @@ export default function Shorts() {
     if (!cancelled) {
       setShorts(queue);
       setLiked(likedMap);
-      setSubscribed(subscribedMap);
+      setSubscribed((prev) => ({ ...subscribedMap, ...prev }));
       setCurrentIndex(startIndex);
       setLoadingState(false);
 
@@ -1002,7 +1023,9 @@ export default function Shorts() {
 <BottomInfo
   short={short}
   formattedViews={formatViews(short.views)}
+  channelId={getChannelId(short)}
   isSubscribed={Boolean(subscribed[getChannelId(short)])}
+  subscribePending={Boolean(pendingSubscribe[getChannelId(short)])}
   onSubscribe={
     getChannelId(short)
       ? () => handleSubscribe(short)

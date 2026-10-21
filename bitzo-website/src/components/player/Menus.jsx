@@ -30,6 +30,7 @@ function SpeedOptions({ playbackRate, onSelect }) {
           type="button"
           role="menuitemradio"
           aria-checked={rate === playbackRate}
+          title={`Set playback speed to ${formatPlaybackRate(rate)}`}
           className={`bp-menu-item${rate === playbackRate ? " bp-menu-item--active" : ""}`}
           onClick={() => onSelect(rate)}
         >

@@ -70,6 +70,7 @@ export default function VolumeControl({ muted, volume, onChange }) {
           className="bp-vol-track"
           role="slider"
           aria-label="Volume"
+          title={`Volume: ${Math.round(visibleVolume * 100)}%`}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(visibleVolume * 100)}

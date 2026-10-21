@@ -32,12 +32,17 @@ const query = (result) => ({
 describe("IP-to-account binding", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    IpAccountBinding.findOne.mockReset();
+    IpAccountBinding.findOne.mockReturnValue(query(null));
+    IpAccountBinding.create.mockReset();
+    IpAccountBinding.create.mockResolvedValue({});
+    IpAccountBinding.updateOne.mockReset();
+    User.findOne.mockReset();
+    User.findOne.mockReturnValue(query(null));
     process.env.JWT_SECRET = "test-secret-for-ip-binding";
     process.env.NODE_ENV = "test";
     getClientIp.mockReturnValue("8.8.8.8");
     isLocalOrPrivateIp.mockReturnValue(false);
-    IpAccountBinding.findOne.mockReturnValue(query(null));
-    User.findOne.mockReturnValue(query(null));
   });
 
   test("allows the same account on an already bound public IP", async () => {
@@ -106,8 +111,9 @@ describe("IP-to-account binding", () => {
     });
   });
 
-  test("allows local development without a public IP and skips binding", async () => {
+  test("binds localhost development requests to one account", async () => {
     process.env.NODE_ENV = "development";
+    getClientIp.mockReturnValue("127.0.0.1");
     isLocalOrPrivateIp.mockReturnValue(true);
     const appClientRequest = {
       headers: { "x-client-platform": "app" },
@@ -115,11 +121,32 @@ describe("IP-to-account binding", () => {
 
     await expect(
       checkIpAccountBinding(appClientRequest, "user-1"),
-    ).resolves.toMatchObject({ ok: true, skipped: true });
+    ).resolves.toMatchObject({ ok: true, ip: "local-development" });
     await expect(
       claimIpAccountBinding(appClientRequest, "user-1"),
-    ).resolves.toMatchObject({ ok: true, skipped: true });
-    expect(IpAccountBinding.create).not.toHaveBeenCalled();
+    ).resolves.toEqual({ ok: true });
+    expect(IpAccountBinding.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ipHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        userId: "user-1",
+      }),
+    );
+  });
+
+  test("blocks a second account on localhost in development", async () => {
+    process.env.NODE_ENV = "development";
+    getClientIp.mockReturnValue("::1");
+    isLocalOrPrivateIp.mockReturnValue(true);
+    IpAccountBinding.findOne.mockReturnValueOnce(
+      query({ userId: "user-1" }),
+    );
+
+    await expect(
+      checkIpAccountBinding({}, null),
+    ).resolves.toMatchObject({
+      ok: false,
+      code: "IP_ACCOUNT_BINDING_VIOLATION",
+    });
   });
 
   test("fails closed in production when a public IP cannot be verified", async () => {

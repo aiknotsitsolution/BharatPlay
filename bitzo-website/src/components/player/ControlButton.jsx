@@ -11,6 +11,7 @@ export default function ControlButton({
       type="button"
       className={`bp-ctrl-btn${active ? " bp-ctrl-btn--active" : ""}${className ? ` ${className}` : ""}`}
       aria-label={label}
+      title={label}
       onClick={onClick}
       disabled={disabled}
     >

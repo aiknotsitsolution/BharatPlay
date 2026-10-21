@@ -27,6 +27,10 @@ const {
   evaluateSignupRequest,
   isSignupIpDuplicateError,
 } = require("../services/signupPolicy");
+const {
+  checkIpAccountBinding,
+  claimIpAccountBinding,
+} = require("../services/ipAccountBindingService");
 
 const OTP_LIFETIME_MS = 5 * 60 * 1000;
 const OTP_COOLDOWN_MS = 60 * 1000;
@@ -323,6 +327,16 @@ exports.requestPhoneOtp = async (req, res) => {
         message: "No account found for this number. Please sign up or migrate your existing account.",
       });
     }
+    if (intent === "login") {
+      const ipBinding = await checkIpAccountBinding(req, user._id);
+      if (!ipBinding.ok) {
+        return res.status(ipBinding.status).json({
+          success: false,
+          code: ipBinding.code,
+          message: ipBinding.message,
+        });
+      }
+    }
     if (intent === "signup" && user) {
       return res.status(409).json({
         success: false,
@@ -480,6 +494,15 @@ exports.verifyPhoneOtp = async (req, res) => {
           message: hardwareBinding.message,
         });
       }
+      const ipBinding = await claimIpAccountBinding(req, user._id);
+      if (!ipBinding.ok) {
+        await User.deleteOne({ _id: user._id });
+        return res.status(ipBinding.status).json({
+          success: false,
+          code: ipBinding.code,
+          message: ipBinding.message,
+        });
+      }
     } else {
       user = await User.findOne({ phone, phoneVerified: true });
       if (!user) {
@@ -487,6 +510,14 @@ exports.verifyPhoneOtp = async (req, res) => {
         return res.status(404).json({
           success: false,
           message: "Account not found. Please sign up or migrate your account.",
+        });
+      }
+      const ipBindingCheck = await checkIpAccountBinding(req, user._id);
+      if (!ipBindingCheck.ok) {
+        return res.status(ipBindingCheck.status).json({
+          success: false,
+          code: ipBindingCheck.code,
+          message: ipBindingCheck.message,
         });
       }
       const deviceCheck = await checkDevice(req, res, user._id);
@@ -499,6 +530,14 @@ exports.verifyPhoneOtp = async (req, res) => {
       }
       user.deviceId = deviceCheck.deviceId || user.deviceId;
       await user.save();
+      const ipBinding = await claimIpAccountBinding(req, user._id);
+      if (!ipBinding.ok) {
+        return res.status(ipBinding.status).json({
+          success: false,
+          code: ipBinding.code,
+          message: ipBinding.message,
+        });
+      }
     }
 
     await PhoneOtp.deleteOne({ _id: verified.record._id });

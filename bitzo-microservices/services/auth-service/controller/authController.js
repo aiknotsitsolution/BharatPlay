@@ -367,6 +367,20 @@ exports.registerUser = async (req, res) => {
         },
       );
 
+      const ipBinding = await claimIpAccountBinding(req, user._id);
+      if (!ipBinding.ok) {
+        await User.deleteOne({ _id: user._id });
+        await Device.updateOne(
+          { device_id: deviceId, linked_user_id: user._id },
+          { $set: { linked_user_id: null } },
+        );
+        return res.status(ipBinding.status).json({
+          success: false,
+          code: ipBinding.code,
+          message: ipBinding.message,
+        });
+      }
+
       await logFraudEvent({
         userId: user._id,
         eventType: "REGISTER",
@@ -1331,10 +1345,13 @@ exports.googleLogin = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Google sign-in error:", error.message);
-    return res.status(500).json({
+    console.error("Google sign-in error:", error);
+    return res.status(error.statusCode || 500).json({
       success: false,
-      message: "Google sign-in failed. Please try again.",
+      message:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Google sign-in failed. Please try again.",
     });
   }
 };

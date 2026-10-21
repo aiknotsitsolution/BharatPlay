@@ -17,12 +17,19 @@ const hashIp = (ip) =>
 
 const resolveIp = (req) => {
   const ip = getClientIp(req);
-  return ip && !isLocalOrPrivateIp(ip) ? ip : null;
+  if (ip && !isLocalOrPrivateIp(ip)) return { ip, legacyIps: [ip] };
+  if (ip && process.env.NODE_ENV !== "production") {
+    return {
+      ip: "local-development",
+      legacyIps: ["127.0.0.1", "::1", "::ffff:127.0.0.1"],
+    };
+  }
+  return null;
 };
 
 const checkIpAccountBinding = async (req, userId = null) => {
-  const ip = resolveIp(req);
-  if (!ip) {
+  const resolved = resolveIp(req);
+  if (!resolved) {
     if (process.env.NODE_ENV !== "production") {
       return { ok: true, skipped: true };
     }
@@ -34,6 +41,7 @@ const checkIpAccountBinding = async (req, userId = null) => {
       message: "Sign-in requires a verifiable public IP address.",
     };
   }
+  const { ip, legacyIps } = resolved;
 
   try {
     const ipHash = hashIp(ip);
@@ -50,7 +58,10 @@ const checkIpAccountBinding = async (req, userId = null) => {
     }
 
     const existingUserQuery = {
-      $or: [{ ipAddress: ip }, { signupIpHash: ipHash }],
+      $or: [
+        ...legacyIps.map((legacyIp) => ({ ipAddress: legacyIp })),
+        { signupIpHash: ipHash },
+      ],
     };
     if (userId) existingUserQuery._id = { $ne: userId };
     const existingUser = await User.findOne(existingUserQuery)

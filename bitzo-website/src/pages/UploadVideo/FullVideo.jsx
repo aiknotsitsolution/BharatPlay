@@ -26,6 +26,7 @@ import {
 import { formatTimeAgo } from "../../utils/timeAgo";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 import { promptLogin } from "../../utils/loginPrompt";
+import { authFetch } from "../../utils/session";
 
 const API_BASE = `${BACKEND_URL}/api/uservideo`;
 
@@ -169,7 +170,7 @@ export default function YouTubeLikeVideoPage() {
 
   // ==================== STATE ====================
   const [playing, setPlaying] = useState(true);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(true);
   const [reaction, setReaction] = useState(null); // "like" | "dislike" | null
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -206,6 +207,7 @@ export default function YouTubeLikeVideoPage() {
   const [descFullHeight, setDescFullHeight] = useState(0);
   const [shareCopied, setShareCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   const profileUser = useSelector((state) => state.profile?.user || null);
@@ -253,12 +255,21 @@ export default function YouTubeLikeVideoPage() {
     return `${BACKEND_URL}/${normalized}`;
   };
 
+  const stateVideoUrl = videoData.videoUrl || videoData.url;
   const resolvedVideoUrl = videoDetails?.videoUrl
     ? resolveMediaUrl(videoDetails.videoUrl)
-    : entry.video;
+    : stateVideoUrl
+      ? resolveMediaUrl(stateVideoUrl)
+      : /^[a-f\d]{24}$/i.test(String(id || ""))
+        ? ""
+        : entry.video;
+  const statePoster =
+    videoData.thumbnail || videoData.thumb || videoData.poster;
   const resolvedPoster = videoDetails?.thumbnail
     ? resolveMediaUrl(videoDetails.thumbnail)
-    : entry.poster;
+    : statePoster
+      ? resolveMediaUrl(statePoster)
+      : entry.poster;
 
   // ==================== EFFECTS ====================
 
@@ -308,6 +319,8 @@ export default function YouTubeLikeVideoPage() {
       if (!id) return;
 
       try {
+        setVideoDetails(null);
+        setSaved(false);
         const token = localStorage.getItem("token");
         const response = await fetch(`${API_BASE}/${id}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -317,6 +330,7 @@ export default function YouTubeLikeVideoPage() {
         if (data.success && data.video) {
           const video = data.video;
           setVideoDetails(video);
+          setSaved(Boolean(video.isWatchLater));
           setStats({
             likes: video.likesCount || 0,
             dislikes: video.dislikesCount || 0,
@@ -619,9 +633,32 @@ export default function YouTubeLikeVideoPage() {
     }
   };
 
-  const handleSaveClick = () => {
+  const handleSaveClick = async () => {
     if (promptLogin(navigate, location)) return;
-    setSaved((prev) => !prev);
+    if (!id || saveLoading) return;
+
+    setSaveLoading(true);
+    try {
+      const response = await authFetch(`${API_BASE}/watch-later/${id}`, {
+        method: saved ? "DELETE" : "POST",
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to update Watch Later");
+      }
+
+      const nextSaved = saved ? false : data.added !== false;
+      setSaved(nextSaved);
+      toast.success(
+        data.message ||
+          (nextSaved ? "Added to Watch Later" : "Removed from Watch Later"),
+      );
+    } catch (error) {
+      console.error("Watch Later update failed:", error);
+      toast.error(error.message || "Failed to update Watch Later");
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
   const openVideo = useCallback(
@@ -777,6 +814,7 @@ export default function YouTubeLikeVideoPage() {
           <button
             type="button"
             className="bp-upnext-btn"
+            title="Replay this video"
             onClick={handleReplay}
           >
             <RotateCcw size={16} aria-hidden="true" />
@@ -786,6 +824,7 @@ export default function YouTubeLikeVideoPage() {
             <button
               type="button"
               className="bp-upnext-btn"
+              title="Cancel autoplay countdown"
               onClick={cancelCountdown}
             >
               <X size={16} aria-hidden="true" />
@@ -795,6 +834,7 @@ export default function YouTubeLikeVideoPage() {
             <button
               type="button"
               className="bp-upnext-btn bp-upnext-btn--primary"
+              title="Play the next video now"
               onClick={() => {
                 autoplayNextRef.current = true;
                 openVideo(upNextTarget);
@@ -941,6 +981,7 @@ export default function YouTubeLikeVideoPage() {
                   onClick={goToChannel}
                   disabled={!channelId}
                   aria-label="Visit channel"
+                  title={`Visit ${channelName} channel`}
                   className={`h-12 w-12 md:h-14 md:w-14 rounded-full bg-gray-600 flex-shrink-0 overflow-hidden ${
                     channelId
                       ? "cursor-pointer transition-transform hover:scale-105"
@@ -959,6 +1000,7 @@ export default function YouTubeLikeVideoPage() {
                     type="button"
                     onClick={goToChannel}
                     disabled={!channelId}
+                    title={`Visit ${channelName} channel`}
                     className={`flex items-center gap-1.5 min-w-0 max-w-full text-left ${
                       channelId ? "cursor-pointer" : "cursor-default"
                     }`}
@@ -983,6 +1025,7 @@ export default function YouTubeLikeVideoPage() {
               <button
                 type="button"
                 onClick={handleSubscribe}
+                title={isSubscribed ? "Unsubscribe from this channel" : "Subscribe to this channel"}
                 className={`h-11 w-full md:w-auto px-5 rounded-full font-semibold flex items-center justify-center gap-2 transition-colors ${
                   isSubscribed
                     ? "bg-white/15 text-white hover:bg-white/20"
@@ -1003,6 +1046,8 @@ export default function YouTubeLikeVideoPage() {
                   type="button"
                   onClick={() => handleReaction("like")}
                   disabled={reactionLoading}
+                  aria-label="Like video"
+                  title="Like video"
                   className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
                     reaction === "like"
                       ? "bg-white/25 text-white"
@@ -1039,17 +1084,24 @@ export default function YouTubeLikeVideoPage() {
               <button
                 type="button"
                 onClick={handleShare}
+                title={shareCopied ? "Link copied" : "Copy video link"}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/10 text-sm font-semibold hover:bg-white/15 transition-colors flex-shrink-0"
               >
                 {shareCopied ? <Check size={18} /> : <Share2 size={18} />}
                 {shareCopied ? "Copied" : "Share"}
               </button>
 
-              {/* Save (future) */}
               <button
                 type="button"
                 onClick={handleSaveClick}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/10 text-sm font-semibold hover:bg-white/15 transition-colors flex-shrink-0"
+                disabled={saveLoading}
+                aria-label={
+                  saved ? "Remove from Watch Later" : "Save to Watch Later"
+                }
+                title={
+                  saved ? "Remove from Watch Later" : "Save to Watch Later"
+                }
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/10 text-sm font-semibold hover:bg-white/15 transition-colors flex-shrink-0 disabled:cursor-wait disabled:opacity-60"
               >
                 <Bookmark size={18} fill={saved ? "currentColor" : "none"} />
                 {saved ? "Saved" : "Save"}
@@ -1061,6 +1113,7 @@ export default function YouTubeLikeVideoPage() {
                   type="button"
                   onClick={() => setMoreMenuOpen((prev) => !prev)}
                   aria-label="More options"
+                  title="More video options"
                   className="flex items-center justify-center h-10 w-10 rounded-full bg-white/10 hover:bg-white/15 transition-colors"
                 >
                   <MoreHorizontal size={20} />
@@ -1076,6 +1129,7 @@ export default function YouTubeLikeVideoPage() {
                       <button
                         type="button"
                         onClick={handleShare}
+                        title="Share video link"
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-white/10 transition-colors"
                       >
                         <Share2 size={16} /> Share
@@ -1083,12 +1137,14 @@ export default function YouTubeLikeVideoPage() {
                       <button
                         type="button"
                         onClick={handleShare}
+                        title="Copy video link"
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-white/10 transition-colors"
                       >
                         <Copy size={16} /> Copy link
                       </button>
                       <button
                         type="button"
+                        title="Report a copyright concern"
                         onClick={() => {
                           setMoreMenuOpen(false);
                           const title = videoDetails?.title || videoData.title || "";
@@ -1134,6 +1190,7 @@ export default function YouTubeLikeVideoPage() {
               <button
                 type="button"
                 onClick={toggleDescription}
+                title={descriptionExpanded ? "Collapse video description" : "Expand video description"}
                 className="mt-3 -ml-2 flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white transition-colors"
               >
                 {descriptionExpanded ? (
@@ -1179,6 +1236,7 @@ export default function YouTubeLikeVideoPage() {
                   <button
                     type="button"
                     onClick={() => setCommentText("")}
+                    title="Clear comment text"
                     className="px-4 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 rounded-lg transition-colors"
                   >
                     Cancel
@@ -1186,6 +1244,7 @@ export default function YouTubeLikeVideoPage() {
                   <button
                     type="submit"
                     disabled={commentLoading || !commentText.trim()}
+                    title={commentLoading ? "Posting comment" : "Post comment"}
                     className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full text-sm font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <Send size={16} />{" "}
@@ -1250,6 +1309,8 @@ export default function YouTubeLikeVideoPage() {
                 type="button"
                 role="switch"
                 aria-checked={autoplay}
+                aria-label="Autoplay"
+                title={`Autoplay ${autoplay ? "on" : "off"}`}
                 onClick={() => setAutoplay((prev) => !prev)}
                 className={`relative w-9 h-5 rounded-full transition-colors ${
                   autoplay ? "bg-blue-600" : "bg-gray-600"
@@ -1274,6 +1335,7 @@ export default function YouTubeLikeVideoPage() {
                 <div
                   key={vid.id}
                   onClick={() => openVideo(vid)}
+                  title={`Play next: ${vid.title}`}
                   className={`relative flex gap-4 p-2 -mx-2 rounded-xl cursor-pointer group transition-colors ${
                     isActive ? "bg-white/10" : "hover:bg-white/[0.06]"
                   }`}

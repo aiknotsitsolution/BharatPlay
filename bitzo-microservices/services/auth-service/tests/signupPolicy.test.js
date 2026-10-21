@@ -9,12 +9,17 @@ jest.mock("../services/vpn.service/vpn.service", () => ({
   isLocalOrPrivateIp: jest.fn(),
 }));
 
+jest.mock("../services/ipAccountBindingService", () => ({
+  checkIpAccountBinding: jest.fn(),
+}));
+
 const User = require("../models/usermodel");
 const {
   detectVPN,
   getClientIp,
   isLocalOrPrivateIp,
 } = require("../services/vpn.service/vpn.service");
+const { checkIpAccountBinding } = require("../services/ipAccountBindingService");
 const {
   evaluateSignupRequest,
   isSignupIpDuplicateError,
@@ -41,6 +46,7 @@ describe("strict signup IP policy", () => {
     isLocalOrPrivateIp.mockReturnValue(false);
     detectVPN.mockResolvedValue(availableVpnResult);
     User.findOne.mockReturnValue(userQuery(null));
+    checkIpAccountBinding.mockResolvedValue({ ok: true });
   });
 
   test("rejects requests without a public IP", async () => {
@@ -54,7 +60,7 @@ describe("strict signup IP policy", () => {
     expect(detectVPN).not.toHaveBeenCalled();
   });
 
-  test("allows localhost signup in development without IP-based checks", async () => {
+  test("allows localhost signup in development after checking account binding", async () => {
     process.env.NODE_ENV = "development";
     getClientIp.mockReturnValue("127.0.0.1");
     isLocalOrPrivateIp.mockReturnValue(true);
@@ -66,6 +72,23 @@ describe("strict signup IP policy", () => {
       skipped: true,
     });
     expect(detectVPN).not.toHaveBeenCalled();
+    expect(User.findOne).not.toHaveBeenCalled();
+    expect(checkIpAccountBinding).toHaveBeenCalledWith({});
+  });
+
+  test("blocks signup when the IP is already bound to a logged-in account", async () => {
+    checkIpAccountBinding.mockResolvedValue({
+      ok: false,
+      status: 403,
+      code: "IP_ACCOUNT_BINDING_VIOLATION",
+      message: "This public network is already linked to a different account.",
+    });
+
+    await expect(evaluateSignupRequest({})).resolves.toMatchObject({
+      ok: false,
+      status: 403,
+      code: "IP_ACCOUNT_BINDING_VIOLATION",
+    });
     expect(User.findOne).not.toHaveBeenCalled();
   });
 

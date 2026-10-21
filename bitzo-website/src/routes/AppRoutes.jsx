@@ -141,6 +141,7 @@ export default function AppRoutes() {
         <Route path="shorts/:id" element={<Shorts />} />
         <Route path="video/:id" element={<FullVideo />} />
         <Route path="videos/:type" element={<ViewAllRoute />} />
+        <Route path="channel/:id" element={<ChannelPage />} />
       </Route>
 
       <Route element={<ProtectedLayout />}>
@@ -159,7 +160,6 @@ export default function AppRoutes() {
           <Route path="watch-later" element={<WatchLaterTab />} />
           <Route path="your-videos" element={<YourVideosTab />} />
           <Route path="leaderboard" element={<Leaderboard />} />
-          <Route path="channel/:id" element={<ChannelPage />} />
           <Route path="channel/customize" element={<ChannelCustomization />} />
           <Route path="copyright" element={<CopyrightPage />} />
           <Route path="copyright/claim" element={<CopyrightClaimPage />} />

@@ -165,8 +165,10 @@ export default function AuthPageV2() {
     }
   };
 
-  const handleGoogleError = () => {
-    const message = "Google sign-in failed. Please try again.";
+  const handleGoogleError = (error) => {
+    console.error("Google OAuth popup failed:", error);
+    const message =
+      "Google sign-in could not start. Check the Google OAuth client ID and ensure this website origin is authorized in Google Cloud.";
     setError(message);
     toast.error(message);
   };

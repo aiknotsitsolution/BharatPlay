@@ -93,6 +93,7 @@ export default function SeekBar({
       className={`bp-seekbar${dragging ? " bp-seekbar--dragging" : ""}`}
       role="slider"
       aria-label="Seek"
+      title={`Seek: ${formatTime(displayTime)}`}
       aria-valuemin={0}
       aria-valuemax={Math.round(duration || 0)}
       aria-valuenow={Math.round(currentTime)}

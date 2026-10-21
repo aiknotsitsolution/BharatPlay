@@ -5,6 +5,7 @@ const {
   getClientIp,
   isLocalOrPrivateIp,
 } = require("./vpn.service/vpn.service");
+const { checkIpAccountBinding } = require("./ipAccountBindingService");
 
 let signupIpIndexPromise;
 
@@ -40,6 +41,8 @@ const evaluateSignupRequest = async (req) => {
   const ip = getClientIp(req);
   if (!ip || isLocalOrPrivateIp(ip)) {
     if (process.env.NODE_ENV === "development") {
+      const bindingCheck = await checkIpAccountBinding(req);
+      if (!bindingCheck.ok) return bindingCheck;
       return {
         ok: true,
         ip: null,
@@ -101,6 +104,9 @@ const evaluateSignupRequest = async (req) => {
   }
 
   try {
+    const bindingCheck = await checkIpAccountBinding(req);
+    if (!bindingCheck.ok) return bindingCheck;
+
     await ensureSignupIpIndex();
     const ipHash = signupIpHash(ip);
     const existingUser = await User.findOne({

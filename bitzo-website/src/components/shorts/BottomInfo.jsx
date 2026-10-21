@@ -1,4 +1,5 @@
 import { BadgeCheck, Music2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 
 const resolveImage = (value) => {
@@ -10,8 +11,10 @@ const resolveImage = (value) => {
 export default function BottomInfo({
   short,
   formattedViews,
+  channelId,
   onSubscribe,
   isSubscribed,
+  subscribePending = false,
 }) {
   const raw = short.raw || {};
   const channel = typeof raw.channel === "string" ? null : raw.channel || null;
@@ -45,29 +48,55 @@ export default function BottomInfo({
 
   const description = raw.description || "";
   const hashtags = Array.isArray(raw.hashtags) ? raw.hashtags : [];
+  const stopVideoPointer = (event) => event.stopPropagation();
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 px-4 pb-6 pr-24">
       {/* Channel row */}
       <div className="flex items-center gap-3">
-        {avatar ? (
-          <img
-            src={avatar}
-            alt={displayName}
-            className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-white/20"
-          />
-        ) : (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-pink-500 to-purple-600 ring-2 ring-white/20">
-            <span className="text-sm font-bold text-white">
-              {displayName.charAt(0).toUpperCase()}
-            </span>
-          </div>
-        )}
+        <Link
+          to={channelId ? `/channel/${channelId}` : "#"}
+          aria-label={`Open ${displayName} channel`}
+          tabIndex={channelId ? 0 : -1}
+          onPointerDown={stopVideoPointer}
+          onPointerUp={stopVideoPointer}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (!channelId) event.preventDefault();
+          }}
+          className={`pointer-events-auto shrink-0 ${channelId ? "" : "cursor-default"}`}
+        >
+          {avatar ? (
+            <img
+              src={avatar}
+              alt={displayName}
+              className="h-10 w-10 rounded-full object-cover ring-2 ring-white/20"
+            />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-pink-500 to-purple-600 ring-2 ring-white/20">
+              <span className="text-sm font-bold text-white">
+                {displayName.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+        </Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-semibold text-white">
-              {displayName}
-            </span>
+            {channelId ? (
+              <Link
+                to={`/channel/${channelId}`}
+                onPointerDown={stopVideoPointer}
+                onPointerUp={stopVideoPointer}
+                onClick={stopVideoPointer}
+                className="pointer-events-auto truncate text-sm font-semibold text-white hover:underline"
+              >
+                {displayName}
+              </Link>
+            ) : (
+              <span className="truncate text-sm font-semibold text-white">
+                {displayName}
+              </span>
+            )}
             {verified ? (
               <BadgeCheck size={16} className="shrink-0 text-blue-400" />
             ) : null}
@@ -77,7 +106,8 @@ export default function BottomInfo({
           <button
             type="button"
             onClick={onSubscribe}
-            className={`pointer-events-auto shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition duration-200 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/60 ${
+            disabled={subscribePending}
+            className={`pointer-events-auto shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition duration-200 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/60 disabled:cursor-wait disabled:opacity-60 ${
               isSubscribed
                 ? "bg-white/10 text-white hover:bg-white/20"
                 : "bg-white text-black hover:bg-white/90"
