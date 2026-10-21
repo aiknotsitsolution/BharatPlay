@@ -39,6 +39,16 @@ const ensureSignupIpIndex = async () => {
 const evaluateSignupRequest = async (req) => {
   const ip = getClientIp(req);
   if (!ip || isLocalOrPrivateIp(ip)) {
+    if (process.env.NODE_ENV === "development") {
+      return {
+        ok: true,
+        ip: null,
+        ipHash: null,
+        vpnInfo: null,
+        skipped: true,
+      };
+    }
+
     return {
       ok: false,
       status: 403,

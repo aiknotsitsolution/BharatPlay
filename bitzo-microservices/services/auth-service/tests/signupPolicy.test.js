@@ -35,6 +35,7 @@ const userQuery = (result) => ({
 describe("strict signup IP policy", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.NODE_ENV = "test";
     process.env.JWT_SECRET = process.env.JWT_SECRET || "test-signup-ip-secret";
     getClientIp.mockReturnValue("8.8.8.8");
     isLocalOrPrivateIp.mockReturnValue(false);
@@ -51,6 +52,21 @@ describe("strict signup IP policy", () => {
       code: "PUBLIC_IP_REQUIRED",
     });
     expect(detectVPN).not.toHaveBeenCalled();
+  });
+
+  test("allows localhost signup in development without IP-based checks", async () => {
+    process.env.NODE_ENV = "development";
+    getClientIp.mockReturnValue("127.0.0.1");
+    isLocalOrPrivateIp.mockReturnValue(true);
+
+    await expect(evaluateSignupRequest({})).resolves.toMatchObject({
+      ok: true,
+      ip: null,
+      ipHash: null,
+      skipped: true,
+    });
+    expect(detectVPN).not.toHaveBeenCalled();
+    expect(User.findOne).not.toHaveBeenCalled();
   });
 
   test("fails closed when the VPN provider is unavailable", async () => {
