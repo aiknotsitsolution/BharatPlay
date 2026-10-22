@@ -22,6 +22,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  ScrollView,
   KeyboardAvoidingView,
   Image,
 } from "react-native";
@@ -52,6 +53,7 @@ const { height, width } = Dimensions.get("window");
 type ShortItem = {
   id: string;
   title: string;
+  description?: string;
   views: number;
   likes: number;
   comments: number;
@@ -141,6 +143,7 @@ const normalizeShort = (video: Record<string, any> = {}): ShortItem => {
     id,
 
     title: video.title || video.name || "Untitled Short",
+    description: String(video.description || ""),
 
     views: Number(video.views) || Number(video.viewCount) || 0,
 
@@ -225,6 +228,33 @@ const formatCount = (value: number) => {
 
 const formatViews = (value: number) => {
   return `${formatCount(value)} views`;
+};
+
+const SHORTS_PAGE_SIZE = 100;
+
+const fetchShortsPage = async (page: number, token: string | null) => {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(SHORTS_PAGE_SIZE),
+    _: String(Date.now()),
+  });
+  const response = await fetch(
+    `${API_USERVIDEO}/trending-shorts?${params.toString()}`,
+    {
+      cache: "no-store",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Could not load Shorts page ${page} (HTTP ${response.status}).`);
+  }
+
+  const data = await response.json();
+  if (data?.success === false) {
+    throw new Error(data.message || `Could not load Shorts page ${page}.`);
+  }
+  return data;
 };
 
 const getGuestId = async () => {
@@ -422,6 +452,7 @@ export default function ShortsScreen() {
   const selectedVideo = route?.params?.video;
 
   const [shortsData, setShortsData] = useState<ShortItem[]>([]);
+  const [detailsItem, setDetailsItem] = useState<ShortItem | null>(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -436,6 +467,7 @@ export default function ShortsScreen() {
   const [muted, setMuted] = useState(true);
 
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
@@ -459,19 +491,22 @@ export default function ShortsScreen() {
   const historyReportedRef = useRef<Record<string, boolean>>({});
 
   const listRef = useRef<FlatList<ShortItem>>(null);
+  const loadRequestRef = useRef(0);
 
   /* =======================================================
      FETCH SHORTS
   ======================================================= */
 
   const loadShorts = useCallback(async () => {
+    const requestId = ++loadRequestRef.current;
     try {
       setLoading(true);
 
       const token = await AsyncStorage.getItem("token");
+      if (requestId !== loadRequestRef.current) return;
 
       const response = await fetch(
-        `${API_USERVIDEO}/trending-shorts?_=${Date.now()}`,
+        `${API_USERVIDEO}/trending-shorts?page=1&limit=${SHORTS_PAGE_SIZE}&_=${Date.now()}`,
         {
           cache: "no-store",
           headers: token
@@ -487,62 +522,129 @@ export default function ShortsScreen() {
       }
 
       const data = await response.json().catch(() => ({}));
+      if (requestId !== loadRequestRef.current) return;
+      if (data?.success === false) {
+        throw new Error(data.message || "Could not load Shorts.");
+      }
 
-      const list = getArrayFromPayload(data);
-
-      let normalized = list.map(normalizeShort);
-
-      /* ---------------------------------------------
-           OPENED VIDEO
-        --------------------------------------------- */
-
-      if (selectedVideo) {
-        const selected = normalizeShort(selectedVideo.raw || selectedVideo);
-
-        const exists = normalized.some((item) => item.id === selected.id);
-
-        if (!exists) {
-          normalized = [selected, ...normalized];
-        } else {
+      let list = getArrayFromPayload(data);
+      const publishLoadedShorts = (
+        videos: Record<string, any>[],
+        resetIndex = false,
+      ) => {
+        let normalized = videos.map(normalizeShort);
+        if (selectedVideo) {
+          const selected = normalizeShort(selectedVideo.raw || selectedVideo);
           normalized = [
             selected,
             ...normalized.filter((item) => item.id !== selected.id),
           ];
         }
+
+        setShortsData(normalized);
+        setLiked(
+          Object.fromEntries(
+            normalized.map((item) => [item.id, Boolean(item.isLiked)]),
+          ),
+        );
+        setLikeCount(
+          Object.fromEntries(normalized.map((item) => [item.id, item.likes])),
+        );
+        setSubscribed(
+          Object.fromEntries(
+            normalized.map((item) => [item.id, Boolean(item.isSubscribed)]),
+          ),
+        );
+        setSubscriberCount(
+          Object.fromEntries(
+            normalized.map((item) => [item.id, item.subscribersCount]),
+          ),
+        );
+        if (resetIndex) setCurrentIndex(0);
+        setLoading(false);
+      };
+
+      const seenIds = new Set(
+        list.map((video) => String(video._id || video.id || "")),
+      );
+      let page = 1;
+      let total =
+        data?.total != null && Number.isFinite(Number(data.total))
+          ? Number(data.total)
+          : null;
+      publishLoadedShorts(list, true);
+      setLoadingMore(
+        total !== null
+          ? list.length < total
+          : list.length >= SHORTS_PAGE_SIZE,
+      );
+
+      while (
+        total !== null
+          ? list.length < total
+          : list.length >= page * SHORTS_PAGE_SIZE
+      ) {
+        page += 1;
+        const nextPage = await fetchShortsPage(page, token);
+        if (requestId !== loadRequestRef.current) return;
+
+        const batch = getArrayFromPayload(nextPage);
+        if (!batch.length) {
+          if (total !== null && list.length < total) {
+            throw new Error("Shorts feed ended before all pages were loaded.");
+          }
+          break;
+        }
+
+        const newVideos = batch.filter((video) => {
+          const id = String(video._id || video.id || "");
+          if (!id || seenIds.has(id)) return false;
+          seenIds.add(id);
+          return true;
+        });
+        if (!newVideos.length) {
+          throw new Error(`Shorts page ${page} did not contain new videos.`);
+        }
+        list = [...list, ...newVideos];
+        publishLoadedShorts(list);
+
+        const nextTotal = Number(nextPage?.total);
+        if (
+          nextPage?.total != null &&
+          Number.isFinite(nextTotal) &&
+          nextTotal >= 0
+        ) {
+          total = nextTotal;
+        } else if (batch.length < SHORTS_PAGE_SIZE) {
+          total = list.length;
+        }
+        setLoadingMore(
+          total !== null
+            ? list.length < total
+            : batch.length >= SHORTS_PAGE_SIZE,
+        );
       }
-
-      setShortsData(normalized);
-
-      const likedMap: Record<string, boolean> = {};
-
-      const countMap: Record<string, number> = {};
-      const subscriptionMap: Record<string, boolean> = {};
-      const subscriberMap: Record<string, number> = {};
-
-      normalized.forEach((item) => {
-        likedMap[item.id] = Boolean(item.isLiked);
-
-        countMap[item.id] = item.likes;
-        subscriptionMap[item.id] = Boolean(item.isSubscribed);
-        subscriberMap[item.id] = item.subscribersCount;
-      });
-
-      setLiked(likedMap);
-      setLikeCount(countMap);
-      setSubscribed(subscriptionMap);
-      setSubscriberCount(subscriberMap);
-      setCurrentIndex(0);
     } catch (error) {
       console.warn("Shorts load error:", error);
 
-      setShortsData([]);
+      showToast(
+        "error",
+        "Shorts could not fully load",
+        error instanceof Error ? error.message : "Please try again.",
+      );
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [selectedVideo]);
 
   useEffect(() => {
     loadShorts();
+    return () => {
+      loadRequestRef.current += 1;
+    };
   }, [loadShorts]);
 
   useEffect(() => {
@@ -816,14 +918,14 @@ export default function ShortsScreen() {
     const channel = item.channel || item.raw?.channel;
 
     if (!channel) {
-      return null;
+      return item.raw?.channelId || item.raw?.channel_id || null;
     }
 
     if (typeof channel === "string") {
       return channel;
     }
 
-    return channel._id || channel.id || null;
+    return channel._id || channel.id || channel.channelId || null;
   };
 
   /* =======================================================
@@ -1106,6 +1208,9 @@ export default function ShortsScreen() {
       const isActive = index === currentIndex;
 
       const currentLikes = likeCount[item.id] ?? item.likes;
+      const channelId = getChannelId(item);
+      const channelName =
+        item.channel?.name || item.raw?.channel?.name || "VidBuxApp";
 
       return (
         <View style={styles.videoContainer}>
@@ -1145,15 +1250,26 @@ export default function ShortsScreen() {
             {/* CHANNEL */}
 
             <View style={styles.channelRow}>
-              <View style={styles.channelAvatar}>
-                <Ionicons name="person" size={18} color="#fff" />
-              </View>
+              <TouchableOpacity
+                style={styles.channelLink}
+                disabled={!channelId}
+                onPress={() => {
+                  if (channelId) {
+                    navigation.navigate("SubscribedChannels", { id: channelId });
+                  }
+                }}
+                accessibilityRole="link"
+                accessibilityLabel={`Open ${channelName} channel`}
+              >
+                <View style={styles.channelAvatar}>
+                  <Ionicons name="person" size={18} color="#fff" />
+                </View>
+                <Text style={styles.channelName} numberOfLines={1}>
+                  {channelName}
+                </Text>
+              </TouchableOpacity>
 
-              <Text style={styles.channelName} numberOfLines={1}>
-                {item.channel?.name || item.raw?.channel?.name || "VidBuxApp"}
-              </Text>
-
-              {getChannelId(item) && (
+              {channelId && (
                 <TouchableOpacity
                   style={styles.subscribeBtn}
                   onPress={() => handleSubscribe(item)}
@@ -1177,9 +1293,15 @@ export default function ShortsScreen() {
 
             {/* TITLE */}
 
-            <Text style={styles.title} numberOfLines={2}>
-              {item.title}
-            </Text>
+            <TouchableOpacity
+              onPress={() => setDetailsItem(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`Show details for ${item.title}`}
+            >
+              <Text style={styles.title} numberOfLines={2}>
+                {item.title}
+              </Text>
+            </TouchableOpacity>
 
             {/* VIEWS */}
 
@@ -1345,6 +1467,109 @@ export default function ShortsScreen() {
           index,
         })}
       />
+
+      {loadingMore ? (
+        <View style={styles.loadingMore}>
+          <ActivityIndicator size="small" color="#fff" />
+          <Text style={styles.loadingMoreText}>Loading more Shorts...</Text>
+        </View>
+      ) : null}
+
+      <Modal
+        visible={Boolean(detailsItem)}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDetailsItem(null)}
+      >
+        <View style={styles.modalRoot}>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.commentsBackdrop}
+            onPress={() => setDetailsItem(null)}
+            accessibilityLabel="Close video details"
+          />
+          {detailsItem ? (
+            <View style={styles.detailsSheet}>
+              <View style={styles.commentsHandle} />
+              <View style={styles.detailsHeader}>
+                <Text style={styles.detailsHeading}>Description</Text>
+                <TouchableOpacity
+                  onPress={() => setDetailsItem(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close description"
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={25} color="#fff" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.detailsContent}
+              >
+                <Text style={styles.detailsTitle}>{detailsItem.title}</Text>
+                <View style={styles.detailsStats}>
+                  <Text style={styles.detailsStat}>
+                    {formatCount(
+                      likeCount[detailsItem.id] ?? detailsItem.likes,
+                    )}{" "}
+                    likes
+                  </Text>
+                  <Text style={styles.detailsStat}>
+                    {formatViews(detailsItem.views)}
+                  </Text>
+                  {detailsItem.raw?.createdAt ? (
+                    <Text style={styles.detailsStat}>
+                      {new Date(
+                        detailsItem.raw.createdAt,
+                      ).toLocaleDateString()}
+                    </Text>
+                  ) : null}
+                </View>
+                {getChannelId(detailsItem) ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const channelId = getChannelId(detailsItem);
+                      setDetailsItem(null);
+                      if (channelId) {
+                        navigation.navigate("SubscribedChannels", {
+                          id: channelId,
+                        });
+                      }
+                    }}
+                    accessibilityRole="link"
+                    style={styles.detailsChannelLink}
+                  >
+                    <Text style={styles.detailsChannelName}>
+                      {detailsItem.channel?.name ||
+                        detailsItem.raw?.channel?.name ||
+                        "VidBuxApp"}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+                <Text style={styles.detailsDescription}>
+                  {detailsItem.description?.trim() ||
+                    "No description available."}
+                </Text>
+                {Array.isArray(detailsItem.raw?.hashtags) &&
+                detailsItem.raw.hashtags.length > 0 ? (
+                  <View style={styles.detailsHashtags}>
+                    {detailsItem.raw.hashtags.map(
+                      (tag: string, index: number) => (
+                        <Text
+                          key={`${tag}-${index}`}
+                          style={styles.detailsHashtag}
+                        >
+                          #{tag}
+                        </Text>
+                      ),
+                    )}
+                  </View>
+                ) : null}
+              </ScrollView>
+            </View>
+          ) : null}
+        </View>
+      </Modal>
 
       {/* =================================================
           YOUTUBE STYLE COMMENTS BOTTOM SHEET
@@ -1594,6 +1819,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
+  channelLink: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
   channelAvatar: {
     width: 38,
     height: 38,
@@ -1700,6 +1932,25 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.8)",
   },
 
+  loadingMore: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 104 : 74,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.65)",
+  },
+
+  loadingMoreText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
   /* =====================================================
        COMMENTS MODAL
     ===================================================== */
@@ -1723,6 +1974,88 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
 
     overflow: "hidden",
+  },
+
+  detailsSheet: {
+    height: Platform.OS === "ios" ? height * 0.55 : height * 0.58,
+    backgroundColor: "#111318",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: "hidden",
+  },
+
+  detailsHeader: {
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingLeft: 18,
+    paddingRight: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#262b35",
+  },
+
+  detailsHeading: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+
+  detailsContent: {
+    padding: 18,
+    paddingBottom: 32,
+  },
+
+  detailsTitle: {
+    color: "#fff",
+    fontSize: 19,
+    lineHeight: 26,
+    fontWeight: "700",
+  },
+
+  detailsStats: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    columnGap: 14,
+    rowGap: 8,
+    marginTop: 13,
+  },
+
+  detailsStat: {
+    color: "#b8c0cc",
+    fontSize: 13,
+  },
+
+  detailsChannelLink: {
+    alignSelf: "flex-start",
+    marginTop: 16,
+  },
+
+  detailsChannelName: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  detailsDescription: {
+    color: "#e5e7eb",
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 12,
+  },
+
+  detailsHashtags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    columnGap: 10,
+    rowGap: 6,
+    marginTop: 14,
+  },
+
+  detailsHashtag: {
+    color: "#7dd3fc",
+    fontSize: 14,
+    fontWeight: "600",
   },
 
   commentsHandle: {
