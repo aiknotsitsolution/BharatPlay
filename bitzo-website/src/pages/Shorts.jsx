@@ -21,7 +21,7 @@ import { promptLogin } from "../utils/loginPrompt";
 import ShortVideo from "../components/shorts/ShortVideo";
 import ShortOverlay from "../components/shorts/ShortOverlay";
 import ActionRail from "../components/shorts/ActionRail";
-import BottomInfo from "../components/shorts/BottomInfo";
+import BottomInfo, { ShortDetails } from "../components/shorts/BottomInfo";
 import CommentsSheet from "../components/shorts/CommentsSheet";
 import SwipeHint from "../components/shorts/SwipeHint";
 import { API_ORIGIN as BACKEND_URL } from "../config/api";
@@ -145,6 +145,7 @@ export default function Shorts() {
   const [commentLoading, setCommentLoading] = useState(false);
   const [muted, setMuted] = useState(true);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [playerBox, setPlayerBox] = useState({ width: 0, height: 0 });
 
   const containerRef = useRef(null);
@@ -277,6 +278,7 @@ export default function Shorts() {
 
     if (e.key === "Escape") {
       if (commentOpenForId) setCommentOpenForId(null);
+      else if (detailsOpen) setDetailsOpen(false);
       return;
     }
     if (
@@ -931,13 +933,18 @@ export default function Shorts() {
       ref={rootRef}
       tabIndex={-1}
       aria-label="Shorts player"
-      className="flex h-[calc(100dvh-7.5rem)] w-full touch-none outline-none md:h-[calc(100dvh-3.5rem)]"
+      className={`flex h-[calc(100dvh-7.5rem)] w-full flex-col outline-none md:h-[calc(100dvh-3.5rem)] ${
+        detailsOpen ? "touch-auto" : "touch-none"
+      }`}
       onKeyDown={handleKeyDown}
       {...handlers} // ← swipe gestures work on the player area
     >
-      <div className="mx-auto flex h-full w-full max-w-[1200px]">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1200px] flex-col">
         {/* Player column – the Shorts player lives INSIDE the app layout */}
-        <div ref={playerAreaRef} className="relative h-full min-w-0 flex-1">
+        <div
+          ref={playerAreaRef}
+          className="relative min-h-0 min-w-0 flex-1 transition-[height] duration-300"
+        >
           {/* Ambient glow behind the player (desktop) */}
           <div
             className="pointer-events-none absolute top-1/2 left-1/2 hidden h-[85%] w-[45%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/[0.03] blur-3xl md:block"
@@ -1023,6 +1030,8 @@ export default function Shorts() {
 <BottomInfo
   short={short}
   formattedViews={formatViews(short.views)}
+  detailsOpen={detailsOpen}
+  onOpenDetails={() => setDetailsOpen(true)}
   channelId={getChannelId(short)}
   isSubscribed={Boolean(subscribed[getChannelId(short)])}
   subscribePending={Boolean(pendingSubscribe[getChannelId(short)])}
@@ -1062,6 +1071,13 @@ export default function Shorts() {
             </div>
           </div>
         </div>
+        {detailsOpen && shorts[currentIndex] ? (
+          <ShortDetails
+            short={shorts[currentIndex]}
+            formattedViews={formatViews(shorts[currentIndex].views)}
+            onClose={() => setDetailsOpen(false)}
+          />
+        ) : null}
       </div>
 
       <ToastContainer limit={1} />

@@ -64,6 +64,7 @@ export default function ChannelPage() {
   const [selectedChannelId, setSelectedChannelId] = useState(null);
   const [channel, setChannel] = useState(null);
   const [isPublicChannel, setIsPublicChannel] = useState(false);
+  const [channelsFetchSucceeded, setChannelsFetchSucceeded] = useState(false);
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Videos");
@@ -246,6 +247,7 @@ export default function ChannelPage() {
         setLoading(true);
         setChannel(null);
         setIsPublicChannel(false);
+        setChannelsFetchSucceeded(false);
         let userChannels = [];
         if (token) {
           const res = await authFetch(`${API_BASE}/uservideo/channel`, {
@@ -256,6 +258,7 @@ export default function ChannelPage() {
 
           const data = await res.json();
           userChannels = data.channels || [];
+          setChannelsFetchSucceeded(true);
         }
 
         setChannels(userChannels);
@@ -269,6 +272,15 @@ export default function ChannelPage() {
                 urlHandle.toLowerCase(),
           );
           if (matched) initialChannelId = matched._id;
+        }
+
+        const currentUserId = getUserId();
+        if (
+          !initialChannelId &&
+          userChannels.length > 0 &&
+          (urlHandle === "me" || String(urlHandle) === String(currentUserId))
+        ) {
+          initialChannelId = userChannels[0]._id || userChannels[0].id;
         }
 
         if (!initialChannelId && isValidObjectId(urlHandle)) {
@@ -382,14 +394,21 @@ export default function ChannelPage() {
   useEffect(() => {
     if (
       getToken() &&
+      channelsFetchSucceeded &&
       !isPublicChannel &&
       !loading &&
       !showCreateModal &&
-      (!channel || channels.length === 0)
+      channels.length === 0
     ) {
       setShowCreateModal(true);
     }
-  }, [loading, channel, channels.length, isPublicChannel, showCreateModal]);
+  }, [
+    loading,
+    channelsFetchSucceeded,
+    channels.length,
+    isPublicChannel,
+    showCreateModal,
+  ]);
 
   // Handle Subscribe / Unsubscribe
   const handleSubscription = async () => {

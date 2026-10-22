@@ -25,6 +25,13 @@ import {
   ArrowRight,
   ChevronLeft,
   CheckCircle2,
+  Play,
+  Headphones,
+  Disc3,
+  Music2,
+  Radio,
+  Tv,
+  Clapperboard,
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
@@ -53,8 +60,12 @@ const GOOGLE_CONFIGURED = Boolean(
   isGoogleClientId(GOOGLE_IOS_CLIENT_ID),
 );
 
+const getDeviceCookieHeader = (clientHardwareUuid) =>
+  `device_id=${encodeURIComponent(clientHardwareUuid)}`;
+
 export default function LoginScreen({ navigation, onAuthenticated }) {
   const [isLogin, setIsLogin] = useState(true);
+  const [authMethod, setAuthMethod] = useState("email");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -69,6 +80,9 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
   const [migrationPhoneOtp, setMigrationPhoneOtp] = useState("");
   const [otpCountdown, setOtpCountdown] = useState(0);
   const [resendingOtp, setResendingOtp] = useState(false);
+  const [registrationPhoneRequired, setRegistrationPhoneRequired] =
+    useState(false);
+  const [pendingRegistration, setPendingRegistration] = useState(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -91,6 +105,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
   // ========== Animations ==========
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+  const ambientMotion = useRef(new Animated.Value(0)).current;
   const formOpacity = useRef(new Animated.Value(1)).current;
   const formTranslate = useRef(new Animated.Value(0)).current;
   const otpAnim = useRef(new Animated.Value(0)).current;
@@ -114,6 +129,25 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
       }),
     ]).start();
   }, []);
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(ambientMotion, {
+          toValue: 1,
+          duration: 9000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(ambientMotion, {
+          toValue: 0,
+          duration: 9000,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [ambientMotion]);
 
   // Tab indicator animation
   useEffect(() => {
@@ -236,12 +270,14 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
       if (!idToken) throw new Error("Google token not received");
       const clientHardwareUuid = await getClientHardwareUuid();
+      const deviceCookie = getDeviceCookieHeader(clientHardwareUuid);
       const sendGoogleCredential = (integrityProof = {}) =>
         fetch(`${API_BASE}/auth/google`, {
           method: "POST",
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
+            Cookie: deviceCookie,
             ...API_PLATFORM_HEADER,
           },
           body: JSON.stringify({
@@ -259,6 +295,17 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
       }
       if (!res.ok)
         throw new Error(data.message || "Google authentication failed");
+
+      if (data.needsPhoneBinding) {
+        setPendingRegistration(data);
+        setRegistrationPhoneRequired(true);
+        setFormData((current) => ({
+          ...current,
+          name: data.user?.name || current.name,
+          email: data.user?.email || current.email,
+        }));
+        return;
+      }
 
       await handleAuthSuccess(data);
     } catch (err) {
@@ -324,6 +371,121 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
         text1: "Authentication Error",
         text2: e?.message || "Session could not be saved.",
       });
+    }
+  };
+
+  const handleEmailSubmit = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const clientHardwareUuid = await getClientHardwareUuid();
+      const deviceCookie = getDeviceCookieHeader(clientHardwareUuid);
+      if (registrationPhoneRequired) {
+        const phone = formData.phone.replace(/\D/g, "");
+        if (!pendingRegistration?.token) {
+          throw new Error("Your account setup session expired. Please sign in again.");
+        }
+        if (!/^\d{10}$/.test(phone)) {
+          throw new Error("Enter a valid 10-digit Indian mobile number.");
+        }
+
+        const response = await fetch(`${API_BASE}/phone/map`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${pendingRegistration.token}`,
+            Cookie: deviceCookie,
+            ...API_PLATFORM_HEADER,
+          },
+          body: JSON.stringify({ phone: `+91${phone}`, clientHardwareUuid }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Could not save your mobile number.");
+        }
+
+        setRegistrationPhoneRequired(false);
+        setPendingRegistration(null);
+        await handleAuthSuccess({
+          ...pendingRegistration,
+          user: data.user || pendingRegistration.user,
+          needsPhoneBinding: false,
+        });
+        return;
+      }
+
+      const email = formData.email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error("Enter a valid email address.");
+      }
+      if (isLogin && !otpRequired && !formData.password) {
+        throw new Error("Password is required.");
+      }
+      if (!isLogin && !formData.name.trim()) {
+        throw new Error("Full name is required.");
+      }
+      if (!isLogin && formData.password.length < 8) {
+        throw new Error("Password must be at least 8 characters.");
+      }
+      if (otpRequired && !/^\d{6}$/.test(otp)) {
+        throw new Error("Enter the six-digit OTP sent to your email.");
+      }
+
+      const integrityProof = isLogin ? {} : await getSignupIntegrityProof();
+      const response = await fetch(`${API_BASE}/${isLogin ? "login" : "register"}`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: deviceCookie,
+          ...API_PLATFORM_HEADER,
+        },
+        body: JSON.stringify({
+          ...(isLogin ? {} : { name: formData.name.trim() }),
+          email,
+          password: formData.password,
+          ...(otpRequired ? { otp } : {}),
+          clientHardwareUuid,
+          ...integrityProof,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Authentication failed.");
+      }
+
+      if (data.requiresOtp) {
+        setOtpRequired(true);
+        setOtp("");
+        setDevelopmentOtp(data.otpCode || "");
+        setOtpCountdown(data.retryAfterSeconds || 60);
+        setError(data.message || "A verification code was sent to your email.");
+        return;
+      }
+
+      if (!isLogin && data.needsPhoneBinding) {
+        setPendingRegistration(data);
+        setRegistrationPhoneRequired(true);
+        setFormData((current) => ({
+          ...current,
+          name: data.user?.name || current.name,
+          email: data.user?.email || current.email,
+          phone: "",
+        }));
+        setOtpRequired(false);
+        setOtp("");
+        return;
+      }
+
+      await handleAuthSuccess(data);
+    } catch (err) {
+      const errorMsg = err.message || "Authentication failed.";
+      setError(errorMsg);
+      Toast.show({ type: "error", text1: "Authentication Error", text2: errorMsg });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -502,6 +664,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
     try {
       const clientHardwareUuid = await getClientHardwareUuid();
+      const deviceCookie = getDeviceCookieHeader(clientHardwareUuid);
       const phoneDigits = formData.phone.replace(/\D/g, "");
       if (migrationMode) {
         const email = formData.email.trim().toLowerCase();
@@ -521,6 +684,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
             credentials: "include",
             headers: {
               "Content-Type": "application/json",
+              Cookie: deviceCookie,
               ...API_PLATFORM_HEADER,
             },
             body: JSON.stringify(
@@ -577,6 +741,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
+          Cookie: deviceCookie,
           ...API_PLATFORM_HEADER,
         },
         body: JSON.stringify({
@@ -632,6 +797,43 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
     try {
       const clientHardwareUuid = await getClientHardwareUuid();
+      const deviceCookie = getDeviceCookieHeader(clientHardwareUuid);
+      if (authMethod === "email" && !migrationMode) {
+        const integrityProof = isLogin ? {} : await getSignupIntegrityProof();
+        const response = await fetch(
+          `${API_BASE}/${isLogin ? "login" : "register"}`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              Cookie: deviceCookie,
+              ...API_PLATFORM_HEADER,
+            },
+            body: JSON.stringify({
+              ...(isLogin ? {} : { name: formData.name.trim() }),
+              email: formData.email.trim().toLowerCase(),
+              password: formData.password,
+              clientHardwareUuid,
+              ...integrityProof,
+            }),
+          },
+        );
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Could not resend OTP.");
+        }
+        if (data.requiresOtp) {
+          setOtp("");
+          setDevelopmentOtp(data.otpCode || "");
+          setOtpCountdown(data.retryAfterSeconds || 60);
+          setError(data.message || "A new verification code has been sent.");
+          return;
+        }
+        await handleAuthSuccess(data);
+        return;
+      }
+
       const endpoint = migrationMode
         ? "/phone-auth/migrate"
         : "/phone-auth/request-otp";
@@ -654,6 +856,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
+          Cookie: deviceCookie,
           ...API_PLATFORM_HEADER,
         },
         body: JSON.stringify(body),
@@ -690,6 +893,8 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     animateFormSwitch(() => {
       setIsLogin(!isLogin);
       setOtpRequired(false);
+      setRegistrationPhoneRequired(false);
+      setPendingRegistration(null);
       setOtp("");
       setOtpCountdown(0);
       setError("");
@@ -705,6 +910,59 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View pointerEvents="none" style={styles.ambientBackground}>
+        <Animated.View
+          style={[
+            styles.ambientGlowTop,
+            {
+              opacity: ambientMotion.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.7, 1],
+              }),
+              transform: [
+                {
+                  translateX: ambientMotion.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-12, 12],
+                  }),
+                },
+                {
+                  scale: ambientMotion.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.94, 1.06],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.ambientGlowBottom,
+            {
+              opacity: ambientMotion.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 0.68],
+              }),
+              transform: [
+                {
+                  translateX: ambientMotion.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [12, -12],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+        <Play size={54} color="rgba(255,130,120,0.24)" style={styles.backgroundPlay} />
+        <Headphones size={62} color="rgba(255,125,115,0.19)" style={styles.backgroundHeadphones} />
+        <Disc3 size={48} color="rgba(255,130,120,0.2)" style={styles.backgroundDisc} />
+        <Music2 size={52} color="rgba(255,130,120,0.17)" style={styles.backgroundMusic} />
+        <Radio size={48} color="rgba(255,130,120,0.18)" style={styles.backgroundRadio} />
+        <Tv size={58} color="rgba(255,130,120,0.17)" style={styles.backgroundTv} />
+        <Clapperboard size={56} color="rgba(255,130,120,0.16)" style={styles.backgroundClapper} />
+      </View>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -733,9 +991,11 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                 />
                 <Text style={styles.subtitle}>
                   {resetStep === 0
-                    ? isLogin
-                      ? "Sign in to continue"
-                      : "Create your account"
+                    ? registrationPhoneRequired
+                      ? "Add your mobile number to finish setup"
+                      : isLogin
+                        ? "Sign in to continue"
+                        : "Create your account"
                     : resetStep === 1
                       ? "Reset your password"
                       : resetStep === 2
@@ -747,7 +1007,9 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
               </View>
 
               {/* Tabs with animated indicator */}
-              {resetStep === 0 && (
+              {resetStep === 0 &&
+                !otpRequired &&
+                !registrationPhoneRequired && (
                 <View style={styles.tabsContainer}>
                   <TouchableOpacity
                     style={styles.tab}
@@ -778,6 +1040,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
                   {/* Animated underline */}
                   <Animated.View
+                    pointerEvents="none"
                     style={[styles.tabIndicator, { left: indicatorLeft }]}
                   />
                 </View>
@@ -789,6 +1052,40 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                     <Text style={styles.errorText}>{error}</Text>
                   </Animated.View>
                 ) : null}
+                {resetStep === 0 &&
+                  !otpRequired &&
+                  !registrationPhoneRequired &&
+                  !migrationMode && (
+                    <>
+                      <TouchableOpacity
+                        onPress={handleGoogleSignIn}
+                        disabled={googleLoading || loading}
+                        activeOpacity={0.85}
+                        style={[
+                          styles.googleButton,
+                          (googleLoading || loading) && styles.buttonDisabled,
+                        ]}
+                      >
+                        {googleLoading ? (
+                          <ActivityIndicator color="#111" size="small" />
+                        ) : (
+                          <View style={styles.googleButtonContent}>
+                            <Text style={styles.googleMark}>G</Text>
+                            <Text style={styles.googleButtonText}>
+                              {isLogin
+                                ? "Sign in with Google"
+                                : "Sign up with Google"}
+                            </Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                      <View style={styles.dividerContainer}>
+                        <View style={styles.divider} />
+                        <Text style={styles.dividerText}>or</Text>
+                        <View style={styles.divider} />
+                      </View>
+                    </>
+                  )}
                 <Animated.View
                   style={[
                     styles.form,
@@ -801,7 +1098,10 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                   {resetStep === 0 ? (
                     <>
                       {/* Name field */}
-                      {!isLogin && !otpRequired && !migrationMode && (
+                      {!isLogin &&
+                        !migrationMode &&
+                        !otpRequired &&
+                        !registrationPhoneRequired && (
                         <View style={styles.inputWrapper}>
                           <User size={20} color="#6b7280" style={styles.icon} />
                           <TextInput
@@ -811,6 +1111,26 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                             style={styles.input}
                             placeholderTextColor="#6b7280"
                             autoCapitalize="words"
+                          />
+                        </View>
+                      )}
+
+                      {authMethod === "email" &&
+                        !migrationMode &&
+                        !registrationPhoneRequired &&
+                        (
+                        <View style={styles.inputWrapper}>
+                          <Mail size={20} color="#6b7280" style={styles.icon} />
+                          <TextInput
+                            placeholder="Email address"
+                            value={formData.email}
+                            onChangeText={(text) => handleChange("email", text)}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            editable={!otpRequired}
+                            style={styles.input}
+                            placeholderTextColor="#6b7280"
                           />
                         </View>
                       )}
@@ -865,7 +1185,62 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                         </View>
                       )}
 
-                      {!otpRequired && (
+                      {authMethod === "email" &&
+                        !migrationMode &&
+                        !registrationPhoneRequired &&
+                        !otpRequired && (
+                        <View style={styles.inputWrapper}>
+                          <Lock size={20} color="#6b7280" style={styles.icon} />
+                          <TextInput
+                            placeholder={
+                              isLogin
+                                ? "Password"
+                                : "Create password (min. 8 characters)"
+                            }
+                            value={formData.password}
+                            onChangeText={(text) => handleChange("password", text)}
+                            secureTextEntry={!showPassword}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            style={styles.input}
+                            placeholderTextColor="#6b7280"
+                          />
+                          <TouchableOpacity
+                            onPress={() => setShowPassword(!showPassword)}
+                            style={styles.eyeIcon}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          >
+                            {showPassword ? (
+                              <EyeOff size={20} color="#9ca3af" />
+                            ) : (
+                              <Eye size={20} color="#9ca3af" />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {registrationPhoneRequired && (
+                        <View style={styles.inputWrapper}>
+                          <Text style={[styles.icon, styles.phonePrefix]}>+91</Text>
+                          <TextInput
+                            placeholder="10-digit Indian mobile number"
+                            value={formData.phone}
+                            onChangeText={(text) =>
+                              handleChange(
+                                "phone",
+                                text.replace(/\D/g, "").slice(0, 10),
+                              )
+                            }
+                            keyboardType="phone-pad"
+                            style={styles.input}
+                            placeholderTextColor="#6b7280"
+                          />
+                        </View>
+                      )}
+
+                      {authMethod === "phone" &&
+                        !registrationPhoneRequired &&
+                        !otpRequired && (
                         <View style={styles.inputWrapper}>
                           <Text style={[styles.icon, { color: "#a1a1aa", fontWeight: "700" }]}>
                             +91
@@ -884,7 +1259,11 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                         </View>
                       )}
 
-                      {!migrationMode && !otpRequired && isLogin && (
+                      {authMethod === "email" &&
+                        !migrationMode &&
+                        !registrationPhoneRequired &&
+                        !otpRequired &&
+                        isLogin && (
                         <TouchableOpacity
                           onPress={startPasswordReset}
                           style={styles.forgotPasswordButton}
@@ -921,18 +1300,26 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                           ]}
                         >
                           <Text style={styles.otpTitle}>
-                            {migrationMode ? "Verify existing account" : "Enter OTP"}
+                            {migrationMode
+                              ? "Verify existing account"
+                              : authMethod === "email"
+                                ? "Verify your email"
+                                : "Enter OTP"}
                           </Text>
                           <Text style={styles.otpSubtitle}>
                             {migrationMode
                               ? "Enter the codes sent to your existing email and new mobile."
-                              : "We sent a 6-digit code to your mobile."}
+                              : `We sent a 6-digit code to your ${
+                                  authMethod === "email" ? "email" : "mobile"
+                                }.`}
                             {"\n"}
-                            <Text
-                              style={{ color: "#ef4444", fontWeight: "600" }}
-                            >
-                              +91 {formData.phone}
-                            </Text>
+                            {authMethod === "phone" && (
+                              <Text
+                                style={{ color: "#ef4444", fontWeight: "600" }}
+                              >
+                                +91 {formData.phone}
+                              </Text>
+                            )}
                           </Text>
                           {migrationMode ? (
                             <>
@@ -1007,7 +1394,11 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                         style={{ transform: [{ scale: buttonScale }] }}
                       >
                         <TouchableOpacity
-                          onPress={handleSubmit}
+                          onPress={
+                            authMethod === "email" && !migrationMode
+                              ? handleEmailSubmit
+                              : handleSubmit
+                          }
                           onPressIn={onPressIn}
                           onPressOut={onPressOut}
                           disabled={loading || googleLoading}
@@ -1026,8 +1417,14 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                                   ? otpRequired
                                     ? "Verify & Migrate Account"
                                     : "Send Migration Codes"
+                                  : registrationPhoneRequired
+                                    ? "Save number & continue"
                                   : otpRequired
-                                  ? "Verify OTP & Continue"
+                                  ? authMethod === "email"
+                                    ? isLogin
+                                      ? "Verify OTP & Sign In"
+                                      : "Verify OTP & Create Account"
+                                    : "Verify OTP & Continue"
                                   : isLogin
                                     ? "Sign In"
                                     : "Create Account"}
@@ -1056,7 +1453,10 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                         </TouchableOpacity>
                       )}
 
-                      {isLogin && !otpRequired && !migrationMode && (
+                      {authMethod === "phone" &&
+                        isLogin &&
+                        !otpRequired &&
+                        !migrationMode && (
                         <TouchableOpacity
                           onPress={() => {
                             setMigrationMode(true);
@@ -1348,7 +1748,9 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                 </Animated.View>
 
                 {/* Toggle Login/Register */}
-                {resetStep === 0 && !otpRequired && (
+                {resetStep === 0 &&
+                  !otpRequired &&
+                  !registrationPhoneRequired && (
                   <View style={styles.toggleContainer}>
                     <Text style={styles.toggleText}>
                       {isLogin
@@ -1362,6 +1764,34 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                     </Text>
                   </View>
                 )}
+                {resetStep === 0 &&
+                  !otpRequired &&
+                  !registrationPhoneRequired &&
+                  !migrationMode && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setAuthMethod(authMethod === "email" ? "phone" : "email");
+                        setOtpRequired(false);
+                        setOtp("");
+                        setOtpCountdown(0);
+                        setError("");
+                        setFormData({
+                          name: "",
+                          email: "",
+                          password: "",
+                          phone: "",
+                        });
+                      }}
+                      activeOpacity={0.75}
+                      style={styles.authMethodLink}
+                    >
+                      <Text style={styles.authMethodLinkText}>
+                        {authMethod === "email"
+                          ? "Use phone number instead"
+                          : "Use email instead"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
               </View>
             </View>
           </Animated.View>
@@ -1375,7 +1805,84 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#080709",
+  },
+  ambientBackground: {
+    ...StyleSheet.absoluteFill,
+    overflow: "hidden",
+  },
+  ambientGlowTop: {
+    position: "absolute",
+    width: 280,
+    height: 280,
+    top: -105,
+    left: -100,
+    borderRadius: 140,
+    backgroundColor: "rgba(190, 28, 38, 0.2)",
+    shadowColor: "#dc2626",
+    shadowOpacity: 0.75,
+    shadowRadius: 90,
+  },
+  ambientGlowBottom: {
+    position: "absolute",
+    width: 320,
+    height: 320,
+    right: -140,
+    bottom: -150,
+    borderRadius: 160,
+    backgroundColor: "rgba(135, 20, 30, 0.16)",
+    shadowColor: "#b91c1c",
+    shadowOpacity: 0.7,
+    shadowRadius: 100,
+  },
+  backgroundPlay: {
+    position: "absolute",
+    top: "13%",
+    right: "12%",
+    opacity: 0.7,
+    transform: [{ rotate: "-12deg" }],
+  },
+  backgroundHeadphones: {
+    position: "absolute",
+    top: "28%",
+    left: "7%",
+    opacity: 0.65,
+    transform: [{ rotate: "9deg" }],
+  },
+  backgroundDisc: {
+    position: "absolute",
+    top: "46%",
+    right: "6%",
+    opacity: 0.65,
+    transform: [{ rotate: "18deg" }],
+  },
+  backgroundMusic: {
+    position: "absolute",
+    top: "68%",
+    left: "12%",
+    opacity: 0.65,
+    transform: [{ rotate: "-8deg" }],
+  },
+  backgroundRadio: {
+    position: "absolute",
+    top: "78%",
+    right: "17%",
+    opacity: 0.6,
+    transform: [{ rotate: "-10deg" }],
+  },
+  backgroundTv: {
+    position: "absolute",
+    top: "11%",
+    left: "17%",
+    opacity: 0.55,
+    transform: [{ rotate: "8deg" }],
+  },
+  backgroundClapper: {
+    position: "absolute",
+    top: "53%",
+    left: "4%",
+    opacity: 0.6,
+    transform: [{ rotate: "10deg" }],
   },
   keyboardView: {
     flex: 1,
@@ -1388,31 +1895,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 12,
   },
   card: {
     width: "100%",
     maxWidth: 400,
-    backgroundColor: "#141414",
-    borderRadius: 28,
+    backgroundColor: "rgba(10, 8, 12, 0.55)",
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#262626",
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.45,
-    shadowRadius: 24,
-    elevation: 12,
+    borderColor: "rgba(255,255,255,0.09)",
+    shadowColor: "#dc2626",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 40,
+    elevation: 10,
   },
   header: {
-    paddingTop: 36,
-    paddingBottom: 16,
+    paddingTop: 24,
+    paddingBottom: 12,
     alignItems: "center",
   },
   logoImage: {
-    width: 90,
-    height: 90,
-    marginBottom: 12,
+    width: 80,
+    height: 64,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
@@ -1422,13 +1928,19 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: "row",
     position: "relative",
-    borderBottomWidth: 1,
-    borderBottomColor: "#262626",
+    marginHorizontal: 20,
+    padding: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    backgroundColor: "rgba(255,255,255,0.035)",
   },
   tab: {
     flex: 1,
-    paddingVertical: 16,
+    zIndex: 1,
+    paddingVertical: 9,
     alignItems: "center",
+    borderRadius: 8,
   },
   tabText: {
     fontSize: 15,
@@ -1440,23 +1952,24 @@ const styles = StyleSheet.create({
   },
   tabIndicator: {
     position: "absolute",
-    bottom: 0,
+    top: 2,
+    bottom: 2,
+    zIndex: 0,
     width: "50%",
-    height: 3,
-    backgroundColor: "#ef4444",
-    borderRadius: 3,
+    backgroundColor: "#c81e27",
+    borderRadius: 8,
   },
   formContainer: {
-    padding: 28,
-    paddingTop: 24,
+    padding: 20,
+    paddingTop: 16,
   },
   errorBox: {
     backgroundColor: "rgba(127, 29, 29, 0.35)",
     borderWidth: 1,
     borderColor: "#7f1d1d",
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 18,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   errorText: {
     color: "#fca5a5",
@@ -1496,7 +2009,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   form: {
-    gap: 16,
+    gap: 12,
   },
   inputWrapper: {
     position: "relative",
@@ -1504,23 +2017,27 @@ const styles = StyleSheet.create({
   icon: {
     position: "absolute",
     left: 16,
-    top: 17,
+    top: 13,
     zIndex: 1,
   },
   input: {
-    backgroundColor: "#1a1a1a",
-    borderWidth: 1.5,
-    borderColor: "#2e2e2e",
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 50,
+    backgroundColor: "rgba(255,255,255,0.045)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.11)",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 42,
     color: "#fff",
-    fontSize: 15.5,
+    fontSize: 14,
+  },
+  phonePrefix: {
+    color: "#a1a1aa",
+    fontWeight: "700",
   },
   eyeIcon: {
     position: "absolute",
     right: 16,
-    top: 17,
+    top: 13,
   },
   // OTP Styles
   otpSection: {
@@ -1580,12 +2097,12 @@ const styles = StyleSheet.create({
     color: "#4b5563",
   },
   button: {
-    backgroundColor: "#ef4444",
-    paddingVertical: 16,
-    borderRadius: 16,
+    backgroundColor: "#c81e27",
+    paddingVertical: 11,
+    borderRadius: 11,
     alignItems: "center",
     marginTop: 6,
-    shadowColor: "#ef4444",
+    shadowColor: "#dc2626",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
@@ -1601,7 +2118,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16.5,
+    fontSize: 14,
     fontWeight: "700",
   },
   backButton: {
@@ -1632,29 +2149,57 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   googleButton: {
-    backgroundColor: "#fff",
-    paddingVertical: 15,
-    borderRadius: 16,
+    backgroundColor: "#c81e27",
+    minHeight: 42,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 11,
     alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#e5e5e5",
+    borderColor: "#dc2626",
+    shadowColor: "#dc2626",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  googleButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  googleMark: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "800",
   },
   googleButtonText: {
-    color: "#111",
-    fontSize: 15.5,
+    color: "#fff",
+    fontSize: 14,
     fontWeight: "600",
   },
   toggleContainer: {
-    marginTop: 22,
+    marginTop: 5,
     alignItems: "center",
   },
   toggleText: {
     color: "#9ca3af",
-    fontSize: 14.5,
+    fontSize: 12,
   },
   toggleLink: {
     color: "#ef4444",
-    fontWeight: "700",
+    fontWeight: "600",
+  },
+  authMethodLink: {
+    alignSelf: "center",
+    paddingVertical: 8,
+  },
+  authMethodLinkText: {
+    color: "#9ca3af",
+    fontSize: 12,
+    fontWeight: "500",
   },
   forgotPasswordButton: {
     alignSelf: "flex-end",

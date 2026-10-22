@@ -76,6 +76,9 @@ module.exports = {
       ...(app.expo.extra || {}),
       apiBaseUrl: getEnv("API_BASE_URL"),
       apiSocketBaseUrl: getEnv("API_SOCKET_BASE_URL"),
+      playIntegrityCloudProjectNumber: getEnv(
+        "EXPO_PUBLIC_PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER",
+      ),
       google: {
         webClientId: googleWebClientId,
         androidClientId: googleAndroidClientId,

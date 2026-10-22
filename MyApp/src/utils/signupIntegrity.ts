@@ -12,7 +12,7 @@ export const getSignupIntegrityProof = async () => {
   );
   if (!Number.isSafeInteger(cloudProjectNumber) || cloudProjectNumber <= 0) {
     throw new Error(
-      "Android signup security is not configured. Please update the app and try again later.",
+      "Android signup security is not configured. Set EXPO_PUBLIC_PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER to your linked Google Cloud project number and rebuild the app.",
     );
   }
 
@@ -25,8 +25,13 @@ export const getSignupIntegrityProof = async () => {
     );
   } catch (error) {
     console.error("Could not request Android Play Integrity proof:", error);
+    const isNativeModuleMissing =
+      error instanceof Error &&
+      error.message.includes("Cannot find native module 'PlayIntegrity'");
     throw new Error(
-      "This Android app version cannot complete secure registration. Update the app and try again.",
+      isNativeModuleMissing
+        ? "Play Integrity is not included in this installed app. Expo Go and older app builds are not supported; install a newly rebuilt Android app."
+        : "This Android app version could not complete secure registration. Update the app and try again.",
     );
   }
 
