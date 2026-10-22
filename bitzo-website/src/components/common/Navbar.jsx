@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Menu,
   Search,
@@ -46,6 +46,7 @@ const HINTS_URL = `${API_BASE_URL}/api/uservideo/search/hints`;
 
 export default function Navbar({ toggleSidebar }) {
   const { points } = useRewards();
+  const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const profileUser = useSelector((state) => state.profile?.user);
@@ -87,6 +88,8 @@ export default function Navbar({ toggleSidebar }) {
     (query) => {
       const q = (typeof query === "string" ? query : searchQuery).trim();
       if (!q) return;
+      setSearchQuery("");
+      setHints([]);
       setShowHints(false);
       setIsListening(false);
       setIsMobileSearchOpen(false);
@@ -94,6 +97,14 @@ export default function Navbar({ toggleSidebar }) {
     },
     [searchQuery, navigate],
   );
+
+  useEffect(() => {
+    setSearchQuery("");
+    setHints([]);
+    setShowHints(false);
+    setIsListening(false);
+    setIsMobileSearchOpen(false);
+  }, [location.pathname, location.search]);
 
   // Speech Recognition
   useEffect(() => {
