@@ -588,16 +588,7 @@ export default function Navbar({ toggleSidebar }) {
                   >
                     <User size={20} className="text-gray-300" /> My Profile
                   </button>
-                  <button
-                    onClick={() => {
-                      navigate("/studio");
-                      setIsDropdownOpen(false);
-                    }}
-                    className="w-full px-4 py-2.5 text-left hover:bg-[#272727] flex items-center gap-4 text-sm"
-                  >
-                    <Video size={20} className="text-gray-300" /> VidBuxApp
-                    Studio
-                  </button>
+                  
 
                   {/* Settings sub */}
                   <div>

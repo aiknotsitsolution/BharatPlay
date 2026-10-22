@@ -84,7 +84,6 @@ export default function Profile() {
   const { user, myVideos, historyVideos, loading, error } = useSelector(
     (state) => state.profile,
   );
-
   const [activeTab, setActiveTab] = useState("my-videos");
   const [sortBy, setSortBy] = useState("latest");
   const [selectedVideo, setSelectedVideo] = useState(null);
@@ -119,13 +118,21 @@ export default function Profile() {
     confirmPassword: "",
   });
   const [showPasswords, setShowPasswords] = useState({
-    old: false,
     new: false,
     confirm: false,
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const currentEmail = String(user?.email || "")
+    .trim()
+    .toLowerCase();
+  const editEmail = String(editForm.email || "")
+    .trim()
+    .toLowerCase();
+  const isEditEmailVerified = Boolean(
+    user?.emailVerified && currentEmail && editEmail === currentEmail,
+  );
 
   useEffect(() => {
     dispatch(fetchProfileData());
@@ -269,11 +276,14 @@ export default function Profile() {
       if (!trimmedName) {
         throw new Error("Name cannot be empty");
       }
+      if (
+        !user.emailVerified ||
+        trimmedEmail !== String(user.email || "").trim().toLowerCase()
+      ) {
+        throw new Error("Verify this email address before saving your profile.");
+      }
       if (!user.phone) {
         throw new Error("Add your mobile number before saving your profile.");
-      }
-      if (!user.emailVerified) {
-        throw new Error("Verify your email address before saving your profile.");
       }
       if (
         editForm.phone.trim().replace(/[\s()-]/g, "") !==
@@ -361,10 +371,16 @@ export default function Profile() {
     try {
       setPhoneVerifyLoading(true);
       setEditError(null);
+      const email = String(editForm.email || "")
+        .trim()
+        .toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error("Enter a valid email address.");
+      }
       const response = await authFetch(`${API_BASE}/phone-auth/email/request-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: editForm.email }),
+        body: JSON.stringify({ email }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
@@ -383,10 +399,13 @@ export default function Profile() {
     try {
       setPhoneVerifyLoading(true);
       setEditError(null);
+      const email = String(editForm.email || "")
+        .trim()
+        .toLowerCase();
       const response = await authFetch(`${API_BASE}/phone-auth/email/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: editForm.email, otp: emailOtp }),
+        body: JSON.stringify({ email, otp: emailOtp }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
@@ -394,6 +413,9 @@ export default function Profile() {
       }
       setEmailOtpSent(false);
       setEmailOtp("");
+      if (data.user?.email) {
+        setEditForm((current) => ({ ...current, email: data.user.email }));
+      }
       await dispatch(fetchProfileData());
       toast.success("Email address verified successfully.");
     } catch (err) {
@@ -511,7 +533,7 @@ export default function Profile() {
     });
     setPasswordError(null);
     setPasswordSuccess(false);
-    setShowPasswords({ old: false, new: false, confirm: false });
+    setShowPasswords({ new: false, confirm: false });
   };
 
   const handleRemoveHistory = async (e, videoId) => {
@@ -927,6 +949,7 @@ export default function Profile() {
                 <span className="text-xs text-zinc-400 block mb-1">Email</span>
                 <input
                   type="email"
+                  autoComplete="email"
                   value={editForm.email}
                   onChange={(e) =>
                     {
@@ -938,7 +961,7 @@ export default function Profile() {
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-red-600"
                   placeholder="your@email.com"
                 />
-                {user.emailVerified ? (
+                {isEditEmailVerified ? (
                   <span className="text-xs text-green-400 mt-1 inline-block">
                     Email verified
                   </span>
@@ -948,7 +971,10 @@ export default function Profile() {
                       <button
                         type="button"
                         onClick={requestEmailOtp}
-                        disabled={phoneVerifyLoading || !editForm.email.trim()}
+                        disabled={
+                          phoneVerifyLoading ||
+                          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmail)
+                        }
                         className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs disabled:opacity-50"
                       >
                         {phoneVerifyLoading ? "Sending..." : "Send email code"}
@@ -976,7 +1002,9 @@ export default function Profile() {
                       )}
                     </div>
                     <p className="text-xs text-amber-300">
-                      Verify an email address to continue using your account.
+                      {user.emailVerified
+                        ? "Verify your new email address before saving it."
+                        : "Verify your email address before saving your profile."}
                     </p>
                   </div>
                 )}
@@ -1158,7 +1186,8 @@ export default function Profile() {
                 </span>
                 <div className="relative">
                   <input
-                    type={showPasswords.old ? "text" : "password"}
+                    type="password"
+                    autoComplete="current-password"
                     value={passwordForm.oldPassword}
                     onChange={(e) =>
                       setPasswordForm({
@@ -1166,21 +1195,8 @@ export default function Profile() {
                         oldPassword: e.target.value,
                       })
                     }
-                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 pr-10 focus:outline-none focus:border-red-600"
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-red-600"
                   />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPasswords((p) => ({ ...p, old: !p.old }))
-                    }
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500"
-                  >
-                    {showPasswords.old ? (
-                      <EyeOff size={18} />
-                    ) : (
-                      <EyeIcon size={18} />
-                    )}
-                  </button>
                 </div>
               </div>
 
