@@ -17,6 +17,7 @@ const { setRefreshCookie } = require("../utils/refreshCookie");
 const {
   registerOrVerifyDevice,
   requireAndroidSignupIntegrity,
+  checkDeviceRegistrationAvailability,
 } = require("../services/deviceSecurityService");
 const {
   checkClientHardwareBinding,
@@ -333,6 +334,16 @@ exports.requestPhoneOtp = async (req, res) => {
     }
     let signupCheck = null;
     if (intent === "signup") {
+      const deviceRegistrationCheck =
+        await checkDeviceRegistrationAvailability(req);
+      if (!deviceRegistrationCheck.ok) {
+        return res.status(deviceRegistrationCheck.status).json({
+          success: false,
+          code: deviceRegistrationCheck.code,
+          message: deviceRegistrationCheck.message,
+        });
+      }
+
       signupCheck = await evaluateSignupRequest(req);
       if (!signupCheck.ok) {
         return res.status(signupCheck.status).json({
@@ -393,6 +404,16 @@ exports.verifyPhoneOtp = async (req, res) => {
 
     let signupCheck = null;
     if (intent === "signup") {
+      const deviceRegistrationCheck =
+        await checkDeviceRegistrationAvailability(req);
+      if (!deviceRegistrationCheck.ok) {
+        return res.status(deviceRegistrationCheck.status).json({
+          success: false,
+          code: deviceRegistrationCheck.code,
+          message: deviceRegistrationCheck.message,
+        });
+      }
+
       signupCheck = await evaluateSignupRequest(req);
       if (!signupCheck.ok) {
         return res.status(signupCheck.status).json({

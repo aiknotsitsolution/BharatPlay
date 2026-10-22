@@ -42,6 +42,7 @@ const { logAuditEvent } = require("../services/auditEventService");
 const {
   registerOrVerifyDevice,
   requireAndroidSignupIntegrity,
+  checkDeviceRegistrationAvailability,
 } = require("../services/deviceSecurityService");
 const {
   checkClientHardwareBinding,
@@ -207,6 +208,16 @@ exports.registerUser = async (req, res) => {
     }
     const { ipHash, vpnInfo } = signupCheck;
 
+    const deviceRegistrationCheck =
+      await checkDeviceRegistrationAvailability(req);
+    if (!deviceRegistrationCheck.ok) {
+      return res.status(deviceRegistrationCheck.status).json({
+        success: false,
+        code: deviceRegistrationCheck.code,
+        message: deviceRegistrationCheck.message,
+      });
+    }
+
     if (platform === "app") {
       const integrityCheck = await requireAndroidSignupIntegrity(req);
       if (!integrityCheck.ok) {
@@ -240,14 +251,6 @@ exports.registerUser = async (req, res) => {
     }
     if (!deviceCheck.legacy && deviceCheck.deviceId) {
       deviceId = deviceCheck.deviceId;
-    }
-
-    const deviceExists = await User.findOne({ deviceId });
-    if (deviceExists) {
-      return res.status(400).json({
-        success: false,
-        message: "This device is already registered",
-      });
     }
 
     const userExists = await User.findOne({ email: normalizedEmail });
@@ -1068,6 +1071,16 @@ exports.googleLogin = async (req, res) => {
 
     let signupCheck = null;
     if (!user) {
+      const deviceRegistrationCheck =
+        await checkDeviceRegistrationAvailability(req);
+      if (!deviceRegistrationCheck.ok) {
+        return res.status(deviceRegistrationCheck.status).json({
+          success: false,
+          code: deviceRegistrationCheck.code,
+          message: deviceRegistrationCheck.message,
+        });
+      }
+
       signupCheck = await evaluateSignupRequest(req);
       if (!signupCheck.ok) {
         return res.status(signupCheck.status).json({

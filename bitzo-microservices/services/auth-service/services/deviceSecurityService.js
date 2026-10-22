@@ -249,6 +249,25 @@ async function requireAndroidSignupIntegrity(req) {
   return { ok: true };
 }
 
+async function checkDeviceRegistrationAvailability(req) {
+  const signals = getDeviceSignals(req.body);
+  const deviceId =
+    signals.hardwareId || String(req.cookies?.device_id || "").trim();
+  if (!deviceId || !isValidIdentifier(deviceId)) return { ok: true };
+
+  const existingUser = await User.findOne({ deviceId }).select("_id").lean();
+  if (existingUser) {
+    return {
+      ok: false,
+      status: 409,
+      code: "DEVICE_ALREADY_REGISTERED",
+      message: "This device already has an account. Please log in instead.",
+    };
+  }
+
+  return { ok: true };
+}
+
 async function registerOrVerifyDevice({ req, userId = null }) {
   const signals = getDeviceSignals(req.body);
   const deviceId =
@@ -369,6 +388,7 @@ module.exports = {
   verifyHmacRequest,
   verifyPlayIntegrity,
   requireAndroidSignupIntegrity,
+  checkDeviceRegistrationAvailability,
   registerOrVerifyDevice,
   serverVirtualCheck,
 };
