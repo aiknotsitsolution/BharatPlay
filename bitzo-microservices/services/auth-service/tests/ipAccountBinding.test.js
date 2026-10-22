@@ -81,7 +81,7 @@ describe("IP-to-account binding", () => {
     });
   });
 
-  test("claims the public IP for the account after successful authentication", async () => {
+  test("claims the public IP for the account after successful registration", async () => {
     IpAccountBinding.create.mockResolvedValue({});
 
     await expect(
