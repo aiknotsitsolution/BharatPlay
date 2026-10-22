@@ -115,7 +115,7 @@ export default function Navbar({ onMenuPress, points = 0 }) {
         if (token) {
           fetchProfile(token);
         } else {
-          redirectToLogin();
+          setUser(null);
         }
       });
       return () => {

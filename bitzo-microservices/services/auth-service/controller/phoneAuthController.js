@@ -604,10 +604,16 @@ exports.verifyEmailBindingOtp = async (req, res) => {
       purpose: "email-binding",
       code,
     });
-    if (!verified.ok || String(verified.record?.userId) !== String(req.user.id)) {
-      return res.status(401).json({
+    if (!verified.ok) {
+      return res.status(400).json({
         success: false,
-        message: verified.message || "Invalid verification session.",
+        message: verified.message || "Invalid verification code.",
+      });
+    }
+    if (String(verified.record?.userId) !== String(req.user.id)) {
+      return res.status(403).json({
+        success: false,
+        message: "This verification code belongs to another account.",
       });
     }
     const user = await User.findByIdAndUpdate(

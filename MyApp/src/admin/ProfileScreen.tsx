@@ -142,6 +142,11 @@ export function ProfileScreen() {
   const [phoneVerifyLoading, setPhoneVerifyLoading] = useState(false);
   const [emailOtp, setEmailOtp] = useState("");
   const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const currentEmail = String(user?.email || "").trim().toLowerCase();
+  const editEmail = String(editForm.email || "").trim().toLowerCase();
+  const isEditEmailVerified = Boolean(
+    user?.emailVerified && currentEmail && editEmail === currentEmail,
+  );
 
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
@@ -674,6 +679,8 @@ export function ProfileScreen() {
     setAvatarUri(null);
     setPhoneOtp("");
     setPhoneOtpSent(false);
+    setEmailOtp("");
+    setEmailOtpSent(false);
     setEditError(null);
     setIsEditOpen(true);
     void hydrateDeviceInformation(timezone);
@@ -733,6 +740,45 @@ export function ProfileScreen() {
     }
   };
 
+  const fetchWithEmailAuth = async (
+    path: string,
+    token: string,
+    options: Omit<RequestInit, "headers"> & {
+      headers?: Record<string, string>;
+    },
+  ) => {
+    const request = (accessToken: string) =>
+      fetch(`${API_BASE}${path}`, {
+        ...options,
+        credentials: "include",
+        headers: {
+          ...options.headers,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+    const response = await request(token);
+    if (response.status !== 401) return response;
+
+    const errorData = await response.clone().json().catch(() => ({}));
+    if (errorData.message !== "Unauthorized - Invalid or expired token") {
+      return response;
+    }
+
+    const refreshResponse = await fetch(`${API_BASE}/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    const refreshData = await refreshResponse.json().catch(() => ({}));
+    if (!refreshResponse.ok || !refreshData.success || !refreshData.token) {
+      return response;
+    }
+
+    const refreshedToken = String(refreshData.token);
+    await AsyncStorage.setItem("token", refreshedToken);
+    return request(refreshedToken);
+  };
+
   const requestEmailOtp = async () => {
     const email = editForm.email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -744,14 +790,18 @@ export function ProfileScreen() {
       setEditError(null);
       const token = await AsyncStorage.getItem("token");
       if (!token) throw new Error("Please login again.");
-      const response = await fetch(`${API_BASE}/phone-auth/email/request-otp`, {
-        method: "POST",
-        headers: {
+      const response = await fetchWithEmailAuth(
+        "/phone-auth/email/request-otp",
+        token,
+        {
+          method: "POST",
+          headers: {
           "Content-Type": "application/json",
           Authorization: `******`,
         },
-        body: JSON.stringify({ email }),
-      });
+          body: JSON.stringify({ email }),
+        },
+      );
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Could not send email verification code.");
@@ -776,17 +826,21 @@ export function ProfileScreen() {
       setEditError(null);
       const token = await AsyncStorage.getItem("token");
       if (!token) throw new Error("Please login again.");
-      const response = await fetch(`${API_BASE}/phone-auth/email/verify-otp`, {
-        method: "POST",
-        headers: {
+      const response = await fetchWithEmailAuth(
+        "/phone-auth/email/verify-otp",
+        token,
+        {
+          method: "POST",
+          headers: {
           "Content-Type": "application/json",
           Authorization: `******`,
         },
-        body: JSON.stringify({
-          email: editForm.email.trim().toLowerCase(),
-          otp: emailOtp,
-        }),
-      });
+          body: JSON.stringify({
+            email: editForm.email.trim().toLowerCase(),
+            otp: emailOtp,
+          }),
+        },
+      );
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Invalid email verification code.");
@@ -794,7 +848,7 @@ export function ProfileScreen() {
       setUser((previous) => ({
         ...previous,
         email: data.user?.email || editForm.email.trim().toLowerCase(),
-        emailVerified: true,
+        emailVerified: Boolean(data.user?.emailVerified ?? true),
       }));
       setEditForm((previous) => ({
         ...previous,
@@ -921,7 +975,7 @@ export function ProfileScreen() {
       if (!user.phoneVerified) {
         throw new Error("Verify your mobile number before saving your profile.");
       }
-      if (!user.emailVerified) {
+      if (!isEditEmailVerified) {
         throw new Error("Verify your email address before saving your profile.");
       }
       if (phoneChanged) {
@@ -1058,6 +1112,8 @@ export function ProfileScreen() {
     setAvatarBase64(null);
     setPhoneOtp("");
     setPhoneOtpSent(false);
+    setEmailOtp("");
+    setEmailOtpSent(false);
   };
 
   const handlePasswordSubmit = async () => {
@@ -1853,16 +1909,19 @@ export function ProfileScreen() {
                 <TextInput
                   style={[styles.input, { flex: 1, marginBottom: 0 }]}
                   value={editForm.email}
-                  onChangeText={(email) =>
-                    setEditForm((previous) => ({ ...previous, email }))
-                  }
+                  onChangeText={(email) => {
+                    setEditForm((previous) => ({ ...previous, email }));
+                    setEmailOtp("");
+                    setEmailOtpSent(false);
+                    setEditError(null);
+                  }}
                   placeholder="your@email.com"
                   placeholderTextColor="#71717a"
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  editable={!user.emailVerified && !phoneVerifyLoading}
+                  editable={!phoneVerifyLoading && !editLoading}
                 />
-                {user.emailVerified ? (
+                {isEditEmailVerified ? (
                   <View style={styles.verifiedBadge}>
                     <ShieldCheck size={14} color="#4ade80" />
                     <Text style={styles.verifiedText}>Verified</Text>
@@ -1887,7 +1946,7 @@ export function ProfileScreen() {
                   </TouchableOpacity>
                 )}
               </View>
-              {!user.emailVerified && emailOtpSent ? (
+              {!isEditEmailVerified && emailOtpSent ? (
                 <View style={styles.phoneOtpRow}>
                   <TextInput
                     style={[styles.input, styles.phoneOtpInput]}
@@ -1914,9 +1973,9 @@ export function ProfileScreen() {
                   </TouchableOpacity>
                 </View>
               ) : null}
-              {!user.emailVerified ? (
+              {!isEditEmailVerified ? (
                 <Text style={styles.metadataHint}>
-                  Email verification is required to use your account.
+                  Verify this email address before saving your profile.
                 </Text>
               ) : null}
 

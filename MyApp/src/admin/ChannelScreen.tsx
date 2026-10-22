@@ -22,9 +22,8 @@ import {
   Play,
   Users,
   Search,
-  Home,
-  User,
 } from "lucide-react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -33,7 +32,6 @@ import { showToast } from "../utils/notifications";
 import Navbar from "./Navbar";
 import { useRoute } from "@react-navigation/native";
 import {
-  SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 const { width } = Dimensions.get("window");
@@ -638,7 +636,7 @@ export default function ChannelScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Navbar onMenuPress={() => {}} points={0} />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -1215,18 +1213,26 @@ export default function ChannelScreen({ navigation }) {
       {route.name !== "Create" && (
         <ChannelBottomTabs navigation={navigation} insets={insets} />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 function ChannelBottomTabs({ navigation, insets }) {
   const tabs = [
-    { label: "Home", icon: Home, screen: "Home" },
-    { label: "Shorts", icon: Play, screen: "Shorts" },
-    { label: "Create", icon: Plus, screen: "Create", center: true },
-    { label: "Subscribe", icon: Users, screen: "Subscribe" },
-    { label: "You", icon: User, screen: "You" },
-  ];
+    { label: "Home", screen: "Home", center: false },
+    {
+      label: "Shorts",
+      screen: "Shorts",
+      center: false,
+    },
+    { label: "Create", screen: "Create", center: true },
+    {
+      label: "Subscribe",
+      screen: "Subscribe",
+      center: false,
+    },
+    { label: "You", screen: "You", center: false },
+  ] as const;
 
   return (
     <View
@@ -1239,7 +1245,6 @@ function ChannelBottomTabs({ navigation, insets }) {
       ]}
     >
       {tabs.map((tab) => {
-        const Icon = tab.icon;
         return (
           <TouchableOpacity
             key={tab.label}
@@ -1251,11 +1256,26 @@ function ChannelBottomTabs({ navigation, insets }) {
           >
             {tab.center ? (
               <View style={styles.bottomCenterButton}>
-                <Icon size={26} color="#fff" strokeWidth={2.5} />
+                <Ionicons name="add" size={28} color="#fff" />
               </View>
-            ) : (
-              <Icon size={22} color="#a1a1aa" strokeWidth={1.8} />
-            )}
+            ) : tab.label === "You" ? (
+              <Image
+                source={{ uri: "https://i.pravatar.cc/150?img=12" }}
+                style={styles.bottomProfileImage}
+              />
+            ) : tab.label === "Home" ? (
+              <Ionicons name="home-outline" size={24} color="#a1a1aa" />
+            ) : tab.label === "Shorts" || tab.label === "Subscribe" ? (
+                <MaterialCommunityIcons
+                  name={
+                    tab.label === "Shorts"
+                      ? "movie-open-play-outline"
+                      : "youtube-subscription"
+                  }
+                  size={26}
+                  color="#a1a1aa"
+                />
+            ) : null}
             <Text
               style={[
                 styles.bottomTabLabel,
@@ -1316,6 +1336,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ef4444",
+  },
+  bottomProfileImage: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
   },
   bottomTabLabel: {
     color: "#a1a1aa",

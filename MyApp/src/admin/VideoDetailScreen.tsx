@@ -744,7 +744,7 @@ export default function VideoDetailScreen() {
   const handleLike = async () => {
     const token = await AsyncStorage.getItem("token");
     if (!token) {
-      showToast("error", "Login required", "Please login to like this video.");
+      navigation.navigate("Login");
       return;
     }
     try {
@@ -782,11 +782,7 @@ export default function VideoDetailScreen() {
   const handleDislike = async () => {
     const token = await AsyncStorage.getItem("token");
     if (!token) {
-      showToast(
-        "error",
-        "Login required",
-        "Please login to dislike this video.",
-      );
+      navigation.navigate("Login");
       return;
     }
     try {
@@ -828,11 +824,7 @@ export default function VideoDetailScreen() {
   const handleWatchLater = async () => {
     const token = await AsyncStorage.getItem("token");
     if (!token) {
-      showToast(
-        "error",
-        "Login required",
-        "Please login to use Watch Later.",
-      );
+      navigation.navigate("Login");
       return;
     }
 
@@ -879,7 +871,7 @@ export default function VideoDetailScreen() {
 
     const token = await AsyncStorage.getItem("token");
     if (!token) {
-      showToast("error", "Login required", "Please login to subscribe.");
+      navigation.navigate("Login");
       return;
     }
 
@@ -927,7 +919,7 @@ export default function VideoDetailScreen() {
     if (!commentText.trim() || !routeId) return;
     const token = await AsyncStorage.getItem("token");
     if (!token) {
-      showToast("error", "Login required", "Please login to comment.");
+      navigation.navigate("Login");
       return;
     }
     try {

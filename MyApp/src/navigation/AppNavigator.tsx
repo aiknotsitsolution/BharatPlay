@@ -107,7 +107,7 @@ export default function AppNavigator() {
       <Stack.Navigator
         key={hasSession ? "authenticated" : "guest"}
         id="RootStack"
-        initialRouteName={hasSession ? "AdminPanel" : "Login"}
+        initialRouteName="AdminPanel"
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="Login">

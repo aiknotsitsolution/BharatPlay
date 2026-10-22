@@ -74,13 +74,11 @@ router.post("/phone-auth/migrate", registerLimiter, startLegacyMigration);
 router.post("/phone-auth/migrate/verify", loginLimiter, verifyLegacyMigration);
 router.post(
   "/phone-auth/email/request-otp",
-  forgotPasswordLimiter,
   authMiddleware,
   requestEmailBindingOtp,
 );
 router.post(
   "/phone-auth/email/verify-otp",
-  verifyResetOtpLimiter,
   authMiddleware,
   verifyEmailBindingOtp,
 );

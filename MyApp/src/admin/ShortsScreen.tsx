@@ -723,8 +723,7 @@ export default function ShortsScreen() {
     const token = await AsyncStorage.getItem("token");
 
     if (!token) {
-      showToast("error", "Login Required", "Please login to like this short.");
-
+      navigation.navigate("Login");
       return;
     }
 
@@ -936,8 +935,7 @@ export default function ShortsScreen() {
     const token = await AsyncStorage.getItem("token");
 
     if (!token) {
-      showToast("error", "Login Required", "Please login to subscribe.");
-
+      navigation.navigate("Login");
       return;
     }
 
@@ -1051,8 +1049,7 @@ export default function ShortsScreen() {
     const token = await AsyncStorage.getItem("token");
 
     if (!token) {
-      showToast("error", "Login Required", "Please login to comment.");
-
+      navigation.navigate("Login");
       return;
     }
 

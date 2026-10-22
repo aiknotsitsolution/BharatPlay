@@ -510,6 +510,7 @@ export default function DashboardScreen() {
     const requestId = ++loadRequestIdRef.current;
     try {
       setLoading(true);
+      const token = await AsyncStorage.getItem("token");
       const [
         allRecommended,
         allTrending,
@@ -523,7 +524,7 @@ export default function DashboardScreen() {
         fetchAllCategoryPages("latest", selectedCategoryId),
         fetchAllCategoryPages("trending-shorts", selectedCategoryId),
         fetchAllCategoryPages("top-shorts", selectedCategoryId),
-        fetchWithAuth("subscribed-channels"),
+        token ? fetchWithAuth("subscribed-channels") : Promise.resolve([]),
       ]);
       if (requestId !== loadRequestIdRef.current) return;
 
