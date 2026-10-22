@@ -33,6 +33,10 @@ import { showToast } from "../utils/notifications";
 // import LogoutWarningModal from "../components/LogoutWarningModal";
 import LogoutWarningModal from "../components/LogoutWarningModal";
 import {
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
+import {
   Eye,
   Clock,
   IndianRupee,
@@ -40,9 +44,7 @@ import {
   Lock,
   EyeOff,
   ChevronRight,
-  Home,
   Play,
-  Plus as PlusIcon,
   ThumbsUp,
   MoreVertical,
   Settings,
@@ -54,7 +56,6 @@ import {
   ArrowLeft,
   LogOut,
   User,
-  Users,
   HelpCircle,
   ShieldCheck,
   Phone,
@@ -2290,11 +2291,11 @@ export function ProfileScreen() {
 
 function ProfileBottomTabs({ navigation, insets }) {
   const tabs = [
-    { label: "Home", icon: Home, screen: "Home" },
-    { label: "Shorts", icon: Play, screen: "Shorts" },
-    { label: "Create", icon: PlusIcon, screen: "Create", center: true },
-    { label: "Subscribe", icon: Users, screen: "Subscribe" },
-    { label: "You", icon: User, screen: "You" },
+    { label: "Home", screen: "Home" },
+    { label: "Shorts", screen: "Shorts" },
+    { label: "Create", screen: "Create", center: true },
+    { label: "Subscriptions", screen: "Subscribe" },
+    { label: "You", screen: "You" },
   ];
 
   return (
@@ -2308,7 +2309,6 @@ function ProfileBottomTabs({ navigation, insets }) {
       ]}
     >
       {tabs.map((tab) => {
-        const Icon = tab.icon;
         return (
           <TouchableOpacity
             key={tab.label}
@@ -2320,13 +2320,26 @@ function ProfileBottomTabs({ navigation, insets }) {
           >
             {tab.center ? (
               <View style={styles.profileCenterButton}>
-                <Icon size={28} color="#fff" strokeWidth={2.5} />
+                <Ionicons name="add" size={28} color="#fff" />
               </View>
+            ) : tab.label === "Home" ? (
+              <Ionicons name="home-outline" size={24} color="#a1a1aa" />
+            ) : tab.label === "Shorts" ? (
+              <MaterialCommunityIcons
+                name="movie-open-play-outline"
+                size={26}
+                color="#a1a1aa"
+              />
+            ) : tab.label === "Subscriptions" ? (
+              <MaterialCommunityIcons
+                name="youtube-subscription"
+                size={26}
+                color="#a1a1aa"
+              />
             ) : (
-              <Icon
-                size={22}
-                color={tab.label === "You" ? "#fff" : "#a1a1aa"}
-                strokeWidth={tab.label === "You" ? 2.8 : 1.8}
+              <Image
+                source={{ uri: "https://i.pravatar.cc/150?img=12" }}
+                style={styles.profileImage}
               />
             )}
             <Text
@@ -2385,11 +2398,18 @@ const styles = StyleSheet.create({
   },
   profileTabLabel: {
     color: "#a1a1aa",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "500",
-    marginBottom: 4,
+    marginBottom: Platform.OS === "ios" ? 0 : 4,
   },
   profileTabLabelActive: { color: "#fff" },
+  profileImage: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.8,
+    borderColor: "#ffffff",
+  },
   center: {
     flex: 1,
     backgroundColor: "#0f0f0f",
