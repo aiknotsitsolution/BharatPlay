@@ -59,7 +59,9 @@ async function printStatus(statuses) {
   services.forEach(([name, directory, port], index) => {
     const healthy = statuses[index];
     const status = healthy ? "RUNNING" : "UNHEALTHY";
-    console.log(`[${name}] PORT=${port} ${status} http://localhost:${port}`);
+    console.log(
+      `[${name}] PORT=${port} ${status} http://192.168.1.20:5173/:${port}`,
+    );
   });
   console.log("");
 }
@@ -87,7 +89,6 @@ async function startServices() {
       console.log(`[${name}] already running on port ${port}`);
       continue;
     }
-    
 
     // Keep the all-services runner stable while Morgan logs every API hit.
     // Restart the affected service manually when code changes need loading.
@@ -117,7 +118,6 @@ async function startServices() {
     console.error("Status check failed:", error),
   );
 }
-
 
 function shutdown() {
   if (shuttingDown) return;

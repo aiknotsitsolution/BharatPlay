@@ -1,5 +1,14 @@
 jest.mock("../models/usermodel", () => ({
-  collection: { createIndex: jest.fn().mockResolvedValue("index") },
+  collection: {
+    indexes: jest.fn().mockResolvedValue([
+      {
+        name: "uniq_signup_ip_hash",
+        key: { signupIpHash: 1 },
+        unique: true,
+      },
+    ]),
+    dropIndex: jest.fn().mockResolvedValue("uniq_signup_ip_hash"),
+  },
   findOne: jest.fn(),
 }));
 
@@ -9,21 +18,13 @@ jest.mock("../services/vpn.service/vpn.service", () => ({
   isLocalOrPrivateIp: jest.fn(),
 }));
 
-jest.mock("../services/ipAccountBindingService", () => ({
-  checkIpAccountBinding: jest.fn(),
-}));
-
 const User = require("../models/usermodel");
 const {
   detectVPN,
   getClientIp,
   isLocalOrPrivateIp,
 } = require("../services/vpn.service/vpn.service");
-const { checkIpAccountBinding } = require("../services/ipAccountBindingService");
-const {
-  evaluateSignupRequest,
-  isSignupIpDuplicateError,
-} = require("../services/signupPolicy");
+const { evaluateSignupRequest } = require("../services/signupPolicy");
 
 const availableVpnResult = {
   ip: "8.8.8.8",
@@ -37,7 +38,7 @@ const userQuery = (result) => ({
   lean: jest.fn().mockResolvedValue(result),
 });
 
-describe("strict signup IP policy", () => {
+describe("signup IP policy", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.NODE_ENV = "test";
@@ -46,7 +47,6 @@ describe("strict signup IP policy", () => {
     isLocalOrPrivateIp.mockReturnValue(false);
     detectVPN.mockResolvedValue(availableVpnResult);
     User.findOne.mockReturnValue(userQuery(null));
-    checkIpAccountBinding.mockResolvedValue({ ok: true });
   });
 
   test("rejects requests without a public IP", async () => {
@@ -60,7 +60,7 @@ describe("strict signup IP policy", () => {
     expect(detectVPN).not.toHaveBeenCalled();
   });
 
-  test("allows localhost signup in development after checking account binding", async () => {
+  test("allows localhost signup in development", async () => {
     process.env.NODE_ENV = "development";
     getClientIp.mockReturnValue("127.0.0.1");
     isLocalOrPrivateIp.mockReturnValue(true);
@@ -69,26 +69,10 @@ describe("strict signup IP policy", () => {
       ok: true,
       ip: null,
       ipHash: null,
+      vpnInfo: null,
       skipped: true,
     });
     expect(detectVPN).not.toHaveBeenCalled();
-    expect(User.findOne).not.toHaveBeenCalled();
-    expect(checkIpAccountBinding).toHaveBeenCalledWith({});
-  });
-
-  test("blocks signup when the IP is already bound to a logged-in account", async () => {
-    checkIpAccountBinding.mockResolvedValue({
-      ok: false,
-      status: 403,
-      code: "IP_ACCOUNT_BINDING_VIOLATION",
-      message: "This public network is already linked to a different account.",
-    });
-
-    await expect(evaluateSignupRequest({})).resolves.toMatchObject({
-      ok: false,
-      status: 403,
-      code: "IP_ACCOUNT_BINDING_VIOLATION",
-    });
     expect(User.findOne).not.toHaveBeenCalled();
   });
 
@@ -118,14 +102,19 @@ describe("strict signup IP policy", () => {
     });
   });
 
-  test("blocks an IP already associated with an account", async () => {
+  test("allows signup from an IP already used by another account", async () => {
     User.findOne.mockReturnValue(userQuery({ _id: "existing-user" }));
 
-    await expect(evaluateSignupRequest({})).resolves.toMatchObject({
-      ok: false,
-      status: 409,
-      code: "SIGNUP_IP_ALREADY_USED",
-    });
+    const firstDevice = await evaluateSignupRequest({});
+    const secondDevice = await evaluateSignupRequest({});
+
+    expect(firstDevice).toMatchObject({ ok: true, ip: "8.8.8.8" });
+    expect(secondDevice).toMatchObject({ ok: true, ip: "8.8.8.8" });
+    expect(firstDevice.ipHash).toBe(secondDevice.ipHash);
+    expect(User.findOne).not.toHaveBeenCalled();
+    expect(User.collection.dropIndex).toHaveBeenCalledWith(
+      "uniq_signup_ip_hash",
+    );
   });
 
   test("returns a stable hash for a new, verified IP", async () => {
@@ -134,15 +123,5 @@ describe("strict signup IP policy", () => {
       ip: "8.8.8.8",
       ipHash: expect.stringMatching(/^[a-f0-9]{64}$/),
     });
-  });
-
-  test("identifies unique-index conflicts caused by simultaneous signups", () => {
-    expect(
-      isSignupIpDuplicateError({
-        code: 11000,
-        keyPattern: { signupIpHash: 1 },
-      }),
-    ).toBe(true);
-    expect(isSignupIpDuplicateError({ code: 11000, keyPattern: { email: 1 } })).toBeFalsy();
   });
 });

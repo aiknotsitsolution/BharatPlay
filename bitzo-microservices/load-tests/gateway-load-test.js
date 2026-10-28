@@ -18,7 +18,7 @@ export const options = {
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || "http://localhost:4000";
+const BASE_URL = __ENV.BASE_URL || "http://192.168.1.20:5173/:4000";
 
 export default function () {
   // 1. Health check

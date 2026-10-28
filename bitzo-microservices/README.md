@@ -175,12 +175,12 @@ Configure active ad networks with VAST tags containing a playable `MediaFile`;
 feed ads are skipped when inventory is unavailable or the VAST response has no
 supported video media.
 
-For local frontend development, Compose defaults `CORS_ORIGINS` to
-`http://localhost:5173,http://localhost:5174` (the website and admin Vite
-ports). This lets the stack start locally without weakening the origin
-allowlist. For deployment, explicitly set `CORS_ORIGINS` to the comma-separated
-HTTPS origins of the deployed frontend and admin panel; do not use the local
-default in production.
+For local frontend development, Compose defaults `CORS_ORIGINS` to the
+localhost website/admin origins and `http://${LAN_HOST_IP}:5173`. The LAN host
+IP defaults to `192.168.1.20`; set `LAN_HOST_IP` to the development computer's
+current LAN address if it changes. For deployment, explicitly set
+`CORS_ORIGINS` to the comma-separated HTTPS origins of the deployed frontend
+and admin panel; do not use the local default in production.
 
 The gateway is published only on `127.0.0.1:4000`. Put it behind a
 TLS-terminating reverse proxy on the host and point the frontend to that HTTPS
@@ -193,18 +193,23 @@ sign-in. If your deployment uses a different number of trusted proxies, set
 `TRUST_PROXY_HOPS` to that positive hop count for the auth service; never use
 untrusted client-supplied forwarding headers as a substitute.
 
-For local Android/iOS testing on a physical device, the Expo app discovers the
-Metro host and uses port `4000`. Keep the phone and development computer on the
-same network, allow inbound TCP port `4000` in the computer's firewall, and
-start Compose with the gateway bound to the LAN interfaces:
+For website or Android/iOS testing from a device on the local network, keep the
+device and development computer on the same network. Allow inbound TCP ports
+`4000` and `5173` in the computer's firewall. The website Vite dev server
+automatically targets port `4000` on the hostname used to open the website.
+Start Compose with the gateway bound to the LAN interfaces:
 
 ```powershell
 $env:GATEWAY_BIND_ADDRESS = "0.0.0.0"
+$env:LAN_HOST_IP = "192.168.1.20"
 docker compose up --build -d
 ```
 
-Unset `GATEWAY_BIND_ADDRESS` when LAN access is not needed; the default bind is
-loopback-only. For production app builds, set
+Start the website with `npm run dev`, then open
+`http://192.168.1.20:5173` on the development computer or another device on
+the same network. Replace the IP with the development computer's current LAN
+address when needed. Unset `GATEWAY_BIND_ADDRESS` when LAN access is not
+needed; the default bind is loopback-only. For production app builds, set
 `EXPO_PUBLIC_API_BASE_URL` to the deployed HTTPS API origin.
 
 ```bash
@@ -225,11 +230,11 @@ and cloud-provider credentials before deploying, and revoke the old values.
 
 ## Frontend changes needed
 
-None, if you point your frontend at the gateway (`http://localhost:4000`)
+None, if you point your frontend at the gateway (`http://192.168.1.20:5173/:4000`)
 instead of the old monolith's URL — every route path is unchanged
 (`/api/...`, `/v1/player/...`, `/test-vpn`). If your frontend currently
-talks to `http://localhost:8000` directly, just change that base URL to
-`http://localhost:4000`.
+talks to `http://192.168.1.20:5173/:8000` directly, just change that base URL to
+`http://192.168.1.20:5173/:4000`.
 
 ## Operational notes
 

@@ -27,11 +27,7 @@ const {
   detectVPN,
   getClientIp,
 } = require("../services/vpn.service/vpn.service.js");
-const {
-  evaluateSignupRequest,
-  isSignupIpDuplicateError,
-} = require("../services/signupPolicy");
-const { claimIpAccountBinding } = require("../services/ipAccountBindingService");
+const { evaluateSignupRequest } = require("../services/signupPolicy");
 const {
   logFraudEvent,
   analyzeBehavior,
@@ -179,8 +175,158 @@ exports.registerUser = async (req, res) => {
     }
 
     let deviceId = resolveDeviceId(req, res);
+    const registrationDeviceId = String(
+      req.body.Hardware_ID || req.body.hardwareId || deviceId,
+    ).trim();
     const ip = getClientIp(req);
     const ua = req.headers["user-agent"] || "unknown";
+
+    const previousRegistration = registrationDeviceId
+      ? await User.findOne({
+          deviceId: registrationDeviceId,
+          email: normalizedEmail,
+        }).select("+password")
+      : null;
+
+    if (previousRegistration) {
+      if (
+        (previousRegistration.status &&
+          previousRegistration.status !== "active") ||
+        !(await bcrypt.compare(password, previousRegistration.password))
+      ) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid email or password",
+        });
+      }
+
+      const hardwareBindingCheck = await checkClientHardwareBinding({
+        clientHardwareUuid: req.body.clientHardwareUuid,
+        userId: previousRegistration._id,
+      });
+      if (!hardwareBindingCheck.ok) {
+        return res.status(hardwareBindingCheck.status).json({
+          success: false,
+          code: hardwareBindingCheck.code,
+          message: hardwareBindingCheck.message,
+        });
+      }
+
+      if (!otp) {
+        const otpCode = await issueOtpToDevice({
+          deviceId: registrationDeviceId,
+          user: previousRegistration,
+          purpose: "register",
+        });
+
+        return res.status(200).json({
+          success: true,
+          requiresOtp: true,
+          message: "Email OTP has been sent. Verify it to finish registration.",
+          otpCode: process.env.NODE_ENV !== "production" ? otpCode : undefined,
+        });
+      }
+
+      const fingerprintRecord = await DeviceFingerprint.findOne({
+        deviceId: registrationDeviceId,
+      });
+      if (
+        !fingerprintRecord ||
+        !fingerprintRecord.pendingOtp ||
+        fingerprintRecord.otpPurpose !== "register" ||
+        fingerprintRecord.pendingOtpEmail !== normalizedEmail
+      ) {
+        return res.status(401).json({
+          success: false,
+          message: "OTP session expired. Please register again.",
+        });
+      }
+
+      const otpMatches =
+        String(fingerprintRecord.pendingOtp) === String(otp);
+      const otpExpired =
+        !fingerprintRecord.otpExpiresAt ||
+        new Date(fingerprintRecord.otpExpiresAt).getTime() < Date.now();
+      if (!otpMatches || otpExpired) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid or expired OTP.",
+        });
+      }
+
+      const hardwareBinding = await bindClientHardwareUuid({
+        clientHardwareUuid: req.body.clientHardwareUuid,
+        userId: previousRegistration._id,
+      });
+      if (!hardwareBinding.ok) {
+        return res.status(hardwareBinding.status).json({
+          success: false,
+          code: hardwareBinding.code,
+          message: hardwareBinding.message,
+        });
+      }
+
+      const deviceCheck = await registerOrVerifyDevice({
+        req,
+        userId: previousRegistration._id,
+      });
+      if (!deviceCheck.ok) {
+        return res.status(deviceCheck.status).json({
+          success: false,
+          code: deviceCheck.code,
+          message: deviceCheck.message,
+        });
+      }
+
+      await DeviceFingerprint.updateOne(
+        { deviceId: registrationDeviceId },
+        {
+          $set: {
+            userId: previousRegistration._id,
+            lastIp: ip,
+            userAgent: ua,
+            lastSeen: new Date(),
+          },
+          $addToSet: { associatedUsers: previousRegistration._id },
+          $unset: {
+            pendingOtp: 1,
+            otpExpiresAt: 1,
+            otpPurpose: 1,
+            pendingOtpEmail: 1,
+          },
+        },
+      );
+
+      const token = signAccessToken({
+        userId: previousRegistration._id,
+        role: previousRegistration.role,
+        deviceId: registrationDeviceId,
+      });
+      const refreshToken = await createAuthSession(
+        previousRegistration._id,
+        "user",
+      );
+      setRefreshCookie(res, refreshToken, "user");
+
+      return res.status(201).json({
+        success: true,
+        message: "Registration completed successfully",
+        token,
+        user: {
+          _id: previousRegistration._id,
+          name: previousRegistration.name,
+          email: previousRegistration.email,
+          phone: previousRegistration.phone,
+          phoneVerified: previousRegistration.phoneVerified,
+          emailVerified: previousRegistration.emailVerified,
+          role: previousRegistration.role,
+          trustScore: previousRegistration.trustScore,
+          avatar: previousRegistration.avatar || null,
+          platform: previousRegistration.platform,
+          needsPhoneBinding: !previousRegistration.phone,
+        },
+      });
+    }
 
     const signupCheck = await evaluateSignupRequest(req);
     if (!signupCheck.ok) {
@@ -367,20 +513,6 @@ exports.registerUser = async (req, res) => {
         },
       );
 
-      const ipBinding = await claimIpAccountBinding(req, user._id);
-      if (!ipBinding.ok) {
-        await User.deleteOne({ _id: user._id });
-        await Device.updateOne(
-          { device_id: deviceId, linked_user_id: user._id },
-          { $set: { linked_user_id: null } },
-        );
-        return res.status(ipBinding.status).json({
-          success: false,
-          code: ipBinding.code,
-          message: ipBinding.message,
-        });
-      }
-
       await logFraudEvent({
         userId: user._id,
         eventType: "REGISTER",
@@ -391,7 +523,7 @@ exports.registerUser = async (req, res) => {
         isVPN: false,
         isProxy: false,
         riskScoreImpact: 0,
-        metadata: { country: vpnInfo.country },
+        metadata: vpnInfo ? { country: vpnInfo.country } : {},
       });
 
       await sendMailSafely(getRegisterMailOptions(user.email, user.name));
@@ -442,13 +574,6 @@ exports.registerUser = async (req, res) => {
   } catch (error) {
     console.error("Register error:", error);
 
-    if (isSignupIpDuplicateError(error)) {
-      return res.status(409).json({
-        success: false,
-        code: "SIGNUP_IP_ALREADY_USED",
-        message: "Only one account can be registered from the same public IP address.",
-      });
-    }
     return res.status(500).json({
       success: false,
       message: "Registration failed",
@@ -1163,13 +1288,6 @@ exports.googleLogin = async (req, res) => {
           platform: "website",
         });
       } catch (error) {
-        if (isSignupIpDuplicateError(error)) {
-          return res.status(409).json({
-            success: false,
-            code: "SIGNUP_IP_ALREADY_USED",
-            message: "Only one account can be registered from the same public IP address.",
-          });
-        }
         if (error.code !== 11000) throw error;
         user = await User.findOne({
           $or: [{ googleId: payload.sub }, { email }],
@@ -1222,22 +1340,6 @@ exports.googleLogin = async (req, res) => {
         code: hardwareBinding.code,
         message: hardwareBinding.message,
       });
-    }
-
-    if (isNewAccount) {
-      const ipBinding = await claimIpAccountBinding(req, user._id);
-      if (!ipBinding.ok) {
-        await User.deleteOne({ _id: user._id });
-        await Device.updateOne(
-          { device_id: deviceId, linked_user_id: user._id },
-          { $set: { linked_user_id: null } },
-        );
-        return res.status(ipBinding.status).json({
-          success: false,
-          code: ipBinding.code,
-          message: ipBinding.message,
-        });
-      }
     }
 
     const deviceChanged = Boolean(user.deviceId && user.deviceId !== deviceId);

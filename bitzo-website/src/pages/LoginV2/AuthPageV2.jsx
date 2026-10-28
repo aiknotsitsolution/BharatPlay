@@ -13,7 +13,10 @@ import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { toast } from "react-toastify";
 import { v4 as uuidv4 } from "uuid";
 import { AUTH_API } from "../../config/api";
-import { isLikelyPrivateBrowsing } from "../../utils/privateBrowsing";
+import {
+  isLikelyPrivateBrowsing,
+  PRIVATE_BROWSING_BYPASS_UNTIL,
+} from "../../utils/privateBrowsing";
 import AnimatedBackground from "./AnimatedBackground";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
@@ -65,17 +68,24 @@ export default function AuthPageV2() {
 
   useEffect(() => {
     let active = true;
-    isLikelyPrivateBrowsing(navigator.userAgent, navigator.storage)
-      .then((isPrivate) => {
-        if (active) setPrivateModeStatus(isPrivate ? "blocked" : "available");
-      })
-      .catch((checkError) => {
-        console.warn("Could not check private browsing mode:", checkError);
-        if (active) setPrivateModeStatus("blocked");
-      });
+    const checkPrivateMode = () => {
+      isLikelyPrivateBrowsing(navigator.userAgent, navigator.storage)
+        .then((isPrivate) => {
+          if (active) setPrivateModeStatus(isPrivate ? "blocked" : "available");
+        })
+        .catch((checkError) => {
+          console.warn("Could not check private browsing mode:", checkError);
+          if (active) setPrivateModeStatus("blocked");
+        });
+    };
+    checkPrivateMode();
+    const bypassDuration = PRIVATE_BROWSING_BYPASS_UNTIL - Date.now();
+    const expiryTimer =
+      bypassDuration > 0 ? window.setTimeout(checkPrivateMode, bypassDuration) : null;
 
     return () => {
       active = false;
+      if (expiryTimer !== null) window.clearTimeout(expiryTimer);
     };
   }, []);
 

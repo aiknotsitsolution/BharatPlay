@@ -25,7 +25,7 @@ describe("fetchAllRecommendedVideos", () => {
     });
 
     const videos = await fetchAllRecommendedVideos({
-      apiBase: "http://localhost:4000/api/uservideo",
+      apiBase: "http://192.168.1.20:5173/:4000/api/uservideo",
       category: "category-id",
       token: "test-token",
       fetchImpl,
@@ -33,14 +33,16 @@ describe("fetchAllRecommendedVideos", () => {
 
     expect(videos).toHaveLength(235);
     expect(fetchImpl).toHaveBeenCalledTimes(3);
-    expect(fetchImpl.mock.calls.map(([url]) => {
-      const parsedUrl = new URL(url);
-      return {
-        page: parsedUrl.searchParams.get("page"),
-        limit: parsedUrl.searchParams.get("limit"),
-        category: parsedUrl.searchParams.get("category"),
-      };
-    })).toEqual([
+    expect(
+      fetchImpl.mock.calls.map(([url]) => {
+        const parsedUrl = new URL(url);
+        return {
+          page: parsedUrl.searchParams.get("page"),
+          limit: parsedUrl.searchParams.get("limit"),
+          category: parsedUrl.searchParams.get("category"),
+        };
+      }),
+    ).toEqual([
       { page: "1", limit: "100", category: "category-id" },
       { page: "2", limit: "100", category: "category-id" },
       { page: "3", limit: "100", category: "category-id" },
@@ -58,7 +60,7 @@ describe("fetchAllRecommendedVideos", () => {
 
     await expect(
       fetchAllRecommendedVideos({
-        apiBase: "http://localhost:4000/api/uservideo",
+        apiBase: "http://192.168.1.20:5173/:4000/api/uservideo",
         fetchImpl,
       }),
     ).rejects.toThrow("Failed to load recommended videos (503)");
@@ -72,26 +74,23 @@ describe("fetchAllRecommendedVideos", () => {
         ok: true,
         json: async () => ({
           total: 101,
-          videos: Array.from(
-            { length: page === 1 ? 100 : 1 },
-            (_, index) => ({ id: `latest-${(page - 1) * 100 + index + 1}` }),
-          ),
+          videos: Array.from({ length: page === 1 ? 100 : 1 }, (_, index) => ({
+            id: `latest-${(page - 1) * 100 + index + 1}`,
+          })),
         }),
       };
     });
 
     const videos = await fetchAllLatestVideos({
-      apiBase: "http://localhost:4000/api/uservideo",
+      apiBase: "http://192.168.1.20:5173/:4000/api/uservideo",
       fetchImpl,
     });
 
     expect(videos).toHaveLength(101);
     expect(fetchImpl).toHaveBeenCalledTimes(2);
-    expect(fetchImpl.mock.calls.map(([url]) => new URL(url).pathname)).toEqual(
-      [
-        "/api/uservideo/latest",
-        "/api/uservideo/latest",
-      ],
-    );
+    expect(fetchImpl.mock.calls.map(([url]) => new URL(url).pathname)).toEqual([
+      "/api/uservideo/latest",
+      "/api/uservideo/latest",
+    ]);
   });
 });

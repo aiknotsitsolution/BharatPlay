@@ -1,5 +1,18 @@
+const getDefaultApiOrigin = () => {
+  if (
+    import.meta.env.DEV &&
+    typeof window !== "undefined" &&
+    window.location.port === "5173" &&
+    window.location.hostname
+  ) {
+    return `http://${window.location.hostname}:4000`;
+  }
+
+  return "http://192.168.1.20:5173/:4000";
+};
+
 const API_ORIGIN = String(
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:4000",
+  import.meta.env.VITE_API_BASE_URL || getDefaultApiOrigin(),
 ).replace(/\/+$/, "");
 
 const API_BASE = `${API_ORIGIN}/api`;

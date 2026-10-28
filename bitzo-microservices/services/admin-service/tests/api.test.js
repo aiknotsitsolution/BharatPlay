@@ -48,13 +48,13 @@ describe("admin-service API", () => {
   test("local CORS_ORIGINS=true permits credentialed admin login preflight", async () => {
     const response = await request(app)
       .options("/api/admin/login")
-      .set("Origin", "http://localhost:5173")
+      .set("Origin", "http://192.168.1.20:5173/:5173")
       .set("Access-Control-Request-Method", "POST")
       .set("Access-Control-Request-Headers", "content-type");
 
     expect(response.status).toBe(204);
     expect(response.headers["access-control-allow-origin"]).toBe(
-      "http://localhost:5173",
+      "http://192.168.1.20:5173/:5173",
     );
     expect(response.headers["access-control-allow-credentials"]).toBe("true");
   });

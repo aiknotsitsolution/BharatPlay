@@ -5,9 +5,8 @@ const {
   getClientIp,
   isLocalOrPrivateIp,
 } = require("./vpn.service/vpn.service");
-const { checkIpAccountBinding } = require("./ipAccountBindingService");
 
-let signupIpIndexPromise;
+let legacySignupIpIndexMigration;
 
 const signupIpHash = (ip) =>
   crypto
@@ -18,21 +17,40 @@ const signupIpHash = (ip) =>
     .update(ip)
     .digest("hex");
 
-const ensureSignupIpIndex = async () => {
-  if (!signupIpIndexPromise) {
-    signupIpIndexPromise = User.collection.createIndex(
-      { signupIpHash: 1 },
-      {
-        name: "uniq_signup_ip_hash",
-        unique: true,
-        partialFilterExpression: { signupIpHash: { $type: "string" } },
-      },
-    );
+const removeLegacySignupIpUniqueness = async () => {
+  if (!legacySignupIpIndexMigration) {
+    legacySignupIpIndexMigration = (async () => {
+      let indexes;
+      try {
+        indexes = await User.collection.indexes();
+      } catch (error) {
+        if (error.code === 26 || error.codeName === "NamespaceNotFound") {
+          return;
+        }
+        throw error;
+      }
+
+      const uniqueSignupIpIndexes = indexes.filter(
+        (index) => index.unique && index.key?.signupIpHash === 1,
+      );
+
+      await Promise.all(
+        uniqueSignupIpIndexes.map(async (index) => {
+          try {
+            await User.collection.dropIndex(index.name);
+          } catch (error) {
+            if (error.code !== 27 && error.codeName !== "IndexNotFound") {
+              throw error;
+            }
+          }
+        }),
+      );
+    })();
   }
   try {
-    await signupIpIndexPromise;
+    await legacySignupIpIndexMigration;
   } catch (error) {
-    signupIpIndexPromise = null;
+    legacySignupIpIndexMigration = null;
     throw error;
   }
 };
@@ -41,8 +59,6 @@ const evaluateSignupRequest = async (req) => {
   const ip = getClientIp(req);
   if (!ip || isLocalOrPrivateIp(ip)) {
     if (process.env.NODE_ENV === "development") {
-      const bindingCheck = await checkIpAccountBinding(req);
-      if (!bindingCheck.ok) return bindingCheck;
       return {
         ok: true,
         ip: null,
@@ -104,27 +120,8 @@ const evaluateSignupRequest = async (req) => {
   }
 
   try {
-    const bindingCheck = await checkIpAccountBinding(req);
-    if (!bindingCheck.ok) return bindingCheck;
-
-    await ensureSignupIpIndex();
+    await removeLegacySignupIpUniqueness();
     const ipHash = signupIpHash(ip);
-    const existingUser = await User.findOne({
-      $or: [{ signupIpHash: ipHash }, { ipAddress: ip }],
-    })
-      .select("_id")
-      .lean();
-
-    if (existingUser) {
-      return {
-        ok: false,
-        status: 409,
-        code: "SIGNUP_IP_ALREADY_USED",
-        message: "Only one account can be registered from the same public IP address.",
-        ip,
-      };
-    }
-
     return { ok: true, ip, ipHash, vpnInfo };
   } catch (error) {
     console.error("Signup IP policy check failed:", error);
@@ -137,13 +134,4 @@ const evaluateSignupRequest = async (req) => {
   }
 };
 
-const isSignupIpDuplicateError = (error) =>
-  Boolean(
-    error?.code === 11000 &&
-      (error.keyPattern?.signupIpHash || error.keyValue?.signupIpHash),
-  );
-
-module.exports = {
-  evaluateSignupRequest,
-  isSignupIpDuplicateError,
-};
+module.exports = { evaluateSignupRequest };

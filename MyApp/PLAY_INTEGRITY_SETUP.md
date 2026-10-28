@@ -10,6 +10,6 @@ Android signup now requires a Play Integrity token from the official app build. 
 
 The server validates the package name, one-time nonce, token age, recognized app/device verdicts, and rejects reused tokens. Play Integrity and browser private-mode checks are risk signals, not guarantees against every modified device, network, or browser implementation.
 
-## Account binding by public IP
+## Account binding by device
 
-Registration checks and claims the first account for a public IP across web and app clients, and each recognized device can register only one account. Existing users can sign in from shared networks even if another account is associated with that public IP, and logging out does not make a registered device available for another account. During local development, loopback requests share a local binding so localhost testing follows the same one-account registration rule; production still requires a verifiable public IP for registration. Browser device recognition uses a persistent server-issued cookie, so clearing browser data or switching browsers may create a new device identity.
+Each recognized browser or mobile device can register only one account, while separate devices can register from the same public IP/network. Public IP is still checked for VPN/proxy risk and production signup requires a verifiable public IP, but IP address alone does not limit the number of accounts. Logging out does not make a registered device available for another account. Browser device recognition uses a persistent server-issued cookie, so clearing browser data or switching browsers may create a new device identity.

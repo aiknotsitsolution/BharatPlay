@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api"}/admin`,
+  baseURL: `${import.meta.env.VITE_API_BASE_URL || "http://192.168.1.20:5173/:8000/api"}/admin`,
   withCredentials: true, // important for cookies
   timeout: 20000,
 });

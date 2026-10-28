@@ -24,11 +24,7 @@ const {
   bindClientHardwareUuid,
 } = require("../services/clientHardwareBindingService");
 const { getClientIp } = require("../services/vpn.service/vpn.service");
-const {
-  evaluateSignupRequest,
-  isSignupIpDuplicateError,
-} = require("../services/signupPolicy");
-const { claimIpAccountBinding } = require("../services/ipAccountBindingService");
+const { evaluateSignupRequest } = require("../services/signupPolicy");
 
 const OTP_LIFETIME_MS = 5 * 60 * 1000;
 const OTP_COOLDOWN_MS = 60 * 1000;
@@ -502,15 +498,6 @@ exports.verifyPhoneOtp = async (req, res) => {
           message: hardwareBinding.message,
         });
       }
-      const ipBinding = await claimIpAccountBinding(req, user._id);
-      if (!ipBinding.ok) {
-        await User.deleteOne({ _id: user._id });
-        return res.status(ipBinding.status).json({
-          success: false,
-          code: ipBinding.code,
-          message: ipBinding.message,
-        });
-      }
     } else {
       user = await User.findOne({ phone, phoneVerified: true });
       if (!user) {
@@ -541,13 +528,6 @@ exports.verifyPhoneOtp = async (req, res) => {
     return res.status(200).json(response);
   } catch (error) {
     console.error("Phone OTP verification failed:", error);
-    if (isSignupIpDuplicateError(error)) {
-      return res.status(409).json({
-        success: false,
-        code: "SIGNUP_IP_ALREADY_USED",
-        message: "Only one account can be registered from the same public IP address.",
-      });
-    }
     return res.status(500).json({
       success: false,
       message: "Could not verify OTP. Please try again.",

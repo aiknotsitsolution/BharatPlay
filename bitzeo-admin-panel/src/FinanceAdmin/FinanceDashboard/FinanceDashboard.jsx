@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 
 const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+  import.meta.env.VITE_API_BASE_URL || "http://192.168.1.20:5173/:8000/api";
 
 // ========== MOCK DATA (replace with API) ==========
 const MOCK_OVERVIEW = {
@@ -405,7 +405,9 @@ export default function FinanceDashboard() {
                 <td className="px-5 py-3.5 font-medium text-white">
                   {row.network}
                 </td>
-                <td className="px-5 py-3.5 text-bp-text-secondary">{row.type}</td>
+                <td className="px-5 py-3.5 text-bp-text-secondary">
+                  {row.type}
+                </td>
                 <td className="px-5 py-3.5 text-right text-white">
                   ${row.india}
                 </td>
@@ -494,9 +496,7 @@ export default function FinanceDashboard() {
           <tbody className="divide-y divide-bp-border">
             {MOCK_WALLETS.withdrawalQueue.map((w) => (
               <tr key={w.id} className="hover:bg-bp-elevated/40 transition">
-                <td className="px-5 py-3.5 font-medium text-white">
-                  {w.user}
-                </td>
+                <td className="px-5 py-3.5 font-medium text-white">{w.user}</td>
                 <td className="px-5 py-3.5">
                   <span
                     className={`px-2 py-0.5 text-xs rounded-full capitalize ${
@@ -694,9 +694,7 @@ export default function FinanceDashboard() {
               c.name.toLowerCase().includes(search.toLowerCase()),
             ).map((c) => (
               <tr key={c.id} className="hover:bg-bp-elevated/40 transition">
-                <td className="px-5 py-3.5 font-medium text-white">
-                  {c.name}
-                </td>
+                <td className="px-5 py-3.5 font-medium text-white">{c.name}</td>
                 <td className="px-5 py-3.5 text-right text-emerald-400">
                   {formatINR(c.earnings)}
                 </td>
@@ -895,13 +893,10 @@ export default function FinanceDashboard() {
 
   return (
     <div className="min-h-screen bg-bp-navy text-white">
-
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">
-            Finance Dashboard
-          </h1>
+          <h1 className="text-2xl font-bold text-white">Finance Dashboard</h1>
           <p className="text-bp-text-secondary text-[13px] mt-1">
             Earning monitoring • Security controls • System oversight
           </p>

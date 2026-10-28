@@ -16,7 +16,10 @@ const allowedOrigins =
   configuredOrigins?.toLowerCase() === "true" && !isProduction
     ? true
     : configuredOrigins
-      ? configuredOrigins.split(",").map((origin) => origin.trim()).filter(Boolean)
+      ? configuredOrigins
+          .split(",")
+          .map((origin) => origin.trim())
+          .filter(Boolean)
       : isProduction
         ? []
         : true;
@@ -67,12 +70,18 @@ const SERVICES = {
   auth: process.env.AUTH_SERVICE_URL || "http://localhost:4001",
   admin: process.env.ADMIN_SERVICE_URL || "http://localhost:4002",
   video: process.env.VIDEO_SERVICE_URL || "http://localhost:4003",
-  category: process.env.CATEGORY_SERVICE_URL || "http://localhost:4004",
-  leaderboard: process.env.LEADERBOARD_SERVICE_URL || "http://localhost:4005",
-  notification: process.env.NOTIFICATION_SERVICE_URL || "http://localhost:4006",
-  playerAd: process.env.PLAYER_AD_SERVICE_URL || "http://localhost:4007",
-  copyright: process.env.COPYRIGHT_SERVICE_URL || "http://localhost:4008",
-  security: process.env.SECURITY_SERVICE_URL || "http://localhost:4009",
+  category:
+    process.env.CATEGORY_SERVICE_URL || "http://localhost:4004",
+  leaderboard:
+    process.env.LEADERBOARD_SERVICE_URL || "http://localhost:4005",
+  notification:
+    process.env.NOTIFICATION_SERVICE_URL || "http://localhost:4006",
+  playerAd:
+    process.env.PLAYER_AD_SERVICE_URL || "http://localhost:4007",
+  copyright:
+    process.env.COPYRIGHT_SERVICE_URL || "http://localhost:4008",
+  security:
+    process.env.SECURITY_SERVICE_URL || "http://localhost:4009",
 };
 
 function proxy(target, routePrefix = "/") {
