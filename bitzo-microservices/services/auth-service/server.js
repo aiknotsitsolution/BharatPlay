@@ -34,6 +34,7 @@ const supportRoutes = require("./routes/supportRoute");
 
 const app = express();
 const PORT = process.env.PORT || 4001;
+const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS || "2");
 const configuredOrigins = process.env.CORS_ORIGINS?.trim();
 const isProduction = process.env.NODE_ENV === "production";
 const allowedOrigins =
@@ -44,7 +45,10 @@ const allowedOrigins =
       : isProduction
         ? []
         : true;
-app.set("trust proxy", 1);
+if (!Number.isInteger(trustProxyHops) || trustProxyHops < 1) {
+  throw new Error("TRUST_PROXY_HOPS must be a positive integer.");
+}
+app.set("trust proxy", trustProxyHops);
 
 // =====================================================
 // LOGGING

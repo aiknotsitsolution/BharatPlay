@@ -10,6 +10,7 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProfileData } from "../features/profile/profileSlice";
 import {
+  fetchHomeVideos,
   fetchShortsFeed,
   fetchNextHomeSection,
 } from "../features/videos/videosSlice";
@@ -255,6 +256,9 @@ export default function Shorts() {
           ? data.subscribed
           : nextSubscribed;
       setSubscribed((prev) => ({ ...prev, [channelId]: isSubscribed }));
+      dispatch(
+        fetchHomeVideos({ category: selectedCategory, page: 1, limit: 5 }),
+      );
       toast.success(
         data.message || (isSubscribed ? "Subscribed" : "Unsubscribed"),
       );

@@ -123,10 +123,7 @@ function TabNavigator() {
                 source={{
                   uri: "https://i.pravatar.cc/150?img=12",
                 }}
-                style={[
-                  styles.profileImage,
-                  focused && styles.profileImageActive,
-                ]}
+                style={styles.profileImage}
               />
             );
           }
@@ -189,8 +186,6 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-  },
-  profileImageActive: {
     borderWidth: 1.8,
     borderColor: "#ffffff",
   },

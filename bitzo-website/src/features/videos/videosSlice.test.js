@@ -163,6 +163,49 @@ describe("Shorts feed pagination", () => {
     ]);
   });
 
+  it("keeps videos from all subscribed channels in the subscription feed", async () => {
+    localStorage.setItem("token", "demo-token");
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        const section = new URL(url).pathname.split("/").pop();
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            total: 2,
+            videos:
+              section === "subscriptions"
+                ? [
+                    { _id: "video-1", channel: { _id: "channel-1" } },
+                    {
+                      _id: "video-2",
+                      channel: { _id: "channel-2" },
+                      videoType: ["short"],
+                    },
+                  ]
+                : [],
+          }),
+        };
+      }),
+    );
+
+    await store.dispatch(fetchHomeVideos({ limit: 5 })).unwrap();
+
+    expect(
+      store
+        .getState()
+        .videos.subscriptions.map((item) => item.id)
+        .sort(),
+    )    .toEqual(["video-1", "video-2"]);
+    expect(
+      store
+    .getState()
+    .videos.subscriptions.find((item) => item.id === "video-2").videoType,
+    ).toEqual(["short"]);
+  });
+
   it("ranks Shorts by balanced views, likes, and comments performance", () => {
     const shorts = [
       { id: "views-heavy", views: 1000, likes: 1, comments: 1 },

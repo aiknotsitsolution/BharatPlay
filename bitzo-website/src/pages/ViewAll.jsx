@@ -21,6 +21,18 @@ import { promptLogin } from "../utils/loginPrompt";
 
 const PAGE_SIZE = 20;
 
+const isShortVideo = (item) => {
+  const rawTypes = item?.videoType ?? item?.raw?.videoType ?? [];
+  const types = (Array.isArray(rawTypes) ? rawTypes : [rawTypes])
+    .filter(Boolean)
+    .map((videoType) => String(videoType).toLowerCase());
+
+  return (
+    Boolean(item?.isShort) ||
+    types.some((videoType) => videoType === "short" || videoType === "shorts")
+  );
+};
+
 const SECTIONS = {
   recommended: {
     title: "Recommended Videos",
@@ -194,7 +206,7 @@ const ViewAll = () => {
       : items;
 
   const handleItemClick = (item) => {
-    if (section.isShort) {
+    if (section.isShort || isShortVideo(item)) {
       navigate(`/shorts/${item.id}`, { state: { video: item } });
       return;
     }
@@ -254,22 +266,51 @@ const ViewAll = () => {
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {visibleItems.map((item) => (
-                  <MovieCard
-                    key={item.id}
-                    item={item}
-                    onClick={handleItemClick}
-                    onAddToWatchLater={(item) => {
-                      if (requestLogin()) return { success: false };
-                      return handleAddToWatchLater(item);
-                    }}
-                    onRemoveFromWatchLater={(item) => {
-                      if (requestLogin()) return { success: false };
-                      return handleRemoveFromWatchLater(item);
-                    }}
-                  />
-                ))}
+              <div
+                className={
+                  type === "subscriptions"
+                    ? "flex flex-wrap items-start gap-6"
+                    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                }
+              >
+                {visibleItems.map((item) => {
+                  if (type === "subscriptions" && isShortVideo(item)) {
+                    return (
+                      <div
+                        key={item.id}
+                        className="w-[calc(50%-0.75rem)] sm:w-44 md:w-48"
+                      >
+                        <ShortCard item={item} onClick={handleItemClick} />
+                      </div>
+                    );
+                  }
+
+                  const movieCard = (
+                    <MovieCard
+                      item={item}
+                      onClick={handleItemClick}
+                      onAddToWatchLater={(item) => {
+                        if (requestLogin()) return { success: false };
+                        return handleAddToWatchLater(item);
+                      }}
+                      onRemoveFromWatchLater={(item) => {
+                        if (requestLogin()) return { success: false };
+                        return handleRemoveFromWatchLater(item);
+                      }}
+                    />
+                  );
+
+                  return type === "subscriptions" ? (
+                    <div
+                      key={item.id}
+                      className="w-full sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)] xl:w-[calc(25%-1.125rem)]"
+                    >
+                      {movieCard}
+                    </div>
+                  ) : (
+                    <div key={item.id}>{movieCard}</div>
+                  );
+                })}
               </div>
             )}
 

@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
@@ -9,6 +10,7 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
+import { fetchHomeVideos } from "../../features/videos/videosSlice";
 
 const API_BASE = `${BACKEND_URL}/api/uservideo`;
 
@@ -22,6 +24,8 @@ const formatDuration = (seconds) => {
 export default function SubscribedChannels() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const selectedCategory = useSelector((state) => state.videos.selectedCategory);
 
   const [channel, setChannel] = useState(null);
   const [videos, setVideos] = useState([]);
@@ -98,14 +102,17 @@ export default function SubscribedChannels() {
       });
       const data = await res.json();
       if (data.success) {
-        setIsSubscribed(Boolean(data.subscribed));
+        const subscribed = Boolean(data.subscribed);
+        setIsSubscribed(subscribed);
         if (typeof data.subscribersCount === "number") {
           setSubscribersCount(data.subscribersCount);
         }
+
+        dispatch(
+          fetchHomeVideos({ category: selectedCategory, page: 1, limit: 5 }),
+        );
         toast.success(
-          data.subscribed
-            ? "Subscribed successfully"
-            : "Unsubscribed successfully",
+          subscribed ? "Subscribed successfully" : "Unsubscribed successfully",
         );
       } else {
         toast.error(data.message || "Subscription action failed");

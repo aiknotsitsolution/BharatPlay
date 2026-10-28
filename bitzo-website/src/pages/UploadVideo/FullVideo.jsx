@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { fetchProfileData } from "../../features/profile/profileSlice";
+import { fetchHomeVideos } from "../../features/videos/videosSlice";
 import { getWatchSession } from "../../utils/watchSession";
 import VideoPlayer from "../../components/player/VideoPlayer";
 import {
@@ -213,6 +214,9 @@ export default function YouTubeLikeVideoPage() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   const profileUser = useSelector((state) => state.profile?.user || null);
+  const selectedCategory = useSelector(
+    (state) => state.videos.selectedCategory,
+  );
   const currentUser = getCurrentUser(profileUser);
 
   const dispatch = useDispatch();
@@ -605,6 +609,9 @@ export default function YouTubeLikeVideoPage() {
         if (typeof data.subscribersCount === "number") {
           setSubscribersCount(data.subscribersCount);
         }
+        dispatch(
+          fetchHomeVideos({ category: selectedCategory, page: 1, limit: 5 }),
+        );
         toast.success(
           data.message || (data.subscribed ? "Subscribed" : "Unsubscribed"),
         );

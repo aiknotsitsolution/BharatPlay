@@ -30,14 +30,14 @@ import {
 import { VideoView, useVideoPlayer } from "expo-video";
 import { useEvent } from "expo";
 import Slider from "@react-native-community/slider";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import * as ScreenOrientation from "expo-screen-orientation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getViewSocket } from "../utils/viewSocket";
 import { API_ORIGIN } from "../../config/api";
 import { showToast } from "../utils/notifications";
 import Navbar from "./Navbar";
+import AdminBottomTabs from "./AdminBottomTabs";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const BACKEND_URL = API_ORIGIN;
@@ -110,7 +110,6 @@ export default function VideoDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const isFocused = useIsFocused();
-  const insets = useSafeAreaInsets();
   const routeId = route?.params?.id ?? route?.params?.videoId ?? 1;
   const routeVideo = route?.params?.item ?? route?.params?.video ?? null;
 
@@ -897,6 +896,28 @@ export default function VideoDetailScreen() {
     }
   };
 
+  const openChannel = () => {
+    const channel = videoDetails?.channel;
+    const channelId =
+      (typeof channel === "object"
+        ? channel?._id || channel?.id || channel?.channelId
+        : null) || videoDetails?.channelId;
+    if (!channelId) return;
+
+    const routeNames = navigation.getState()?.routeNames || [];
+    if (routeNames.includes("SubscribedChannels")) {
+      navigation.navigate("SubscribedChannels", { id: channelId });
+      return;
+    }
+
+    if (routeNames.includes("AdminPanel")) {
+      navigation.navigate("AdminPanel", {
+        screen: "SubscribedChannels",
+        params: { id: channelId },
+      });
+    }
+  };
+
   const handleCopyrightReport = () => {
     Alert.alert(
       "Copyright",
@@ -1256,24 +1277,40 @@ export default function VideoDetailScreen() {
               </Text>
 
               <View style={styles.channelRow}>
-                <Image
-                  source={{
-                    uri:
-                      resolveMediaUrl(videoDetails?.channel?.channelImage) ||
-                      resolvedThumbnail,
-                  }}
-                  style={styles.channelAvatar}
-                />
-                <View style={styles.channelInfo}>
-                  <Text style={styles.channelName} numberOfLines={1}>
-                    {videoDetails?.channel?.name ||
-                      videoDetails?.channel ||
-                      "Channel"}
-                  </Text>
-                  <Text style={styles.subscribersText}>
-                    {formatCount(subscribersCount)} subscribers
-                  </Text>
-                </View>
+                <TouchableOpacity
+                  style={styles.channelIdentity}
+                  onPress={openChannel}
+                  disabled={
+                    !(
+                      videoDetails?.channel?._id ||
+                      videoDetails?.channel?.id ||
+                      videoDetails?.channel?.channelId ||
+                      videoDetails?.channelId
+                    )
+                  }
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open channel"
+                >
+                  <Image
+                    source={{
+                      uri:
+                        resolveMediaUrl(videoDetails?.channel?.channelImage) ||
+                        resolvedThumbnail,
+                    }}
+                    style={styles.channelAvatar}
+                  />
+                  <View style={styles.channelInfo}>
+                    <Text style={styles.channelName} numberOfLines={1}>
+                      {videoDetails?.channel?.name ||
+                        videoDetails?.channel ||
+                        "Channel"}
+                    </Text>
+                    <Text style={styles.subscribersText}>
+                      {formatCount(subscribersCount)} subscribers
+                    </Text>
+                  </View>
+                </TouchableOpacity>
 
                 <TouchableOpacity
                   style={[
@@ -1480,7 +1517,7 @@ export default function VideoDetailScreen() {
               </View>
             )}
           </ScrollView>
-          <VideoDetailBottomTabs navigation={navigation} insets={insets} />
+          <AdminBottomTabs navigation={navigation} />
         </>
       )}
 
@@ -1510,73 +1547,6 @@ export default function VideoDetailScreen() {
   );
 }
 
-function VideoDetailBottomTabs({ navigation, insets }) {
-  const tabs = [
-    { label: "Home", screen: "Home" },
-    { label: "Shorts", screen: "Shorts" },
-    { label: "Create", screen: "Create" },
-    { label: "Subscribe", screen: "Subscribe" },
-    { label: "You", screen: "You" },
-  ];
-
-  const navigateToTab = (screen) => {
-    const routeNames = navigation.getState?.().routeNames || [];
-    if (routeNames.includes("MainTabs")) {
-      navigation.navigate("MainTabs", { screen });
-      return;
-    }
-
-    navigation.navigate("AdminPanel", {
-      screen: "MainTabs",
-      params: { screen },
-    });
-  };
-
-  return (
-    <View
-      style={[
-        styles.videoBottomTabs,
-        {
-          height: 56 + insets.bottom,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
-        },
-      ]}
-    >
-      {tabs.map((tab) => (
-        <TouchableOpacity
-          key={tab.screen}
-          style={styles.videoBottomTab}
-          onPress={() => navigateToTab(tab.screen)}
-          activeOpacity={0.8}
-        >
-          {tab.screen === "Create" ? (
-            <View style={styles.videoCreateIcon}>
-              <Ionicons name="add" size={26} color="#fff" />
-            </View>
-          ) : tab.screen === "Home" ? (
-            <Ionicons name="home-outline" size={23} color="#e4e4e7" />
-          ) : tab.screen === "Shorts" ? (
-            <MaterialCommunityIcons
-              name="movie-open-play-outline"
-              size={25}
-              color="#e4e4e7"
-            />
-          ) : tab.screen === "Subscribe" ? (
-            <MaterialCommunityIcons
-              name="youtube-subscription"
-              size={24}
-              color="#a1a1aa"
-            />
-          ) : (
-            <Ionicons name="person-circle-outline" size={25} color="#e4e4e7" />
-          )}
-          <Text style={styles.videoBottomTabLabel}>{tab.label}</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1586,43 +1556,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 112,
   },
-  videoBottomTabs: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    backgroundColor: "#0f0f0f",
-    borderTopWidth: 0.5,
-    borderTopColor: "#333",
-    paddingTop: 6,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  videoBottomTab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 3,
-  },
-  videoCreateIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#ef4444",
-  },
-  videoBottomTabLabel: {
-    color: "#a1a1aa",
-    fontSize: 10,
-    fontWeight: "500",
-    marginBottom: 4,
-  },
-
   // ========== PLAYER ==========
   videoWrapper: {
     width: SCREEN_WIDTH,
@@ -1817,6 +1752,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: 16,
+    gap: 12,
+  },
+  channelIdentity: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   channelAvatar: {

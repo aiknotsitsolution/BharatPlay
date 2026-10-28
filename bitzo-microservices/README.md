@@ -187,6 +187,12 @@ TLS-terminating reverse proxy on the host and point the frontend to that HTTPS
 domain. Configure the MongoDB provider's network allowlist for the host and
 keep database backups enabled.
 
+The auth service trusts two proxy hops by default (the gateway and the
+TLS-terminating reverse proxy) when resolving client IPs for registration and
+sign-in. If your deployment uses a different number of trusted proxies, set
+`TRUST_PROXY_HOPS` to that positive hop count for the auth service; never use
+untrusted client-supplied forwarding headers as a substitute.
+
 For local Android/iOS testing on a physical device, the Expo app discovers the
 Metro host and uses port `4000`. Keep the phone and development computer on the
 same network, allow inbound TCP port `4000` in the computer's firewall, and

@@ -852,7 +852,8 @@ export default function NetflixStylePage() {
               >
                 {row.items.length > 0 ? (
                   row.items.map((item) =>
-                    row.kind === "shorts" ? (
+                    row.kind === "shorts" ||
+                    (row.buffer === "subscriptions" && isShortContent(item)) ? (
                       <div
                         key={item.id}
                         className="shrink-0 w-40 sm:w-44 md:w-48 lg:w-52 snap-start"

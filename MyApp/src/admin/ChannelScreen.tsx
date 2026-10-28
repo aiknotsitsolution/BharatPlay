@@ -23,7 +23,6 @@ import {
   Users,
   Search,
 } from "lucide-react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -31,9 +30,7 @@ import { API_ORIGIN } from "../../config/api";
 import { showToast } from "../utils/notifications";
 import Navbar from "./Navbar";
 import { useRoute } from "@react-navigation/native";
-import {
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import AdminBottomTabs from "./AdminBottomTabs";
 const { width } = Dimensions.get("window");
 
 const API_BASE = `${API_ORIGIN}/api`;
@@ -59,7 +56,6 @@ const STATIC_CATEGORIES = [
 
 export default function ChannelScreen({ navigation }) {
   const route = useRoute();
-  const insets = useSafeAreaInsets();
   const [channels, setChannels] = useState([]);
   const [selectedChannelId, setSelectedChannelId] = useState(null);
   const [channel, setChannel] = useState(null);
@@ -1211,82 +1207,8 @@ export default function ChannelScreen({ navigation }) {
       </Modal>
 
       {route.name !== "Create" && (
-        <ChannelBottomTabs navigation={navigation} insets={insets} />
+        <AdminBottomTabs navigation={navigation} />
       )}
-    </View>
-  );
-}
-
-function ChannelBottomTabs({ navigation, insets }) {
-  const tabs = [
-    { label: "Home", screen: "Home", center: false },
-    {
-      label: "Shorts",
-      screen: "Shorts",
-      center: false,
-    },
-    { label: "Create", screen: "Create", center: true },
-    {
-      label: "Subscribe",
-      screen: "Subscribe",
-      center: false,
-    },
-    { label: "You", screen: "You", center: false },
-  ] as const;
-
-  return (
-    <View
-      style={[
-        styles.bottomTabs,
-        {
-          height: 56 + insets.bottom,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
-        },
-      ]}
-    >
-      {tabs.map((tab) => {
-        return (
-          <TouchableOpacity
-            key={tab.label}
-            style={tab.center ? styles.bottomCenterTab : styles.bottomTab}
-            onPress={() =>
-              navigation.navigate("MainTabs", { screen: tab.screen })
-            }
-            activeOpacity={0.8}
-          >
-            {tab.center ? (
-              <View style={styles.bottomCenterButton}>
-                <Ionicons name="add" size={28} color="#fff" />
-              </View>
-            ) : tab.label === "You" ? (
-              <Image
-                source={{ uri: "https://i.pravatar.cc/150?img=12" }}
-                style={styles.bottomProfileImage}
-              />
-            ) : tab.label === "Home" ? (
-              <Ionicons name="home-outline" size={24} color="#a1a1aa" />
-            ) : tab.label === "Shorts" || tab.label === "Subscribe" ? (
-                <MaterialCommunityIcons
-                  name={
-                    tab.label === "Shorts"
-                      ? "movie-open-play-outline"
-                      : "youtube-subscription"
-                  }
-                  size={26}
-                  color="#a1a1aa"
-                />
-            ) : null}
-            <Text
-              style={[
-                styles.bottomTabLabel,
-                tab.center && styles.bottomTabLabelActive,
-              ]}
-            >
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
     </View>
   );
 }
@@ -1298,58 +1220,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f0f0f",
   },
   stackContent: {
-    paddingBottom: 88,
-  },
-  bottomTabs: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    backgroundColor: "#0f0f0f",
-    borderTopWidth: 0.5,
-    borderTopColor: "#333",
-    paddingTop: 6,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  bottomTab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 3,
-  },
-  bottomCenterTab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bottomCenterButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#ef4444",
-  },
-  bottomProfileImage: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-  },
-  bottomTabLabel: {
-    color: "#a1a1aa",
-    fontSize: 10,
-    fontWeight: "500",
-    marginBottom: 4,
-  },
-  bottomTabLabelActive: {
-    color: "#fff",
+    paddingBottom: 112,
   },
   loadingContainer: {
     flex: 1,

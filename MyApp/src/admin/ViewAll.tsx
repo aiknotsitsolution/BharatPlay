@@ -1281,17 +1281,13 @@ import {
 import { useRoute, useNavigation } from "@react-navigation/native";
 import {
   ArrowLeft,
-  Home,
-  Play,
-  Plus,
-  Users,
-  User,
 } from "lucide-react-native";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_ORIGIN } from "../../config/api";
 import Navbar from "./Navbar";
 import TopicChips from "./TopicChips";
+import AdminBottomTabs from "./AdminBottomTabs";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -1306,7 +1302,7 @@ const CARD_HEIGHT = CARD_WIDTH * (9 / 16);
 const SHORT_WIDTH = (SCREEN_WIDTH - 48) / 2;
 const SHORT_HEIGHT = SHORT_WIDTH * (16 / 9);
 
-const TAB_BAR_HEIGHT = 64;
+const TAB_BAR_HEIGHT = 88;
 
 // ────────────────────────────────────────────────
 // Normalize helpers
@@ -1444,75 +1440,6 @@ function ShortCard({ item, onPress }) {
         </Text>
       </View>
     </TouchableOpacity>
-  );
-}
-
-// ────────────────────────────────────────────────
-// Bottom Tab Bar
-// ────────────────────────────────────────────────
-function BottomTabBar({ navigation }) {
-  const tabs = [
-    { key: "Home", label: "Home", icon: Home, screen: "Home" },
-    { key: "Shorts", label: "Shorts", icon: Play, screen: "Shorts" },
-    {
-      key: "Create",
-      label: "Create",
-      icon: Plus,
-      screen: "Create",
-      isCenter: true,
-    },
-    {
-      key: "Subscriptions",
-      label: "Subscriptions",
-      icon: Users,
-      screen: "Subscriptions",
-    },
-    { key: "You", label: "You", icon: User, screen: "You" },
-  ];
-
-  const handleTabPress = (tab) => {
-    if (tab.key === "Create") {
-      // Create screen / modal
-      navigation.navigate("MainTabs", { screen: "Create" });
-      return;
-    }
-    navigation.navigate("MainTabs", { screen: tab.screen });
-  };
-
-  return (
-    <View style={styles.tabBar}>
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isCenter = tab.isCenter;
-
-        if (isCenter) {
-          return (
-            <TouchableOpacity
-              key={tab.key}
-              style={styles.centerTab}
-              onPress={() => handleTabPress(tab)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.centerButton}>
-                <Plus size={26} color="#000" strokeWidth={2.5} />
-              </View>
-            </TouchableOpacity>
-          );
-        }
-
-        return (
-          <TouchableOpacity
-            key={tab.key}
-            style={styles.tabItem}
-            onPress={() => handleTabPress(tab)}
-            activeOpacity={0.7}
-          >
-            <Icon size={22} color="#fff" strokeWidth={1.8} />
-            <Text style={styles.tabLabel}>{tab.label}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
   );
 }
 
@@ -1721,7 +1648,7 @@ export default function ViewAll() {
           <Text style={styles.headerTitle}>Section not found</Text>
         </View>
         <Text style={styles.emptyText}>Section not found.</Text>
-        <BottomTabBar navigation={navigation} />
+        <AdminBottomTabs navigation={navigation} />
       </View>
     );
   }
@@ -1832,7 +1759,7 @@ export default function ViewAll() {
       )}
 
       {/* ===== Bottom Tabs ===== */}
-      <BottomTabBar navigation={navigation} />
+      <AdminBottomTabs navigation={navigation} />
     </View>
   );
 }
@@ -1993,50 +1920,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  // ===== Bottom Tab Bar =====
-  tabBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: TAB_BAR_HEIGHT + (Platform.OS === "ios" ? 10 : 0),
-    backgroundColor: "#0f0f0f",
-    borderTopWidth: 1,
-    borderTopColor: "#272727",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    paddingBottom: Platform.OS === "ios" ? 35 : 75,
-    paddingTop: 46,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 3,
-  },
-  tabLabel: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "500",
-  },
-  centerTab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: -18,
-  },
-  centerButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
-  },
 });

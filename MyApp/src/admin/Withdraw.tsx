@@ -6,25 +6,22 @@ import {
   TextInput,
   ScrollView,
   StyleSheet,
-  Image,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ArrowLeft, Wallet, AlertCircle, Check } from "lucide-react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { API_BASE } from "../../config/api";
 import Navbar from "./Navbar";
 import { showToast } from "../utils/notifications";
+import AdminBottomTabs from "./AdminBottomTabs";
 
 const WITHDRAWALS_ENABLED = false;
 
 export default function WithdrawScreen() {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
 
   const [points, setPoints] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -454,77 +451,8 @@ export default function WithdrawScreen() {
       </ScrollView>
 
       {/* Bottom Tabs */}
-      <ProfileBottomTabs navigation={navigation} insets={insets} />
+      <AdminBottomTabs navigation={navigation} />
     </KeyboardAvoidingView>
-  );
-}
-
-// ========== BOTTOM TABS ==========
-function ProfileBottomTabs({ navigation, insets }) {
-  const tabs = [
-    { label: "Home", screen: "Home" },
-    { label: "Shorts", screen: "Shorts" },
-    { label: "Create", screen: "Create", center: true },
-    { label: "Subscriptions", screen: "Subscribe" },
-    { label: "You", screen: "You" },
-  ];
-
-  return (
-    <View
-      style={[
-        styles.profileBottomTabs,
-        {
-          height: 56 + insets.bottom,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
-        },
-      ]}
-    >
-      {tabs.map((tab) => {
-        return (
-          <TouchableOpacity
-            key={tab.label}
-            style={tab.center ? styles.profileCenterTab : styles.profileTab}
-            onPress={() =>
-              navigation.navigate("MainTabs", { screen: tab.screen })
-            }
-            activeOpacity={0.8}
-          >
-            {tab.center ? (
-              <View style={styles.profileCenterButton}>
-                <Ionicons name="add" size={28} color="#fff" />
-              </View>
-            ) : tab.label === "Home" ? (
-              <Ionicons name="home-outline" size={24} color="#a1a1aa" />
-            ) : tab.label === "Shorts" ? (
-              <MaterialCommunityIcons
-                name="movie-open-play-outline"
-                size={26}
-                color="#a1a1aa"
-              />
-            ) : tab.label === "Subscriptions" ? (
-              <MaterialCommunityIcons
-                name="youtube-subscription"
-                size={26}
-                color="#a1a1aa"
-              />
-            ) : (
-              <Image
-                source={{ uri: "https://i.pravatar.cc/150?img=12" }}
-                style={styles.profileImage}
-              />
-            )}
-            <Text
-              style={[
-                styles.profileTabLabel,
-                tab.label === "You" && styles.profileTabLabelActive,
-              ]}
-            >
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
   );
 }
 
@@ -766,56 +694,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // Bottom Tabs
-  profileBottomTabs: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    backgroundColor: "#0f0f0f",
-    borderTopWidth: 0.5,
-    borderTopColor: "#333",
-    paddingTop: 6,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  profileTab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 3,
-  },
-  profileCenterTab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileCenterButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#ef4444",
-  },
-  profileTabLabel: {
-    color: "#a1a1aa",
-    fontSize: 11,
-    fontWeight: "500",
-    marginBottom: Platform.OS === "ios" ? 0 : 4,
-  },
-  profileTabLabelActive: { color: "#fff" },
-  profileImage: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1.8,
-    borderColor: "#ffffff",
-  },
 });

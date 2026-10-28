@@ -11,9 +11,9 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 import Navbar from "./Navbar";
+import AdminBottomTabs from "./AdminBottomTabs";
 
 // ---------------- Types ----------------
 interface Creator {
@@ -330,60 +330,7 @@ const Leaderboard: React.FC = () => {
         </Text>
       </ScrollView>
 
-      {/* Bottom Tabs */}
-      <View style={styles.bottomTabs}>
-        <TouchableOpacity
-          style={styles.bottomTab}
-          onPress={() => navigation.navigate("MainTabs", { screen: "Home" })}
-        >
-          <Ionicons name="home-outline" size={25} color="#e4e4e7" />
-          <Text style={styles.bottomTabLabel}>Home</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.bottomTab}
-          onPress={() => navigation.navigate("MainTabs", { screen: "Shorts" })}
-        >
-          <MaterialCommunityIcons
-            name="movie-open-play-outline"
-            size={26}
-            color="#e4e4e7"
-          />
-          <Text style={styles.bottomTabLabel}>Shorts</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.bottomTabCreate}
-          onPress={() => navigation.navigate("MainTabs", { screen: "Create" })}
-        >
-          <View style={styles.createIcon}>
-            <Ionicons name="add" size={27} color="#fff" />
-          </View>
-          <Text style={styles.bottomTabLabel}>Create</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.bottomTab}
-          onPress={() =>
-            navigation.navigate("MainTabs", { screen: "Subscribe" })
-          }
-        >
-          <MaterialCommunityIcons
-            name="youtube-subscription"
-            size={24}
-            color="#a1a1aa"
-          />
-          <Text style={styles.bottomTabLabel}>Subscribe</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.bottomTab}
-          onPress={() => navigation.navigate("MainTabs", { screen: "You" })}
-        >
-          <Ionicons name="person-circle-outline" size={26} color="#e4e4e7" />
-          <Text style={styles.bottomTabLabel}>You</Text>
-        </TouchableOpacity>
-      </View>
+      <AdminBottomTabs navigation={navigation} />
     </View>
   );
 };
@@ -400,7 +347,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingVertical: 24,
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingBottom: 96,
   },
   header: {
     alignItems: "center",
@@ -661,44 +608,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 28,
     marginBottom: 16,
-  },
-  bottomTabs: {
-    minHeight: 78,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    backgroundColor: "#0f0f0f",
-    borderTopWidth: 1,
-    borderTopColor: "#292929",
-    paddingHorizontal: 4,
-    paddingVertical: 10,
-  },
-  bottomTab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 60,
-    gap: 5,
-  },
-  bottomTabCreate: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 60,
-    gap: 5,
-  },
-  createIcon: {
-    width: 38,
-    height: 38,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#ef4444",
-    borderRadius: 8,
-  },
-  bottomTabLabel: {
-    color: "#e4e4e7",
-    fontSize: 12,
-    fontWeight: "600",
   },
 });
 

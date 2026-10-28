@@ -15,6 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { API_ORIGIN } from "../../config/api";
 import { showToast } from "../utils/notifications";
+import AdminBottomTabs from "../admin/AdminBottomTabs";
+import Navbar from "../admin/Navbar";
 
 type StrikeStatus = "active" | "expired" | "disputed" | "removed" | string;
 
@@ -314,15 +316,19 @@ export default function CopyrightScreen() {
 
   if (loading && !refreshing) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator
-          size="large"
-          color="#ef4444"
-        />
+      <View style={styles.container}>
+        <Navbar onMenuPress={() => {}} points={0} />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator
+            size="large"
+            color="#ef4444"
+          />
 
-        <Text style={styles.loadingText}>
-          Loading copyright information...
-        </Text>
+          <Text style={styles.loadingText}>
+            Loading copyright information...
+          </Text>
+        </View>
+        <AdminBottomTabs navigation={navigation} />
       </View>
     );
   }
@@ -333,33 +339,37 @@ export default function CopyrightScreen() {
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
-        <View style={styles.errorIconContainer}>
-          <Ionicons
-            name="warning-outline"
-            size={52}
-            color="#ef4444"
-          />
-        </View>
+      <View style={styles.container}>
+        <Navbar onMenuPress={() => {}} points={0} />
+        <View style={styles.centerContainer}>
+          <View style={styles.errorIconContainer}>
+            <Ionicons
+              name="warning-outline"
+              size={52}
+              color="#ef4444"
+            />
+          </View>
 
-        <Text style={styles.errorText}>
-          {error}
-        </Text>
-
-        <Pressable
-          style={styles.retryButton}
-          onPress={fetchStrikes}
-        >
-          <Ionicons
-            name="refresh-outline"
-            size={18}
-            color="#ffffff"
-          />
-
-          <Text style={styles.retryButtonText}>
-            Retry
+          <Text style={styles.errorText}>
+            {error}
           </Text>
-        </Pressable>
+
+          <Pressable
+            style={styles.retryButton}
+            onPress={fetchStrikes}
+          >
+            <Ionicons
+              name="refresh-outline"
+              size={18}
+              color="#ffffff"
+            />
+
+            <Text style={styles.retryButtonText}>
+              Retry
+            </Text>
+          </Pressable>
+        </View>
+        <AdminBottomTabs navigation={navigation} />
       </View>
     );
   }
@@ -370,6 +380,7 @@ export default function CopyrightScreen() {
 
   return (
     <View style={styles.container}>
+      <Navbar onMenuPress={() => {}} points={0} />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
@@ -720,6 +731,7 @@ export default function CopyrightScreen() {
           </View>
         )}
       </ScrollView>
+      <AdminBottomTabs navigation={navigation} />
     </View>
   );
 }
@@ -741,7 +753,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingHorizontal: 16,
     paddingTop: 24,
-    paddingBottom: 40,
+    paddingBottom: 112,
   },
 
   // =========================================================
