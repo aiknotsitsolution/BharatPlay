@@ -1,3 +1,8 @@
 node_modules
 .env
 uploads
+**/tests/
+**/__tests__/
+**/*.test.*
+**/*.spec.*
+**/coverage/

@@ -13,6 +13,7 @@ import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { toast } from "react-toastify";
 import { v4 as uuidv4 } from "uuid";
 import { AUTH_API } from "../../config/api";
+import { getBrowserDeviceSignals } from "../../utils/browserDeviceFingerprint";
 import {
   isLikelyPrivateBrowsing,
   PRIVATE_BROWSING_BYPASS_UNTIL,
@@ -137,16 +138,21 @@ export default function AuthPageV2() {
     setError("");
 
     try {
+      const browserDeviceSignals = getBrowserDeviceSignals();
       if (!credentialResponse.credential) {
         throw new Error("Google sign-in did not return a credential.");
       }
       const response = await fetch(AUTH_API.google, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Client-Platform": "website",
+        },
         credentials: "include",
         body: JSON.stringify({
           credential: credentialResponse.credential,
           clientHardwareUuid: getClientHardwareUuid(),
+          browserDeviceSignals,
         }),
       });
       const data = await response.json();
@@ -190,6 +196,7 @@ export default function AuthPageV2() {
     setError("");
 
     try {
+      const browserDeviceSignals = getBrowserDeviceSignals();
       if (migrationMode) {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
           throw new Error("Enter your existing account email.");
@@ -207,12 +214,14 @@ export default function AuthPageV2() {
               emailOtp: migrationEmailOtp,
               phoneOtp: migrationPhoneOtp,
               clientHardwareUuid: getClientHardwareUuid(),
+              browserDeviceSignals,
             }
           : {
               email: formData.email,
               password: formData.password,
               phone: formData.phone,
               clientHardwareUuid: getClientHardwareUuid(),
+              browserDeviceSignals,
             };
         const response = await fetch(endpoint, {
           method: "POST",
@@ -287,6 +296,7 @@ export default function AuthPageV2() {
             email: identifier,
             ...(otpRequired ? { otp } : { password: formData.password }),
             clientHardwareUuid: getClientHardwareUuid(),
+            browserDeviceSignals,
           }),
         });
         const data = await response.json();
@@ -331,6 +341,7 @@ export default function AuthPageV2() {
           password: formData.password,
           ...(otpRequired ? { otp } : {}),
           clientHardwareUuid: getClientHardwareUuid(),
+          browserDeviceSignals,
         }),
       });
       const data = await res.json();
@@ -366,6 +377,7 @@ export default function AuthPageV2() {
     setError("");
 
     try {
+      const browserDeviceSignals = getBrowserDeviceSignals();
       const endpoint = migrationMode
         ? AUTH_API.legacyMigration
         : isLogin
@@ -377,18 +389,21 @@ export default function AuthPageV2() {
             password: formData.password,
             phone: formData.phone,
             clientHardwareUuid: getClientHardwareUuid(),
+            browserDeviceSignals,
           }
         : isLogin
           ? {
               email: formData.email.trim().toLowerCase(),
               password: formData.password,
               clientHardwareUuid: getClientHardwareUuid(),
+              browserDeviceSignals,
             }
           : {
               name: formData.name,
               email: formData.email.trim(),
               password: formData.password,
               clientHardwareUuid: getClientHardwareUuid(),
+              browserDeviceSignals,
             };
       const res = await fetch(endpoint, {
         method: "POST",

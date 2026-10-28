@@ -51,6 +51,9 @@ jest.mock("../services/clientHardwareBindingService", () => ({
   checkClientHardwareBinding: jest.fn(),
   bindClientHardwareUuid: jest.fn(),
 }));
+jest.mock("../services/browserDeviceBindingService", () => ({
+  checkWebsiteDeviceBinding: jest.fn(),
+}));
 jest.mock("../Email/nodemailer.js", () => ({
   sendMail: jest.fn().mockResolvedValue({}),
 }));
@@ -72,6 +75,9 @@ const {
   checkClientHardwareBinding,
 } = require("../services/clientHardwareBindingService");
 const { registerOrVerifyDevice } = require("../services/deviceSecurityService");
+const {
+  checkWebsiteDeviceBinding,
+} = require("../services/browserDeviceBindingService");
 const { setRefreshCookie } = require("../utils/refreshCookie");
 const { registerUser } = require("../controller/authController");
 
@@ -103,6 +109,17 @@ const makeRequest = (otp) => ({
     email: registeredUser.email,
     password: "correct-password",
     clientHardwareUuid: "hardware-uuid-123",
+    browserDeviceSignals: {
+      version: "web-v1",
+      platform: "Win32",
+      screenWidth: 1920,
+      screenHeight: 1080,
+      colorDepth: 24,
+      devicePixelRatio: 1,
+      hardwareConcurrency: 8,
+      maxTouchPoints: 0,
+      timeZone: "America/Los_Angeles",
+    },
     ...(otp ? { otp } : {}),
   },
   cookies: { device_id: "browser-device-123" },
@@ -120,6 +137,10 @@ describe("registration retry recovery", () => {
     });
     checkClientHardwareBinding.mockResolvedValue({ ok: true });
     bindClientHardwareUuid.mockResolvedValue({ ok: true });
+    checkWebsiteDeviceBinding.mockResolvedValue({
+      ok: true,
+      fingerprint: `web-v1:${"a".repeat(64)}`,
+    });
     registerOrVerifyDevice.mockResolvedValue({ ok: true, deviceId: "browser-device-123" });
     DeviceFingerprint.findOneAndUpdate.mockResolvedValue({});
     DeviceFingerprint.updateOne.mockResolvedValue({});
@@ -151,6 +172,7 @@ describe("registration retry recovery", () => {
       pendingOtp: otp,
       otpPurpose: "register",
       pendingOtpEmail: registeredUser.email,
+      pendingOtpFingerprint: `web-v1:${"a".repeat(64)}`,
       otpExpiresAt: new Date(Date.now() + 60_000),
     });
     const response = makeResponse();

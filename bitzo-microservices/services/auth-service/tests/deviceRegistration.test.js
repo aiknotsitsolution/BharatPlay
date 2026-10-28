@@ -3,11 +3,15 @@ jest.mock("../models/PlayIntegrityToken", () => ({}));
 jest.mock("../models/usermodel", () => ({
   findOne: jest.fn(),
 }));
+jest.mock("../models/DeviceFingerprintModel", () => ({
+  findOne: jest.fn(),
+}));
 jest.mock("../services/vpn.service/fraud.service", () => ({
   logFraudEvent: jest.fn(),
 }));
 
 const User = require("../models/usermodel");
+const DeviceFingerprint = require("../models/DeviceFingerprintModel");
 const {
   checkDeviceRegistrationAvailability,
 } = require("../services/deviceSecurityService");
@@ -17,9 +21,22 @@ const userQuery = (user) => ({
   lean: jest.fn().mockResolvedValue(user),
 });
 
+const browserDeviceSignals = {
+  version: "web-v1",
+  platform: "Windows",
+  screenWidth: 1920,
+  screenHeight: 1080,
+  colorDepth: 24,
+  devicePixelRatio: 1,
+  hardwareConcurrency: 8,
+  maxTouchPoints: 0,
+  timeZone: "America/Los_Angeles",
+};
+
 describe("device registration availability", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.JWT_SECRET = "test-browser-device-binding-secret";
   });
 
   test("blocks a second email account on the same website browser", async () => {
@@ -52,6 +69,34 @@ describe("device registration availability", () => {
     expect(User.findOne).toHaveBeenCalledWith({
       deviceId: "other-browser-device-456",
     });
+  });
+
+  test("blocks registration from another browser on the same physical device", async () => {
+    const { createFingerprint } = require("../services/browserDeviceBindingService");
+    const fingerprint = createFingerprint(browserDeviceSignals);
+    DeviceFingerprint.findOne.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue({
+        deviceId: "original-browser-device",
+        userId: "existing-user",
+      }),
+    });
+
+    await expect(
+      checkDeviceRegistrationAvailability({
+        headers: { "x-client-platform": "website" },
+        body: { browserDeviceSignals },
+        cookies: { device_id: "other-browser-device" },
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: 409,
+      code: "DEVICE_ALREADY_REGISTERED",
+    });
+    expect(DeviceFingerprint.findOne).toHaveBeenCalledWith({
+      browserDeviceFingerprint: fingerprint,
+    });
+    expect(User.findOne).not.toHaveBeenCalled();
   });
 
   test("allows registration on a device with no account", async () => {

@@ -2,6 +2,10 @@
 **/.env
 **/uploads
 **/coverage
+**/tests
+**/__tests__
+**/*.test.*
+**/*.spec.*
 **/.git
 *.log
 

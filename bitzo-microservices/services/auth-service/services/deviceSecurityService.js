@@ -2,8 +2,10 @@ const crypto = require("node:crypto");
 const { GoogleAuth } = require("google-auth-library");
 const Device = require("../models/Device");
 const User = require("../models/usermodel");
+const DeviceFingerprint = require("../models/DeviceFingerprintModel");
 const PlayIntegrityToken = require("../models/PlayIntegrityToken");
 const { logFraudEvent } = require("./vpn.service/fraud.service");
+const { checkWebsiteDeviceBinding } = require("./browserDeviceBindingService");
 
 const getDeviceSignals = (body = {}) => ({
   hardwareId: String(body.Hardware_ID || body.hardwareId || "").trim(),
@@ -253,6 +255,14 @@ async function checkDeviceRegistrationAvailability(req) {
   const signals = getDeviceSignals(req.body);
   const deviceId =
     signals.hardwareId || String(req.cookies?.device_id || "").trim();
+
+  const browserBinding = await checkWebsiteDeviceBinding({
+    req,
+    deviceId,
+    action: "register",
+  });
+  if (!browserBinding.ok) return browserBinding;
+
   if (!deviceId || !isValidIdentifier(deviceId)) return { ok: true };
 
   const existingUser = await User.findOne({ deviceId }).select("_id").lean();

@@ -44,6 +44,7 @@ const {
   checkClientHardwareBinding,
   bindClientHardwareUuid,
 } = require("../services/clientHardwareBindingService");
+const { checkWebsiteDeviceBinding } = require("../services/browserDeviceBindingService");
 const transporter = require("../Email/nodemailer.js");
 const getRegisterMailOptions = require("../Email/register.js");
 const getLoginMailOptions = require("../Email/login.js");
@@ -79,7 +80,12 @@ const sendMailSafely = async (mailOptions) => {
   }
 };
 
-const issueOtpToDevice = async ({ deviceId, user, purpose = "login" }) => {
+const issueOtpToDevice = async ({
+  deviceId,
+  user,
+  purpose = "login",
+  browserFingerprint = null,
+}) => {
   if (!deviceId || !user?.email) return null;
 
   const otp = generateOtp();
@@ -93,6 +99,7 @@ const issueOtpToDevice = async ({ deviceId, user, purpose = "login" }) => {
         otpExpiresAt: expiresAt,
         otpPurpose: purpose,
         pendingOtpEmail: String(user.email).trim().toLowerCase(),
+        ...(browserFingerprint ? { pendingOtpFingerprint: browserFingerprint } : {}),
         lastOtpSentAt: new Date(),
       },
     },
@@ -111,6 +118,7 @@ const issueOtpToDevice = async ({ deviceId, user, purpose = "login" }) => {
           otpExpiresAt: 1,
           otpPurpose: 1,
           pendingOtpEmail: 1,
+          pendingOtpFingerprint: 1,
         },
       },
     );
@@ -189,6 +197,20 @@ exports.registerUser = async (req, res) => {
       : null;
 
     if (previousRegistration) {
+      const browserBinding = await checkWebsiteDeviceBinding({
+        req,
+        deviceId: registrationDeviceId,
+        userId: previousRegistration._id,
+        action: "login",
+      });
+      if (!browserBinding.ok) {
+        return res.status(browserBinding.status).json({
+          success: false,
+          code: browserBinding.code,
+          message: browserBinding.message,
+        });
+      }
+
       if (
         (previousRegistration.status &&
           previousRegistration.status !== "active") ||
@@ -217,6 +239,7 @@ exports.registerUser = async (req, res) => {
           deviceId: registrationDeviceId,
           user: previousRegistration,
           purpose: "register",
+          browserFingerprint: browserBinding.fingerprint,
         });
 
         return res.status(200).json({
@@ -234,7 +257,10 @@ exports.registerUser = async (req, res) => {
         !fingerprintRecord ||
         !fingerprintRecord.pendingOtp ||
         fingerprintRecord.otpPurpose !== "register" ||
-        fingerprintRecord.pendingOtpEmail !== normalizedEmail
+        fingerprintRecord.pendingOtpEmail !== normalizedEmail ||
+        (browserBinding.fingerprint &&
+          fingerprintRecord.pendingOtpFingerprint !==
+            browserBinding.fingerprint)
       ) {
         return res.status(401).json({
           success: false,
@@ -286,6 +312,9 @@ exports.registerUser = async (req, res) => {
             lastIp: ip,
             userAgent: ua,
             lastSeen: new Date(),
+            ...(browserBinding.fingerprint
+              ? { fingerprint: browserBinding.fingerprint }
+              : {}),
           },
           $addToSet: { associatedUsers: previousRegistration._id },
           $unset: {
@@ -293,6 +322,7 @@ exports.registerUser = async (req, res) => {
             otpExpiresAt: 1,
             otpPurpose: 1,
             pendingOtpEmail: 1,
+            pendingOtpFingerprint: 1,
           },
         },
       );
@@ -363,6 +393,7 @@ exports.registerUser = async (req, res) => {
         message: deviceRegistrationCheck.message,
       });
     }
+    const browserFingerprint = deviceRegistrationCheck.fingerprint || null;
 
     if (platform === "app") {
       const integrityCheck = await requireAndroidSignupIntegrity(req);
@@ -423,7 +454,9 @@ exports.registerUser = async (req, res) => {
         !fingerprintRecord ||
         !fingerprintRecord.pendingOtp ||
         fingerprintRecord.otpPurpose !== "register" ||
-        fingerprintRecord.pendingOtpEmail !== normalizedEmail
+        fingerprintRecord.pendingOtpEmail !== normalizedEmail ||
+        (browserFingerprint &&
+          fingerprintRecord.pendingOtpFingerprint !== browserFingerprint)
       ) {
         return res.status(401).json({
           success: false,
@@ -502,6 +535,9 @@ exports.registerUser = async (req, res) => {
             lastIp: ip,
             userAgent: ua,
             lastSeen: new Date(),
+            ...(browserFingerprint
+              ? { browserDeviceFingerprint: browserFingerprint }
+              : {}),
           },
           $addToSet: { associatedUsers: user._id },
           $unset: {
@@ -509,6 +545,7 @@ exports.registerUser = async (req, res) => {
             otpExpiresAt: 1,
             otpPurpose: 1,
             pendingOtpEmail: 1,
+            pendingOtpFingerprint: 1,
           },
         },
       );
@@ -563,6 +600,7 @@ exports.registerUser = async (req, res) => {
         name: normalizedName,
       },
       purpose: "register",
+      browserFingerprint,
     });
 
     return res.status(200).json({
@@ -764,6 +802,7 @@ exports.loginUser = async (req, res) => {
     const ip = getClientIp(req);
     const ua = req.headers["user-agent"] || "unknown";
     let deviceId = resolveDeviceId(req, res);
+    let browserFingerprint = null;
 
     const user = await User.findOne({ email: normalizedEmail }).select("+password");
     if (!user) {
@@ -816,6 +855,21 @@ exports.loginUser = async (req, res) => {
           message: "Invalid email or password",
         });
       }
+
+      const browserBinding = await checkWebsiteDeviceBinding({
+        req,
+        deviceId,
+        userId: user._id,
+        action: "login",
+      });
+      if (!browserBinding.ok) {
+        return res.status(browserBinding.status).json({
+          success: false,
+          code: browserBinding.code,
+          message: browserBinding.message,
+        });
+      }
+      browserFingerprint = browserBinding.fingerprint;
 
       const hardwareBindingCheck = await checkClientHardwareBinding({
         clientHardwareUuid: req.body.clientHardwareUuid,
@@ -916,6 +970,7 @@ exports.loginUser = async (req, res) => {
         deviceId,
         user,
         purpose: "login",
+        browserFingerprint: browserBinding.fingerprint,
       });
 
       return res.status(200).json({
@@ -928,6 +983,21 @@ exports.loginUser = async (req, res) => {
     }
 
     // ========== OTP VERIFICATION STEP ==========
+    const otpBrowserBinding = await checkWebsiteDeviceBinding({
+      req,
+      deviceId,
+      userId: user._id,
+      action: "login",
+    });
+    if (!otpBrowserBinding.ok) {
+      return res.status(otpBrowserBinding.status).json({
+        success: false,
+        code: otpBrowserBinding.code,
+        message: otpBrowserBinding.message,
+      });
+    }
+    browserFingerprint = otpBrowserBinding.fingerprint;
+
     const otpDeviceCheck = await registerOrVerifyDevice({
       req,
       userId: user._id,
@@ -948,7 +1018,9 @@ exports.loginUser = async (req, res) => {
       !fingerprintRecord ||
       !fingerprintRecord.pendingOtp ||
       fingerprintRecord.otpPurpose !== "login" ||
-      fingerprintRecord.pendingOtpEmail !== normalizedEmail
+      fingerprintRecord.pendingOtpEmail !== normalizedEmail ||
+      (browserFingerprint &&
+        fingerprintRecord.pendingOtpFingerprint !== browserFingerprint)
     ) {
       return res.status(401).json({
         success: false,
@@ -989,6 +1061,7 @@ exports.loginUser = async (req, res) => {
           otpExpiresAt: 1,
           otpPurpose: 1,
           pendingOtpEmail: 1,
+          pendingOtpFingerprint: 1,
         },
       },
     );
@@ -1030,6 +1103,9 @@ exports.loginUser = async (req, res) => {
           lastIp: ip,
           userAgent: ua,
           lastSeen: new Date(),
+          ...(browserFingerprint
+            ? { browserDeviceFingerprint: browserFingerprint }
+            : {}),
         },
         $addToSet: { associatedUsers: user._id },
       },
@@ -1191,6 +1267,20 @@ exports.googleLogin = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "This account is not available.",
+      });
+    }
+
+    const browserBinding = await checkWebsiteDeviceBinding({
+      req,
+      deviceId,
+      userId: user?._id || null,
+      action: user ? "login" : "register",
+    });
+    if (!browserBinding.ok) {
+      return res.status(browserBinding.status).json({
+        success: false,
+        code: browserBinding.code,
+        message: browserBinding.message,
       });
     }
 
@@ -1379,6 +1469,9 @@ exports.googleLogin = async (req, res) => {
           lastIp: ip,
           userAgent,
           lastSeen: new Date(),
+          ...(browserBinding.fingerprint
+            ? { fingerprint: browserBinding.fingerprint }
+            : {}),
         },
         $addToSet: { associatedUsers: user._id },
       },
@@ -1556,6 +1649,7 @@ exports.claimDevice = async (req, res) => {
           otpExpiresAt: 1,
           otpPurpose: 1,
           pendingOtpEmail: 1,
+          pendingOtpFingerprint: 1,
         },
       },
       { upsert: true, new: true },
