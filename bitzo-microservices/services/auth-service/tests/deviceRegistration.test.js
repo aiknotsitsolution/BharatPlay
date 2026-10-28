@@ -22,7 +22,7 @@ describe("device registration availability", () => {
     jest.clearAllMocks();
   });
 
-  test("blocks a second account on an already registered browser device", async () => {
+  test("blocks a second email account on the same website browser", async () => {
     User.findOne.mockReturnValue(userQuery({ _id: "existing-user" }));
 
     await expect(
@@ -37,6 +37,20 @@ describe("device registration availability", () => {
     });
     expect(User.findOne).toHaveBeenCalledWith({
       deviceId: "browser-device-123",
+    });
+  });
+
+  test("treats another browser cookie as a separate website device identity", async () => {
+    User.findOne.mockReturnValue(userQuery(null));
+
+    await expect(
+      checkDeviceRegistrationAvailability({
+        body: {},
+        cookies: { device_id: "other-browser-device-456" },
+      }),
+    ).resolves.toEqual({ ok: true });
+    expect(User.findOne).toHaveBeenCalledWith({
+      deviceId: "other-browser-device-456",
     });
   });
 
