@@ -1,14 +1,11 @@
 const getDefaultApiOrigin = () => {
-  if (
-    import.meta.env.DEV &&
-    typeof window !== "undefined" &&
-    window.location.port === "5173" &&
-    window.location.hostname
-  ) {
+  if (typeof window === "undefined") return "";
+
+  if (import.meta.env.DEV && window.location.port === "5173") {
     return `http://${window.location.hostname}:4000`;
   }
 
-  return "http://192.168.1.20:5173/:4000";
+  return window.location.origin;
 };
 
 const API_ORIGIN = String(

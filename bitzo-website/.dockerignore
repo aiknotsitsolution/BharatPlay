@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+**/tests/
+**/__tests__/
+**/*.test.*
+**/*.spec.*
+**/coverage/
+.git

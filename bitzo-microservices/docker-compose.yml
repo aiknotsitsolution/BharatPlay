@@ -2,7 +2,7 @@ name: VidBuxApp
 
 x-app-environment: &app-environment
   NODE_ENV: production
-  CORS_ORIGINS: "${CORS_ORIGINS:-http://192.168.1.20:5173/:5173,http://192.168.1.20:5173/:5174,http://${LAN_HOST_IP:-192.168.1.20}:5173}"
+  CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost,http://127.0.0.1}"
 
 x-app-defaults: &app-defaults
   init: true
@@ -28,6 +28,31 @@ x-app-defaults: &app-defaults
     start_period: 20s
 
 services:
+  web:
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    build:
+      context: ../bitzo-website
+      dockerfile: Dockerfile
+    ports:
+      - "${WEB_BIND_ADDRESS:-0.0.0.0}:${WEB_PORT:-80}:8080"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   gateway:
     <<: *app-defaults
     build:
