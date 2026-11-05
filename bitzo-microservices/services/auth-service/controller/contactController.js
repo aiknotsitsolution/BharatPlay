@@ -313,7 +313,7 @@ exports.updateContactStatus = async (req, res) => {
     }
 
     const request = await ContactRequest.findByIdAndUpdate(id, update, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     });
     if (!request) {

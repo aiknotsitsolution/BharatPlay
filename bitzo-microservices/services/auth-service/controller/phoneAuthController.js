@@ -28,8 +28,8 @@ const { evaluateSignupRequest } = require("../services/signupPolicy");
 
 const OTP_LIFETIME_MS = 5 * 60 * 1000;
 const OTP_COOLDOWN_MS = 60 * 1000;
-const OTP_WINDOW_MS = 60 * 60 * 1000;
-const MAX_OTP_SENDS_PER_HOUR = 5;
+const OTP_WINDOW_MS = 15 * 60 * 1000;
+const MAX_OTP_SENDS_PER_WINDOW = 3;
 const MAX_OTP_ATTEMPTS = 5;
 
 const normalizeIndianPhone = (value) => {
@@ -115,8 +115,8 @@ const reserveAndSendCode = async ({
   const inWindow =
     existing &&
     existing.sendWindowStartedAt.getTime() > now.getTime() - OTP_WINDOW_MS;
-  if (inWindow && existing.sendsInWindow >= MAX_OTP_SENDS_PER_HOUR) {
-    const error = new Error("OTP resend limit reached. Try again in an hour.");
+  if (inWindow && existing.sendsInWindow >= MAX_OTP_SENDS_PER_WINDOW) {
+    const error = new Error("OTP resend limit reached. Try again later.");
     error.statusCode = 429;
     throw error;
   }
@@ -599,7 +599,7 @@ exports.verifyEmailBindingOtp = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { $set: { email, emailVerified: true } },
-      { new: true, runValidators: true },
+      { returnDocument: "after", runValidators: true },
     ).select("-password");
     await PhoneOtp.deleteOne({ _id: verified.record._id });
     return res.status(200).json({ success: true, user });
@@ -693,7 +693,7 @@ exports.verifyPhoneBindingOtp = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { $set: { phone, phoneVerified: true } },
-      { new: true, runValidators: true },
+      { returnDocument: "after", runValidators: true },
     ).select("-password");
     await PhoneOtp.deleteOne({ _id: verified.record._id });
     return res.status(200).json({ success: true, user });

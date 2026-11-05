@@ -2782,7 +2782,7 @@ const addToWatchLater = async (req, res) => {
       {
         $addToSet: { watchLaterVideos: videoId, watchLater: videoId },
       },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!result) {

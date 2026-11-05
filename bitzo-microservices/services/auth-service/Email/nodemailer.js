@@ -11,7 +11,7 @@ if (!email || !password) {
 }
 
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || "smtpout.secureserver.net",
+  host: process.env.EMAIL_HOST || "smtp.gmail.com",
   port,
   secure: port === 465,
   auth: email && password ? { user: email, pass: password } : undefined,

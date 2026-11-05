@@ -359,7 +359,7 @@ async function registerOrVerifyDevice({ req, userId = null }) {
       },
       $setOnInsert: { device_id: deviceId },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   );
 
   if (cloneDetected && userId) {

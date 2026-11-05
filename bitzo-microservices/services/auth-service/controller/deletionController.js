@@ -302,7 +302,7 @@ exports.updateDeletionStatus = async (req, res) => {
     }
 
     const request = await DeletionRequest.findByIdAndUpdate(id, update, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     });
     if (!request) {

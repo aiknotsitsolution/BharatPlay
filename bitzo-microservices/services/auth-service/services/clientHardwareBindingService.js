@@ -88,7 +88,7 @@ const bindClientHardwareUuid = async ({ clientHardwareUuid, userId }) => {
       const reassigned = await ClientHardwareBinding.findOneAndUpdate(
         { clientHardwareUuid: normalizedUuid, userId: binding.userId },
         { $set: { userId, lastSeen: new Date() } },
-        { new: true },
+        { returnDocument: "after" },
       );
       if (reassigned) return { ok: true, clientHardwareUuid: normalizedUuid };
       continue;

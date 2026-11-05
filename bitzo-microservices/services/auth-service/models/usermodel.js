@@ -148,6 +148,18 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    resetOtpSentAt: {
+      type: Date,
+      default: null,
+    },
+    resetOtpSendWindowStartedAt: {
+      type: Date,
+      default: null,
+    },
+    resetOtpSendsInWindow: {
+      type: Number,
+      default: 0,
+    },
 
     // Avatar
     avatar: {

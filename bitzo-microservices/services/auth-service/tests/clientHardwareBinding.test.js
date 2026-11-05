@@ -72,7 +72,7 @@ describe("client hardware account binding", () => {
       expect.objectContaining({
         $set: expect.objectContaining({ userId: "new-user" }),
       }),
-      { new: true },
+      { returnDocument: "after" },
     );
   });
 

@@ -65,6 +65,18 @@ const createAuthSession = async (userId, kind = "user") => {
 };
 
 const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+const OTP_TTL_MS = 5 * 60 * 1000;
+const OTP_COOLDOWN_MS = 60 * 1000;
+const OTP_WINDOW_MS = 15 * 60 * 1000;
+const MAX_OTP_SENDS = 3;
+const MAX_OTP_ATTEMPTS = 5;
+
+const otpError = (message, statusCode, code = "OTP_REQUEST_FAILED") => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.code = code;
+  return error;
+};
 
 const sendMailSafely = async (mailOptions) => {
   if (!mailOptions?.to || !transporter?.sendMail) {
@@ -72,7 +84,10 @@ const sendMailSafely = async (mailOptions) => {
   }
 
   try {
-    await transporter.sendMail(mailOptions);
+    const result = await transporter.sendMail(mailOptions);
+    if (result && result.accepted && result.accepted.length === 0) {
+      return { sent: false, reason: "smtp-rejected" };
+    }
     return { sent: true };
   } catch (error) {
     console.error("Email send failed:", error.message);
@@ -85,26 +100,92 @@ const issueOtpToDevice = async ({
   user,
   purpose = "login",
   browserFingerprint = null,
+  userId = null,
 }) => {
   if (!deviceId || !user?.email) return null;
 
-  const otp = generateOtp();
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+  const now = new Date();
+  const existing = await DeviceFingerprint.findOne({ deviceId });
+  if (
+    existing?.lastOtpSentAt &&
+    new Date(existing.lastOtpSentAt).getTime() > now.getTime() - OTP_COOLDOWN_MS
+  ) {
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil(
+        (new Date(existing.lastOtpSentAt).getTime() +
+          OTP_COOLDOWN_MS -
+          now.getTime()) /
+          1000,
+      ),
+    );
+    const error = otpError(
+      `Please wait ${retryAfterSeconds} seconds before requesting another code`,
+      429,
+      "OTP_COOLDOWN",
+    );
+    error.retryAfterSeconds = retryAfterSeconds;
+    throw error;
+  }
 
-  await DeviceFingerprint.findOneAndUpdate(
-    { deviceId },
-    {
-      $set: {
-        pendingOtp: otp,
-        otpExpiresAt: expiresAt,
-        otpPurpose: purpose,
-        pendingOtpEmail: String(user.email).trim().toLowerCase(),
-        ...(browserFingerprint ? { pendingOtpFingerprint: browserFingerprint } : {}),
-        lastOtpSentAt: new Date(),
+  const inWindow =
+    existing?.otpSendWindowStartedAt &&
+    new Date(existing.otpSendWindowStartedAt).getTime() >
+      now.getTime() - OTP_WINDOW_MS;
+  const windowStartedAt = inWindow
+    ? new Date(existing.otpSendWindowStartedAt)
+    : now;
+  const sendsInWindow = inWindow ? existing.otpSendsInWindow || 0 : 0;
+  if (sendsInWindow >= MAX_OTP_SENDS) {
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil(
+        (windowStartedAt.getTime() + OTP_WINDOW_MS - now.getTime()) / 1000,
+      ),
+    );
+    const error = otpError(
+      "OTP resend limit reached. Try again later.",
+      429,
+      "OTP_RESEND_LIMIT",
+    );
+    error.retryAfterSeconds = retryAfterSeconds;
+    throw error;
+  }
+
+  const otp = generateOtp();
+  const expiresAt = new Date(now.getTime() + OTP_TTL_MS);
+
+  try {
+    await DeviceFingerprint.findOneAndUpdate(
+      existing?.lastOtpSentAt
+        ? { deviceId, lastOtpSentAt: existing.lastOtpSentAt }
+        : { deviceId },
+      {
+        $set: {
+          ...(userId ? { userId } : {}),
+          pendingOtp: otp,
+          otpExpiresAt: expiresAt,
+          otpPurpose: purpose,
+          pendingOtpEmail: String(user.email).trim().toLowerCase(),
+          ...(browserFingerprint ? { pendingOtpFingerprint: browserFingerprint } : {}),
+          lastOtpSentAt: now,
+          otpAttempts: 0,
+          otpSendWindowStartedAt: windowStartedAt,
+          otpSendsInWindow: sendsInWindow + 1,
+        },
       },
-    },
-    { upsert: true, new: true },
-  );
+      { upsert: true, returnDocument: "after" },
+    );
+  } catch (error) {
+    if (error.code === 11000) {
+      throw otpError(
+        "An OTP request is already being processed",
+        429,
+        "OTP_DUPLICATE_REQUEST",
+      );
+    }
+    throw error;
+  }
 
   const mailResult = await sendMailSafely(
     getLoginMailOptions(user.email, user.name, otp),
@@ -123,9 +204,11 @@ const issueOtpToDevice = async ({
       },
     );
 
-    const error = new Error("OTP email could not be sent");
-    error.statusCode = 503;
-    throw error;
+    throw otpError(
+      "Verification email could not be sent. Please try again later.",
+      503,
+      "OTP_EMAIL_SEND_FAILED",
+    );
   }
 
   return otp;
@@ -274,6 +357,32 @@ exports.registerUser = async (req, res) => {
         !fingerprintRecord.otpExpiresAt ||
         new Date(fingerprintRecord.otpExpiresAt).getTime() < Date.now();
       if (!otpMatches || otpExpired) {
+        if (otpExpired) {
+          await DeviceFingerprint.updateOne(
+            { deviceId: registrationDeviceId },
+            { $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 } },
+          );
+        } else {
+          const attempts = (fingerprintRecord.otpAttempts || 0) + 1;
+          if (attempts >= MAX_OTP_ATTEMPTS) {
+            await DeviceFingerprint.updateOne(
+              { deviceId: registrationDeviceId },
+              {
+                $set: { otpAttempts: attempts },
+                $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 },
+              },
+            );
+            return res.status(401).json({
+              success: false,
+              code: "OTP_ATTEMPTS_EXCEEDED",
+              message: "Too many incorrect attempts. Please request a new code.",
+            });
+          }
+          await DeviceFingerprint.updateOne(
+            { deviceId: registrationDeviceId },
+            { $set: { otpAttempts: attempts } },
+          );
+        }
         return res.status(401).json({
           success: false,
           message: "Invalid or expired OTP.",
@@ -468,8 +577,33 @@ exports.registerUser = async (req, res) => {
       const otpExpired =
         !fingerprintRecord.otpExpiresAt ||
         new Date(fingerprintRecord.otpExpiresAt).getTime() < Date.now();
-
       if (!otpMatches || otpExpired) {
+        if (otpExpired) {
+          await DeviceFingerprint.updateOne(
+            { deviceId },
+            { $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 } },
+          );
+        } else {
+          const attempts = (fingerprintRecord.otpAttempts || 0) + 1;
+          if (attempts >= MAX_OTP_ATTEMPTS) {
+            await DeviceFingerprint.updateOne(
+              { deviceId },
+              {
+                $set: { otpAttempts: attempts },
+                $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 },
+              },
+            );
+            return res.status(401).json({
+              success: false,
+              code: "OTP_ATTEMPTS_EXCEEDED",
+              message: "Too many incorrect attempts. Please request a new code.",
+            });
+          }
+          await DeviceFingerprint.updateOne(
+            { deviceId },
+            { $set: { otpAttempts: attempts } },
+          );
+        }
         return res.status(401).json({
           success: false,
           message: "Invalid or expired OTP.",
@@ -612,9 +746,15 @@ exports.registerUser = async (req, res) => {
   } catch (error) {
     console.error("Register error:", error);
 
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
-      message: "Registration failed",
+      code: error.code,
+      retryAfterSeconds: error.retryAfterSeconds,
+      message: error.statusCode === 429
+        ? error.message
+        : error.statusCode === 503
+          ? "Verification email could not be sent. Please try again later."
+          : "Registration failed",
     });
   }
 };
@@ -1034,6 +1174,32 @@ exports.loginUser = async (req, res) => {
       new Date(fingerprintRecord.otpExpiresAt).getTime() < Date.now();
 
     if (!otpMatches || otpExpired) {
+      if (otpExpired) {
+        await DeviceFingerprint.updateOne(
+          { deviceId },
+          { $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 } },
+        );
+      } else {
+        const attempts = (fingerprintRecord.otpAttempts || 0) + 1;
+        if (attempts >= MAX_OTP_ATTEMPTS) {
+          await DeviceFingerprint.updateOne(
+            { deviceId },
+            {
+              $set: { otpAttempts: attempts },
+              $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 },
+            },
+          );
+          return res.status(401).json({
+            success: false,
+            code: "OTP_ATTEMPTS_EXCEEDED",
+            message: "Too many incorrect attempts. Please request a new code.",
+          });
+        }
+        await DeviceFingerprint.updateOne(
+          { deviceId },
+          { $set: { otpAttempts: attempts } },
+        );
+      }
       return res.status(401).json({
         success: false,
         message: "Invalid or expired OTP.",
@@ -1652,7 +1818,7 @@ exports.claimDevice = async (req, res) => {
           pendingOtpFingerprint: 1,
         },
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     );
     await Device.findOneAndUpdate(
       { device_id: deviceId },
@@ -1660,7 +1826,7 @@ exports.claimDevice = async (req, res) => {
         $set: { linked_user_id: user._id, last_login: new Date() },
         $setOnInsert: { device_id: deviceId },
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
     );
 
     // Clear any auth cookies on this response (same as logout).
@@ -1856,32 +2022,12 @@ exports.requestPhoneVerification = async (req, res) => {
     }
 
     const deviceId = resolveDeviceId(req, res);
-    const otp = generateOtp();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-    await DeviceFingerprint.findOneAndUpdate(
-      { deviceId },
-      {
-        $set: {
-          userId: user._id,
-          pendingOtp: otp,
-          otpExpiresAt: expiresAt,
-          otpPurpose: "phone",
-          lastOtpSentAt: new Date(),
-        },
-      },
-      { upsert: true, new: true },
-    );
-
-    const mailResult = await sendMailSafely(
-      getLoginMailOptions(user.email, user.name, otp),
-    );
-    if (!mailResult.sent && process.env.NODE_ENV === "production") {
-      return res.status(503).json({
-        success: false,
-        message: "Verification service is not configured",
-      });
-    }
+    const otp = await issueOtpToDevice({
+      deviceId,
+      user,
+      userId: user._id,
+      purpose: "phone",
+    });
 
     return res.status(200).json({
       success: true,
@@ -1890,9 +2036,13 @@ exports.requestPhoneVerification = async (req, res) => {
     });
   } catch (error) {
     console.error("Phone verification request error:", error);
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
-      message: "Could not send verification code",
+      code: error.code,
+      retryAfterSeconds: error.retryAfterSeconds,
+      message: error.statusCode === 429 || error.statusCode === 503
+        ? error.message
+        : "Could not send verification code",
     });
   }
 };
@@ -1923,6 +2073,25 @@ exports.verifyPhone = async (req, res) => {
       otpExpired ||
       String(fingerprintRecord.pendingOtp) !== otp
     ) {
+      if (fingerprintRecord && !otpExpired) {
+        const attempts = (fingerprintRecord.otpAttempts || 0) + 1;
+        await DeviceFingerprint.updateOne(
+          { _id: fingerprintRecord._id },
+          attempts >= MAX_OTP_ATTEMPTS
+            ? {
+                $set: { otpAttempts: attempts },
+                $unset: { pendingOtp: 1, otpExpiresAt: 1, otpPurpose: 1 },
+              }
+            : { $set: { otpAttempts: attempts } },
+        );
+        if (attempts >= MAX_OTP_ATTEMPTS) {
+          return res.status(401).json({
+            success: false,
+            code: "OTP_ATTEMPTS_EXCEEDED",
+            message: "Too many incorrect attempts. Please request a new code.",
+          });
+        }
+      }
       return res.status(401).json({
         success: false,
         message: "Invalid or expired verification code",
@@ -1932,7 +2101,7 @@ exports.verifyPhone = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { $set: { phone, phoneVerified: true } },
-      { new: true, runValidators: true },
+      { returnDocument: "after", runValidators: true },
     ).select("-password");
 
     await DeviceFingerprint.updateOne(
@@ -2167,7 +2336,7 @@ exports.UserEdit = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { $set: updateData },
-      { new: true, runValidators: true },
+      { returnDocument: "after", runValidators: true },
     )
       .select(
         "-password -__v -googleId -deviceId -createdAt -updatedAt -avatarFileId",
@@ -2424,9 +2593,45 @@ exports.forgotPassword = async (req, res) => {
     const user = await User.findOne({ email: normalizedEmail });
 
     if (user) {
+      const now = new Date();
+      if (
+        user.resetOtpSentAt &&
+        new Date(user.resetOtpSentAt).getTime() >
+          now.getTime() - OTP_COOLDOWN_MS
+      ) {
+        const retryAfterSeconds = Math.max(
+          1,
+          Math.ceil(
+            (new Date(user.resetOtpSentAt).getTime() +
+              OTP_COOLDOWN_MS -
+              now.getTime()) /
+              1000,
+          ),
+        );
+        return res.status(429).json({
+          success: false,
+          code: "OTP_COOLDOWN",
+          retryAfterSeconds,
+          message: `Please wait ${retryAfterSeconds} seconds before requesting another code`,
+        });
+      }
+
+      const inWindow =
+        user.resetOtpSendWindowStartedAt &&
+        new Date(user.resetOtpSendWindowStartedAt).getTime() >
+          now.getTime() - OTP_WINDOW_MS;
+      const sendsInWindow = inWindow ? user.resetOtpSendsInWindow || 0 : 0;
+      if (sendsInWindow >= MAX_OTP_SENDS) {
+        return res.status(429).json({
+          success: false,
+          code: "OTP_RESEND_LIMIT",
+          message: "OTP resend limit reached. Try again later.",
+        });
+      }
+
       const otp = crypto.randomInt(100000, 1000000).toString();
       const otpHash = await bcrypt.hash(otp, 10);
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      const expiresAt = new Date(now.getTime() + OTP_TTL_MS);
 
       await User.updateOne(
         { _id: user._id },
@@ -2435,6 +2640,11 @@ exports.forgotPassword = async (req, res) => {
             resetOtpHash: otpHash,
             resetOtpExpires: expiresAt,
             resetOtpAttempts: 0,
+            resetOtpSentAt: now,
+            resetOtpSendWindowStartedAt: inWindow
+              ? user.resetOtpSendWindowStartedAt
+              : now,
+            resetOtpSendsInWindow: sendsInWindow + 1,
           },
         },
       );
@@ -2447,9 +2657,26 @@ exports.forgotPassword = async (req, res) => {
         metadata: { email: normalizedEmail },
       });
 
-      await sendMailSafely(
+      const mailResult = await sendMailSafely(
         getPasswordResetMailOptions(user.email, user.name, otp),
       );
+      if (!mailResult.sent) {
+        await User.updateOne(
+          { _id: user._id },
+          {
+            $unset: {
+              resetOtpHash: 1,
+              resetOtpExpires: 1,
+              resetOtpAttempts: 1,
+            },
+          },
+        );
+        return res.status(503).json({
+          success: false,
+          code: "OTP_EMAIL_SEND_FAILED",
+          message: "Verification email could not be sent. Please try again later.",
+        });
+      }
     }
 
     // Generic response: never reveal whether the email exists.
@@ -2460,7 +2687,13 @@ exports.forgotPassword = async (req, res) => {
     });
   } catch (error) {
     console.error("Forgot password error:", error.message);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      code: error.code,
+      message: error.statusCode === 503
+        ? "Verification email could not be sent. Please try again later."
+        : "Server error",
+    });
   }
 };
 
