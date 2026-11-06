@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { toast } from "react-toastify";
 import {
   Edit,
@@ -32,6 +33,25 @@ const isCreativeCornerCategory = (cat) =>
   cat?.isCreativeCorner ||
   cat?.slug === "creative-corner" ||
   cat?.name?.toLowerCase() === "creative corner";
+
+const uploadWithProgress = async (url, options = {}) => {
+  try {
+    const response = await axios.post(url, options.body, {
+      headers: options.headers,
+      onUploadProgress: options.onUploadProgress,
+    });
+    return {
+      ok: true,
+      json: async () => response.data,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      json: async () =>
+        error.response?.data || { message: "Failed to upload video" },
+    };
+  }
+};
 
 const isShortVideo = (video) => {
   const rawTypes = video?.videoType ?? video?.raw?.videoType ?? [];
@@ -106,6 +126,7 @@ export default function ChannelPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [creating, setCreating] = useState(false);
 
   // Video player modal
@@ -657,6 +678,7 @@ export default function ChannelPage() {
 
     try {
       setUploading(true);
+      setUploadProgress(0);
       setUploadError("");
 
       const formData = new FormData();
@@ -678,7 +700,7 @@ export default function ChannelPage() {
         }
       }
 
-      const response = await authFetch(
+      const response = await uploadWithProgress(
         `${API_BASE}/uservideo/upload/${selectedUploadChannelId}`,
         {
           method: "POST",
@@ -686,6 +708,13 @@ export default function ChannelPage() {
             Authorization: `Bearer ${token}`,
           },
           body: formData,
+          onUploadProgress: (event) => {
+            if (event.total) {
+              setUploadProgress(
+                Math.min(100, Math.round((event.loaded / event.total) * 100)),
+              );
+            }
+          },
         },
       );
 
@@ -730,6 +759,7 @@ export default function ChannelPage() {
       setVideoType("short");
       setAgreeTerms(false);
       setSelectedUploadChannelId("");
+      setUploadProgress(0);
     } catch (error) {
       console.error("Video upload error:", error);
       setUploadError(
@@ -1358,6 +1388,26 @@ export default function ChannelPage() {
               </div>
 
               <div className="flex gap-3 justify-end pt-2">
+                {uploading && (
+                  <div className="w-full space-y-1">
+                    <div className="flex justify-between text-xs text-gray-400">
+                      <span>Video upload progress</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div
+                      className="h-2 w-full overflow-hidden rounded-full bg-gray-700"
+                      role="progressbar"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                      aria-valuenow={uploadProgress}
+                    >
+                      <div
+                        className="h-full rounded-full bg-green-500 transition-[width] duration-200"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
@@ -1607,7 +1657,7 @@ export default function ChannelPage() {
                   disabled={uploading}
                   className="px-5 py-2 bg-green-600 hover:bg-green-700 rounded-full text-sm transition disabled:bg-gray-600 disabled:cursor-not-allowed"
                 >
-                  {uploading ? "Uploading..." : "Upload"}
+                  {uploading ? `Uploading ${uploadProgress}%` : "Upload"}
                 </button>
               </div>
             </form>
