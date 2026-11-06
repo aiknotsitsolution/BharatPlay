@@ -4,6 +4,8 @@
 const multer = require("multer");
 const axios = require("axios");
 const crypto = require("crypto");
+const path = require("path");
+const { getVideoDurationFromBuffer } = require("../utils/mediaDuration");
 
 const getB2Config = () => ({
   applicationKeyId: process.env.B2_APPLICATION_KEY_ID?.trim(),
@@ -327,6 +329,39 @@ const uploadToBackblaze = [
        * VIDEO
        */
       const videoFile = req.files.video[0];
+      const videoType = req.body?.videoType === "short" ? "short" : "long";
+      const minDuration = videoType === "short" ? 0 : 60;
+      const maxDuration = videoType === "short" ? 60 : 300;
+      const duration = await getVideoDurationFromBuffer(
+        videoFile.buffer,
+        path.extname(videoFile.originalname) || ".mp4",
+      );
+
+      if (!duration) {
+        return res.status(400).json({
+          success: false,
+          message: "Could not read the video duration. Please use a valid video file.",
+        });
+      }
+
+      if (duration < minDuration) {
+        return res.status(400).json({
+          success: false,
+          message: "Long videos must be 1 minute or longer.",
+        });
+      }
+
+      if (duration > maxDuration) {
+        return res.status(400).json({
+          success: false,
+          message:
+            videoType === "short"
+              ? "Shorts must be 1 minute or shorter."
+              : "Long videos must be between 1 minute and 5 minutes.",
+        });
+      }
+
+      req.videoDuration = duration;
 
       const uploadedVideo = await uploadBufferToB2(
         videoFile,

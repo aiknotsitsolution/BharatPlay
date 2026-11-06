@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
@@ -14,9 +14,14 @@ export default function UploadVideo() {
   const [channels, setChannels] = useState([]);
   const [selectedChannelId, setSelectedChannelId] = useState("");
   const [videoFile, setVideoFile] = useState(null);
+  const [videoDuration, setVideoDuration] = useState(null);
+  const [durationChecking, setDurationChecking] = useState(false);
+  const [durationError, setDurationError] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
+  const validationRequestRef = useRef(0);
 
   const token = localStorage.getItem("token");
 
@@ -57,7 +62,14 @@ export default function UploadVideo() {
   }, [token]);
 
   const isFormValid =
-    title.trim() && category && selectedChannelId && videoFile && !loading;
+    title.trim() &&
+    category &&
+    selectedChannelId &&
+    videoFile &&
+    videoDuration !== null &&
+    !durationError &&
+    !durationChecking &&
+    !loading;
 
   const getVideoDuration = (file) => {
     return new Promise((resolve) => {
@@ -68,12 +80,70 @@ export default function UploadVideo() {
         URL.revokeObjectURL(url);
         resolve(Number.isFinite(video.duration) ? video.duration : 0);
       };
+
       video.onerror = () => {
         URL.revokeObjectURL(url);
         resolve(0);
       };
       video.src = url;
     });
+  };
+
+  const formatDuration = (seconds) => {
+    const total = Math.max(0, Math.round(Number(seconds) || 0));
+    const minutes = Math.floor(total / 60);
+    const remainingSeconds = String(total % 60).padStart(2, "0");
+    return `${minutes}:${remainingSeconds}`;
+  };
+
+  const getVideoRule = (type = videoType) =>
+    type === "short"
+      ? "Shorts: maximum 1 minute"
+      : "Long video: between 1 and 5 minutes";
+
+  const validateSelectedVideo = async (file, type = videoType) => {
+    const requestId = ++validationRequestRef.current;
+    setVideoDuration(null);
+    setDurationError("");
+    if (!file) return;
+
+    setDurationChecking(true);
+    const duration = await getVideoDuration(file);
+    if (requestId !== validationRequestRef.current) return;
+
+    const isShort = type === "short";
+    const minDuration = isShort ? 0 : 60;
+    const maxDuration = isShort ? 60 : 300;
+    setDurationChecking(false);
+
+    if (!duration) {
+      const message = "Video duration could not be read. Choose another file.";
+      setDurationError(message);
+      toast.error(`This video cannot be uploaded: ${message}`);
+      return;
+    }
+
+    setVideoDuration(duration);
+    if (duration < minDuration) {
+      const message = "Long videos must be 1 minute or longer.";
+      setDurationError(`${message} This video is too short.`);
+      toast.error(`This video cannot be uploaded: ${message}`);
+    } else if (duration > maxDuration) {
+      const message = isShort
+        ? "Shorts must be 1 minute or shorter."
+        : "Long videos must be between 1 minute and 5 minutes.";
+      setDurationError(`${message} This video is ${formatDuration(duration)}.`);
+      toast.error(`This video cannot be uploaded: ${message}`);
+    } else {
+      toast.success(
+        `This video can be uploaded as a ${isShort ? "Short" : "Long video"}.`,
+      );
+    }
+  };
+
+  const handleVideoTypeChange = (type) => {
+    setVideoType(type);
+    if (videoFile) validateSelectedVideo(videoFile, type);
   };
 
   // Generate thumbnail from video if user didn't upload one
@@ -100,9 +170,27 @@ export default function UploadVideo() {
     if (!isFormValid) return;
 
     setLoading(true);
+    setUploadProgress(0);
     setErrorMsg("");
 
     try {
+      const duration = await getVideoDuration(videoFile);
+      const minDuration = videoType === "short" ? 0 : 60;
+      const maxDuration = videoType === "short" ? 60 : 300;
+      if (!duration) {
+        throw new Error("Could not read the video duration.");
+      }
+      if (duration < minDuration) {
+        throw new Error("Long videos must be 1 minute or longer.");
+      }
+      if (duration > maxDuration) {
+        throw new Error(
+          videoType === "short"
+            ? "Shorts must be 1 minute or shorter."
+            : "Long videos must be between 1 minute and 5 minutes.",
+        );
+      }
+
       const formData = new FormData();
       formData.append("name", title.trim()); // backend expects "name"
       formData.append("description", description);
@@ -110,8 +198,7 @@ export default function UploadVideo() {
       formData.append("videoType", videoType);
       formData.append("video", videoFile);
 
-      const duration = await getVideoDuration(videoFile);
-      if (duration > 0) formData.append("duration", String(duration));
+      formData.append("duration", String(duration));
 
       // Thumbnail: use uploaded or generate
       if (thumbnailFile) {
@@ -131,6 +218,11 @@ export default function UploadVideo() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "multipart/form-data",
           },
+          onUploadProgress: (event) => {
+            if (event.total) {
+              setUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+            }
+          },
         },
       );
 
@@ -142,7 +234,10 @@ export default function UploadVideo() {
         setCategory("");
         setVideoType("short");
         setVideoFile(null);
+        setVideoDuration(null);
+        setDurationError("");
         setThumbnailFile(null);
+        setUploadProgress(100);
         // You can keep the selected channel or reset
         // setSelectedChannelId("");
       }
@@ -226,7 +321,7 @@ export default function UploadVideo() {
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setVideoType("short")}
+                onClick={() => handleVideoTypeChange("short")}
                 className={`flex-1 py-3 px-5 rounded-lg font-medium transition-all ${
                   videoType === "short"
                     ? "bg-red-600 text-white shadow-lg shadow-red-900/50"
@@ -237,7 +332,7 @@ export default function UploadVideo() {
               </button>
               <button
                 type="button"
-                onClick={() => setVideoType("long")}
+                onClick={() => handleVideoTypeChange("long")}
                 className={`flex-1 py-3 px-5 rounded-lg font-medium transition-all ${
                   videoType === "long"
                     ? "bg-red-600 text-white shadow-lg shadow-red-900/50"
@@ -296,9 +391,48 @@ export default function UploadVideo() {
             <input
               type="file"
               accept="video/*"
-              onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                setVideoFile(file);
+                validateSelectedVideo(file);
+              }}
               className="block w-full text-sm text-zinc-400 file:mr-4 file:py-3 file:px-5 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-zinc-700 file:text-white hover:file:bg-zinc-600 cursor-pointer border border-zinc-700 rounded-lg p-2"
             />
+            <div
+              aria-live="polite"
+              className={`rounded-lg border px-3 py-2 text-sm ${
+                durationError
+                  ? "border-red-800 bg-red-950/40 text-red-300"
+                  : durationChecking
+                    ? "border-zinc-700 bg-zinc-800 text-zinc-300"
+                    : videoDuration !== null
+                      ? "border-emerald-800 bg-emerald-950/30 text-emerald-300"
+                      : "border-zinc-700 bg-zinc-800 text-zinc-400"
+              }`}
+            >
+              {!videoFile && `Select a video to check whether it can be uploaded.`}
+              {videoFile && (
+                <>
+                  <p className="font-medium break-all">{videoFile.name}</p>
+                  <p className="mt-1">{getVideoRule()}</p>
+                  {durationChecking && (
+                    <p className="mt-1">Checking video duration...</p>
+                  )}
+                  {!durationChecking && videoDuration !== null && !durationError && (
+                    <p className="mt-1">
+                      This video can be uploaded as a{" "}
+                      {videoType === "short" ? "Short" : "Long video"} (
+                      {formatDuration(videoDuration)}).
+                    </p>
+                  )}
+                  {durationError && (
+                    <p className="mt-1" role="alert">
+                      This video cannot be uploaded: {durationError}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {/* Thumbnail */}
@@ -327,12 +461,25 @@ export default function UploadVideo() {
             {loading ? (
               <>
                 <Loader2 className="animate-spin" size={20} />
-                Uploading...
+                Uploading {uploadProgress}%
               </>
             ) : (
               "Upload Video"
             )}
           </button>
+          {loading && (
+            <div className="space-y-2" aria-live="polite">
+              <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
+                <div
+                  className="h-full rounded-full bg-red-600 transition-[width] duration-200"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="text-center text-xs text-zinc-400">
+                Upload progress: {uploadProgress}%
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

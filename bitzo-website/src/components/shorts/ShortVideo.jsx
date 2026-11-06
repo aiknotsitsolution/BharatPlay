@@ -16,6 +16,7 @@ export default function ShortVideo({
   disabled = false,
   onRegister,
   onReady,
+  onProgress,
   onMetadata,
   onTimeUpdate,
   onTogglePlay,
@@ -32,13 +33,6 @@ export default function ShortVideo({
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [burst, setBurst] = useState(0);
-
-  // Reset transient state whenever the source or element changes.
-  useEffect(() => {
-    setWaiting(false);
-    setMetadataLoaded(false);
-    setError(false);
-  }, [src, reloadKey]);
 
   // Auto-remove the double-tap heart burst after the animation.
   useEffect(() => {
@@ -164,7 +158,7 @@ export default function ShortVideo({
       onContextMenu={(e) => e.preventDefault()}
     >
       <video
-        key={reloadKey}
+        key={`${src}-${reloadKey}`}
         ref={setRef}
         src={src}
         poster={poster || undefined}
@@ -177,6 +171,7 @@ export default function ShortVideo({
         onLoadedMetadata={handleLoadedMetadata}
         onLoadedData={(e) => onReady(index, e.currentTarget)}
         onCanPlay={(e) => onReady(index, e.currentTarget)}
+        onProgress={(e) => onProgress?.(index, e.currentTarget)}
         onTimeUpdate={(e) => onTimeUpdate(e.currentTarget)}
         onWaiting={() => setWaiting(true)}
         onPlaying={() => setWaiting(false)}

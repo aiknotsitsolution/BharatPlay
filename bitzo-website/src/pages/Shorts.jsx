@@ -17,7 +17,6 @@ import {
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useSwipeable } from "react-swipeable"; // ← install: npm install react-swipeable
-import { getWatchSession, flushAllSessions } from "../utils/watchSession";
 import { promptLogin } from "../utils/loginPrompt";
 import ShortVideo from "../components/shorts/ShortVideo";
 import ShortOverlay from "../components/shorts/ShortOverlay";
@@ -28,6 +27,7 @@ import SwipeHint from "../components/shorts/SwipeHint";
 import { API_ORIGIN as BACKEND_URL } from "../config/api";
 
 const API_BASE = `${BACKEND_URL}/api/uservideo`;
+const SHORTS_BATCH_SIZE = 5;
 
 const toMediaUrl = (value) => {
   if (!value) return "";
@@ -188,8 +188,6 @@ export default function Shorts() {
       videoRefs.current[index] = el;
     } else {
       delete videoRefs.current[index];
-      // Persist any untracked unique-seconds for the departing video.
-      flushAllSessions(false);
     }
   };
 
@@ -308,8 +306,6 @@ export default function Shorts() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    getWatchSession(videoEl, { id: short.id, videoType: "short" })?.tick();
-
     const duration = Number(videoEl.duration);
     if (!duration || !Number.isFinite(duration) || duration <= 0) return;
 
@@ -359,7 +355,7 @@ export default function Shorts() {
 
   // ─── Load real shorts from backend ───
   useEffect(() => {
-    dispatch(fetchShortsFeed({ limit: 100 }));
+    dispatch(fetchShortsFeed({ limit: SHORTS_BATCH_SIZE }));
   }, [dispatch, selectedCategory]);
 
   useEffect(() => {
@@ -378,7 +374,9 @@ export default function Shorts() {
       return;
     }
 
-    dispatch(fetchNextHomeSection({ section: "shorts", limit: 100 }));
+    dispatch(
+      fetchNextHomeSection({ section: "shorts", limit: SHORTS_BATCH_SIZE }),
+    );
   }, [
     currentIndex,
     dispatch,
@@ -630,6 +628,16 @@ export default function Shorts() {
       const short = shorts[index];
       if (!short) return;
       const key = short.id;
+      const hasStartBuffer = () => {
+        if (video.readyState < 3 || !video.buffered.length) return false;
+        const lastRange = video.buffered.length - 1;
+        const bufferedAhead =
+          video.buffered.end(lastRange) - video.currentTime;
+        return (
+          bufferedAhead >= 1.5 ||
+          video.buffered.end(lastRange) >= video.duration
+        );
+      };
 
       const tryPlay = () => {
         const promise = video.play();
@@ -649,7 +657,7 @@ export default function Shorts() {
         }
       };
 
-      if (video.readyState >= 2) {
+      if (hasStartBuffer()) {
         tryPlay();
       } else if (!pendingReadyRetriesRef.current[index]) {
         pendingReadyRetriesRef.current[index] = true;
@@ -658,9 +666,12 @@ export default function Shorts() {
           if (
             mountedRef.current &&
             index === currentIndexRef.current &&
-            video.readyState >= 2
+            video.readyState >= 3
           ) {
+            pendingReadyRetriesRef.current[index] = false;
             attemptPlay(index, video);
+          } else {
+            pendingReadyRetriesRef.current[index] = false;
           }
         }, 600);
       }
@@ -1005,10 +1016,15 @@ export default function Shorts() {
                               poster={short.thumbnail}
                               title={short.title}
                               muted={muted}
-                              preload={active ? "auto" : "metadata"}
+                              preload={
+                                active || index === currentIndex + 1
+                                  ? "auto"
+                                  : "metadata"
+                              }
                               disabled={Boolean(commentOpenForId)}
                               onRegister={setVideoRef}
                               onReady={handleVideoReady}
+                              onProgress={handleVideoReady}
                               onMetadata={(el) => trackShortProgress(short, el)}
                               onTimeUpdate={(el) =>
                                 trackShortProgress(short, el)

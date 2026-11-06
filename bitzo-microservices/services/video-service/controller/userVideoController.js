@@ -632,6 +632,7 @@ const uploadVideo = async (req, res) => {
       isMonetized: true,
       duration:
         authoritativeDuration ||
+        req.videoDuration ||
         (Number(duration) > 0 ? Number(duration) : undefined),
       uploadedBy: req.user?.userId,
     });

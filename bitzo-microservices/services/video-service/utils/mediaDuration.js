@@ -31,6 +31,7 @@ function probeDuration(target) {
           console.error(`[mediaDuration] ffprobe failed for ${target}:`, error.message);
           return resolve(null);
         }
+
         const duration = parseFloat(String(stdout).trim());
         if (!Number.isFinite(duration) || duration <= 0) return resolve(null);
         resolve(duration);
@@ -124,4 +125,19 @@ async function getVideoDuration(source) {
   }
 }
 
-module.exports = { getVideoDuration };
+async function getVideoDurationFromBuffer(buffer, extension = ".mp4") {
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) return null;
+
+  const tempPath = path.join(
+    os.tmpdir(),
+    `video-upload-probe-${Date.now()}-${Math.random().toString(36).slice(2)}${extension}`,
+  );
+  try {
+    await fs.promises.writeFile(tempPath, buffer);
+    return await probeDuration(tempPath);
+  } finally {
+    await fs.promises.rm(tempPath, { force: true });
+  }
+}
+
+module.exports = { getVideoDuration, getVideoDurationFromBuffer };
