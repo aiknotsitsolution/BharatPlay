@@ -14,7 +14,7 @@ import {
   fetchShortsFeed,
   fetchNextHomeSection,
 } from "../features/videos/videosSlice";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useSwipeable } from "react-swipeable"; // ← install: npm install react-swipeable
 import { getWatchSession, flushAllSessions } from "../utils/watchSession";
@@ -1084,7 +1084,6 @@ export default function Shorts() {
         ) : null}
       </div>
 
-      <ToastContainer limit={1} />
     </div>
   );
 }

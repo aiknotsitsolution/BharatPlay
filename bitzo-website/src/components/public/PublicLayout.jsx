@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import { ThemeProvider, useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/ThemeContext";
 import PublicHeader from "./PublicHeader";
 import PublicFooter from "./PublicFooter";
 
@@ -23,9 +23,5 @@ function LayoutInner() {
 }
 
 export default function PublicLayout() {
-  return (
-    <ThemeProvider>
-      <LayoutInner />
-    </ThemeProvider>
-  );
+  return <LayoutInner />;
 }
