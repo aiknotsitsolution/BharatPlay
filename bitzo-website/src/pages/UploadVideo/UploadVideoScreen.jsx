@@ -5,11 +5,18 @@ import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { API_BASE as API } from "../../config/api";
 
+const isCreativeCornerCategory = (category) =>
+  category?.isCreativeCorner ||
+  category?.slug === "creative-corner" ||
+  category?.name?.toLowerCase() === "creative corner";
+
 export default function UploadVideo() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [categories, setCategories] = useState([]);
   const [category, setCategory] = useState("");
+  const [isCreativeCorner, setIsCreativeCorner] = useState(false);
+  const [hashtags, setHashtags] = useState("");
   const [videoType, setVideoType] = useState("short"); // short or long
   const [channels, setChannels] = useState([]);
   const [selectedChannelId, setSelectedChannelId] = useState("");
@@ -65,6 +72,7 @@ export default function UploadVideo() {
     title.trim() &&
     category &&
     selectedChannelId &&
+    (!isCreativeCorner || hashtags.trim()) &&
     videoFile &&
     videoDuration !== null &&
     !durationError &&
@@ -100,6 +108,25 @@ export default function UploadVideo() {
     type === "short"
       ? "Shorts: maximum 1 minute"
       : "Long video: between 1 and 5 minutes";
+
+  const displayCategories = categories.some(isCreativeCornerCategory)
+    ? categories
+    : [
+        ...categories,
+        {
+          _id: "creative-corner",
+          name: "Creative Corner",
+          slug: "creative-corner",
+          isCreativeCorner: true,
+        },
+      ];
+
+  const handleCategoryChange = (value) => {
+    const creative = value === "creative-corner";
+    setCategory(value);
+    setIsCreativeCorner(creative);
+    if (!creative) setHashtags("");
+  };
 
   const validateSelectedVideo = async (file, type = videoType) => {
     const requestId = ++validationRequestRef.current;
@@ -196,6 +223,8 @@ export default function UploadVideo() {
       formData.append("description", description);
       formData.append("category", category);
       formData.append("videoType", videoType);
+      formData.append("isCreativeCorner", String(isCreativeCorner));
+      formData.append("hashtags", hashtags);
       formData.append("video", videoFile);
 
       formData.append("duration", String(duration));
@@ -226,25 +255,28 @@ export default function UploadVideo() {
         },
       );
 
-      if (res.data?.success) {
-        toast.success("Video uploaded successfully! 🎉");
-        // Reset form
-        setTitle("");
-        setDescription("");
-        setCategory("");
-        setVideoType("short");
-        setVideoFile(null);
-        setVideoDuration(null);
-        setDurationError("");
-        setThumbnailFile(null);
-        setUploadProgress(100);
-        // You can keep the selected channel or reset
-        // setSelectedChannelId("");
+      if (!res.data?.success) {
+        throw new Error(res.data?.message || "Failed to upload video.");
       }
+
+      toast.success("Video uploaded successfully! 🎉");
+      setTitle("");
+      setDescription("");
+      setCategory("");
+      setIsCreativeCorner(false);
+      setHashtags("");
+      setVideoType("short");
+      setVideoFile(null);
+      setVideoDuration(null);
+      setDurationError("");
+      setThumbnailFile(null);
+      setUploadProgress(100);
     } catch (error) {
       console.error(error);
       const msg =
-        error.response?.data?.message || "Upload failed. Please try again.";
+        error.response?.data?.message ||
+        error.message ||
+        "Upload failed. Please try again.";
       setErrorMsg(msg);
       toast.error(msg);
     } finally {
@@ -366,13 +398,16 @@ export default function UploadVideo() {
             <div className="relative">
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => handleCategoryChange(e.target.value)}
                 className="w-full px-4 py-3 bg-zinc-800 rounded-lg text-white appearance-none focus:ring-2 focus:ring-red-600 border border-zinc-700"
               >
                 <option value="">Select Category</option>
-                {categories.map((cat) => (
-                  <option key={cat._id} value={cat._id}>
-                    {cat.name}
+                {displayCategories.map((cat) => (
+                  <option
+                    key={cat._id}
+                    value={isCreativeCornerCategory(cat) ? "creative-corner" : cat._id}
+                  >
+                    {isCreativeCornerCategory(cat) ? "Creative Corner" : cat.name}
                   </option>
                 ))}
               </select>
@@ -381,6 +416,32 @@ export default function UploadVideo() {
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm text-zinc-300">
+              <input
+                type="checkbox"
+                checked={isCreativeCorner}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setIsCreativeCorner(checked);
+                  setCategory(checked ? "creative-corner" : "");
+                  if (!checked) setHashtags("");
+                }}
+                className="h-4 w-4"
+              />
+              Creative Corner
+            </label>
+            {isCreativeCorner && (
+              <input
+                value={hashtags}
+                onChange={(e) => setHashtags(e.target.value)}
+                placeholder="#funny #comedy (at least one hashtag)"
+                className="w-full px-4 py-3 bg-zinc-800 rounded-lg text-white outline-none focus:ring-2 focus:ring-red-600 border border-zinc-700"
+                required
+              />
+            )}
           </div>
 
           {/* Video File */}
