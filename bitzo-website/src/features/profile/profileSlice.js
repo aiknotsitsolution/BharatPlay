@@ -3,6 +3,8 @@ import { formatWatchTime } from "../../utils/watchTime";
 import { API_ORIGIN as BACKEND_URL, API_USERVIDEO } from "../../config/api";
 import { authFetch, clearAuthState } from "../../utils/session";
 
+const PROFILE_CACHE_TTL_MS = 30_000;
+
 const normalizeProfileVideos = (videos = []) =>
   Array.isArray(videos)
     ? videos.map((video) => ({
@@ -163,7 +165,15 @@ export const fetchProfileData = createAsyncThunk(
     }
   },
   {
-    condition: (_, { getState }) => !getState().profile.loading,
+    condition: (options = {}, { getState }) => {
+      const state = getState().profile;
+      if (state.loading) return false;
+      if (options.force) return true;
+      return (
+        !state.loadedAt ||
+        Date.now() - state.loadedAt >= PROFILE_CACHE_TTL_MS
+      );
+    },
   },
 );
 
@@ -195,6 +205,7 @@ const initialState = {
   myVideos: [],
   historyVideos: [],
   loading: false,
+  loadedAt: 0,
   error: null,
 };
 
@@ -214,6 +225,7 @@ const profileSlice = createSlice({
       })
       .addCase(fetchProfileData.fulfilled, (state, action) => {
         state.loading = false;
+        state.loadedAt = Date.now();
         state.user = action.payload.user;
         state.myVideos = action.payload.myVideos;
         state.historyVideos = action.payload.historyVideos;

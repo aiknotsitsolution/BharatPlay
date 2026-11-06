@@ -320,7 +320,7 @@ export default function Profile() {
       }
 
       // Refresh profile from the backend so Redux holds the latest data
-      await dispatch(fetchProfileData());
+      await dispatch(fetchProfileData({ force: true }));
 
       setEditForm({
         name: data.user?.name || trimmedName,
@@ -412,7 +412,7 @@ export default function Profile() {
       if (data.user?.email) {
         setEditForm((current) => ({ ...current, email: data.user.email }));
       }
-      await dispatch(fetchProfileData());
+      await dispatch(fetchProfileData({ force: true }));
       toast.success("Email address verified successfully.");
     } catch (err) {
       setEditError(err.message || "Could not verify email address");
@@ -458,7 +458,7 @@ export default function Profile() {
       }
       setPhoneOtpSent(false);
       setPhoneOtp("");
-      await dispatch(fetchProfileData());
+      await dispatch(fetchProfileData({ force: true }));
       toast.success("Phone verified successfully");
     } catch (err) {
       setEditError(err.message);

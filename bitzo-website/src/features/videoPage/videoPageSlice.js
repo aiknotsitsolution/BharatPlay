@@ -3,6 +3,7 @@ import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 import { authFetch } from "../../utils/session";
 
 const API_BASE = `${BACKEND_URL}/api/uservideo`;
+const VIDEO_PAGE_CACHE_TTL_MS = 30_000;
 
 const authHeaders = () => {
   const token = localStorage.getItem("token");
@@ -51,7 +52,9 @@ export const fetchVideoPage = createAsyncThunk(
   {
     condition: (id, { getState }) => {
       const state = getState().videoPage;
-      return !(state.loading && state.id === id);
+      if (state.loading && state.id === id) return false;
+      if (state.id !== id || !state.videoLoadedAt) return true;
+      return Date.now() - state.videoLoadedAt >= VIDEO_PAGE_CACHE_TTL_MS;
     },
   },
 );
@@ -199,6 +202,7 @@ const initialState = {
   commentLoading: false,
   saveLoading: false,
   error: null,
+  videoLoadedAt: 0,
 };
 
 const videoPageSlice = createSlice({
@@ -223,6 +227,7 @@ const videoPageSlice = createSlice({
       })
       .addCase(fetchVideoPage.fulfilled, (state, action) => {
         state.loading = false;
+        state.videoLoadedAt = Date.now();
         state.video = action.payload.video;
         state.comments = action.payload.comments;
       })
