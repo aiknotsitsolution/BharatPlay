@@ -6,6 +6,8 @@ import { clamp } from "./utils";
 import "./player.css";
 
 const HIDE_DELAY_MS = 2500;
+const START_BUFFER_SECONDS = 3;
+const START_BUFFER_TIMEOUT_MS = 2500;
 
 export default function VideoPlayer({
   src,
@@ -401,7 +403,27 @@ export default function VideoPlayer({
     if (!v) return;
 
     let disposed = false;
+    let startTimer;
+    const hasEnoughStartBuffer = () => {
+      if (v.readyState < 3 || !v.buffered.length) return false;
+
+      for (let index = 0; index < v.buffered.length; index += 1) {
+        if (
+          v.buffered.start(index) <= v.currentTime &&
+          v.buffered.end(index) >= v.currentTime
+        ) {
+          const bufferedAhead = v.buffered.end(index) - v.currentTime;
+          return (
+            bufferedAhead >= START_BUFFER_SECONDS ||
+            v.buffered.end(index) >= v.duration
+          );
+        }
+      }
+
+      return false;
+    };
     const tryPlay = () => {
+      if (disposed || !hasEnoughStartBuffer()) return;
       v.play()
         .then(() => {})
         .catch(() => {
@@ -410,16 +432,25 @@ export default function VideoPlayer({
           }
         });
     };
+    const startAfterTimeout = () => {
+      if (!disposed && v.readyState >= 3) v.play().catch(() => {});
+    };
 
-    if (v.readyState >= 3) {
+    if (hasEnoughStartBuffer()) {
       tryPlay();
     } else {
-      v.addEventListener("canplay", tryPlay, { once: true });
+      v.addEventListener("canplay", tryPlay);
+      v.addEventListener("progress", tryPlay);
+      v.addEventListener("loadeddata", tryPlay);
+      startTimer = setTimeout(startAfterTimeout, START_BUFFER_TIMEOUT_MS);
     }
 
     return () => {
       disposed = true;
+      clearTimeout(startTimer);
       v.removeEventListener("canplay", tryPlay);
+      v.removeEventListener("progress", tryPlay);
+      v.removeEventListener("loadeddata", tryPlay);
     };
   }, [autoplay, src]);
 
