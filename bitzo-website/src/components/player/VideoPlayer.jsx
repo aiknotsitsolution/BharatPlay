@@ -11,6 +11,7 @@ const START_BUFFER_TIMEOUT_MS = 2500;
 
 export default function VideoPlayer({
   src,
+  qualitySources = {},
   poster,
   title,
   autoplay = false,
@@ -55,12 +56,15 @@ export default function VideoPlayer({
   const [buffered, setBuffered] = useState(0);
   const [isMuted, setIsMuted] = useState(muted);
   const [volume, setVolume] = useState(1);
-  const [playbackRate, setPlaybackRate] = useState(1);
   const [userActive, setUserActive] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPip, setIsPip] = useState(false);
   const [theaterMode, setTheaterMode] = useState(false);
   const [waiting, setWaiting] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [quality, setQuality] = useState("auto");
+  const [networkQuality, setNetworkQuality] = useState(null);
+  const [activeSrc, setActiveSrc] = useState(src);
 
   const pipSupported = useMemo(
     () =>
@@ -72,6 +76,77 @@ export default function VideoPlayer({
 
   const controlsHidden = !userActive && isPlaying;
   const controlsVisible = userActive || !isPlaying;
+  const qualityOptions = useMemo(
+    () =>
+      Object.entries(qualitySources)
+        .filter(([, value]) => typeof value === "string" && value)
+        .map(([value]) => ({ value, label: value })),
+    [qualitySources],
+  );
+
+  useEffect(() => {
+    const connection =
+      navigator.connection ||
+      navigator.mozConnection ||
+      navigator.webkitConnection;
+    if (!connection) return undefined;
+
+    const updateNetworkQuality = () => {
+      const type = connection.effectiveType || "";
+      const ordered = Object.keys(qualitySources).sort(
+        (a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10),
+      );
+      if (!ordered.length) return;
+      const preferred =
+        type === "slow-2g" || type === "2g"
+          ? ordered[0]
+          : type === "3g"
+            ? ordered[Math.min(1, ordered.length - 1)]
+            : ordered[ordered.length - 1];
+      setNetworkQuality(preferred);
+    };
+
+    updateNetworkQuality();
+    connection.addEventListener?.("change", updateNetworkQuality);
+    return () => connection.removeEventListener?.("change", updateNetworkQuality);
+  }, [qualitySources]);
+
+  useEffect(() => {
+    const selectedQuality =
+      quality === "auto" ? networkQuality : quality;
+    setActiveSrc(
+      selectedQuality ? qualitySources[selectedQuality] || src : src,
+    );
+  }, [networkQuality, quality, qualitySources, src]);
+
+  const changeQuality = useCallback(
+    (nextQuality) => {
+      const video = videoRef.current;
+      const nextSrc =
+        nextQuality === "auto" ? src : qualitySources[nextQuality] || src;
+      if (!video || nextSrc === activeSrc) {
+        setQuality(nextQuality);
+        return;
+      }
+
+      const currentPosition = video.currentTime;
+      const wasPlaying = !video.paused;
+      setQuality(nextQuality);
+      setActiveSrc(nextSrc);
+      video.addEventListener(
+        "loadedmetadata",
+        () => {
+          video.currentTime = Math.min(
+            currentPosition,
+            video.duration || currentPosition,
+          );
+          if (wasPlaying) video.play().catch(() => {});
+        },
+        { once: true },
+      );
+    },
+    [activeSrc, qualitySources, src],
+  );
 
   // ---- buffered progress -------------------------------------------------
   const updateBuffered = useCallback(() => {
@@ -101,17 +176,17 @@ export default function VideoPlayer({
     setVolume(nextVolume);
   }, []);
 
-  const setPlaybackRateFromControl = useCallback((rate) => {
-    const v = videoRef.current;
-    if (v) v.playbackRate = rate;
-    setPlaybackRate(rate);
-  }, []);
-
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) v.play().catch(() => {});
     else v.pause();
+  }, []);
+
+  const setPlaybackRateFromControl = useCallback((rate) => {
+    const video = videoRef.current;
+    if (video) video.playbackRate = rate;
+    setPlaybackRate(rate);
   }, []);
 
   const toggleFullscreen = useCallback(() => {
@@ -360,7 +435,6 @@ export default function VideoPlayer({
 
     v.muted = muted;
     v.volume = 1;
-    v.playbackRate = 1;
 
     propsRef.current.onReady?.(v);
 
@@ -392,13 +466,13 @@ export default function VideoPlayer({
   // ---- source changes ----------------------------------------------------
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !src) return;
-    if (v.getAttribute("src") !== src) {
+    if (!v || !activeSrc) return;
+    if (v.getAttribute("src") !== activeSrc) {
       v.preload = "auto";
-      v.src = src;
+      v.src = activeSrc;
       v.load();
     }
-  }, [src]);
+  }, [activeSrc]);
 
   useEffect(() => {
     if (!autoplay) return;
@@ -455,7 +529,7 @@ export default function VideoPlayer({
       v.removeEventListener("progress", tryPlay);
       v.removeEventListener("loadeddata", tryPlay);
     };
-  }, [autoplay, src]);
+  }, [autoplay, activeSrc]);
 
   const rootClass = [
     "bp-player",
@@ -520,6 +594,9 @@ export default function VideoPlayer({
         muted={isMuted}
         volume={volume}
         onVolumeChange={changeVolume}
+        quality={quality}
+        qualities={qualityOptions}
+        onQualityChange={changeQuality}
         playbackRate={playbackRate}
         onPlaybackRateChange={setPlaybackRateFromControl}
         pipSupported={pipSupported}

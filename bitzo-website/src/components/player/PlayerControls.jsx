@@ -11,7 +11,7 @@ import {
 import ControlButton from "./ControlButton";
 import SeekBar from "./SeekBar";
 import VolumeControl from "./VolumeControl";
-import { PlaybackSpeedMenu, SettingsMenu } from "./Menus";
+import { PlaybackSpeedMenu, QualityMenu } from "./Menus";
 import { formatTime } from "./utils";
 
 export default function PlayerControls({
@@ -26,6 +26,9 @@ export default function PlayerControls({
   muted,
   volume,
   onVolumeChange,
+  quality,
+  qualities,
+  onQualityChange,
   playbackRate,
   onPlaybackRateChange,
   pipSupported,
@@ -84,8 +87,17 @@ export default function PlayerControls({
         </div>
 
         <div className="bp-controls-cluster">
-          <PlaybackSpeedMenu playbackRate={playbackRate} onChange={onPlaybackRateChange} menuVisible={menuVisible} />
-          <SettingsMenu playbackRate={playbackRate} onChange={onPlaybackRateChange} menuVisible={menuVisible} />
+          <PlaybackSpeedMenu
+            playbackRate={playbackRate}
+            onChange={onPlaybackRateChange}
+            menuVisible={menuVisible}
+          />
+          <QualityMenu
+            quality={quality}
+            qualities={qualities}
+            onChange={onQualityChange}
+            menuVisible={menuVisible}
+          />
 
           {pipSupported && (
             <ControlButton

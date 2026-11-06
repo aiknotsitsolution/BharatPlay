@@ -1077,6 +1077,9 @@ export default function YouTubeLikeVideoPage() {
           <div className="relative bg-black rounded-xl overflow-hidden aspect-video group">
             <VideoPlayer
               src={resolvedVideoUrl}
+              qualitySources={
+                videoDetails?.qualitySources || videoDetails?.qualities || {}
+              }
               poster={resolvedPoster}
               title={videoDetails?.title || videoData.title}
               autoplay={playing}
