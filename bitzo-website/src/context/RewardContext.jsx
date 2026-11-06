@@ -7,9 +7,10 @@ export function RewardProvider({ children }) {
     const saved = localStorage.getItem("VidBuxAppRewardPoints");
     if (saved !== null) {
       const parsed = parseFloat(saved);
-      return isNaN(parsed) ? 70 : parsed;
+      if (parsed === 70 && /^70(?:\.0{1,2})?$/.test(saved.trim())) return 0;
+      return isNaN(parsed) ? 0 : parsed;
     }
-    return 70;
+    return 0;
   });
   useEffect(() => {
     localStorage.setItem("VidBuxAppRewardPoints", points.toFixed(2));
@@ -23,7 +24,7 @@ export function RewardProvider({ children }) {
   };
 
   const resetPoints = () => {
-    setPoints(70);
+    setPoints(0);
   };
 
   const subtractPoints = (amount) => {

@@ -338,6 +338,7 @@ export default function VideoPlayer({
     };
     const onWait = () => setWaiting(true);
     const onResume = () => setWaiting(false);
+    const onStalled = () => setWaiting(true);
 
     v.addEventListener("play", onPlay);
     v.addEventListener("pause", onPause);
@@ -347,6 +348,7 @@ export default function VideoPlayer({
     v.addEventListener("volumechange", onVol);
     v.addEventListener("error", onErr);
     v.addEventListener("waiting", onWait);
+    v.addEventListener("stalled", onStalled);
     v.addEventListener("playing", onResume);
     v.addEventListener("canplay", onResume);
     v.addEventListener("progress", updateBuffered);
@@ -371,6 +373,7 @@ export default function VideoPlayer({
       v.removeEventListener("volumechange", onVol);
       v.removeEventListener("error", onErr);
       v.removeEventListener("waiting", onWait);
+      v.removeEventListener("stalled", onStalled);
       v.removeEventListener("playing", onResume);
       v.removeEventListener("canplay", onResume);
       v.removeEventListener("progress", updateBuffered);
