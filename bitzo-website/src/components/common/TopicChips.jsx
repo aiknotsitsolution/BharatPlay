@@ -7,6 +7,7 @@ import { API_BASE } from "../../config/api";
 const API_URL = `${API_BASE}/category`;
 
 const ALL_CHIP = { _id: "all", name: "All" };
+let categoriesRequest;
 
 export default function TopicChips() {
   const dispatch = useDispatch();
@@ -14,16 +15,29 @@ export default function TopicChips() {
   const [selectedTopic, setSelectedTopic] = useState("All");
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await axios.get(API_URL);
-        setTopics(res.data);
-      } catch (err) {
-        console.error("Category fetch error:", err);
-      }
-    };
+    let active = true;
 
-    fetchCategories();
+    if (!categoriesRequest) {
+      categoriesRequest = axios
+        .get(API_URL)
+        .then((res) => res.data)
+        .catch((error) => {
+          categoriesRequest = null;
+          throw error;
+        });
+    }
+
+    categoriesRequest
+      .then((categories) => {
+        if (active) setTopics(categories);
+      })
+      .catch((error) => {
+        if (active) console.error("Category fetch error:", error);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleTopicClick = (topic) => {

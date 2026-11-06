@@ -147,6 +147,9 @@ const HOME_SECTION_ENDPOINTS = {
   shorts: "trending-shorts",
 };
 
+const getHomeRequestKey = ({ category = null, page = 1, limit = 5 } = {}) =>
+  `${category || "all"}:${page}:${limit}`;
+
 const makeSectionMap = (value) =>
   HOME_SECTIONS.reduce((acc, section) => {
     acc[section] = typeof value === "function" ? value(section) : value;
@@ -279,6 +282,13 @@ export const fetchHomeVideos = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message || "Failed to load videos");
     }
+  },
+  {
+    condition: (args = {}, { getState }) => {
+      const state = getState().videos;
+      const requestKey = getHomeRequestKey(args);
+      return !(state.loading && state.homeRequestKey === requestKey);
+    },
   },
 );
 
@@ -481,6 +491,7 @@ const initialState = {
   myVideos: [],
   selectedCategory: null,
   loading: false,
+  homeRequestKey: null,
   myVideosLoading: false,
   error: null,
   searchVideos: [],
@@ -520,18 +531,21 @@ const videosSlice = createSlice({
       state.sectionHasMore = makeSectionMap(false);
       state.sectionFetching = makeSectionMap(false);
       state.loading = true;
+      state.homeRequestKey = null;
       state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchHomeVideos.pending, (state) => {
+      .addCase(fetchHomeVideos.pending, (state, action) => {
         state.loading = true;
         state.error = null;
+        state.homeRequestKey = getHomeRequestKey(action.meta.arg);
       })
       .addCase(fetchHomeVideos.fulfilled, (state, action) => {
         if (action.payload?.cancelled) return;
         state.loading = false;
+        state.homeRequestKey = null;
         state.error = null;
         const isFirstPage = action.payload.page === 1;
         const append = (current, section) =>
@@ -566,6 +580,7 @@ const videosSlice = createSlice({
       })
       .addCase(fetchHomeVideos.rejected, (state, action) => {
         state.loading = false;
+        state.homeRequestKey = null;
         state.error = action.payload || "Failed to load videos";
       })
       .addCase(fetchShortsFeed.pending, (state, action) => {

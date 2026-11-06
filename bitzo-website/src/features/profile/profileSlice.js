@@ -162,6 +162,9 @@ export const fetchProfileData = createAsyncThunk(
       return rejectWithValue(error.message || "Failed to load profile");
     }
   },
+  {
+    condition: (_, { getState }) => !getState().profile.loading,
+  },
 );
 
 export const removeHistoryItem = createAsyncThunk(

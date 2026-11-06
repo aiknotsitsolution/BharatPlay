@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock, Trash2, AlertTriangle, History } from "lucide-react";
 import { toast } from "react-toastify";
@@ -26,6 +26,7 @@ export default function WatchHistoryTab({ openDetail }) {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const lastLoadedPage = useRef(null);
 
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
@@ -58,6 +59,8 @@ export default function WatchHistoryTab({ openDetail }) {
   );
 
   useEffect(() => {
+    if (lastLoadedPage.current === page) return;
+    lastLoadedPage.current = page;
     fetchHistory(page);
   }, [page, fetchHistory]);
 

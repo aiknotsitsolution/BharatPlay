@@ -389,7 +389,9 @@ export default function VideoPlayer({
     const v = videoRef.current;
     if (!v || !src) return;
     if (v.getAttribute("src") !== src) {
+      v.preload = "auto";
       v.src = src;
+      v.load();
     }
   }, [src]);
 
@@ -397,11 +399,28 @@ export default function VideoPlayer({
     if (!autoplay) return;
     const v = videoRef.current;
     if (!v) return;
-    v.play()
-      .then(() => {})
-      .catch(() => {
-        if (v.paused) setIsPlaying(false);
-      });
+
+    let disposed = false;
+    const tryPlay = () => {
+      v.play()
+        .then(() => {})
+        .catch(() => {
+          if (!disposed && v.readyState >= 3 && v.paused) {
+            setIsPlaying(false);
+          }
+        });
+    };
+
+    if (v.readyState >= 3) {
+      tryPlay();
+    } else {
+      v.addEventListener("canplay", tryPlay, { once: true });
+    }
+
+    return () => {
+      disposed = true;
+      v.removeEventListener("canplay", tryPlay);
+    };
   }, [autoplay, src]);
 
   const rootClass = [

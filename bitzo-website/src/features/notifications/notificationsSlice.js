@@ -29,6 +29,12 @@ export const fetchNotifications = createAsyncThunk(
       return rejectWithValue(error.message || "Failed to load notifications");
     }
   },
+  {
+    condition: (_, { getState }) => {
+      const state = getState().notifications;
+      return !state.loading && !state.loaded;
+    },
+  },
 );
 
 export const markNotificationRead = createAsyncThunk(
@@ -138,6 +144,7 @@ const initialState = {
   notifications: [],
   unreadCount: 0,
   loading: false,
+  loaded: false,
   error: null,
 };
 
@@ -175,6 +182,7 @@ const notificationsSlice = createSlice({
       state.notifications = [];
       state.unreadCount = 0;
       state.loading = false;
+      state.loaded = false;
       state.error = null;
     },
   },
@@ -186,11 +194,13 @@ const notificationsSlice = createSlice({
       })
       .addCase(fetchNotifications.fulfilled, (state, action) => {
         state.loading = false;
+        state.loaded = true;
         state.notifications = action.payload.notifications;
         state.unreadCount = action.payload.unreadCount;
       })
       .addCase(fetchNotifications.rejected, (state, action) => {
         state.loading = false;
+        state.loaded = false;
         state.error = action.payload || "Failed to load notifications";
       })
       .addCase(markNotificationRead.fulfilled, (state, action) => {

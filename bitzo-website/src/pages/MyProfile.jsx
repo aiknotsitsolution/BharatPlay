@@ -135,10 +135,6 @@ export default function Profile() {
   );
 
   useEffect(() => {
-    dispatch(fetchProfileData());
-  }, [dispatch]);
-
-  useEffect(() => {
     let cancelled = false;
 
     const loadProfileDeviceData = async () => {

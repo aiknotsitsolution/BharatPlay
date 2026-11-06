@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { toast } from "react-toastify";
 import { fetchProfileData } from "../../features/profile/profileSlice";
-import { fetchHomeVideos } from "../../features/videos/videosSlice";
 import { getWatchSession } from "../../utils/watchSession";
 import VideoPlayer from "../../components/player/VideoPlayer";
 import {
@@ -27,9 +25,15 @@ import {
 import { formatTimeAgo } from "../../utils/timeAgo";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 import { promptLogin } from "../../utils/loginPrompt";
-import { authFetch } from "../../utils/session";
-
-const API_BASE = `${BACKEND_URL}/api/uservideo`;
+import {
+  fetchRelatedVideos,
+  fetchVideoPage,
+  postVideoComment,
+  registerVideoView,
+  toggleWatchLater,
+  updateSubscription,
+  updateVideoReaction,
+} from "../../features/videoPage/videoPageSlice";
 
 const AUTOPLAY_KEY = "videoo.autoplay";
 const AUTOPLAY_COUNTDOWN_SECONDS = 5;
@@ -172,18 +176,33 @@ export default function YouTubeLikeVideoPage() {
   // ==================== STATE ====================
   const [playing, setPlaying] = useState(true);
   const [muted, setMuted] = useState(true);
-  const [reaction, setReaction] = useState(null); // "like" | "dislike" | null
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [videoDetails, setVideoDetails] = useState(null);
-  const [stats, setStats] = useState({ likes: 0, dislikes: 0 });
-  const [reactionLoading, setReactionLoading] = useState(false);
+  const {
+    video: videoDetails,
+    comments,
+    previousVideo,
+    nextVideo,
+    related,
+    loading: videoLoading,
+    reactionLoading,
+    commentLoading,
+    saveLoading,
+    subscribeLoading,
+  } = useSelector((state) => state.videoPage);
+  const stats = {
+    likes: videoDetails?.likesCount || 0,
+    dislikes: videoDetails?.dislikesCount || 0,
+  };
+  const reaction = videoDetails?.userReaction || null;
+  const isSubscribed = Boolean(videoDetails?.isSubscribed);
+  const subscribersCount =
+    videoDetails?.channel?.subscribersCount ||
+    videoDetails?.subscribersCount ||
+    0;
+  const saved = Boolean(videoDetails?.isWatchLater);
   const [viewCounted, setViewCounted] = useState(false);
-  const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
-  const [commentLoading, setCommentLoading] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [subscribersCount, setSubscribersCount] = useState(0);
   const [theaterMode, setTheaterMode] = useState(false);
   const [autoplay, setAutoplay] = useState(() => {
     try {
@@ -195,8 +214,6 @@ export default function YouTubeLikeVideoPage() {
   const [upNextOverlay, setUpNextOverlay] = useState(null); // { video }
   const [countdownLeft, setCountdownLeft] = useState(null); // null => end screen
   const [upNextVideos, setUpNextVideos] = useState(UP_NEXT_VIDEOS);
-  const [previousVideo, setPreviousVideo] = useState(null);
-  const [nextVideo, setNextVideo] = useState(null);
 
   const playerRef = useRef(null);
   const viewTracked = useRef(false);
@@ -209,14 +226,9 @@ export default function YouTubeLikeVideoPage() {
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [descFullHeight, setDescFullHeight] = useState(0);
   const [shareCopied, setShareCopied] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [saveLoading, setSaveLoading] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   const profileUser = useSelector((state) => state.profile?.user || null);
-  const selectedCategory = useSelector(
-    (state) => state.videos.selectedCategory,
-  );
   const currentUser = getCurrentUser(profileUser);
 
   const dispatch = useDispatch();
@@ -321,6 +333,8 @@ export default function YouTubeLikeVideoPage() {
 
   // Fetch video details + comments
   useEffect(() => {
+    if (id) dispatch(fetchVideoPage(id));
+    /*
     const fetchVideo = async () => {
       if (!id) return;
 
@@ -375,9 +389,18 @@ export default function YouTubeLikeVideoPage() {
       }
     };
 
-    fetchVideo();
-    fetchComments();
-  }, [id]);
+    setPrimaryDataReady(false);
+    setVideoDetails(null);
+    setComments([]);
+    setSaved(false);
+    setReaction(null);
+    setStats({ likes: 0, dislikes: 0 });
+
+    fetchVideo()
+      .then(fetchComments)
+      .finally(() => setPrimaryDataReady(true));
+    */
+  }, [dispatch, id]);
 
   // Measure the full description height so the Show more/less animation can
   // animate max-height between the collapsed (3-line) and expanded states.
@@ -399,8 +422,15 @@ export default function YouTubeLikeVideoPage() {
   // Fetch database-driven related videos for the "Up next" sidebar.
   // On any failure/empty response the hardcoded UP_NEXT_VIDEOS stays as fallback.
   useEffect(() => {
-    if (!id) return;
+    if (!id || videoLoading || !videoDetails) return;
+    const timer = window.setTimeout(() => {
+      dispatch(fetchRelatedVideos(id));
+    }, 0);
+    return () => window.clearTimeout(timer);
+    /*
+    if (!id || !primaryDataReady) return;
     let cancelled = false;
+    const controller = new AbortController();
 
     const fetchRelated = async () => {
       setPreviousVideo(null);
@@ -471,21 +501,62 @@ export default function YouTubeLikeVideoPage() {
           }),
         );
       } catch (error) {
-        console.error("Error fetching related videos:", error);
+        if (error.name !== "AbortError") {
+          console.error("Error fetching related videos:", error);
+        }
       }
     };
 
-    fetchRelated();
+    const idleScheduled = typeof window.requestIdleCallback === "function";
+    const schedule = idleScheduled
+      ? window.requestIdleCallback(fetchRelated, { timeout: 1000 })
+      : window.setTimeout(fetchRelated, 0);
+
     return () => {
       cancelled = true;
+      controller.abort();
+      if (idleScheduled) {
+        window.cancelIdleCallback(schedule);
+      } else {
+        window.clearTimeout(schedule);
+      }
     };
-  }, [id]);
+    */
+  }, [dispatch, id, videoLoading, videoDetails]);
+
+  useEffect(() => {
+    if (!related.length) return;
+    const currentId = String(id);
+    const watched = playedVideoIdsRef.current;
+    const filtered = related.filter((video) => {
+      const videoId = String(video._id || video.id);
+      return videoId !== currentId && !watched.has(videoId);
+    });
+    setUpNextVideos(
+      filtered.slice(0, 12).map((video) => ({
+        id: video._id || video.id,
+        title: video.title || "Untitled video",
+        channel:
+          typeof video.channel === "string"
+            ? video.channel
+            : video.channel?.name || "Channel",
+        channelImage: video.channel?.channelImage || "",
+        views: formatCount(video.views),
+        time: formatTimeAgo(video.createdAt),
+        duration: formatDuration(video.duration),
+        thumbnail: video.thumbnail || "",
+      })),
+    );
+  }, [id, related]);
 
   // View tracking (initial hit — registers a "view attempt", not a counted view)
   useEffect(() => {
     if (!id || !localStorage.getItem("token") || viewTracked.current) return;
 
     viewTracked.current = true;
+    dispatch(registerVideoView({ id, watchedPercent: 0 }));
+    return;
+    /*
     const token = localStorage.getItem("token");
     fetch(`${API_BASE}/${id}/view`, {
       method: "POST",
@@ -504,13 +575,12 @@ export default function YouTubeLikeVideoPage() {
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (data.success && typeof data.views === "number") {
-          setVideoDetails((prev) =>
-            prev ? { ...prev, views: data.views } : prev,
-          );
+          dispatch(updateVideoViews(data.views));
         }
       })
       .catch(() => {});
-  }, [id]);
+    */
+  }, [dispatch, id]);
 
   // Watch percentage tracking + view count when 80% watched
   useEffect(() => {
@@ -520,6 +590,9 @@ export default function YouTubeLikeVideoPage() {
 
     if (percent >= 80 && !viewCounted) {
       setViewCounted(true);
+      dispatch(registerVideoView({ id, watchedPercent: percent }));
+      return;
+      /*
       const token = localStorage.getItem("token");
       const user = localStorage.getItem("user");
       const parsedUser = user ? JSON.parse(user) : null;
@@ -538,12 +611,11 @@ export default function YouTubeLikeVideoPage() {
         .then((res) => res.json())
         .then((data) => {
           if (data.success && typeof data.views === "number") {
-            setVideoDetails((prev) =>
-              prev ? { ...prev, views: data.views } : prev,
-            );
+            dispatch(updateVideoViews(data.views));
           }
         })
         .catch(() => {});
+      */
     }
   }, [currentTime, duration, id, viewCounted]);
 
@@ -551,7 +623,10 @@ export default function YouTubeLikeVideoPage() {
   const handleReaction = async (type) => {
     if (!id || reactionLoading) return;
     if (promptLogin(navigate, location)) return;
+    dispatch(updateVideoReaction({ id, type }));
+    return;
 
+    /*
     setReactionLoading(true);
     const token = localStorage.getItem("token");
     const endpoint =
@@ -577,6 +652,7 @@ export default function YouTubeLikeVideoPage() {
     } finally {
       setReactionLoading(false);
     }
+    */
   };
 
   // ==================== SUBSCRIBE ====================
@@ -584,7 +660,10 @@ export default function YouTubeLikeVideoPage() {
     if (promptLogin(navigate, location)) return;
     const channelId = videoDetails?.channel?._id || videoDetails?.channel?.id;
     if (!channelId) return;
+    dispatch(updateSubscription({ channelId }));
+    return;
 
+    /*
     const token = localStorage.getItem("token");
     if (!token) {
       toast.error("Please login to subscribe");
@@ -626,11 +705,25 @@ export default function YouTubeLikeVideoPage() {
     }
   };
 
+    */
+  };
+
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (promptLogin(navigate, location)) return;
     if (!id || !commentText.trim()) return;
+    dispatch(
+      postVideoComment({
+        id,
+        commentText: commentText.trim(),
+        userName: currentUser?.name || "",
+        userImage: currentUser?.avatar || "",
+      }),
+    );
+    setCommentText("");
+    return;
 
+    /*
     setCommentLoading(true);
     const token = localStorage.getItem("token");
 
@@ -667,10 +760,16 @@ export default function YouTubeLikeVideoPage() {
     }
   };
 
+    */
+  };
+
   const handleSaveClick = async () => {
     if (promptLogin(navigate, location)) return;
     if (!id || saveLoading) return;
+    dispatch(toggleWatchLater({ id, saved }));
+    return;
 
+    /*
     setSaveLoading(true);
     try {
       const response = await authFetch(`${API_BASE}/watch-later/${id}`, {
@@ -693,6 +792,9 @@ export default function YouTubeLikeVideoPage() {
     } finally {
       setSaveLoading(false);
     }
+  };
+
+    */
   };
 
   const openVideo = useCallback(
@@ -719,11 +821,12 @@ export default function YouTubeLikeVideoPage() {
       const idx = upNextVideos.findIndex(
         (vid) => String(vid.id) === String(videoData.id),
       );
-      const target = upNextVideos[
-        idx >= 0
-          ? (idx + step + upNextVideos.length) % upNextVideos.length
-          : 0
-      ];
+      const target =
+        upNextVideos[
+          idx >= 0
+            ? (idx + step + upNextVideos.length) % upNextVideos.length
+            : 0
+        ];
       openVideo(target);
     },
     [previousVideo, nextVideo, upNextVideos, videoData.id, openVideo],
@@ -978,6 +1081,7 @@ export default function YouTubeLikeVideoPage() {
               title={videoDetails?.title || videoData.title}
               autoplay={playing}
               muted={muted}
+              preload="auto"
               onReady={handlePlayerReady}
               onDispose={handlePlayerDispose}
               onPlay={() => setPlaying(true)}
@@ -986,9 +1090,7 @@ export default function YouTubeLikeVideoPage() {
               onTimeUpdate={setCurrentTime}
               onLoadedMetadata={handleLoadedMetadata}
               onVolumeChange={(isMuted) => setMuted(isMuted)}
-              onPrevious={
-                previousVideo ? () => stepVideo(-1) : undefined
-              }
+              onPrevious={previousVideo ? () => stepVideo(-1) : undefined}
               onNext={nextVideo ? () => stepVideo(1) : undefined}
               onTheaterModeChange={setTheaterMode}
               onError={(error) => console.error("Video player error:", error)}
@@ -1068,7 +1170,12 @@ export default function YouTubeLikeVideoPage() {
               <button
                 type="button"
                 onClick={handleSubscribe}
-                title={isSubscribed ? "Unsubscribe from this channel" : "Subscribe to this channel"}
+                disabled={subscribeLoading}
+                title={
+                  isSubscribed
+                    ? "Unsubscribe from this channel"
+                    : "Subscribe to this channel"
+                }
                 className={`h-11 w-full md:w-auto px-5 rounded-full font-semibold flex items-center justify-center gap-2 transition-colors ${
                   isSubscribed
                     ? "bg-white/15 text-white hover:bg-white/20"
@@ -1190,8 +1297,11 @@ export default function YouTubeLikeVideoPage() {
                         title="Report a copyright concern"
                         onClick={() => {
                           setMoreMenuOpen(false);
-                          const title = videoDetails?.title || videoData.title || "";
-                          navigate(`/copyright/claim?videoId=${id}&title=${encodeURIComponent(title)}`);
+                          const title =
+                            videoDetails?.title || videoData.title || "";
+                          navigate(
+                            `/copyright/claim?videoId=${id}&title=${encodeURIComponent(title)}`,
+                          );
                         }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-white/10 transition-colors"
                       >
@@ -1233,7 +1343,11 @@ export default function YouTubeLikeVideoPage() {
               <button
                 type="button"
                 onClick={toggleDescription}
-                title={descriptionExpanded ? "Collapse video description" : "Expand video description"}
+                title={
+                  descriptionExpanded
+                    ? "Collapse video description"
+                    : "Expand video description"
+                }
                 className="mt-3 -ml-2 flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white transition-colors"
               >
                 {descriptionExpanded ? (
