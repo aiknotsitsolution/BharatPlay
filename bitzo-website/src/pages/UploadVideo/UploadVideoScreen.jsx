@@ -3,7 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
+import { useDispatch, useSelector } from "react-redux";
 import { API_BASE as API } from "../../config/api";
+import {
+  uploadFailed,
+  uploadProgressUpdated,
+  uploadStarted,
+  uploadSucceeded,
+} from "../../features/upload/uploadSlice";
 
 const isCreativeCornerCategory = (category) =>
   category?.isCreativeCorner ||
@@ -26,9 +33,12 @@ export default function UploadVideo() {
   const [durationError, setDurationError] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
   const validationRequestRef = useRef(0);
+  const dispatch = useDispatch();
+  const { progress: uploadProgress } = useSelector(
+    (state) => state.upload,
+  );
 
   const token = localStorage.getItem("token");
 
@@ -197,7 +207,7 @@ export default function UploadVideo() {
     if (!isFormValid) return;
 
     setLoading(true);
-    setUploadProgress(0);
+    dispatch(uploadStarted());
     setErrorMsg("");
 
     try {
@@ -249,7 +259,11 @@ export default function UploadVideo() {
           },
           onUploadProgress: (event) => {
             if (event.total) {
-              setUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+              dispatch(
+                uploadProgressUpdated(
+                  Math.min(100, Math.round((event.loaded / event.total) * 100)),
+                ),
+              );
             }
           },
         },
@@ -260,6 +274,7 @@ export default function UploadVideo() {
       }
 
       toast.success("Video uploaded successfully! 🎉");
+      dispatch(uploadSucceeded());
       setTitle("");
       setDescription("");
       setCategory("");
@@ -270,7 +285,7 @@ export default function UploadVideo() {
       setVideoDuration(null);
       setDurationError("");
       setThumbnailFile(null);
-      setUploadProgress(100);
+      setErrorMsg("");
     } catch (error) {
       console.error(error);
       const msg =
@@ -278,6 +293,7 @@ export default function UploadVideo() {
         error.message ||
         "Upload failed. Please try again.";
       setErrorMsg(msg);
+      dispatch(uploadFailed(msg));
       toast.error(msg);
     } finally {
       setLoading(false);

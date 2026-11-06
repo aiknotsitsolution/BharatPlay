@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import {
   Edit,
@@ -14,6 +15,12 @@ import {
 } from "lucide-react";
 import { API_BASE, API_ORIGIN } from "../../config/api";
 import { authFetch } from "../../utils/session";
+import {
+  uploadFailed,
+  uploadProgressUpdated,
+  uploadStarted,
+  uploadSucceeded,
+} from "../../features/upload/uploadSlice";
 
 // API base URLs
 const API_CATEGORY = `${API_BASE}/category`;
@@ -126,8 +133,9 @@ export default function ChannelPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [creating, setCreating] = useState(false);
+  const dispatch = useDispatch();
+  const uploadProgress = useSelector((state) => state.upload.progress);
 
   // Video player modal
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
@@ -678,7 +686,7 @@ export default function ChannelPage() {
 
     try {
       setUploading(true);
-      setUploadProgress(0);
+      dispatch(uploadStarted());
       setUploadError("");
 
       const formData = new FormData();
@@ -710,8 +718,10 @@ export default function ChannelPage() {
           body: formData,
           onUploadProgress: (event) => {
             if (event.total) {
-              setUploadProgress(
-                Math.min(100, Math.round((event.loaded / event.total) * 100)),
+              dispatch(
+                uploadProgressUpdated(
+                  Math.min(100, Math.round((event.loaded / event.total) * 100)),
+                ),
               );
             }
           },
@@ -727,6 +737,7 @@ export default function ChannelPage() {
       }
 
       toast.success("Video uploaded successfully!");
+      dispatch(uploadSucceeded());
 
       // Refresh videos
       const videosRes = await authFetch(
@@ -759,12 +770,12 @@ export default function ChannelPage() {
       setVideoType("short");
       setAgreeTerms(false);
       setSelectedUploadChannelId("");
-      setUploadProgress(0);
     } catch (error) {
       console.error("Video upload error:", error);
-      setUploadError(
-        error.message || "Failed to upload video. Please try again.",
-      );
+      const message =
+        error.message || "Failed to upload video. Please try again.";
+      dispatch(uploadFailed(message));
+      setUploadError(message);
     } finally {
       setUploading(false);
     }
