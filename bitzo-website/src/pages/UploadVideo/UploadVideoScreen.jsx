@@ -25,6 +25,7 @@ export default function UploadVideo() {
   const [isCreativeCorner, setIsCreativeCorner] = useState(false);
   const [hashtags, setHashtags] = useState("");
   const [videoType, setVideoType] = useState("short"); // short or long
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const [channels, setChannels] = useState([]);
   const [selectedChannelId, setSelectedChannelId] = useState("");
   const [videoFile, setVideoFile] = useState(null);
@@ -87,6 +88,7 @@ export default function UploadVideo() {
     videoDuration !== null &&
     !durationError &&
     !durationChecking &&
+    agreeTerms &&
     !loading;
 
   const getVideoDuration = (file) => {
@@ -281,6 +283,7 @@ export default function UploadVideo() {
       setIsCreativeCorner(false);
       setHashtags("");
       setVideoType("short");
+      setAgreeTerms(false);
       setVideoFile(null);
       setVideoDuration(null);
       setDurationError("");
@@ -524,6 +527,20 @@ export default function UploadVideo() {
               className="block w-full text-sm text-zinc-400 file:mr-4 file:py-3 file:px-5 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-zinc-700 file:text-white hover:file:bg-zinc-600 cursor-pointer border border-zinc-700 rounded-lg p-2"
             />
           </div>
+
+          <label className="flex items-start gap-2 text-xs text-zinc-400">
+            <input
+              type="checkbox"
+              checked={agreeTerms}
+              onChange={(e) => setAgreeTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0"
+              required
+            />
+            <span>
+              I agree to the Terms of Service and confirm I own/have rights to
+              this content.
+            </span>
+          </label>
 
           {/* Submit */}
           <button

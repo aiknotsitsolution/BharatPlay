@@ -104,6 +104,7 @@ export default function ChannelPage() {
 
   // Create channel modal
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createPromptDismissed, setCreatePromptDismissed] = useState(false);
   const [newChannel, setNewChannel] = useState({
     name: "",
     channelDescription: "",
@@ -427,6 +428,7 @@ export default function ChannelPage() {
       !isPublicChannel &&
       !loading &&
       !showCreateModal &&
+      !createPromptDismissed &&
       channels.length === 0
     ) {
       setShowCreateModal(true);
@@ -434,6 +436,7 @@ export default function ChannelPage() {
   }, [
     loading,
     channelsFetchSucceeded,
+    createPromptDismissed,
     channels.length,
     isPublicChannel,
     showCreateModal,
@@ -614,6 +617,11 @@ export default function ChannelPage() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+    setCreatePromptDismissed(true);
   };
 
   // Generate thumbnail from video if user didn't upload one
@@ -1421,7 +1429,7 @@ export default function ChannelPage() {
                 )}
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={closeCreateModal}
                   className="px-5 py-2 bg-gray-700 hover:bg-gray-600 rounded-full text-sm transition"
                 >
                   Cancel
