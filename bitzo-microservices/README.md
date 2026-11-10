@@ -166,9 +166,11 @@ OTP message. Email verification uses the auth service's existing `EMAIL`,
 `EMAIL_PASSWORD`, and optional `EMAIL_HOST`/`EMAIL_PORT` SMTP settings. The auth
 service logs whether SMTP accepted the message; this does not guarantee inbox
 delivery, so monitor provider delivery/bounce records and spam placement.
-Google sign-in requires the same OAuth web client ID in the auth service's
-`GOOGLE_CLIENT_ID` and the website build's `VITE_GOOGLE_CLIENT_ID` settings.
-The auth service validates the ID token audience and verified email.
+Google sign-in requires OAuth client IDs for the clients in use. Configure the
+website client as `GOOGLE_CLIENT_ID` (and `VITE_GOOGLE_CLIENT_ID` in the website
+build); configure the app's Android/iOS client IDs as
+`GOOGLE_ANDROID_CLIENT_ID` and `GOOGLE_IOS_CLIENT_ID`. The auth service accepts
+only configured ID-token audiences and requires a verified email.
 
 The website and app request ads through `/v1/player/manifest/:video_id`.
 Configure active ad networks with VAST tags containing a playable `MediaFile`;

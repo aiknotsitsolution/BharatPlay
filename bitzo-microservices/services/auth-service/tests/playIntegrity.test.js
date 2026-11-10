@@ -48,7 +48,11 @@ describe("Android signup Play Integrity enforcement", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.ANDROID_PACKAGE_NAME = "com.bharatplay.app";
-    process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS = "{}";
+    process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS = JSON.stringify({
+      type: "service_account",
+      client_email: "integrity-test@example.iam.gserviceaccount.com",
+      private_key: "test-private-key",
+    });
     decodedPayload = validPayload;
     requestToken = jest.fn().mockImplementation(async () => ({
       data: { tokenPayloadExternal: decodedPayload },
@@ -136,5 +140,27 @@ describe("Android signup Play Integrity enforcement", () => {
       status: 503,
       code: "PLAY_INTEGRITY_UNAVAILABLE",
     });
+  });
+
+  test("fails closed with a configuration error for malformed service-account JSON", async () => {
+    process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS = "not-json";
+
+    await expect(requireAndroidSignupIntegrity(req())).resolves.toMatchObject({
+      ok: false,
+      status: 503,
+      code: "PLAY_INTEGRITY_UNAVAILABLE",
+    });
+    expect(GoogleAuth).not.toHaveBeenCalled();
+  });
+
+  test("fails closed when service-account credentials are incomplete", async () => {
+    process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS = JSON.stringify({});
+
+    await expect(requireAndroidSignupIntegrity(req())).resolves.toMatchObject({
+      ok: false,
+      status: 503,
+      code: "PLAY_INTEGRITY_UNAVAILABLE",
+    });
+    expect(GoogleAuth).not.toHaveBeenCalled();
   });
 });

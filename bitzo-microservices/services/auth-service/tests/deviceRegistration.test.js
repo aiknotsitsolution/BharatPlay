@@ -1,4 +1,7 @@
-jest.mock("../models/Device", () => ({}));
+jest.mock("../models/Device", () => ({
+  findOne: jest.fn(),
+  findOneAndUpdate: jest.fn(),
+}));
 jest.mock("../models/PlayIntegrityToken", () => ({}));
 jest.mock("../models/usermodel", () => ({
   findOne: jest.fn(),
@@ -11,9 +14,11 @@ jest.mock("../services/vpn.service/fraud.service", () => ({
 }));
 
 const User = require("../models/usermodel");
+const Device = require("../models/Device");
 const DeviceFingerprint = require("../models/DeviceFingerprintModel");
 const {
   checkDeviceRegistrationAvailability,
+  registerOrVerifyDevice,
 } = require("../services/deviceSecurityService");
 
 const userQuery = (user) => ({
@@ -37,6 +42,53 @@ describe("device registration availability", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.JWT_SECRET = "test-browser-device-binding-secret";
+  });
+
+  test("defers claiming a new device until authentication is complete", async () => {
+    Device.findOne.mockResolvedValue(null);
+    Device.findOneAndUpdate.mockResolvedValue({});
+
+    await registerOrVerifyDevice({
+      req: {
+        body: {},
+        cookies: { device_id: "browser-device-123" },
+        get: jest.fn().mockReturnValue("test-agent"),
+      },
+      userId: "verified-user",
+      allowAccountSwitch: true,
+      deferAccountBinding: true,
+    });
+
+    expect(Device.findOneAndUpdate).toHaveBeenCalledWith(
+      { device_id: "browser-device-123" },
+      expect.objectContaining({
+        $set: expect.objectContaining({ linked_user_id: null }),
+      }),
+      expect.any(Object),
+    );
+  });
+
+  test("transfers an existing device only when account switching is enabled", async () => {
+    Device.findOne.mockResolvedValue({ linked_user_id: "previous-user" });
+    Device.findOneAndUpdate.mockResolvedValue({});
+
+    await registerOrVerifyDevice({
+      req: {
+        body: {},
+        cookies: { device_id: "browser-device-123" },
+        get: jest.fn().mockReturnValue("test-agent"),
+      },
+      userId: "verified-user",
+      allowAccountSwitch: true,
+    });
+
+    expect(Device.findOneAndUpdate).toHaveBeenCalledWith(
+      { device_id: "browser-device-123" },
+      expect.objectContaining({
+        $set: expect.objectContaining({ linked_user_id: "verified-user" }),
+      }),
+      expect.any(Object),
+    );
   });
 
   test("blocks a second email account on the same website browser", async () => {

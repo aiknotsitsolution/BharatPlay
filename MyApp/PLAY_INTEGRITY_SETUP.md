@@ -8,6 +8,8 @@ Android signup now requires a Play Integrity token from the official app build. 
 4. Build and install a new Android app after adding `expo-play-integrity`, for example with `eas build --platform android --profile preview` or `npx expo run:android`. The app must be a native build that includes the module; Expo Go cannot provide it. An Expo OTA update cannot add this native module to an already-installed app.
 5. Test signup using a Play-distributed build. Older builds without the module, unsupported devices, or missing cloud configuration fail closed and cannot register.
 
+If signup returns `PLAY_INTEGRITY_UNAVAILABLE`, check the auth service logs and verify that `GOOGLE_PLAY_INTEGRITY_CREDENTIALS` contains the complete, valid service-account JSON object (including `type`, `client_email`, and `private_key`), not a file path or placeholder. Confirm that the Play Integrity API is enabled and that this service account is authorized for the app in Play Console. Keep the credentials only in the backend's secret configuration; never put them in the app or send them in chat.
+
 The server validates the package name, one-time nonce, token age, recognized app/device verdicts, and rejects reused tokens. Play Integrity and browser private-mode checks are risk signals, not guarantees against every modified device, network, or browser implementation.
 
 ## Account binding by device

@@ -48,8 +48,11 @@ export default function RegisterScreen({ navigation }) {
         showToast("error", data.message || "Registration Failed");
       }
     } catch (error) {
-      console.log(error);
-      showToast("error", "Server Error");
+      console.error("Registration failed:", error);
+      showToast(
+        "error",
+        error instanceof Error ? error.message : "Registration failed",
+      );
     } finally {
       setLoading(false);
     }

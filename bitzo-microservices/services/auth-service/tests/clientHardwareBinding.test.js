@@ -52,6 +52,44 @@ describe("client hardware account binding", () => {
     });
   });
 
+  test("allows authenticated account switching on the same UUID", async () => {
+    ClientHardwareBinding.findOne.mockReturnValue(
+      query({ userId: "active-user" }),
+    );
+
+    await expect(
+      checkClientHardwareBinding({
+        clientHardwareUuid: "hardware-uuid-123",
+        userId: "different-user",
+        allowAccountSwitch: true,
+      }),
+    ).resolves.toMatchObject({ ok: true });
+  });
+
+  test("reassigns an active UUID after account authentication", async () => {
+    ClientHardwareBinding.findOne
+      .mockReturnValueOnce(query({ userId: "active-user" }))
+      .mockReturnValueOnce(query({ userId: "active-user" }));
+    ClientHardwareBinding.findOneAndUpdate.mockResolvedValue({
+      userId: "different-user",
+    });
+
+    await expect(
+      bindClientHardwareUuid({
+        clientHardwareUuid: "hardware-uuid-123",
+        userId: "different-user",
+        allowAccountSwitch: true,
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(ClientHardwareBinding.findOneAndUpdate).toHaveBeenCalledWith(
+      { clientHardwareUuid: "hardware-uuid-123", userId: "active-user" },
+      expect.objectContaining({
+        $set: expect.objectContaining({ userId: "different-user" }),
+      }),
+      { returnDocument: "after" },
+    );
+  });
+
   test("allows reassignment when the previous account is inactive", async () => {
     ClientHardwareBinding.findOne
       .mockReturnValueOnce(query({ userId: "inactive-user" }))

@@ -43,7 +43,11 @@ const findActiveOwner = async (binding, userId) => {
     .lean();
 };
 
-const checkClientHardwareBinding = async ({ clientHardwareUuid, userId }) => {
+const checkClientHardwareBinding = async ({
+  clientHardwareUuid,
+  userId,
+  allowAccountSwitch = false,
+}) => {
   const normalizedUuid = normalizeUuid(clientHardwareUuid);
   if (normalizedUuid === undefined) return invalidUuidResult();
 
@@ -54,14 +58,19 @@ const checkClientHardwareBinding = async ({ clientHardwareUuid, userId }) => {
     .lean();
   const activeOwner = await findActiveOwner(binding, userId);
 
-  if (activeOwner) return bindingViolation();
+  if (activeOwner && !allowAccountSwitch) return bindingViolation();
   return { ok: true, clientHardwareUuid: normalizedUuid };
 };
 
-const bindClientHardwareUuid = async ({ clientHardwareUuid, userId }) => {
+const bindClientHardwareUuid = async ({
+  clientHardwareUuid,
+  userId,
+  allowAccountSwitch = false,
+}) => {
   const checked = await checkClientHardwareBinding({
     clientHardwareUuid,
     userId,
+    allowAccountSwitch,
   });
   if (!checked.ok || !checked.clientHardwareUuid) return checked;
 
@@ -83,7 +92,7 @@ const bindClientHardwareUuid = async ({ clientHardwareUuid, userId }) => {
       }
 
       const activeOwner = await findActiveOwner(binding, userId);
-      if (activeOwner) return bindingViolation();
+      if (activeOwner && !allowAccountSwitch) return bindingViolation();
 
       const reassigned = await ClientHardwareBinding.findOneAndUpdate(
         { clientHardwareUuid: normalizedUuid, userId: binding.userId },

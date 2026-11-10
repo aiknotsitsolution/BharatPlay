@@ -396,7 +396,7 @@ function ShortVideo({
       <VideoView
         player={player}
         style={styles.video}
-        contentFit="cover"
+        contentFit="contain"
         nativeControls={false}
       />
       {isActive && (

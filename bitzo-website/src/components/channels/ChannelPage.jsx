@@ -835,7 +835,7 @@ export default function ChannelPage() {
     category: { name: "" },
   };
 
-  const tabs = ["Videos", "Playlists", "Posts"];
+  const tabs = ["Videos", "Playlists",];
 
   // Categories for dropdown (include creative-corner even if static)
   const displayCategories = categories.filter(

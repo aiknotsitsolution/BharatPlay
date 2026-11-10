@@ -27,7 +27,8 @@ import SwipeHint from "../components/shorts/SwipeHint";
 import { API_ORIGIN as BACKEND_URL } from "../config/api";
 
 const API_BASE = `${BACKEND_URL}/api/uservideo`;
-const SHORTS_BATCH_SIZE = 5;
+const SHORTS_BATCH_SIZE = 10;
+const SHORTS_PREFETCH_AHEAD = 4;
 
 const toMediaUrl = (value) => {
   if (!value) return "";
@@ -167,11 +168,17 @@ export default function Shorts() {
   const wasPlayingBeforeCommentsRef = useRef(false);
   const mountedRef = useRef(false);
   const pendingSubscribeRef = useRef(new Set());
+  const wheelDeltaRef = useRef(0);
+  const wheelLockedRef = useRef(false);
+  const wheelUnlockTimerRef = useRef(null);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      if (wheelUnlockTimerRef.current) {
+        window.clearTimeout(wheelUnlockTimerRef.current);
+      }
     };
   }, []);
 
@@ -367,7 +374,7 @@ export default function Shorts() {
       loading ||
       loadingState ||
       shorts.length === 0 ||
-      currentIndex < shorts.length - 2 ||
+      currentIndex < shorts.length - SHORTS_PREFETCH_AHEAD ||
       !sectionHasMore.shorts ||
       sectionFetching.shorts
     ) {
@@ -595,7 +602,7 @@ export default function Shorts() {
   }, []);
 
   // ─── Change video with bounds check ───
-  const goToVideo = (newIndex) => {
+  const goToVideo = useCallback((newIndex) => {
     if (commentsOpenRef.current) return;
     if (newIndex < 0 || newIndex >= shorts.length) return;
     setCurrentIndex(newIndex);
@@ -607,7 +614,40 @@ export default function Shorts() {
         behavior: "smooth",
       });
     }
-  };
+  }, [shorts.length]);
+
+  const handleWheel = useCallback((event) => {
+    if (
+      commentsOpenRef.current ||
+      detailsOpen ||
+      Math.abs(event.deltaY) < Math.abs(event.deltaX)
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    if (wheelLockedRef.current) return;
+
+    wheelDeltaRef.current += event.deltaY;
+    if (Math.abs(wheelDeltaRef.current) < 40) return;
+
+    const direction = Math.sign(wheelDeltaRef.current);
+    wheelDeltaRef.current = 0;
+    wheelLockedRef.current = true;
+    goToVideo(currentIndexRef.current + direction);
+    wheelUnlockTimerRef.current = window.setTimeout(() => {
+      wheelLockedRef.current = false;
+      wheelDeltaRef.current = 0;
+    }, 500);
+  }, [detailsOpen, goToVideo]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return undefined;
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, [handleWheel]);
 
   // ─── Swipe left = next ─── swipe right = previous ───
   const handlers = useSwipeable({

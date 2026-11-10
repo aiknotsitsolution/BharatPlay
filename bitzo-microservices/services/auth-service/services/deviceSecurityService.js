@@ -143,6 +143,36 @@ async function requireAndroidSignupIntegrity(req) {
     };
   }
 
+  let serviceAccountCredentials;
+  try {
+    serviceAccountCredentials = JSON.parse(credentials);
+  } catch {
+    console.error(
+      "Play Integrity configuration is invalid: GOOGLE_PLAY_INTEGRITY_CREDENTIALS must contain service-account JSON.",
+    );
+    return {
+      ok: false,
+      status: 503,
+      code: "PLAY_INTEGRITY_UNAVAILABLE",
+      message: "Android registration security is temporarily unavailable.",
+    };
+  }
+  if (
+    serviceAccountCredentials.type !== "service_account" ||
+    !serviceAccountCredentials.client_email ||
+    !serviceAccountCredentials.private_key
+  ) {
+    console.error(
+      "Play Integrity configuration is invalid: service-account JSON is missing required fields.",
+    );
+    return {
+      ok: false,
+      status: 503,
+      code: "PLAY_INTEGRITY_UNAVAILABLE",
+      message: "Android registration security is temporarily unavailable.",
+    };
+  }
+
   const token = String(req.body?.playIntegrityToken || "").trim();
   const nonce = String(req.body?.integrityNonce || "").trim();
   if (!token || nonce.length < 16 || nonce.length > 500) {
@@ -157,7 +187,7 @@ async function requireAndroidSignupIntegrity(req) {
   let payload;
   try {
     const auth = new GoogleAuth({
-      credentials: JSON.parse(credentials),
+      credentials: serviceAccountCredentials,
       scopes: ["https://www.googleapis.com/auth/playintegrity"],
     });
     const client = await auth.getClient();
@@ -278,7 +308,12 @@ async function checkDeviceRegistrationAvailability(req) {
   return { ok: true };
 }
 
-async function registerOrVerifyDevice({ req, userId = null }) {
+async function registerOrVerifyDevice({
+  req,
+  userId = null,
+  allowAccountSwitch = false,
+  deferAccountBinding = false,
+}) {
   const signals = getDeviceSignals(req.body);
   const deviceId =
     signals.hardwareId || String(req.cookies?.device_id || "").trim();
@@ -312,7 +347,8 @@ async function registerOrVerifyDevice({ req, userId = null }) {
 
   if (
     existing?.linked_user_id &&
-    String(existing.linked_user_id) !== String(userId)
+    String(existing.linked_user_id) !== String(userId) &&
+    !allowAccountSwitch
   ) {
     return {
       ok: false,
@@ -338,7 +374,12 @@ async function registerOrVerifyDevice({ req, userId = null }) {
     { device_id: deviceId },
     {
       $set: {
-        linked_user_id: existing?.linked_user_id || userId || null,
+        linked_user_id:
+          deferAccountBinding
+            ? existing?.linked_user_id || null
+            : allowAccountSwitch && userId
+              ? userId
+              : existing?.linked_user_id || userId || null,
         ...(signals.ssaid ? { ssaid: signals.ssaid } : {}),
         ...(signals.deviceName ? { device_name: signals.deviceName } : {}),
         is_flagged: flagged,

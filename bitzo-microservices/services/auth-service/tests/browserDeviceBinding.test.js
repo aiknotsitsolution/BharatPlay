@@ -1,5 +1,8 @@
 jest.mock("../models/DeviceFingerprintModel", () => ({
   findOne: jest.fn(),
+  deleteOne: jest.fn(),
+  updateOne: jest.fn(),
+  findOneAndUpdate: jest.fn(),
 }));
 
 process.env.JWT_SECRET = "test-browser-device-binding-secret";
@@ -7,6 +10,7 @@ process.env.JWT_SECRET = "test-browser-device-binding-secret";
 const DeviceFingerprint = require("../models/DeviceFingerprintModel");
 const {
   checkWebsiteDeviceBinding,
+  claimWebsiteDeviceBinding,
   createFingerprint,
 } = require("../services/browserDeviceBindingService");
 
@@ -81,7 +85,7 @@ describe("website browser device binding", () => {
     });
   });
 
-  test("blocks a different account from the already bound browser", async () => {
+  test("allows authenticated login to replace the account bound to a browser", async () => {
     DeviceFingerprint.findOne.mockReturnValue(
       bindingQuery({ deviceId: "browser-device-123", userId: "user-1" }),
     );
@@ -93,14 +97,10 @@ describe("website browser device binding", () => {
         userId: "user-2",
         action: "login",
       }),
-    ).resolves.toMatchObject({
-      ok: false,
-      status: 403,
-      code: "DEVICE_ALREADY_REGISTERED",
-    });
+    ).resolves.toEqual({ ok: true, fingerprint });
   });
 
-  test("blocks the same account from a different browser on the same fingerprint", async () => {
+  test("allows authenticated login to move a browser fingerprint to a new device ID", async () => {
     DeviceFingerprint.findOne.mockReturnValue(
       bindingQuery({ deviceId: "original-browser", userId: "user-1" }),
     );
@@ -112,11 +112,52 @@ describe("website browser device binding", () => {
         userId: "user-1",
         action: "login",
       }),
-    ).resolves.toMatchObject({
-      ok: false,
-      status: 403,
-      code: "DEVICE_ALREADY_REGISTERED",
+    ).resolves.toEqual({ ok: true, fingerprint });
+  });
+
+  test("moves a verified browser binding to the current account and device", async () => {
+    DeviceFingerprint.findOne.mockReturnValue(
+      bindingQuery({ deviceId: "old-browser-device", userId: "user-1" }),
+    );
+    DeviceFingerprint.deleteOne.mockResolvedValue({});
+    DeviceFingerprint.updateOne.mockResolvedValue({});
+    DeviceFingerprint.findOneAndUpdate.mockResolvedValue({});
+
+    await expect(
+      claimWebsiteDeviceBinding({
+        fingerprint,
+        deviceId: "new-browser-device",
+        userId: "user-2",
+        ip: "127.0.0.1",
+        userAgent: "test-agent",
+      }),
+    ).resolves.toEqual({
+      deviceId: "old-browser-device",
+      userId: "user-1",
     });
+
+    expect(DeviceFingerprint.deleteOne).toHaveBeenCalledWith({
+      userId: "user-2",
+      deviceId: { $ne: "new-browser-device" },
+    });
+    expect(DeviceFingerprint.updateOne).toHaveBeenCalledWith(
+      {
+        browserDeviceFingerprint: fingerprint,
+        deviceId: { $ne: "new-browser-device" },
+      },
+      { $unset: { browserDeviceFingerprint: 1 } },
+    );
+    expect(DeviceFingerprint.findOneAndUpdate).toHaveBeenCalledWith(
+      { deviceId: "new-browser-device" },
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          userId: "user-2",
+          browserDeviceFingerprint: fingerprint,
+        }),
+        $addToSet: { associatedUsers: "user-2" },
+      }),
+      { upsert: true, returnDocument: "after" },
+    );
   });
 
   test("ignores browser fingerprints for Android app requests", async () => {

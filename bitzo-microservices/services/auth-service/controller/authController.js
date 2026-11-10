@@ -44,7 +44,10 @@ const {
   checkClientHardwareBinding,
   bindClientHardwareUuid,
 } = require("../services/clientHardwareBindingService");
-const { checkWebsiteDeviceBinding } = require("../services/browserDeviceBindingService");
+const {
+  checkWebsiteDeviceBinding,
+  claimWebsiteDeviceBinding,
+} = require("../services/browserDeviceBindingService");
 const transporter = require("../Email/nodemailer.js");
 const getRegisterMailOptions = require("../Email/register.js");
 const getLoginMailOptions = require("../Email/login.js");
@@ -62,6 +65,28 @@ const createAuthSession = async (userId, kind = "user") => {
     expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
   });
   return refreshToken;
+};
+
+const detachPreviousDeviceOwner = async (deviceId, userId) => {
+  if (!deviceId) return;
+
+  const previousOwners = await User.find({
+    deviceId,
+    _id: { $ne: userId },
+  })
+    .select("_id")
+    .lean();
+  if (previousOwners.length === 0) return;
+
+  const previousUserIds = previousOwners.map((owner) => owner._id);
+  await User.updateMany(
+    { _id: { $in: previousUserIds }, deviceId },
+    { $unset: { deviceId: 1 } },
+  );
+  await RefreshToken.updateMany(
+    { userId: { $in: previousUserIds }, kind: "user", revokedAt: null },
+    { $set: { revokedAt: new Date() } },
+  );
 };
 
 const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
@@ -1014,6 +1039,7 @@ exports.loginUser = async (req, res) => {
       const hardwareBindingCheck = await checkClientHardwareBinding({
         clientHardwareUuid: req.body.clientHardwareUuid,
         userId: user._id,
+        allowAccountSwitch: true,
       });
       if (!hardwareBindingCheck.ok) {
         return res.status(hardwareBindingCheck.status).json({
@@ -1026,6 +1052,8 @@ exports.loginUser = async (req, res) => {
       const deviceCheck = await registerOrVerifyDevice({
         req,
         userId: user._id,
+        allowAccountSwitch: true,
+        deferAccountBinding: true,
       });
       if (!deviceCheck.ok) {
         return res.status(deviceCheck.status).json({
@@ -1038,41 +1066,7 @@ exports.loginUser = async (req, res) => {
         deviceId = deviceCheck.deviceId;
       }
 
-      // ---------- Safe device binding ----------
-      // 1. Clear this deviceId from ANY other user
-      await User.updateMany(
-        { deviceId, _id: { $ne: user._id } },
-        { $unset: { deviceId: 1 } },
-      );
-
-      // Keep the account binding unchanged until the OTP is verified.
-
-      // Create / update fingerprint for current device
-      const existingByDevice = await DeviceFingerprint.findOne({ deviceId });
-      const existingByUser = await DeviceFingerprint.findOne({
-        userId: user._id,
-      });
-
-      if (
-        existingByUser &&
-        String(existingByUser.deviceId) !== String(deviceId)
-      ) {
-        await DeviceFingerprint.deleteOne({ _id: existingByUser._id });
-      }
-
-      await DeviceFingerprint.findOneAndUpdate(
-        { deviceId },
-        {
-          $set: {
-            userId: user._id,
-            lastIp: ip,
-            userAgent: ua,
-            lastSeen: new Date(),
-          },
-          $addToSet: { associatedUsers: user._id },
-        },
-        { upsert: true },
-      );
+      // Keep device ownership unchanged until the login OTP is verified.
 
       // ---------- VPN / Proxy check ----------
       const vpnInfo = await detectVPN(ip);
@@ -1141,6 +1135,8 @@ exports.loginUser = async (req, res) => {
     const otpDeviceCheck = await registerOrVerifyDevice({
       req,
       userId: user._id,
+      allowAccountSwitch: true,
+      deferAccountBinding: true,
     });
     if (!otpDeviceCheck.ok) {
       return res.status(otpDeviceCheck.status).json({
@@ -1206,9 +1202,26 @@ exports.loginUser = async (req, res) => {
       });
     }
 
+    const verifiedDeviceCheck = await registerOrVerifyDevice({
+      req,
+      userId: user._id,
+      allowAccountSwitch: true,
+    });
+    if (!verifiedDeviceCheck.ok) {
+      return res.status(verifiedDeviceCheck.status).json({
+        success: false,
+        code: verifiedDeviceCheck.code,
+        message: verifiedDeviceCheck.message,
+      });
+    }
+    if (!verifiedDeviceCheck.legacy && verifiedDeviceCheck.deviceId) {
+      deviceId = verifiedDeviceCheck.deviceId;
+    }
+
     const hardwareBinding = await bindClientHardwareUuid({
       clientHardwareUuid: req.body.clientHardwareUuid,
       userId: user._id,
+      allowAccountSwitch: true,
     });
     if (!hardwareBinding.ok) {
       return res.status(hardwareBinding.status).json({
@@ -1234,15 +1247,12 @@ exports.loginUser = async (req, res) => {
 
     // Final device binding after successful OTP
     const deviceChanged = Boolean(user.deviceId && user.deviceId !== deviceId);
-    await User.updateMany(
-      { deviceId, _id: { $ne: user._id } },
-      { $unset: { deviceId: 1 } },
-    );
 
     if (user.deviceId !== deviceId) {
       user.deviceId = deviceId;
       await user.save();
     }
+    await detachPreviousDeviceOwner(deviceId, user._id);
 
     if (deviceChanged) {
       await RefreshToken.updateMany(
@@ -1261,21 +1271,41 @@ exports.loginUser = async (req, res) => {
       );
     }
 
-    await DeviceFingerprint.updateOne(
-      { deviceId },
-      {
-        $set: {
-          userId: user._id,
-          lastIp: ip,
-          userAgent: ua,
-          lastSeen: new Date(),
-          ...(browserFingerprint
-            ? { browserDeviceFingerprint: browserFingerprint }
-            : {}),
+    if (browserFingerprint) {
+      const previousBrowserBinding = await claimWebsiteDeviceBinding({
+        fingerprint: browserFingerprint,
+        deviceId,
+        userId: user._id,
+        ip,
+        userAgent: ua,
+      });
+      if (
+        previousBrowserBinding?.userId &&
+        String(previousBrowserBinding.userId) !== String(user._id)
+      ) {
+        await detachPreviousDeviceOwner(
+          previousBrowserBinding.deviceId,
+          user._id,
+        );
+      }
+    } else {
+      await DeviceFingerprint.deleteOne({
+        userId: user._id,
+        deviceId: { $ne: deviceId },
+      });
+      await DeviceFingerprint.updateOne(
+        { deviceId },
+        {
+          $set: {
+            userId: user._id,
+            lastIp: ip,
+            userAgent: ua,
+            lastSeen: new Date(),
+          },
+          $addToSet: { associatedUsers: user._id },
         },
-        $addToSet: { associatedUsers: user._id },
-      },
-    );
+      );
+    }
 
     // Risk analysis
     const { riskPoints, reasons } = await analyzeBehavior(user._id);
@@ -1368,15 +1398,26 @@ exports.googleLogin = async (req, res) => {
   try {
     const credential =
       typeof req.body?.credential === "string" ? req.body.credential : "";
-    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientIds = Array.from(
+      new Set(
+        [
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_WEB_CLIENT_ID,
+          process.env.GOOGLE_ANDROID_CLIENT_ID,
+          process.env.GOOGLE_IOS_CLIENT_ID,
+        ]
+          .map((clientId) => String(clientId || "").trim())
+          .filter(Boolean),
+      ),
+    );
     if (!credential) {
       return res.status(400).json({
         success: false,
         message: "Google credential is required.",
       });
     }
-    if (!clientId) {
-      console.error("Google sign-in is unavailable: GOOGLE_CLIENT_ID is missing.");
+    if (clientIds.length === 0) {
+      console.error("Google sign-in is unavailable: no OAuth client IDs are configured.");
       return res.status(503).json({
         success: false,
         message: "Google sign-in is temporarily unavailable.",
@@ -1385,9 +1426,9 @@ exports.googleLogin = async (req, res) => {
 
     let ticket;
     try {
-      ticket = await new OAuth2Client(clientId).verifyIdToken({
+      ticket = await new OAuth2Client(clientIds[0]).verifyIdToken({
         idToken: credential,
-        audience: clientId,
+        audience: clientIds,
       });
     } catch {
       return res.status(401).json({
@@ -1475,6 +1516,7 @@ exports.googleLogin = async (req, res) => {
     const hardwareBindingCheck = await checkClientHardwareBinding({
       clientHardwareUuid: req.body.clientHardwareUuid,
       userId: user?._id || null,
+      allowAccountSwitch: Boolean(user),
     });
     if (!hardwareBindingCheck.ok) {
       return res.status(hardwareBindingCheck.status).json({
@@ -1487,6 +1529,8 @@ exports.googleLogin = async (req, res) => {
     const deviceCheck = await registerOrVerifyDevice({
       req,
       userId: user?._id || null,
+      allowAccountSwitch: Boolean(user),
+      deferAccountBinding: Boolean(user),
     });
     if (!deviceCheck.ok) {
       return res.status(deviceCheck.status).json({
@@ -1566,7 +1610,11 @@ exports.googleLogin = async (req, res) => {
       });
     }
 
-    const boundDevice = await registerOrVerifyDevice({ req, userId: user._id });
+    const boundDevice = await registerOrVerifyDevice({
+      req,
+      userId: user._id,
+      allowAccountSwitch: !isNewAccount,
+    });
     if (!boundDevice.ok) {
       if (isNewAccount) await User.deleteOne({ _id: user._id });
       return res.status(boundDevice.status).json({
@@ -1582,6 +1630,7 @@ exports.googleLogin = async (req, res) => {
     const hardwareBinding = await bindClientHardwareUuid({
       clientHardwareUuid: req.body.clientHardwareUuid,
       userId: user._id,
+      allowAccountSwitch: !isNewAccount,
     });
     if (!hardwareBinding.ok) {
       if (isNewAccount) {
@@ -1616,33 +1665,46 @@ exports.googleLogin = async (req, res) => {
       );
     }
 
-    await User.updateMany(
-      { deviceId, _id: { $ne: user._id } },
-      { $unset: { deviceId: 1 } },
-    );
     user.googleId = payload.sub;
     user.emailVerified = true;
     user.deviceId = deviceId;
     user.lastLoginAt = new Date();
     user.lastActivityAt = new Date();
     await user.save();
+    await detachPreviousDeviceOwner(deviceId, user._id);
 
-    await DeviceFingerprint.findOneAndUpdate(
-      { deviceId },
-      {
-        $set: {
-          userId: user._id,
-          lastIp: ip,
-          userAgent,
-          lastSeen: new Date(),
-          ...(browserBinding.fingerprint
-            ? { fingerprint: browserBinding.fingerprint }
-            : {}),
+    if (browserBinding.fingerprint) {
+      const previousBrowserBinding = await claimWebsiteDeviceBinding({
+        fingerprint: browserBinding.fingerprint,
+        deviceId,
+        userId: user._id,
+        ip,
+        userAgent,
+      });
+      if (
+        previousBrowserBinding?.userId &&
+        String(previousBrowserBinding.userId) !== String(user._id)
+      ) {
+        await detachPreviousDeviceOwner(
+          previousBrowserBinding.deviceId,
+          user._id,
+        );
+      }
+    } else {
+      await DeviceFingerprint.findOneAndUpdate(
+        { deviceId },
+        {
+          $set: {
+            userId: user._id,
+            lastIp: ip,
+            userAgent,
+            lastSeen: new Date(),
+          },
+          $addToSet: { associatedUsers: user._id },
         },
-        $addToSet: { associatedUsers: user._id },
-      },
-      { upsert: true },
-    );
+        { upsert: true },
+      );
+    }
     await logAuditEvent({
       userId: user._id,
       eventType: isNewAccount ? "REGISTER" : "USER_LOGIN",

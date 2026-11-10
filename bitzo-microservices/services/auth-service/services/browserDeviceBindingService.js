@@ -99,12 +99,10 @@ const checkWebsiteDeviceBinding = async ({
 
   const sameBrowserProfile = String(binding.deviceId) === String(deviceId);
   const bindingUserId = binding.userId ? String(binding.userId) : null;
-  const requestedUserId = userId ? String(userId) : null;
 
   if (
-    !sameBrowserProfile ||
-    (bindingUserId &&
-      (action === "register" || bindingUserId !== requestedUserId))
+    action === "register" &&
+    (bindingUserId || !sameBrowserProfile)
   ) {
     return deviceAlreadyBound(action === "login" ? 403 : 409);
   }
@@ -112,8 +110,50 @@ const checkWebsiteDeviceBinding = async ({
   return { ok: true, fingerprint };
 };
 
+const claimWebsiteDeviceBinding = async ({
+  fingerprint,
+  deviceId,
+  userId,
+  ip,
+  userAgent,
+}) => {
+  if (!fingerprint) return;
+
+  const previousBinding = await DeviceFingerprint.findOne({
+    browserDeviceFingerprint: fingerprint,
+  })
+    .select("deviceId userId")
+    .lean();
+
+  await DeviceFingerprint.deleteOne({
+    userId,
+    deviceId: { $ne: deviceId },
+  });
+  await DeviceFingerprint.updateOne(
+    { browserDeviceFingerprint: fingerprint, deviceId: { $ne: deviceId } },
+    { $unset: { browserDeviceFingerprint: 1 } },
+  );
+  await DeviceFingerprint.findOneAndUpdate(
+    { deviceId },
+    {
+      $set: {
+        userId,
+        browserDeviceFingerprint: fingerprint,
+        lastIp: ip,
+        userAgent,
+        lastSeen: new Date(),
+      },
+      $addToSet: { associatedUsers: userId },
+    },
+    { upsert: true, returnDocument: "after" },
+  );
+
+  return previousBinding;
+};
+
 module.exports = {
   BROWSER_FINGERPRINT_PATTERN,
   checkWebsiteDeviceBinding,
+  claimWebsiteDeviceBinding,
   createFingerprint,
 };
