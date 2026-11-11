@@ -42,6 +42,8 @@ describe("device registration availability", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.JWT_SECRET = "test-browser-device-binding-secret";
+    delete process.env.DEVICE_HMAC_SECRET;
+    delete process.env.REQUIRE_DEVICE_HMAC;
   });
 
   test("defers claiming a new device until authentication is complete", async () => {
@@ -89,6 +91,52 @@ describe("device registration availability", () => {
       }),
       expect.any(Object),
     );
+  });
+
+  test("accepts a verified Play Integrity request without device HMAC headers", async () => {
+    process.env.DEVICE_HMAC_SECRET = "server-only-device-hmac-secret";
+    process.env.REQUIRE_DEVICE_HMAC = "true";
+    Device.findOne.mockResolvedValue(null);
+    Device.findOneAndUpdate.mockResolvedValue({});
+
+    await expect(
+      registerOrVerifyDevice({
+        req: {
+          body: {
+            hardwareId: "mobile-hardware-device-123",
+            playIntegrityToken: "verified-integrity-token",
+          },
+          cookies: {},
+          playIntegrityVerified: true,
+          get: jest.fn().mockReturnValue("test-agent"),
+        },
+        userId: "verified-user",
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      integrity: { verified: true },
+    });
+
+    expect(Device.findOneAndUpdate).toHaveBeenCalled();
+  });
+
+  test("still requires HMAC for unverified mobile device requests when configured", async () => {
+    process.env.DEVICE_HMAC_SECRET = "server-only-device-hmac-secret";
+    process.env.REQUIRE_DEVICE_HMAC = "true";
+
+    await expect(
+      registerOrVerifyDevice({
+        req: {
+          body: { hardwareId: "mobile-hardware-device-123" },
+          cookies: {},
+          get: jest.fn().mockReturnValue(undefined),
+        },
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: 401,
+      code: "INVALID_DEVICE_SIGNATURE",
+    });
   });
 
   test("blocks a second email account on the same website browser", async () => {

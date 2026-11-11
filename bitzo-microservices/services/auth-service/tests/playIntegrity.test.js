@@ -47,6 +47,8 @@ describe("Android signup Play Integrity enforcement", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    delete process.env.ALLOW_INTEGRITY_BYPASS;
+    delete process.env.APP_ENV;
     process.env.ANDROID_PACKAGE_NAME = "com.bharatplay.app";
     process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS = JSON.stringify({
       type: "service_account",
@@ -66,6 +68,8 @@ describe("Android signup Play Integrity enforcement", () => {
   afterAll(() => {
     delete process.env.ANDROID_PACKAGE_NAME;
     delete process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS;
+    delete process.env.ALLOW_INTEGRITY_BYPASS;
+    delete process.env.APP_ENV;
   });
 
   test("requires a signed token and nonce", async () => {
@@ -120,6 +124,95 @@ describe("Android signup Play Integrity enforcement", () => {
         expiresAt: expect.any(Date),
       }),
     );
+  });
+
+  test("accepts the development token by default outside production", async () => {
+    process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS = "not-json";
+
+    await expect(
+      requireAndroidSignupIntegrity(
+        req({ playIntegrityToken: "DEV_BYPASS_TOKEN" }),
+      ),
+    ).resolves.toEqual({ ok: true });
+
+    expect(GoogleAuth).not.toHaveBeenCalled();
+    expect(PlayIntegrityToken.create).not.toHaveBeenCalled();
+  });
+
+  test("can explicitly disable the development bypass", async () => {
+    process.env.ALLOW_INTEGRITY_BYPASS = "false";
+    process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS = "";
+
+    await expect(
+      requireAndroidSignupIntegrity(
+        req({ playIntegrityToken: "DEV_BYPASS_TOKEN" }),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: 503,
+      code: "PLAY_INTEGRITY_UNAVAILABLE",
+    });
+
+    expect(GoogleAuth).not.toHaveBeenCalled();
+  });
+
+  test("does not bypass other tokens even when bypass is enabled", async () => {
+    process.env.ALLOW_INTEGRITY_BYPASS = "true";
+    process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS = "";
+
+    await expect(
+      requireAndroidSignupIntegrity(req({ playIntegrityToken: "another-token" })),
+    ).resolves.toMatchObject({
+      ok: false,
+      status: 503,
+      code: "PLAY_INTEGRITY_UNAVAILABLE",
+    });
+
+    expect(GoogleAuth).not.toHaveBeenCalled();
+  });
+
+  test("allows the explicit bypass in staging even when NODE_ENV is production", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    process.env.APP_ENV = "staging";
+    process.env.ALLOW_INTEGRITY_BYPASS = "true";
+    process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS = "";
+
+    try {
+      await expect(
+        requireAndroidSignupIntegrity(
+          req({ playIntegrityToken: "DEV_BYPASS_TOKEN" }),
+        ),
+      ).resolves.toEqual({ ok: true });
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+
+    expect(GoogleAuth).not.toHaveBeenCalled();
+    expect(PlayIntegrityToken.create).not.toHaveBeenCalled();
+  });
+
+  test("does not allow the bypass in production without explicit staging environment", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    process.env.ALLOW_INTEGRITY_BYPASS = "true";
+    process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS = "";
+
+    try {
+      await expect(
+        requireAndroidSignupIntegrity(
+          req({ playIntegrityToken: "DEV_BYPASS_TOKEN" }),
+        ),
+      ).resolves.toMatchObject({
+        ok: false,
+        status: 503,
+        code: "PLAY_INTEGRITY_UNAVAILABLE",
+      });
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+
+    expect(GoogleAuth).not.toHaveBeenCalled();
   });
 
   test("rejects replayed integrity tokens", async () => {

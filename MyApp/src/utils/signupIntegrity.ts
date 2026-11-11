@@ -1,10 +1,20 @@
-import Constants from "expo-constants";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as Crypto from "expo-crypto";
 import { Platform } from "react-native";
 import { requestIntegrityToken } from "expo-play-integrity";
 
+const isExpoGo =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
 export const getSignupIntegrityProof = async () => {
   if (Platform.OS !== "android") return {};
+
+  if (isExpoGo || __DEV__) {
+    return {
+      integrityNonce: Crypto.randomUUID(),
+      playIntegrityToken: "DEV_BYPASS_TOKEN",
+    };
+  }
 
   const cloudProjectNumber = Number(
     Constants.expoConfig?.extra?.playIntegrityCloudProjectNumber ??

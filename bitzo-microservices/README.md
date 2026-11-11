@@ -163,9 +163,14 @@ Mobile OTP authentication also requires `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID`,
 and a strong `OTP_HASH_SECRET` in the auth-service deployment environment.
 Configure the MSG91 template and Indian DLT registration to match the six-digit
 OTP message. Email verification uses the auth service's existing `EMAIL`,
-`EMAIL_PASSWORD`, and optional `EMAIL_HOST`/`EMAIL_PORT` SMTP settings. The auth
-service logs whether SMTP accepted the message; this does not guarantee inbox
-delivery, so monitor provider delivery/bounce records and spam placement.
+`EMAIL_PASSWORD`, and optional `EMAIL_HOST`/`EMAIL_PORT` SMTP settings. Set
+`EMAIL_FROM_NAME` to the verified product name shown to recipients (defaults to
+`BharatPlay`). For reliable inbox placement, send from an address/domain
+authorized by the SMTP provider and configure its SPF, DKIM, and DMARC DNS
+records. A display name or email-template change cannot override missing domain
+authentication or poor sender reputation. The auth service logs whether SMTP
+accepted the message; this does not guarantee inbox delivery, so monitor
+provider delivery/bounce records and spam placement.
 Google sign-in requires OAuth client IDs for the clients in use. Configure the
 website client as `GOOGLE_CLIENT_ID` (and `VITE_GOOGLE_CLIENT_ID` in the website
 build); configure the app's Android/iOS client IDs as
