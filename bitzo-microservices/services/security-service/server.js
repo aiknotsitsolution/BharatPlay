@@ -18,7 +18,7 @@ const { startStrikeExpiryJob } = require("./jobs/strikeExpiryJob.js");
 const { detectVPN } = require("./services/vpn.service/vpn.service.js");
 
 const app = express();
-const PORT = process.env.PORT || 4009;
+const PORT = process.env.PORT || 5009;
 const configuredOrigins = process.env.CORS_ORIGINS?.trim();
 const isProduction = process.env.NODE_ENV === "production";
 const allowedOrigins =

@@ -28,7 +28,7 @@ const getApiOrigin = () => {
 
   if (__DEV__) {
     const devHost = getExpoDevelopmentHost();
-    if (devHost) return `http://${devHost}:4000`;
+    if (devHost) return `http://${devHost}:5000`;
   }
 
   const fromEnv = normalizeOrigin(process.env.EXPO_PUBLIC_API_BASE_URL);
@@ -43,7 +43,7 @@ const API_ORIGIN = getApiOrigin();
 const API_SOCKET_ORIGIN =
   normalizeOrigin(Constants.expoConfig?.extra?.apiSocketBaseUrl) ||
   normalizeOrigin(process.env.EXPO_PUBLIC_SOCKET_BASE_URL) ||
-  API_ORIGIN.replace(/:\d+$/, ":4003");
+  API_ORIGIN.replace(/:\d+$/, ":5003");
 const API_BASE = `${API_ORIGIN}/api`;
 const API_USERVIDEO = `${API_ORIGIN}/api/uservideo`;
 

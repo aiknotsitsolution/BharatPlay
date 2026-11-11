@@ -9,7 +9,7 @@ const morgan = require("morgan");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5000;
 const configuredOrigins = process.env.CORS_ORIGINS?.trim();
 const isProduction = process.env.NODE_ENV === "production";
 const allowedOrigins =
@@ -67,21 +67,21 @@ app.use(
 );
 
 const SERVICES = {
-  auth: process.env.AUTH_SERVICE_URL || "http://localhost:4001",
-  admin: process.env.ADMIN_SERVICE_URL || "http://localhost:4002",
-  video: process.env.VIDEO_SERVICE_URL || "http://localhost:4003",
+  auth: process.env.AUTH_SERVICE_URL || "http://localhost:5001",
+  admin: process.env.ADMIN_SERVICE_URL || "http://localhost:5002",
+  video: process.env.VIDEO_SERVICE_URL || "http://localhost:5003",
   category:
-    process.env.CATEGORY_SERVICE_URL || "http://localhost:4004",
+    process.env.CATEGORY_SERVICE_URL || "http://localhost:5004",
   leaderboard:
-    process.env.LEADERBOARD_SERVICE_URL || "http://localhost:4005",
+    process.env.LEADERBOARD_SERVICE_URL || "http://localhost:5005",
   notification:
-    process.env.NOTIFICATION_SERVICE_URL || "http://localhost:4006",
+    process.env.NOTIFICATION_SERVICE_URL || "http://localhost:5006",
   playerAd:
-    process.env.PLAYER_AD_SERVICE_URL || "http://localhost:4007",
+    process.env.PLAYER_AD_SERVICE_URL || "http://localhost:5007",
   copyright:
-    process.env.COPYRIGHT_SERVICE_URL || "http://localhost:4008",
+    process.env.COPYRIGHT_SERVICE_URL || "http://localhost:5008",
   security:
-    process.env.SECURITY_SERVICE_URL || "http://localhost:4009",
+    process.env.SECURITY_SERVICE_URL || "http://localhost:5009",
 };
 
 function proxy(target, routePrefix = "/") {

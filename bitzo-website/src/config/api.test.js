@@ -15,7 +15,7 @@ describe("API origin", () => {
 
     const { API_ORIGIN } = await import("./api");
 
-    expect(API_ORIGIN).toBe("http://localhost:4000");
+    expect(API_ORIGIN).toBe("http://localhost:5000");
   });
 
   it("uses the current Vite host for LAN development", async () => {
@@ -26,7 +26,7 @@ describe("API origin", () => {
 
     const { API_ORIGIN } = await import("./api");
 
-    expect(API_ORIGIN).toBe("http://192.168.1.20:4000");
+    expect(API_ORIGIN).toBe("http://192.168.1.20:5000");
   });
 
   it("uses the current origin for production same-origin proxying", async () => {

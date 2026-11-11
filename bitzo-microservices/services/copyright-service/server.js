@@ -15,7 +15,7 @@ const route0 = require("./routes/CopyrightRoutes/CopyrightRoutes");
 const route1 = require("./routes/CopyrightRoutes/UserCopyrightRoutes");
 
 const app = express();
-const PORT = process.env.PORT || 4008;
+const PORT = process.env.PORT || 5008;
 const configuredOrigins = process.env.CORS_ORIGINS?.trim();
 const isProduction = process.env.NODE_ENV === "production";
 const allowedOrigins =

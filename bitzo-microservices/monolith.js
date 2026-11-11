@@ -13,8 +13,8 @@
  *        values (WEBSITE_URL, CORS_ORIGINS, ...) never fall back to localhost
  *     3. pinned overrides below (internal PORTs, gateway service URLs)
  * - The gateway is the only public entry point: it listens on the platform's
- *   $PORT (Railway injects it) or 4000, and proxies to the services on
- *   127.0.0.1:4001-4009.
+ *   $PORT (Railway injects it) or 5000, and proxies to the services on
+ *   127.0.0.1:5001-5009.
  * - Crashed children are restarted with a capped backoff; SIGTERM/SIGINT
  *   gracefully stops the whole tree.
  */
@@ -28,15 +28,15 @@ let shuttingDown = false;
 
 // [name, folder, fixed internal port]
 const SERVICES = [
-  ["auth-service", "services/auth-service", 4001],
-  ["admin-service", "services/admin-service", 4002],
-  ["video-service", "services/video-service", 4003],
-  ["category-service", "services/category-service", 4004],
-  ["leaderboard-service", "services/leaderboard-service", 4005],
-  ["notification-service", "services/notification-service", 4006],
-  ["player-ad-service", "services/player-ad-service", 4007],
-  ["copyright-service", "services/copyright-service", 4008],
-  ["security-service", "services/security-service", 4009],
+  ["auth-service", "services/auth-service", 5001],
+  ["admin-service", "services/admin-service", 5002],
+  ["video-service", "services/video-service", 5003],
+  ["category-service", "services/category-service", 5004],
+  ["leaderboard-service", "services/leaderboard-service", 5005],
+  ["notification-service", "services/notification-service", 5006],
+  ["player-ad-service", "services/player-ad-service", 5007],
+  ["copyright-service", "services/copyright-service", 5008],
+  ["security-service", "services/security-service", 5009],
 ];
 
 // Minimal .env parser (no dependency needed; services also run their own
@@ -127,23 +127,23 @@ setTimeout(() => {
     "gateway",
     "gateway",
     buildChildEnv("gateway", {
-      PORT: process.env.PORT || "4000",
-      AUTH_SERVICE_URL: "http://127.0.0.1:4001",
-      ADMIN_SERVICE_URL: "http://127.0.0.1:4002",
-      VIDEO_SERVICE_URL: "http://127.0.0.1:4003",
-      CATEGORY_SERVICE_URL: "http://127.0.0.1:4004",
-      LEADERBOARD_SERVICE_URL: "http://127.0.0.1:4005",
-      NOTIFICATION_SERVICE_URL: "http://127.0.0.1:4006",
-      PLAYER_AD_SERVICE_URL: "http://127.0.0.1:4007",
-      COPYRIGHT_SERVICE_URL: "http://127.0.0.1:4008",
-      SECURITY_SERVICE_URL: "http://127.0.0.1:4009",
+      PORT: process.env.PORT || "5000",
+      AUTH_SERVICE_URL: "http://127.0.0.1:5001",
+      ADMIN_SERVICE_URL: "http://127.0.0.1:5002",
+      VIDEO_SERVICE_URL: "http://127.0.0.1:5003",
+      CATEGORY_SERVICE_URL: "http://127.0.0.1:5004",
+      LEADERBOARD_SERVICE_URL: "http://127.0.0.1:5005",
+      NOTIFICATION_SERVICE_URL: "http://127.0.0.1:5006",
+      PLAYER_AD_SERVICE_URL: "http://127.0.0.1:5007",
+      COPYRIGHT_SERVICE_URL: "http://127.0.0.1:5008",
+      SECURITY_SERVICE_URL: "http://127.0.0.1:5009",
     }),
   );
 }, 2000);
 
 console.log(
   `[monolith] booting ${SERVICES.length} services + gateway — public port ${
-    process.env.PORT || 4000
+    process.env.PORT || 5000
   }`,
 );
 

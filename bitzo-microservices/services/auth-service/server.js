@@ -33,7 +33,7 @@ const route0 = require("./routes/authRoute");
 const supportRoutes = require("./routes/supportRoute");
 
 const app = express();
-const PORT = process.env.PORT || 4001;
+const PORT = process.env.PORT || 5001;
 const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS || "2");
 const configuredOrigins = process.env.CORS_ORIGINS?.trim();
 const isProduction = process.env.NODE_ENV === "production";

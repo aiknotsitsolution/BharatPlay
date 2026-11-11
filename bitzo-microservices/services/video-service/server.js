@@ -20,7 +20,7 @@ const route0 = require("./routes/VideoRoutes");
 const route1 = require("./routes/userVideoRoute");
 
 const app = express();
-const PORT = process.env.PORT || 4003;
+const PORT = process.env.PORT || 5003;
 const configuredOrigins = process.env.CORS_ORIGINS?.trim();
 const isProduction = process.env.NODE_ENV === "production";
 const allowedOrigins =

@@ -5,6 +5,6 @@ WORKDIR /app/services/notification-service
 COPY services/notification-service/package.json services/notification-service/package-lock.json ./
 RUN npm ci --omit=dev
 COPY services/notification-service/ ./
-ENV PORT=4006
-EXPOSE 4006
+ENV PORT=5006
+EXPOSE 5006
 CMD ["node", "server.js"]

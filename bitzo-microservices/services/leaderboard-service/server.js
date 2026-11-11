@@ -14,7 +14,7 @@ const morgan = require("morgan");
 const route0 = require("./routes/leaderboardRoute");
 
 const app = express();
-const PORT = process.env.PORT || 4005;
+const PORT = process.env.PORT || 5005;
 const configuredOrigins = process.env.CORS_ORIGINS?.trim();
 const isProduction = process.env.NODE_ENV === "production";
 const allowedOrigins =

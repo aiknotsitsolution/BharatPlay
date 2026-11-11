@@ -25,7 +25,7 @@ describe("fetchAllRecommendedVideos", () => {
     });
 
     const videos = await fetchAllRecommendedVideos({
-      apiBase: "http://192.168.1.20:4000/api/uservideo",
+      apiBase: "http://192.168.1.20:5000/api/uservideo",
       category: "category-id",
       token: "test-token",
       fetchImpl,
@@ -60,7 +60,7 @@ describe("fetchAllRecommendedVideos", () => {
 
     await expect(
       fetchAllRecommendedVideos({
-        apiBase: "http://192.168.1.20:4000/api/uservideo",
+        apiBase: "http://192.168.1.20:5000/api/uservideo",
         fetchImpl,
       }),
     ).rejects.toThrow("Failed to load recommended videos (503)");
@@ -82,7 +82,7 @@ describe("fetchAllRecommendedVideos", () => {
     });
 
     const videos = await fetchAllLatestVideos({
-      apiBase: "http://192.168.1.20:4000/api/uservideo",
+      apiBase: "http://192.168.1.20:5000/api/uservideo",
       fetchImpl,
     });
 

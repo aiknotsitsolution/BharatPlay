@@ -8,18 +8,18 @@ par chalti hai, aur **apne alag MongoDB database** ki owner hai.
 
 | Service              | Port | Owns (its own DB)                                 | DB name              |
 | -------------------- | ---- | ------------------------------------------------- | -------------------- |
-| **gateway**          | 4000 | -                                                 | -                    |
-| auth-service         | 4001 | User, RefreshToken, Device, DeviceFingerprint     | `bitzo_auth`         |
-| admin-service        | 4002 | Admin (employees)                                 | `bitzo_admin`        |
-| video-service        | 4003 | Video, Channel, WatchSession                      | `bitzo_video`        |
-| category-service     | 4004 | Category                                          | `bitzo_category`     |
-| leaderboard-service  | 4005 | (read-only aggregator, no owned data)             | `bitzo_leaderboard`  |
-| notification-service | 4006 | Notification                                      | `bitzo_notification` |
-| player-ad-service    | 4007 | AdNetwork, AdFillRate, AdImpression               | `bitzo_playerad`     |
-| copyright-service    | 4008 | CopyrightCase, CopyrightStrike                    | `bitzo_copyright`    |
-| security-service     | 4009 | FraudEvent, TrustScoreLog, AuditEvent, UserDevice | `bitzo_security`     |
+| **gateway**          | 5000 | -                                                 | -                    |
+| auth-service         | 5001 | User, RefreshToken, Device, DeviceFingerprint     | `bitzo_auth`         |
+| admin-service        | 5002 | Admin (employees)                                 | `bitzo_admin`        |
+| video-service        | 5003 | Video, Channel, WatchSession                      | `bitzo_video`        |
+| category-service     | 5004 | Category                                          | `bitzo_category`     |
+| leaderboard-service  | 5005 | (read-only aggregator, no owned data)             | `bitzo_leaderboard`  |
+| notification-service | 5006 | Notification                                      | `bitzo_notification` |
+| player-ad-service    | 5007 | AdNetwork, AdFillRate, AdImpression               | `bitzo_playerad`     |
+| copyright-service    | 5008 | CopyrightCase, CopyrightStrike                    | `bitzo_copyright`    |
+| security-service     | 5009 | FraudEvent, TrustScoreLog, AuditEvent, UserDevice | `bitzo_security`     |
 
-The **gateway** (port 4000) is the single entry point your frontend should
+The **gateway** (port 5000) is the single entry point your frontend should
 talk to — it proxies every request to the right service, so `/api/...` and
 `/v1/player/...` paths work **exactly the same as the old monolith**. See
 `gateway/server.js` for the full routing table.
@@ -105,7 +105,7 @@ Or start any single service on its own for development:
 ```bash
 cd services/video-service
 npm install
-npm run dev   # nodemon-style --watch on port 4003
+npm run dev   # nodemon-style --watch on port 5003
 ```
 
 ## Production deployment with Docker Compose
@@ -189,7 +189,7 @@ current LAN address if it changes. For deployment, explicitly set
 `CORS_ORIGINS` to the comma-separated HTTPS origins of the deployed frontend
 and admin panel; do not use the local default in production.
 
-The gateway is published only on `127.0.0.1:4000`. Put it behind a
+The gateway is published only on `127.0.0.1:5000`. Put it behind a
 TLS-terminating reverse proxy on the host and point the frontend to that HTTPS
 domain. Configure the MongoDB provider's network allowlist for the host and
 keep database backups enabled.
@@ -202,8 +202,8 @@ untrusted client-supplied forwarding headers as a substitute.
 
 For website or Android/iOS testing from a device on the local network, keep the
 device and development computer on the same network. Allow inbound TCP ports
-`4000` and `5173` in the computer's firewall. The website Vite dev server
-automatically targets port `4000` on the hostname used to open the website.
+`5000` and `5173` in the computer's firewall. The website Vite dev server
+automatically targets port `5000` on the hostname used to open the website.
 Start Compose with the gateway bound to the LAN interfaces:
 
 ```powershell
@@ -237,11 +237,11 @@ and cloud-provider credentials before deploying, and revoke the old values.
 
 ## Frontend changes needed
 
-None, if you point your frontend at the gateway (`http://192.168.1.20:5173/:4000`)
+None, if you point your frontend at the gateway (`http://192.168.1.20:5000`)
 instead of the old monolith's URL — every route path is unchanged
 (`/api/...`, `/v1/player/...`, `/test-vpn`). If your frontend currently
-talks to `http://192.168.1.20:5173/:8000` directly, just change that base URL to
-`http://192.168.1.20:5173/:4000`.
+talks directly to an old monolith URL, change that base URL to
+`http://192.168.1.20:5000`.
 
 ## Operational notes
 

@@ -15,7 +15,7 @@ const startHashtagCron = require("./cron/checkHashtags");
 const route0 = require("./routes/categoryRoute/category.route");
 
 const app = express();
-const PORT = process.env.PORT || 4004;
+const PORT = process.env.PORT || 5004;
 const configuredOrigins = process.env.CORS_ORIGINS?.trim();
 const isProduction = process.env.NODE_ENV === "production";
 const allowedOrigins =

@@ -14,16 +14,16 @@ const npmCli = process.env.npm_execpath?.endsWith(".js")
       "npm-cli.js",
     );
 const services = [
-  ["gateway", "gateway", 4000],
-  ["auth-service", "services/auth-service", 4001],
-  ["admin-service", "services/admin-service", 4002],
-  ["video-service", "services/video-service", 4003],
-  ["category-service", "services/category-service", 4004],
-  ["leaderboard-service", "services/leaderboard-service", 4005],
-  ["notification-service", "services/notification-service", 4006],
-  ["player-ad-service", "services/player-ad-service", 4007],
-  ["copyright-service", "services/copyright-service", 4008],
-  ["security-service", "services/security-service", 4009],
+  ["gateway", "gateway", 5000],
+  ["auth-service", "services/auth-service", 5001],
+  ["admin-service", "services/admin-service", 5002],
+  ["video-service", "services/video-service", 5003],
+  ["category-service", "services/category-service", 5004],
+  ["leaderboard-service", "services/leaderboard-service", 5005],
+  ["notification-service", "services/notification-service", 5006],
+  ["player-ad-service", "services/player-ad-service", 5007],
+  ["copyright-service", "services/copyright-service", 5008],
+  ["security-service", "services/security-service", 5009],
 ];
 
 function isPortOpen(port) {

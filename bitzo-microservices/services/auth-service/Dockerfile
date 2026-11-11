@@ -5,6 +5,6 @@ WORKDIR /app/services/auth-service
 COPY services/auth-service/package.json services/auth-service/package-lock.json ./
 RUN npm ci --omit=dev
 COPY services/auth-service/ ./
-ENV PORT=4001
-EXPOSE 4001
+ENV PORT=5001
+EXPOSE 5001
 CMD ["node", "server.js"]
