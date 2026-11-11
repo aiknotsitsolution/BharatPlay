@@ -23,6 +23,7 @@ RUN for d in gateway services/*/; do (cd "$d" && npm ci --omit=dev --no-audit --
 # Application code. .env files are excluded by .dockerignore — provide all
 # configuration through the platform's environment variables.
 COPY monolith.js ./
+COPY shared/ ./shared/
 COPY gateway/ ./gateway/
 COPY services/ ./services/
 

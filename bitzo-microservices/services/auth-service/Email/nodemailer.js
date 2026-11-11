@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const { brandTransporter } = require("../../../shared/emailBranding");
 
 const port = Number(process.env.EMAIL_PORT) || 465;
 const email = process.env.EMAIL?.trim();
@@ -25,4 +26,4 @@ transporter.verify((error, success) => {
   }
 });
 
-module.exports = transporter;
+module.exports = brandTransporter(transporter);

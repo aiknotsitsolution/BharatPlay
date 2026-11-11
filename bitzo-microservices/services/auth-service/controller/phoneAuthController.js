@@ -169,7 +169,7 @@ const reserveAndSendCode = async ({
         throw error;
       }
       const delivery = await transporter.sendMail(
-        getLoginMailOptions(subject, "BharatPlay user", code),
+        getLoginMailOptions(subject, "VidBuxApp user", code),
       );
       if (!delivery?.accepted?.length) {
         throw new Error("SMTP provider did not accept the verification email");

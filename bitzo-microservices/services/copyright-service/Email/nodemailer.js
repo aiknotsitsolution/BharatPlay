@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const { brandTransporter } = require("../../../shared/emailBranding");
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || "smtpout.secureserver.net",
@@ -10,4 +11,4 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-module.exports = transporter;
+module.exports = brandTransporter(transporter);
