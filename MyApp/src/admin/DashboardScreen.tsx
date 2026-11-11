@@ -13,10 +13,10 @@ import {
   StyleSheet,
   Dimensions,
   ActivityIndicator,
-  StatusBar,
   RefreshControl,
   FlatList,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { BadgeCheck, ChevronRight } from "lucide-react-native";
@@ -271,9 +271,12 @@ const fetchWithAuth = async (endpoint: string, params: any = {}) => {
       .map(([k, v]) => [k, String(v)])
   ).toString();
 
-  const res = await fetch(`${API_BASE}/${endpoint}${query ? `?${query}` : ""}`, {
-    headers,
-  });
+  const url = `${API_BASE}/${endpoint}${query ? `?${query}` : ""}`;
+  let res = await fetch(url, { headers });
+  if ([502, 503, 504].includes(res.status)) {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    res = await fetch(url, { headers });
+  }
   if (!res.ok) throw new Error(`${endpoint} failed (${res.status})`);
   const data = await res.json();
   if (data?.success === false) throw new Error(data.message || "Failed");
@@ -496,6 +499,7 @@ export default function DashboardScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [recommendedError, setRecommendedError] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const loadRequestIdRef = useRef(0);
@@ -510,15 +514,16 @@ export default function DashboardScreen() {
     const requestId = ++loadRequestIdRef.current;
     try {
       setLoading(true);
+      setRecommendedError(false);
       const token = await AsyncStorage.getItem("token");
       const [
-        allRecommended,
-        allTrending,
-        allLatest,
-        allTrendingShorts,
-        allTopShorts,
-        subData,
-      ] = await Promise.all([
+        recommendedResult,
+        trendingResult,
+        latestResult,
+        trendingShortsResult,
+        topShortsResult,
+        subscriptionsResult,
+      ] = await Promise.allSettled([
         fetchAllCategoryPages("recommended", selectedCategoryId),
         fetchAllCategoryPages("trending", selectedCategoryId),
         fetchAllCategoryPages("latest", selectedCategoryId),
@@ -527,6 +532,37 @@ export default function DashboardScreen() {
         token ? fetchWithAuth("subscribed-channels") : Promise.resolve([]),
       ]);
       if (requestId !== loadRequestIdRef.current) return;
+
+      const getFeedResult = (result: PromiseSettledResult<any[]>, section: string) => {
+        if (result.status === "fulfilled") return result.value;
+        console.warn(`Could not load ${section} feed:`, result.reason);
+        return null;
+      };
+      const allRecommended = getFeedResult(recommendedResult, "recommended");
+      const allTrending = getFeedResult(trendingResult, "trending");
+      const allLatest = getFeedResult(latestResult, "latest");
+      const allTrendingShorts = getFeedResult(
+        trendingShortsResult,
+        "trending shorts",
+      );
+      const allTopShorts = getFeedResult(topShortsResult, "top shorts");
+      const subData = getFeedResult(subscriptionsResult, "subscriptions");
+      setRecommendedError(allRecommended === null);
+
+      if (
+        recommendedResult.status === "rejected" ||
+        trendingResult.status === "rejected" ||
+        latestResult.status === "rejected" ||
+        trendingShortsResult.status === "rejected" ||
+        topShortsResult.status === "rejected" ||
+        subscriptionsResult.status === "rejected"
+      ) {
+        Toast.show({
+          type: "error",
+          text1: "Some feed sections could not load",
+          text2: "Pull down to retry.",
+        });
+      }
 
       const splitFirstBatch = (videos: any[], normalize: (video: any) => any) => {
         const normalized = videos.map(normalize);
@@ -543,30 +579,40 @@ export default function DashboardScreen() {
         return { firstBatch, more };
       };
 
-      const recommendedBatches = splitFirstBatch(allRecommended, normalizeVideo);
-      const trendingBatches = splitFirstBatch(allTrending, normalizeVideo);
-      const latestBatches = splitFirstBatch(allLatest, normalizeVideo);
-      const trendingShortBatches = splitFirstBatch(
-        allTrendingShorts,
-        normalizeShort,
-      );
-      const topShortBatches = splitFirstBatch(allTopShorts, normalizeShort);
-      const subs = getArray(subData).map(normalizeChannel).slice(0, LIMIT);
-
-      setRecommended(recommendedBatches.firstBatch);
-      setTrending(trendingBatches.firstBatch);
-      setLatest(latestBatches.firstBatch);
-      setTrendingShorts(trendingShortBatches.firstBatch);
-      setSubscriptions(subs);
-      setTopShorts(topShortBatches.firstBatch);
-      setMoreRecommended(recommendedBatches.more);
-      setMoreTrending(trendingBatches.more);
-      setMoreLatest(latestBatches.more);
-      setMoreTrendingShorts(trendingShortBatches.more);
-      setMoreTopShorts(topShortBatches.more);
+      if (allRecommended !== null) {
+        const batches = splitFirstBatch(allRecommended, normalizeVideo);
+        setRecommended(batches.firstBatch);
+        setMoreRecommended(batches.more);
+      }
+      if (allTrending !== null) {
+        const batches = splitFirstBatch(allTrending, normalizeVideo);
+        setTrending(batches.firstBatch);
+        setMoreTrending(batches.more);
+      }
+      if (allLatest !== null) {
+        const batches = splitFirstBatch(allLatest, normalizeVideo);
+        setLatest(batches.firstBatch);
+        setMoreLatest(batches.more);
+      }
+      if (allTrendingShorts !== null) {
+        const batches = splitFirstBatch(allTrendingShorts, normalizeShort);
+        setTrendingShorts(batches.firstBatch);
+        setMoreTrendingShorts(batches.more);
+      }
+      if (allTopShorts !== null) {
+        const batches = splitFirstBatch(allTopShorts, normalizeShort);
+        setTopShorts(batches.firstBatch);
+        setMoreTopShorts(batches.more);
+      }
+      if (subData !== null) {
+        setSubscriptions(
+          getArray(subData).map(normalizeChannel).slice(0, LIMIT),
+        );
+      }
     } catch (e) {
       if (requestId !== loadRequestIdRef.current) return;
       console.warn(e);
+      setRecommendedError(true);
       Toast.show({ type: "error", text1: "Failed to load feed" });
     } finally {
       if (requestId === loadRequestIdRef.current) setLoading(false);
@@ -683,14 +729,24 @@ export default function DashboardScreen() {
     ];
 
     return sections.flatMap((section, sectionIndex) => {
-      if (!section.data || section.data.length === 0) return [];
-
       const header = {
         id: `${section.id}-header`,
         type: "section-header",
         title: section.title,
         sectionType: section.type,
       };
+
+      if (!section.data || section.data.length === 0) {
+        return section.id === "recommended" && recommendedError
+          ? [
+              header,
+              {
+                id: "recommended-error",
+                type: "feed-error",
+              },
+            ]
+          : [];
+      }
 
       if (section.isShorts) {
         const gridRows = [];
@@ -736,12 +792,33 @@ export default function DashboardScreen() {
     moreLatest,
     moreTrendingShorts,
     moreTopShorts,
+    recommendedError,
   ]);
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
       if (item.type === "loading") {
         return <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />;
+      }
+
+      if (item.type === "feed-error") {
+        return (
+          <TouchableOpacity
+            style={{
+              marginHorizontal: 12,
+              marginBottom: 16,
+              padding: 14,
+              borderRadius: 10,
+              backgroundColor: "#18181b",
+            }}
+            onPress={onRefresh}
+            accessibilityRole="button"
+          >
+            <Text style={{ color: "#a1a1aa" }}>
+              Recommended videos are temporarily unavailable. Tap to retry.
+            </Text>
+          </TouchableOpacity>
+        );
       }
 
       if (item.type === "section-header") {
@@ -786,12 +863,12 @@ export default function DashboardScreen() {
         />
       );
     },
-    [activeVideoId, handleItemClick, handleSectionPress, isFocused]
+    [activeVideoId, handleItemClick, handleSectionPress, isFocused, onRefresh]
   );
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar style="light" />
       <Navbar onMenuPress={() => {}} points={0} />
 
       <TopicChips

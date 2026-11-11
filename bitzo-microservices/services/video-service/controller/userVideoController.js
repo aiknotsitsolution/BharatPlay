@@ -1334,6 +1334,7 @@ const recommendedVideos = async (req, res) => {
       page,
       limit,
       total,
+      hasMore: total > page * limit,
     });
   } catch (error) {
     console.error("Error in recommendedVideos:", error);
