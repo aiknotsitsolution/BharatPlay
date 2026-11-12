@@ -1,4 +1,5 @@
 const crypto = require("node:crypto");
+const fs = require("node:fs");
 const { GoogleAuth } = require("google-auth-library");
 const Device = require("../models/Device");
 const User = require("../models/usermodel");
@@ -147,8 +148,9 @@ async function requireAndroidSignupIntegrity(req) {
   }
 
   const packageName = process.env.ANDROID_PACKAGE_NAME;
-  const credentials = process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS;
-  if (!packageName || !credentials) {
+  const credentialsFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const credentialsJson = process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS;
+  if (!packageName || (!credentialsFile && !credentialsJson)) {
     console.error("Android signup is blocked because Play Integrity is not configured.");
     return {
       ok: false,
@@ -160,10 +162,14 @@ async function requireAndroidSignupIntegrity(req) {
 
   let serviceAccountCredentials;
   try {
-    serviceAccountCredentials = JSON.parse(credentials);
-  } catch {
+    const rawCredentials = credentialsFile
+      ? fs.readFileSync(credentialsFile, "utf8")
+      : credentialsJson;
+    serviceAccountCredentials = JSON.parse(rawCredentials);
+  } catch (error) {
     console.error(
-      "Play Integrity configuration is invalid: GOOGLE_PLAY_INTEGRITY_CREDENTIALS must contain service-account JSON.",
+      "Play Integrity credentials must be valid service-account JSON in GOOGLE_PLAY_INTEGRITY_CREDENTIALS or a readable GOOGLE_APPLICATION_CREDENTIALS file:",
+      error.message,
     );
     return {
       ok: false,

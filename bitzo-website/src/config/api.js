@@ -1,7 +1,7 @@
 const getDefaultApiOrigin = () => {
   if (typeof window === "undefined") return "";
 
-  if (import.meta.env.DEV && window.location.port === "5173") {
+  if (import.meta.env.DEV) {
     return `http://${window.location.hostname}:5000`;
   }
 

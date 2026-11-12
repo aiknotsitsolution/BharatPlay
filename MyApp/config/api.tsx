@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 
 const normalizeOrigin = (value: unknown) =>
   typeof value === "string" ? value.trim().replace(/\/+$/, "") : "";
@@ -27,6 +28,10 @@ const getApiOrigin = () => {
   if (fromConfig) return fromConfig;
 
   if (__DEV__) {
+    if (Platform.OS === "android" && Constants.isDevice === false) {
+      return "http://10.0.2.2:5000";
+    }
+
     const devHost = getExpoDevelopmentHost();
     if (devHost) return `http://${devHost}:5000`;
   }

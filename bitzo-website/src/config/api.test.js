@@ -29,7 +29,19 @@ describe("API origin", () => {
     expect(API_ORIGIN).toBe("http://192.168.1.20:5000");
   });
 
+  it("uses the backend when Vite falls back to another port", async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "");
+    vi.stubGlobal("window", {
+      location: { hostname: "localhost", port: "5174" },
+    });
+
+    const { API_ORIGIN } = await import("./api");
+
+    expect(API_ORIGIN).toBe("http://localhost:5000");
+  });
+
   it("uses the current origin for production same-origin proxying", async () => {
+    vi.stubEnv("DEV", false);
     vi.stubEnv("VITE_API_BASE_URL", "");
     vi.stubGlobal("window", {
       location: {

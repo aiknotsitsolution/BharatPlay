@@ -13,6 +13,9 @@ jest.mock("../services/vpn.service/fraud.service", () => ({
   logFraudEvent: jest.fn(),
 }));
 
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const { GoogleAuth } = require("google-auth-library");
 const PlayIntegrityToken = require("../models/PlayIntegrityToken");
 const {
@@ -49,6 +52,7 @@ describe("Android signup Play Integrity enforcement", () => {
     jest.clearAllMocks();
     delete process.env.ALLOW_INTEGRITY_BYPASS;
     delete process.env.APP_ENV;
+    delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
     process.env.ANDROID_PACKAGE_NAME = "com.bharatplay.app";
     process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS = JSON.stringify({
       type: "service_account",
@@ -68,6 +72,7 @@ describe("Android signup Play Integrity enforcement", () => {
   afterAll(() => {
     delete process.env.ANDROID_PACKAGE_NAME;
     delete process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS;
+    delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
     delete process.env.ALLOW_INTEGRITY_BYPASS;
     delete process.env.APP_ENV;
   });
@@ -124,6 +129,34 @@ describe("Android signup Play Integrity enforcement", () => {
         expiresAt: expect.any(Date),
       }),
     );
+  });
+
+  test("loads service-account JSON from GOOGLE_APPLICATION_CREDENTIALS", async () => {
+    const credentialsDirectory = fs.mkdtempSync(
+      path.join(os.tmpdir(), "play-integrity-"),
+    );
+    const credentialsFile = path.join(credentialsDirectory, "credentials.json");
+    const credentials = {
+      type: "service_account",
+      client_email: "integrity-test@example.iam.gserviceaccount.com",
+      private_key: "test-private-key",
+    };
+    fs.writeFileSync(credentialsFile, JSON.stringify(credentials));
+    process.env.GOOGLE_PLAY_INTEGRITY_CREDENTIALS = "invalid-stale-value";
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsFile;
+
+    try {
+      await expect(requireAndroidSignupIntegrity(req())).resolves.toEqual({
+        ok: true,
+      });
+      expect(GoogleAuth).toHaveBeenCalledWith({
+        credentials,
+        scopes: ["https://www.googleapis.com/auth/playintegrity"],
+      });
+    } finally {
+      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      fs.rmSync(credentialsDirectory, { recursive: true, force: true });
+    }
   });
 
   test("accepts the development token by default outside production", async () => {

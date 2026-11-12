@@ -108,6 +108,12 @@ npm install
 npm run dev   # nodemon-style --watch on port 5003
 ```
 
+Video catalog caching and Redis-backed rate limits activate when `REDIS_URL`
+is set for the video-service process (for example,
+`redis://localhost:6379/0`). Without Redis, requests continue to use MongoDB
+directly. The Docker Compose setup provisions Redis and injects `REDIS_URL` into
+video-service automatically.
+
 ## Production deployment with Docker Compose
 
 The production Compose setup uses an external MongoDB deployment; it does not

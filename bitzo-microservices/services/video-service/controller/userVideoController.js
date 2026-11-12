@@ -1250,9 +1250,16 @@ const deleteChannel = async (req, res) => {
 
 const getAllVideos = async (req, res) => {
   try {
-    const videos = await Video.find({ status: "active" })
-      .populate("channel", "name channelImage")
-      .populate({ path: "uploadedBy", select: "name email", model: User });
+    const videos = await cacheVideoCatalog(
+      "all-videos",
+      {},
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      () =>
+        Video.find({ status: "active" })
+          .populate("channel", "name channelImage")
+          .populate({ path: "uploadedBy", select: "name email", model: User })
+          .lean(),
+    );
     res.status(200).json({ success: true, videos });
   } catch (error) {
     console.error("Error in getAllVideos:", error);
