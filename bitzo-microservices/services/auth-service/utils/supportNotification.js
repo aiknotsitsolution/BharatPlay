@@ -1,5 +1,5 @@
 const transporter = require("../Email/nodemailer");
-const Notification = require("../models/NotificationModel");
+const { enqueueNotification } = require("../../../services/Queues");
 
 // Escape user-supplied values before interpolating them into HTML emails.
 const escapeHtml = (value = "") =>
@@ -32,6 +32,16 @@ const sendMailSafely = async (mailOptions) => {
 const createNotification = async ({ userId, type, actor = null }) => {
   if (!userId) return { created: false, reason: "no-recipient" };
   try {
+    if (process.env.REDIS_URL?.trim()) {
+      const job = await enqueueNotification({
+        recipient: userId,
+        type,
+        actor,
+      });
+      return { created: true, queued: true, jobId: job.id };
+    }
+
+    const Notification = require("../models/NotificationModel");
     await Notification.create({ recipient: userId, type, actor });
     return { created: true };
   } catch (error) {

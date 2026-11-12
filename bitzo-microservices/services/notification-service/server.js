@@ -110,6 +110,9 @@ app.use(
 // ROUTES
 // =====================================================
 app.use("/api/notifications", route0);
+if (require.main === module && process.env.REDIS_URL?.trim()) {
+  require("./services/bullmqDashboard").mountBullMQDashboard(app);
+}
 
 app.get("/", (req, res) => {
   res.json({
@@ -164,11 +167,32 @@ if (require.main === module) {
   });
   attachSocketServer(socketServer);
 
+  let notificationWorker = null;
+  if (process.env.REDIS_URL?.trim()) {
+    notificationWorker =
+      require("./services/notificationQueue").startNotificationWorker();
+  }
+
   httpServer.listen(PORT, () => {
     console.log(
       `🌐 notification-service (with realtime socket.io) running on port ${PORT}`,
     );
   });
+
+  const shutdown = async () => {
+    try {
+      if (notificationWorker) await notificationWorker.close();
+      await require("../../services/Queues").closeQueues();
+      await require("../../services/redis").closeRedisConnections();
+      await mongoose.disconnect();
+      socketServer.close();
+    } catch (error) {
+      console.error("[notification-service] shutdown failed:", error.message);
+      process.exitCode = 1;
+    }
+  };
+  process.once("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
 }
 
 module.exports = app;

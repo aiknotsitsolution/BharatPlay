@@ -10,6 +10,11 @@ const User = require("../models/usermodel"); // ✅ Import User model
 const WatchSession = require("../models/WatchSession");
 const { getVideoDuration } = require("../utils/mediaDuration");
 const {
+  cacheVideoCatalog,
+  invalidateVideoCatalogCache,
+  VIDEO_CATALOG_CACHE_TTL_SECONDS,
+} = require("../utils/videoCatalogCache");
+const {
   createNotification,
   createBulkNotifications,
 } = require("../utils/notificationService");
@@ -342,6 +347,7 @@ const createChannel = async (req, res) => {
     await User.findByIdAndUpdate(userId, {
       $push: { channels: newChannel._id },
     });
+    await invalidateVideoCatalogCache();
 
     await logAuditEvent({
       userId,
@@ -485,6 +491,7 @@ const updateChannel = async (req, res) => {
     channel.channelBanner = channelBannerUrl;
 
     await channel.save();
+    await invalidateVideoCatalogCache();
     const updatedChannel = channel.toObject();
     updatedChannel.category = {
       _id: categoryData._id,
@@ -664,6 +671,7 @@ const uploadVideo = async (req, res) => {
     await User.findByIdAndUpdate(req.user?.userId, {
       $push: { videos: newVideo._id },
     });
+    await invalidateVideoCatalogCache();
 
     // Notify all subscribers of the channel
     await createBulkNotifications({
@@ -1220,6 +1228,7 @@ const deleteChannel = async (req, res) => {
         .json({ success: false, message: "Channel not found or unauthorized" });
     }
     await Video.deleteMany({ channel: id });
+    await invalidateVideoCatalogCache();
 
     await logAuditEvent({
       userId,
@@ -1281,22 +1290,37 @@ const recommendedVideos = async (req, res) => {
       if (category) shortFilter.category = category;
 
       const perTypeLimit = Math.max(Math.floor(limit / 2), 1);
-      const [longVideos, shorts, longTotal, shortTotal] = await Promise.all([
-        Video.find(filter)
-          .sort({ createdAt: -1 })
-          .skip((page - 1) * perTypeLimit)
-          .limit(perTypeLimit)
-          .populate("channel", "name channelImage")
-          .populate({ path: "uploadedBy", select: "name avatar", model: User }),
-        Video.find(shortFilter)
-          .sort({ views: -1, createdAt: -1 })
-          .skip((page - 1) * perTypeLimit)
-          .limit(perTypeLimit)
-          .populate("channel", "name channelImage")
-          .populate({ path: "uploadedBy", select: "name avatar", model: User }),
-        Video.countDocuments(filter),
-        Video.countDocuments(shortFilter),
-      ]);
+      const [longVideos, shorts, longTotal, shortTotal] =
+        await cacheVideoCatalog(
+          "recommended-with-shorts",
+          { filter, shortFilter, page, perTypeLimit },
+          VIDEO_CATALOG_CACHE_TTL_SECONDS,
+          () =>
+            Promise.all([
+              Video.find(filter)
+                .sort({ createdAt: -1 })
+                .skip((page - 1) * perTypeLimit)
+                .limit(perTypeLimit)
+                .populate("channel", "name channelImage")
+                .populate({
+                  path: "uploadedBy",
+                  select: "name avatar",
+                  model: User,
+                }),
+              Video.find(shortFilter)
+                .sort({ views: -1, createdAt: -1 })
+                .skip((page - 1) * perTypeLimit)
+                .limit(perTypeLimit)
+                .populate("channel", "name channelImage")
+                .populate({
+                  path: "uploadedBy",
+                  select: "name avatar",
+                  model: User,
+                }),
+              Video.countDocuments(filter),
+              Video.countDocuments(shortFilter),
+            ]),
+        );
 
       const videos = [];
       const maxLength = Math.max(longVideos.length, shorts.length);
@@ -1318,15 +1342,28 @@ const recommendedVideos = async (req, res) => {
       });
     }
 
-    const videos = await Video.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("channel", "name channelImage category")
-      .populate({ path: "uploadedBy", select: "name avatar", model: User });
+    const { videos, total } = await cacheVideoCatalog(
+      "recommended",
+      { filter, page, limit },
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      async () => {
+        const [videos, total] = await Promise.all([
+          Video.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate("channel", "name channelImage category")
+            .populate({
+              path: "uploadedBy",
+              select: "name avatar",
+              model: User,
+            }),
+          Video.countDocuments(filter),
+        ]);
+        return { videos, total };
+      },
+    );
     const personalizedVideos = await personalizeFeed(req, videos);
-
-    const total = await Video.countDocuments(filter);
 
     res.status(200).json({
       success: true,
@@ -1361,128 +1398,146 @@ const getRelatedVideos = async (req, res) => {
       });
     }
 
-    const currentVideo = await Video.findOne(
-      await withVisibleVideoFilter({ _id: currentVideoId }),
-    ).select("category channel videoType createdAt");
+    const restrictions = await getRestrictedContentIds();
+    const relatedData = await cacheVideoCatalog(
+      "related",
+      {
+        videoId: String(currentVideoId),
+        restrictedUserIds: restrictions.userIds.map(String).sort(),
+        restrictedChannelIds: restrictions.channelIds.map(String).sort(),
+      },
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      async () => {
+        const currentVideo = await Video.findOne(
+          await withVisibleVideoFilter({ _id: currentVideoId }),
+        )
+          .select("category channel videoType createdAt")
+          .lean();
 
-    let previousVideo = null;
-    let nextVideo = null;
-    if (currentVideo?.createdAt) {
-      const navigationVideoType = currentVideo.videoType?.some((type) =>
-        ["short", "shorts"].includes(String(type).toLowerCase()),
-      )
-        ? "short"
-        : "long";
-      const navigationBaseFilter = {
-        videoType: navigationVideoType,
-      };
-      const [previous, next] = await Promise.all([
-        Video.findOne({
-          ...(await withVisibleVideoFilter({
-            ...navigationBaseFilter,
-            $or: [
-              { createdAt: { $lt: currentVideo.createdAt } },
-              {
-                createdAt: currentVideo.createdAt,
-                _id: { $lt: currentVideoId },
-              },
-            ],
-          })),
-        })
-          .sort({ createdAt: -1, _id: -1 })
-          .populate("channel", "name channelImage")
-          .lean(),
-        Video.findOne({
-          ...(await withVisibleVideoFilter({
-            ...navigationBaseFilter,
-            $or: [
-              { createdAt: { $gt: currentVideo.createdAt } },
-              {
-                createdAt: currentVideo.createdAt,
-                _id: { $gt: currentVideoId },
-              },
-            ],
-          })),
-        })
-          .sort({ createdAt: 1, _id: 1 })
-          .populate("channel", "name channelImage")
-          .lean(),
-      ]);
-      previousVideo = previous;
-      nextVideo = next;
-    }
+        let previousVideo = null;
+        let nextVideo = null;
+        if (currentVideo?.createdAt) {
+          const navigationVideoType = currentVideo.videoType?.some((type) =>
+            ["short", "shorts"].includes(String(type).toLowerCase()),
+          )
+            ? "short"
+            : "long";
+          const navigationBaseFilter = {
+            videoType: navigationVideoType,
+          };
+          const [previous, next] = await Promise.all([
+            Video.findOne({
+              ...(await withVisibleVideoFilter({
+                ...navigationBaseFilter,
+                $or: [
+                  { createdAt: { $lt: currentVideo.createdAt } },
+                  {
+                    createdAt: currentVideo.createdAt,
+                    _id: { $lt: currentVideoId },
+                  },
+                ],
+              })),
+            })
+              .sort({ createdAt: -1, _id: -1 })
+              .populate("channel", "name channelImage")
+              .lean(),
+            Video.findOne({
+              ...(await withVisibleVideoFilter({
+                ...navigationBaseFilter,
+                $or: [
+                  { createdAt: { $gt: currentVideo.createdAt } },
+                  {
+                    createdAt: currentVideo.createdAt,
+                    _id: { $gt: currentVideoId },
+                  },
+                ],
+              })),
+            })
+              .sort({ createdAt: 1, _id: 1 })
+              .populate("channel", "name channelImage")
+              .lean(),
+          ]);
+          previousVideo = previous;
+          nextVideo = next;
+        }
 
-    const baseFilter = await withVisibleVideoFilter({ videoType: "long" });
-    if (currentVideo) {
-      baseFilter._id = { $ne: currentVideoId };
-    }
+        const baseFilter = await withVisibleVideoFilter({ videoType: "long" });
+        if (currentVideo) {
+          baseFilter._id = { $ne: currentVideoId };
+        }
 
-    const seenIds = new Set();
-    const videos = [];
-    let done = false;
+        const seenIds = new Set();
+        const videos = [];
+        let done = false;
 
-    const collect = (docs) => {
-      for (const doc of docs) {
-        if (videos.length >= RELATED_VIDEOS_LIMIT) break;
-        const docId = doc._id.toString();
-        if (seenIds.has(docId)) continue;
-        if (currentVideoId && docId === currentVideoId.toString()) continue;
-        seenIds.add(docId);
-        videos.push(doc);
-      }
-      done = videos.length >= RELATED_VIDEOS_LIMIT;
-      return done;
-    };
+        const collect = (docs) => {
+          for (const doc of docs) {
+            if (videos.length >= RELATED_VIDEOS_LIMIT) break;
+            const docId = doc._id.toString();
+            if (seenIds.has(docId)) continue;
+            if (currentVideoId && docId === currentVideoId.toString()) continue;
+            seenIds.add(docId);
+            videos.push(doc);
+          }
+          done = videos.length >= RELATED_VIDEOS_LIMIT;
+          return done;
+        };
 
-    if (currentVideo) {
-      // Priority 1: same category, most viewed first.
-      if (currentVideo.category) {
-        const categoryVideos = await Video.find({
-          ...baseFilter,
-          category: currentVideo.category,
-        })
-          .sort({ views: -1, createdAt: -1 })
-          .limit(RELATED_VIDEOS_LIMIT)
-          .populate("channel", "name channelImage");
-        collect(categoryVideos);
-      }
+        if (currentVideo) {
+          // Priority 1: same category, most viewed first.
+          if (currentVideo.category) {
+            const categoryVideos = await Video.find({
+              ...baseFilter,
+              category: currentVideo.category,
+            })
+              .sort({ views: -1, createdAt: -1 })
+              .limit(RELATED_VIDEOS_LIMIT)
+              .populate("channel", "name channelImage");
+            collect(categoryVideos);
+          }
 
-      // Priority 2: same channel, capped to avoid a single-channel wall.
-      if (currentVideo.channel && !done) {
-        const channelVideos = await Video.find({
-          ...baseFilter,
-          channel: currentVideo.channel,
-        })
-          .sort({ views: -1, createdAt: -1 })
-          .limit(RELATED_CHANNEL_CAP)
-          .populate("channel", "name channelImage");
-        collect(channelVideos);
-      }
-    }
+          // Priority 2: same channel, capped to avoid a single-channel wall.
+          if (currentVideo.channel && !done) {
+            const channelVideos = await Video.find({
+              ...baseFilter,
+              channel: currentVideo.channel,
+            })
+              .sort({ views: -1, createdAt: -1 })
+              .limit(RELATED_CHANNEL_CAP)
+              .populate("channel", "name channelImage");
+            collect(channelVideos);
+          }
+        }
 
-    // Priority 3: fill remaining with most viewed videos.
-    if (!done) {
-      const viewedVideos = await Video.find(baseFilter)
-        .sort({ views: -1, createdAt: -1 })
-        .limit(RELATED_VIDEOS_LIMIT)
-        .populate("channel", "name channelImage");
-      collect(viewedVideos);
-    }
+        // Priority 3: fill remaining with most viewed videos.
+        if (!done) {
+          const viewedVideos = await Video.find(baseFilter)
+            .sort({ views: -1, createdAt: -1 })
+            .limit(RELATED_VIDEOS_LIMIT)
+            .populate("channel", "name channelImage");
+          collect(viewedVideos);
+        }
 
-    // Priority 4: fill remaining with latest uploaded videos.
-    if (!done) {
-      const latestVideos = await Video.find(baseFilter)
-        .sort({ createdAt: -1 })
-        .limit(RELATED_VIDEOS_LIMIT)
-        .populate("channel", "name channelImage");
-      collect(latestVideos);
-    }
+        // Priority 4: fill remaining with latest uploaded videos.
+        if (!done) {
+          const latestVideos = await Video.find(baseFilter)
+            .sort({ createdAt: -1 })
+            .limit(RELATED_VIDEOS_LIMIT)
+            .populate("channel", "name channelImage");
+          collect(latestVideos);
+        }
+
+        return {
+          videos: videos.slice(0, RELATED_VIDEOS_LIMIT),
+          previousVideo,
+          nextVideo,
+        };
+      },
+    );
 
     res.status(200).json({
       success: true,
-      videos: videos.slice(0, RELATED_VIDEOS_LIMIT),
-      previousVideo,
-      nextVideo,
+      ...relatedData,
     });
   } catch (error) {
     console.error("Error in getRelatedVideos:", error);
@@ -1500,15 +1555,28 @@ const trendingVideos = async (req, res) => {
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
 
-    const videos = await Video.find(filter)
-      .sort({ views: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("channel", "name channelImage subscribedBy")
-      .populate({ path: "uploadedBy", select: "name avatar", model: User });
+    const { videos, total } = await cacheVideoCatalog(
+      "trending",
+      { filter, page, limit },
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      async () => {
+        const [videos, total] = await Promise.all([
+          Video.find(filter)
+            .sort({ views: -1, createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate("channel", "name channelImage subscribedBy")
+            .populate({
+              path: "uploadedBy",
+              select: "name avatar",
+              model: User,
+            }),
+          Video.countDocuments(filter),
+        ]);
+        return { videos, total };
+      },
+    );
     const personalizedVideos = await personalizeFeed(req, videos);
-
-    const total = await Video.countDocuments(filter);
 
     res.status(200).json({
       success: true,
@@ -1533,15 +1601,28 @@ const LatestVideos = async (req, res) => {
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
 
-    const videos = await Video.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("channel", "name channelImage")
-      .populate({ path: "uploadedBy", select: "name avatar", model: User });
+    const { videos, total } = await cacheVideoCatalog(
+      "latest",
+      { filter, page, limit },
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      async () => {
+        const [videos, total] = await Promise.all([
+          Video.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate("channel", "name channelImage")
+            .populate({
+              path: "uploadedBy",
+              select: "name avatar",
+              model: User,
+            }),
+          Video.countDocuments(filter),
+        ]);
+        return { videos, total };
+      },
+    );
     const personalizedVideos = await personalizeFeed(req, videos);
-
-    const total = await Video.countDocuments(filter);
 
     res.status(200).json({
       success: true,
@@ -1566,15 +1647,28 @@ const trendingShorts = async (req, res) => {
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
 
-    const videos = await Video.find(filter)
-      .sort({ views: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("channel", "name channelImage subscribedBy")
-      .populate({ path: "uploadedBy", select: "name avatar", model: User });
+    const { videos, total } = await cacheVideoCatalog(
+      "trending-shorts",
+      { filter, page, limit },
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      async () => {
+        const [videos, total] = await Promise.all([
+          Video.find(filter)
+            .sort({ views: -1, createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate("channel", "name channelImage subscribedBy")
+            .populate({
+              path: "uploadedBy",
+              select: "name avatar",
+              model: User,
+            }),
+          Video.countDocuments(filter),
+        ]);
+        return { videos, total };
+      },
+    );
     const personalizedVideos = await personalizeFeed(req, videos);
-
-    const total = await Video.countDocuments(filter);
 
     const userId = req.user?.id || req.user?.userId || req.user?._id;
     let user = null;
@@ -1601,7 +1695,7 @@ const trendingShorts = async (req, res) => {
       }
 
       return {
-        ...video.toObject(),
+        ...(typeof video.toObject === "function" ? video.toObject() : video),
         userReaction,
         subscribersCount: video.channel?.subscribedBy?.length || 0,
         isSubscribed: Boolean(
@@ -1636,15 +1730,28 @@ const topShorts = async (req, res) => {
     if (category) filter.category = category;
     const { page, limit, skip } = getPagination(req);
 
-    const videos = await Video.find(filter)
-      .sort({ views: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("channel", "name channelImage")
-      .populate({ path: "uploadedBy", select: "name avatar", model: User });
+    const { videos, total } = await cacheVideoCatalog(
+      "top-shorts",
+      { filter, page, limit },
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      async () => {
+        const [videos, total] = await Promise.all([
+          Video.find(filter)
+            .sort({ views: -1, createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate("channel", "name channelImage")
+            .populate({
+              path: "uploadedBy",
+              select: "name avatar",
+              model: User,
+            }),
+          Video.countDocuments(filter),
+        ]);
+        return { videos, total };
+      },
+    );
     const personalizedVideos = await personalizeFeed(req, videos);
-
-    const total = await Video.countDocuments(filter);
 
     res.status(200).json({
       success: true,
@@ -1665,9 +1772,20 @@ const topShorts = async (req, res) => {
 const getVideoById = async (req, res) => {
   try {
     const videoId = req.params.id || req.params.videoId;
-    const video = await Video.findOne({ _id: videoId, status: "active" })
-      .populate("channel", "name subscribersCount channelImage subscribedBy")
-      .populate({ path: "uploadedBy", select: "name avatar", model: User });
+    const userId = req.user?.id || req.user?.userId || req.user?._id;
+    const video = await cacheVideoCatalog(
+      "video-detail",
+      { videoId: String(videoId) },
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      () =>
+        Video.findOne({ _id: videoId, status: "active" })
+          .populate(
+            "channel",
+            "name subscribersCount channelImage subscribedBy",
+          )
+          .populate({ path: "uploadedBy", select: "name avatar", model: User })
+          .lean(),
+    );
 
     if (!video) {
       return res
@@ -1675,14 +1793,28 @@ const getVideoById = async (req, res) => {
         .json({ success: false, message: "Video not found" });
     }
 
-    const userId = req.user?.id || req.user?.userId || req.user?._id;
     let userReaction = null;
     let isSubscribed = false;
     let isWatchLater = false;
     let watchedPercent = 0;
 
     if (userId) {
-      const user = await User.findById(userId);
+      const viewerUserId = mongoose.Types.ObjectId.isValid(String(userId))
+        ? new mongoose.Types.ObjectId(String(userId))
+        : userId;
+      const [user, viewerVideo] = await Promise.all([
+        User.findById(userId),
+        Video.findOne({
+          _id: videoId,
+          "viewers.userId": viewerUserId,
+        })
+          .select({
+            viewers: {
+              $elemMatch: { userId: viewerUserId },
+            },
+          })
+          .lean(),
+      ]);
       if (user) {
         if ((user.likedVideos || []).some((i) => i.toString() === videoId)) {
           userReaction = "like";
@@ -1700,16 +1832,14 @@ const getVideoById = async (req, res) => {
         );
       }
 
-      const viewerEntry = (video.viewers || []).find(
-        (v) => v.userId?.toString() === userId.toString(),
-      );
+      const viewerEntry = viewerVideo?.viewers?.[0];
       if (viewerEntry) watchedPercent = viewerEntry.watchedPercent || 0;
     }
 
     res.status(200).json({
       success: true,
       video: {
-        ...video.toObject(),
+        ...video,
         userReaction,
         isSubscribed,
         isWatchLater,
@@ -2209,6 +2339,7 @@ const subscribeChannel = async (req, res) => {
 
     await user.save();
     await channel.save();
+    await invalidateVideoCatalogCache();
 
     if (subscribed) {
       await createNotification({
@@ -2867,156 +2998,166 @@ const searchVideos = async (req, res) => {
     }
 
     const normalized = q.replace(/\s+/g, " ").toLowerCase();
+    const searchData = await cacheVideoCatalog(
+      "search",
+      { query: normalized, page, limit },
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      async () => {
+        let tokens = normalized.split(" ").filter(Boolean);
+        const meaningfulTokens = tokens.filter((t) => !GENERIC_SEARCH_WORDS.has(t));
+        if (meaningfulTokens.length) tokens = meaningfulTokens;
 
-    let tokens = normalized.split(" ").filter(Boolean);
-    const meaningfulTokens = tokens.filter((t) => !GENERIC_SEARCH_WORDS.has(t));
-    if (meaningfulTokens.length) tokens = meaningfulTokens;
+        const tokensWithRegex = tokens.map((token) => ({
+          token,
+          regex: new RegExp(buildSearchTokenPattern(token), "i"),
+        }));
 
-    const tokensWithRegex = tokens.map((token) => ({
-      token,
-      regex: new RegExp(buildSearchTokenPattern(token), "i"),
-    }));
+        const [categoryDocs, channelDocs] = await Promise.all([
+          categoryModel
+            .find({ name: { $in: tokensWithRegex.map((t) => t.regex) } })
+            .select("_id name")
+            .lean(),
+          Channel.find({
+            name: { $in: tokensWithRegex.map((t) => t.regex) },
+            status: "active",
+          })
+            .select("_id name")
+            .lean(),
+        ]);
 
-    const [categoryDocs, channelDocs] = await Promise.all([
-      categoryModel
-        .find({ name: { $in: tokensWithRegex.map((t) => t.regex) } })
-        .select("_id name")
-        .lean(),
-      Channel.find({
-        name: { $in: tokensWithRegex.map((t) => t.regex) },
-        status: "active",
-      })
-        .select("_id name")
-        .lean(),
-    ]);
-
-    const orConditions = [];
-    const scoreExpressions = [
-      {
-        $cond: [
-          { $eq: [{ $ifNull: [{ $toLower: "$title" }, ""] }, normalized] },
-          100,
-          0,
-        ],
-      },
-    ];
-
-    for (const { token, regex } of tokensWithRegex) {
-      const regexStr = buildSearchTokenPattern(token);
-      orConditions.push({ title: regex }, { description: regex });
-
-      scoreExpressions.push({
-        $cond: [
+        const orConditions = [];
+        const scoreExpressions = [
           {
-            $regexMatch: {
-              input: { $ifNull: [{ $toLower: "$title" }, ""] },
-              regex: regexStr,
-              options: "i",
-            },
-          },
-          10,
-          0,
-        ],
-      });
-      scoreExpressions.push({
-        $cond: [
-          {
-            $regexMatch: {
-              input: { $ifNull: [{ $toLower: "$description" }, ""] },
-              regex: regexStr,
-              options: "i",
-            },
-          },
-          4,
-          0,
-        ],
-      });
-
-      const catIds = categoryDocs
-        .filter((c) => regex.test(c.name))
-        .map((c) => c._id);
-      if (catIds.length) {
-        orConditions.push({ category: { $in: catIds } });
-        scoreExpressions.push({
-          $cond: [{ $in: ["$category", catIds] }, 3, 0],
-        });
-      }
-
-      const chIds = channelDocs
-        .filter((c) => regex.test(c.name))
-        .map((c) => c._id);
-      if (chIds.length) {
-        orConditions.push({ channel: { $in: chIds } });
-        scoreExpressions.push({ $cond: [{ $in: ["$channel", chIds] }, 2, 0] });
-      }
-    }
-
-    const filter = { status: "active", $or: orConditions };
-
-    const [videos, total] = await Promise.all([
-      Video.aggregate([
-        { $match: filter },
-        { $addFields: { _score: { $add: scoreExpressions } } },
-        { $sort: { _score: -1, views: -1, createdAt: -1 } },
-        {
-          $lookup: {
-            from: Channel.collection.name,
-            let: { chId: "$channel" },
-            pipeline: [
-              { $match: { $expr: { $eq: ["$_id", "$$chId"] } } },
-              { $project: { name: 1, channelImage: 1 } },
+            $cond: [
+              { $eq: [{ $ifNull: [{ $toLower: "$title" }, ""] }, normalized] },
+              100,
+              0,
             ],
-            as: "channel",
           },
-        },
-        { $unwind: { path: "$channel", preserveNullAndEmptyArrays: true } },
-        // NOTE: User lives in auth-service's database now, so it can't be
-        // joined here with $lookup (Mongo $lookup only works within a
-        // single database). We fetch uploader info separately below and
-        // merge it in application code instead.
-        { $project: { _score: 0 } },
-        { $skip: skip },
-        { $limit: limit },
-      ]),
-      Video.countDocuments(filter),
-    ]);
+        ];
 
-    const uploaderIds = videos.map((v) => v.uploadedBy).filter(Boolean);
-    const uploaders = await User.find({ _id: { $in: uploaderIds } })
-      .select("name avatar")
-      .lean();
-    const uploaderMap = new Map(uploaders.map((u) => [String(u._id), u]));
-    const videosWithUploader = videos.map((v) => ({
-      ...v,
-      uploadedBy: uploaderMap.get(String(v.uploadedBy)) || null,
-    }));
+        for (const { token, regex } of tokensWithRegex) {
+          const regexStr = buildSearchTokenPattern(token);
+          orConditions.push({ title: regex }, { description: regex });
 
-    const channelFilter = {
-      $or: tokensWithRegex.map(({ regex }) => ({
-        $or: [{ name: regex }, { channeldescription: regex }],
-      })),
-    };
+          scoreExpressions.push({
+            $cond: [
+              {
+                $regexMatch: {
+                  input: { $ifNull: [{ $toLower: "$title" }, ""] },
+                  regex: regexStr,
+                  options: "i",
+                },
+              },
+              10,
+              0,
+            ],
+          });
+          scoreExpressions.push({
+            $cond: [
+              {
+                $regexMatch: {
+                  input: { $ifNull: [{ $toLower: "$description" }, ""] },
+                  regex: regexStr,
+                  options: "i",
+                },
+              },
+              4,
+              0,
+            ],
+          });
 
-    const channels = await Channel.find({ ...channelFilter, status: "active" })
-      .sort({ createdAt: -1 })
-      .select("_id name channelImage subscribedBy createdAt")
-      .limit(8)
-      .lean();
+          const catIds = categoryDocs
+            .filter((c) => regex.test(c.name))
+            .map((c) => c._id);
+          if (catIds.length) {
+            orConditions.push({ category: { $in: catIds } });
+            scoreExpressions.push({
+              $cond: [{ $in: ["$category", catIds] }, 3, 0],
+            });
+          }
+
+          const chIds = channelDocs
+            .filter((c) => regex.test(c.name))
+            .map((c) => c._id);
+          if (chIds.length) {
+            orConditions.push({ channel: { $in: chIds } });
+            scoreExpressions.push({ $cond: [{ $in: ["$channel", chIds] }, 2, 0] });
+          }
+        }
+
+        const filter = { status: "active", $or: orConditions };
+
+        const [videos, total] = await Promise.all([
+          Video.aggregate([
+            { $match: filter },
+            { $addFields: { _score: { $add: scoreExpressions } } },
+            { $sort: { _score: -1, views: -1, createdAt: -1 } },
+            {
+              $lookup: {
+                from: Channel.collection.name,
+                let: { chId: "$channel" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$chId"] } } },
+                  { $project: { name: 1, channelImage: 1 } },
+                ],
+                as: "channel",
+              },
+            },
+            { $unwind: { path: "$channel", preserveNullAndEmptyArrays: true } },
+            // NOTE: User lives in auth-service's database now, so it can't be
+            // joined here with $lookup (Mongo $lookup only works within a
+            // single database). We fetch uploader info separately below and
+            // merge it in application code instead.
+            { $project: { _score: 0 } },
+            { $skip: skip },
+            { $limit: limit },
+          ]),
+          Video.countDocuments(filter),
+        ]);
+
+        const uploaderIds = videos.map((v) => v.uploadedBy).filter(Boolean);
+        const uploaders = await User.find({ _id: { $in: uploaderIds } })
+          .select("name avatar")
+          .lean();
+        const uploaderMap = new Map(uploaders.map((u) => [String(u._id), u]));
+        const videosWithUploader = videos.map((v) => ({
+          ...v,
+          uploadedBy: uploaderMap.get(String(v.uploadedBy)) || null,
+        }));
+
+        const channelFilter = {
+          $or: tokensWithRegex.map(({ regex }) => ({
+            $or: [{ name: regex }, { channeldescription: regex }],
+          })),
+        };
+
+        const channels = await Channel.find({ ...channelFilter, status: "active" })
+          .sort({ createdAt: -1 })
+          .select("_id name channelImage subscribedBy createdAt")
+          .limit(8)
+          .lean();
+
+        return {
+          videos: videosWithUploader,
+          channels: channels.map((channel) => ({
+            _id: channel._id,
+            id: channel._id,
+            name: channel.name,
+            channelImage: channel.channelImage,
+            subscribersCount: channel.subscribedBy?.length || 0,
+            createdAt: channel.createdAt,
+          })),
+          total: total + channels.length,
+        };
+      },
+    );
 
     res.status(200).json({
       success: true,
-      videos: videosWithUploader,
-      channels: channels.map((channel) => ({
-        _id: channel._id,
-        id: channel._id,
-        name: channel.name,
-        channelImage: channel.channelImage,
-        subscribersCount: channel.subscribedBy?.length || 0,
-        createdAt: channel.createdAt,
-      })),
+      ...searchData,
       page,
       limit,
-      total: total + channels.length,
       query: q,
     });
   } catch (error) {
@@ -3039,49 +3180,49 @@ const getSearchHints = async (req, res) => {
       });
     }
 
-    const regex = new RegExp(escapeRegex(q), "i");
+    const data = await cacheVideoCatalog(
+      "search-hints",
+      { query: q.toLowerCase() },
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      async () => {
+        const regex = new RegExp(escapeRegex(q), "i");
+        const [videoHints, channelHints] = await Promise.all([
+          Video.find({ title: regex, status: "active" })
+            .select("title")
+            .limit(6)
+            .lean(),
+          Channel.find({
+            status: "active",
+            $or: [{ name: regex }, { handle: regex }],
+          })
+            .select("name handle")
+            .limit(4)
+            .lean(),
+        ]);
 
-    // Videos titles se hints
-    const videoHints = await Video.find({ title: regex, status: "active" })
-      .select("title")
-      .limit(6)
-      .lean();
-
-    // Channels se hints
-    const channelHints = await Channel.find({
-      status: "active",
-      $or: [{ name: regex }, { handle: regex }],
-    })
-      .select("name handle")
-      .limit(4)
-      .lean();
-
-    const hints = [
-      ...videoHints.map((v) => ({
-        type: "video",
-        text: v.title,
-      })),
-      ...channelHints.map((c) => ({
-        type: "channel",
-        text: c.name || c.handle,
-      })),
-    ];
-
-    // unique + limit
-    const unique = [];
-    const seen = new Set();
-    for (const h of hints) {
-      const key = h.text.toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push(h);
-      }
-      if (unique.length >= 8) break;
-    }
-
+        const hints = [
+          ...videoHints.map((video) => ({ type: "video", text: video.title })),
+          ...channelHints.map((channel) => ({
+            type: "channel",
+            text: channel.name || channel.handle,
+          })),
+        ];
+        const unique = [];
+        const seen = new Set();
+        for (const hint of hints) {
+          const key = hint.text.toLowerCase();
+          if (!seen.has(key)) {
+            seen.add(key);
+            unique.push(hint);
+          }
+          if (unique.length >= 8) break;
+        }
+        return unique;
+      },
+    );
     res.status(200).json({
       success: true,
-      data: unique,
+      data,
     });
   } catch (err) {
     console.error("Search hints error:", err);
@@ -3096,30 +3237,42 @@ const getCreativeCornerHashtagStats = async (req, res) => {
   try {
     const threshold = parseInt(process.env.HASHTAG_THRESHOLD, 10) || 50;
     const days = parseInt(process.env.HASHTAG_DAYS, 10) || 15;
-    const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    const stats = await HashtagStats.find({}).sort({ videoCount: -1 }).lean();
+    const data = await cacheVideoCatalog(
+      "creative-hashtag-stats",
+      { threshold, days },
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      async () => {
+        const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+        const stats = await HashtagStats.find({})
+          .sort({ videoCount: -1 })
+          .lean();
 
-    const data = await Promise.all(
-      stats.map(async (stat) => {
-        const filter = {
-          hashtags: stat.hashtag,
-          isCreativeCorner: true,
-        };
-        const [totalVideos, recentVideos] = await Promise.all([
-          Video.countDocuments(filter),
-          Video.countDocuments({ ...filter, createdAt: { $gte: cutoffDate } }),
-        ]);
+        return Promise.all(
+          stats.map(async (stat) => {
+            const filter = {
+              hashtags: stat.hashtag,
+              isCreativeCorner: true,
+            };
+            const [totalVideos, recentVideos] = await Promise.all([
+              Video.countDocuments(filter),
+              Video.countDocuments({
+                ...filter,
+                createdAt: { $gte: cutoffDate },
+              }),
+            ]);
 
-        return {
-          ...stat,
-          videoCount: totalVideos,
-          last15DaysCount: recentVideos,
-          threshold,
-          days,
-          remaining: Math.max(0, threshold - recentVideos),
-          isFlagged: stat.isFlagged || recentVideos >= threshold,
-        };
-      }),
+            return {
+              ...stat,
+              videoCount: totalVideos,
+              last15DaysCount: recentVideos,
+              threshold,
+              days,
+              remaining: Math.max(0, threshold - recentVideos),
+              isFlagged: stat.isFlagged || recentVideos >= threshold,
+            };
+          }),
+        );
+      },
     );
 
     res.json({ success: true, data });

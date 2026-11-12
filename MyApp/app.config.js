@@ -37,7 +37,6 @@ const googleWebClientId = isGoogleClientId(configuredGoogleWebClientId)
 
 const googlePlugin =
   isGoogleClientId(googleWebClientId) &&
-  isGoogleClientId(googleAndroidClientId) &&
   isGoogleClientId(googleIosClientId)
     ? [
         "@react-native-google-signin/google-signin",

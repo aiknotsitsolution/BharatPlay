@@ -4,6 +4,11 @@ x-app-environment: &app-environment
   NODE_ENV: production
   CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost,http://127.0.0.1}"
 
+x-redis-environment: &redis-environment
+  <<: *app-environment
+  REDIS_URL: "redis://redis:6379/0"
+  REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in bitzo-microservices/.env}"
+
 x-app-defaults: &app-defaults
   init: true
   restart: unless-stopped
@@ -28,6 +33,59 @@ x-app-defaults: &app-defaults
     start_period: 20s
 
 services:
+  redis:
+    image: redis:7-alpine
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in bitzo-microservices/.env}"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli --no-auth-warning -a "$$REDIS_PASSWORD" ping | grep -q PONG
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    environment:
+      RI_REDIS_HOST: redis
+      RI_REDIS_PORT: "6379"
+      RI_REDIS_ALIAS: BharatPlay Redis
+      RI_REDIS_USERNAME: default
+      RI_REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in bitzo-microservices/.env}"
+      RI_ENCRYPTION_KEY: "${RI_ENCRYPTION_KEY:-}"
+    ports:
+      - "127.0.0.1:5540:5540"
+    volumes:
+      - redis-insight-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+
   web:
     init: true
     restart: unless-stopped
@@ -100,9 +158,12 @@ services:
       dockerfile: services/auth-service/Dockerfile
     env_file: ./services/auth-service/.env
     environment:
-      <<: *app-environment
+      <<: *redis-environment
       PORT: "5001"
       TRUST_PROXY_HOPS: "${TRUST_PROXY_HOPS:-2}"
+    depends_on:
+      redis:
+        condition: service_healthy
 
   admin-service:
     <<: *app-defaults
@@ -111,8 +172,11 @@ services:
       dockerfile: services/admin-service/Dockerfile
     env_file: ./services/admin-service/.env
     environment:
-      <<: *app-environment
+      <<: *redis-environment
       PORT: "5002"
+    depends_on:
+      redis:
+        condition: service_healthy
 
   video-service:
     <<: *app-defaults
@@ -121,8 +185,11 @@ services:
       dockerfile: services/video-service/Dockerfile
     env_file: ./services/video-service/.env
     environment:
-      <<: *app-environment
+      <<: *redis-environment
       PORT: "5003"
+    depends_on:
+      redis:
+        condition: service_healthy
 
   category-service:
     <<: *app-defaults
@@ -131,8 +198,11 @@ services:
       dockerfile: services/category-service/Dockerfile
     env_file: ./services/category-service/.env
     environment:
-      <<: *app-environment
+      <<: *redis-environment
       PORT: "5004"
+    depends_on:
+      redis:
+        condition: service_healthy
 
   leaderboard-service:
     <<: *app-defaults
@@ -151,8 +221,15 @@ services:
       dockerfile: services/notification-service/Dockerfile
     env_file: ./services/notification-service/.env
     environment:
-      <<: *app-environment
+      <<: *redis-environment
       PORT: "5006"
+      BULL_BOARD_USER: "${BULL_BOARD_USER:-admin}"
+      BULL_BOARD_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in bitzo-microservices/.env}"
+    ports:
+      - "127.0.0.1:5541:5006"
+    depends_on:
+      redis:
+        condition: service_healthy
 
   player-ad-service:
     <<: *app-defaults
@@ -171,8 +248,11 @@ services:
       dockerfile: services/copyright-service/Dockerfile
     env_file: ./services/copyright-service/.env
     environment:
-      <<: *app-environment
+      <<: *redis-environment
       PORT: "5008"
+    depends_on:
+      redis:
+        condition: service_healthy
 
   security-service:
     <<: *app-defaults
@@ -183,3 +263,7 @@ services:
     environment:
       <<: *app-environment
       PORT: "5009"
+
+volumes:
+  redis-data:
+  redis-insight-data:

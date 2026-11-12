@@ -3,7 +3,7 @@ const User = require("../models/usermodel");
 const Channel = require("../models/Channel/ChannelModel");
 const categoryModel = require("../models/CategoryModel/category.model");
 const { getVideoDuration } = require("../utils/mediaDuration");
-
+const { invalidateVideoCatalogCache } = require("../utils/videoCatalogCache");
 const fs = require("fs");
 
 /**
@@ -62,6 +62,7 @@ exports.updateVideoupdated = async (req, res) => {
     }
 
     await video.save();
+    await invalidateVideoCatalogCache();
 
     const baseUrl = `${req.protocol}://${req.get("host")}`;
     const fullVideoUrl = `${baseUrl}/${video.videoUrl}`;
@@ -133,6 +134,7 @@ exports.uploadVideo = async (req, res) => {
       uploadedBy: req.user.id,
       videoUrl: filePath,
     });
+    await invalidateVideoCatalogCache();
 
     const baseUrl = `${req.protocol}://${req.get("host")}`;
     const fullVideoUrl = `${baseUrl}/${filePath}`;
@@ -260,6 +262,7 @@ exports.editMyVideo = async (req, res) => {
     }
 
     await video.save();
+    await invalidateVideoCatalogCache();
 
     const baseUrl = `${req.protocol}://${req.get("host")}`;
 
@@ -303,6 +306,7 @@ exports.deleteMyVideo = async (req, res) => {
     }
 
     await video.deleteOne();
+    await invalidateVideoCatalogCache();
 
     res.status(200).json({
       success: true,
@@ -402,6 +406,7 @@ exports.deleteVideo = async (req, res) => {
     }
 
     await video.deleteOne();
+    await invalidateVideoCatalogCache();
 
     res.status(200).json({
       success: true,

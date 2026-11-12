@@ -5,6 +5,7 @@ COPY shared/ /app/shared/
 WORKDIR /app/services/auth-service
 COPY services/auth-service/package.json services/auth-service/package-lock.json ./
 RUN npm ci --omit=dev
+COPY services/*.js /app/services/
 COPY services/auth-service/ ./
 ENV PORT=5001
 EXPOSE 5001

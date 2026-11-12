@@ -35,6 +35,7 @@ import {
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
@@ -56,8 +57,7 @@ const isGoogleClientId = (value = "") => {
 };
 const GOOGLE_CONFIGURED = Boolean(
   isGoogleClientId(GOOGLE_WEB_CLIENT_ID) &&
-  isGoogleClientId(GOOGLE_ANDROID_CLIENT_ID) &&
-  isGoogleClientId(GOOGLE_IOS_CLIENT_ID),
+    (Platform.OS !== "ios" || isGoogleClientId(GOOGLE_IOS_CLIENT_ID)),
 );
 
 const getDeviceCookieHeader = (clientHardwareUuid) =>
@@ -225,7 +225,9 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
   // ========== Google Auth ==========
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    androidClientId: isGoogleClientId(GOOGLE_ANDROID_CLIENT_ID)
+      ? GOOGLE_ANDROID_CLIENT_ID
+      : GOOGLE_WEB_CLIENT_ID,
     iosClientId: GOOGLE_IOS_CLIENT_ID,
     scopes: ["profile", "email"],
   });
@@ -646,6 +648,19 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     try {
       setGoogleLoading(true);
       setError("");
+
+      if (Platform.OS === "android") {
+        GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
+        await GoogleSignin.hasPlayServices({
+          showPlayServicesUpdateDialog: true,
+        });
+        const result = await GoogleSignin.signIn();
+        if (result.type === "cancelled") return;
+
+        await handleGoogleSuccess({ idToken: result.data.idToken });
+        return;
+      }
+
       await promptAsync();
     } catch (err) {
       setGoogleLoading(false);

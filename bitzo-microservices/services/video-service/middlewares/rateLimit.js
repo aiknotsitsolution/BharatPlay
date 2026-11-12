@@ -1,8 +1,18 @@
 // Set ENABLE_RATE_LIMITS=false to disable protected middleware limits.
-const rateLimit =
+const rateLimitMiddleware =
   process.env.ENABLE_RATE_LIMITS === "false"
     ? () => (_req, _res, next) => next()
     : require("express-rate-limit");
+const { createRateLimitStore } = require("../../../services/ratelimiting");
+let limiterIndex = 0;
+const rateLimit = (options) => {
+  const store =
+    process.env.REDIS_URL?.trim() &&
+    process.env.ENABLE_RATE_LIMITS !== "false"
+      ? createRateLimitStore(`video:limit:${limiterIndex++}:`)
+      : undefined;
+  return rateLimitMiddleware(store ? { ...options, store } : options);
+};
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -13,9 +23,6 @@ const jsonMessage = (message) => ({
 });
 const passThroughLimiter = (_req, _res, next) => next();
 
-// Single-instance in-memory rate limiting (Phase 4 / F18).
-// Upgrade path: swap the default MemoryStore for a Redis adapter when the
-// service is horizontally scaled (per Phase 4 audit §8).
 const loginLimiter = rateLimit({
   windowMs: 15 * MINUTE,
   limit: 10,
@@ -33,15 +40,15 @@ const adminLoginLimiter = rateLimit({
 });
 
 const registerLimiter = rateLimit({
-  windowMs: 1 * HOUR,
-  limit: 5,
+  windowMs: 15 * MINUTE,
+  limit: 10,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   message: jsonMessage("Too many registration attempts. Please try again later."),
 });
 
 const adminRegisterLimiter = rateLimit({
-  windowMs: 1 * HOUR,
+  windowMs: 15 * MINUTE,
   limit: 5,
   standardHeaders: "draft-8",
   legacyHeaders: false,
@@ -123,7 +130,7 @@ const adminDestructiveLimiter = rateLimit({
 
 // Public copyright claim submission (unauthenticated, strict limit)
 const publicClaimLimiter = rateLimit({
-  windowMs: 1 * HOUR,
+  windowMs: 15 * MINUTE,
   limit: 5,
   standardHeaders: "draft-8",
   legacyHeaders: false,

@@ -4,6 +4,7 @@ COPY package.json package-lock.json ./
 WORKDIR /app/services/category-service
 COPY services/category-service/package.json services/category-service/package-lock.json ./
 RUN npm ci --omit=dev
+COPY services/*.js /app/services/
 COPY services/category-service/ ./
 ENV PORT=5004
 EXPOSE 5004

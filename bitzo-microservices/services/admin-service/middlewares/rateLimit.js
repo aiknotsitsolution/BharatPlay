@@ -3,6 +3,16 @@ const rateLimit =
   process.env.ENABLE_RATE_LIMITS === "false"
     ? () => (_req, _res, next) => next()
     : require("express-rate-limit");
+const { createRateLimitStore } = require("../../../services/ratelimiting");
+let limiterIndex = 0;
+const createLimiter = (options) => {
+  const store =
+    process.env.REDIS_URL?.trim() &&
+    process.env.ENABLE_RATE_LIMITS !== "false"
+      ? createRateLimitStore(`admin:limit:${limiterIndex++}:`)
+      : undefined;
+  return rateLimit(store ? { ...options, store } : options);
+};
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -13,10 +23,7 @@ const jsonMessage = (message) => ({
 });
 const passThroughLimiter = (_req, _res, next) => next();
 
-// Single-instance in-memory rate limiting (Phase 4 / F18).
-// Upgrade path: swap the default MemoryStore for a Redis adapter when the
-// service is horizontally scaled (per Phase 4 audit §8).
-const loginLimiter = rateLimit({
+const loginLimiter = createLimiter({
   windowMs: 5 * MINUTE,
   limit: 10,
   standardHeaders: "draft-8",
@@ -24,7 +31,7 @@ const loginLimiter = rateLimit({
   message: jsonMessage("Too many login attempts. Please try again later."),
 });
 
-const adminLoginLimiter = rateLimit({
+const adminLoginLimiter = createLimiter({
   windowMs: 15 * MINUTE,
   limit: 10,
   standardHeaders: "draft-8",
@@ -32,7 +39,7 @@ const adminLoginLimiter = rateLimit({
   message: jsonMessage("Too many login attempts. Please try again later."),
 });
 
-const registerLimiter = rateLimit({
+const registerLimiter = createLimiter({
   windowMs: 1 * HOUR,
   limit: 5,
   standardHeaders: "draft-8",
@@ -42,7 +49,7 @@ const registerLimiter = rateLimit({
   ),
 });
 
-const adminRegisterLimiter = rateLimit({
+const adminRegisterLimiter = createLimiter({
   windowMs: 1 * HOUR,
   limit: 5,
   standardHeaders: "draft-8",
@@ -52,7 +59,7 @@ const adminRegisterLimiter = rateLimit({
   ),
 });
 
-const passwordLimiter = rateLimit({
+const passwordLimiter = createLimiter({
   windowMs: 15 * MINUTE,
   limit: 5,
   standardHeaders: "draft-8",
@@ -62,7 +69,7 @@ const passwordLimiter = rateLimit({
   ),
 });
 
-const googleLimiter = rateLimit({
+const googleLimiter = createLimiter({
   windowMs: 15 * MINUTE,
   limit: 10,
   standardHeaders: "draft-8",
@@ -70,7 +77,7 @@ const googleLimiter = rateLimit({
   message: jsonMessage("Too many sign-in attempts. Please try again later."),
 });
 
-const refreshLimiter = rateLimit({
+const refreshLimiter = createLimiter({
   windowMs: 15 * MINUTE,
   limit: 60,
   standardHeaders: "draft-8",
@@ -78,7 +85,7 @@ const refreshLimiter = rateLimit({
   message: jsonMessage("Too many refresh attempts. Please try again later."),
 });
 
-const forgotPasswordLimiter = rateLimit({
+const forgotPasswordLimiter = createLimiter({
   windowMs: 15 * MINUTE,
   limit: 5,
   standardHeaders: "draft-8",
@@ -88,7 +95,7 @@ const forgotPasswordLimiter = rateLimit({
   ),
 });
 
-const resetPasswordLimiter = rateLimit({
+const resetPasswordLimiter = createLimiter({
   windowMs: 15 * MINUTE,
   limit: 5,
   standardHeaders: "draft-8",
@@ -96,7 +103,7 @@ const resetPasswordLimiter = rateLimit({
   message: jsonMessage("Too many reset attempts. Please try again later."),
 });
 
-const verifyResetOtpLimiter = rateLimit({
+const verifyResetOtpLimiter = createLimiter({
   windowMs: 15 * MINUTE,
   limit: 10,
   standardHeaders: "draft-8",
@@ -108,7 +115,7 @@ const verifyResetOtpLimiter = rateLimit({
 
 // Generous limit: watchSession.js flushes view events periodically
 // (~30s) per open session, so the limit must not break normal playback.
-const viewLimiter = rateLimit({
+const viewLimiter = createLimiter({
   windowMs: 15 * MINUTE,
   limit: 600,
   standardHeaders: "draft-8",
@@ -120,7 +127,7 @@ const viewLimiter = rateLimit({
 const adminUserListLimiter = passThroughLimiter;
 
 // Admin user detail / 360° endpoints (read-heavy, many sub-requests per user)
-const adminUserLimiter = rateLimit({
+const adminUserLimiter = createLimiter({
   windowMs: 15 * MINUTE,
   limit: 120,
   standardHeaders: "draft-8",
@@ -129,7 +136,7 @@ const adminUserLimiter = rateLimit({
 });
 
 // Admin destructive operations (delete, suspend)
-const adminDestructiveLimiter = rateLimit({
+const adminDestructiveLimiter = createLimiter({
   windowMs: 15 * MINUTE,
   limit: 30,
   standardHeaders: "draft-8",
@@ -140,7 +147,7 @@ const adminDestructiveLimiter = rateLimit({
 });
 
 // Public copyright claim submission (unauthenticated, strict limit)
-const publicClaimLimiter = rateLimit({
+const publicClaimLimiter = createLimiter({
   windowMs: 1 * HOUR,
   limit: 5,
   standardHeaders: "draft-8",
@@ -151,7 +158,7 @@ const publicClaimLimiter = rateLimit({
 });
 
 // Public copyright claim status lookup (unauthenticated, generous)
-const claimLookupLimiter = rateLimit({
+const claimLookupLimiter = createLimiter({
   windowMs: 15 * MINUTE,
   limit: 30,
   standardHeaders: "draft-8",

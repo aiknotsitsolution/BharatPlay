@@ -1,14 +1,18 @@
-const Notification = require("../models/NotificationModel");
-const User = require("../models/usermodel");
-const Video = require("../models/Videomodel");
-const Channel = require("../models/Channel/ChannelModel");
-const { emitNotificationCreated } = require("../services/socketService");
+const {
+  enqueueBulkNotifications,
+  enqueueNotification,
+} = require("../../../services/Queues");
 
-const populateNotification = (notificationId) =>
-  Notification.findById(notificationId)
+const populateNotification = (notificationId) => {
+  const Notification = require("../models/NotificationModel");
+  const User = require("../models/usermodel");
+  const Video = require("../models/Videomodel");
+  const Channel = require("../models/Channel/ChannelModel");
+  return Notification.findById(notificationId)
     .populate({ path: "actor", select: "name avatar", model: User })
     .populate({ path: "video", select: "title thumbnail videoType", model: Video })
     .populate({ path: "channel", select: "name channelImage", model: Channel });
+};
 
 const createNotification = async ({
   recipient,
@@ -21,6 +25,18 @@ const createNotification = async ({
     if (!recipient) return null;
     if (String(recipient) === String(actor)) return null;
 
+    if (process.env.REDIS_URL?.trim()) {
+      const job = await enqueueNotification({
+        recipient,
+        actor,
+        type,
+        video,
+        channel,
+      });
+      return { queued: true, jobId: job.id };
+    }
+
+    const Notification = require("../models/NotificationModel");
     const notification = await Notification.create({
       recipient,
       actor,
@@ -34,6 +50,7 @@ const createNotification = async ({
       recipient,
       isRead: false,
     });
+    const { emitNotificationCreated } = require("../services/socketService");
     emitNotificationCreated(recipient, populated, unreadCount);
     return populated;
   } catch (error) {
@@ -62,6 +79,16 @@ const createBulkNotifications = async ({
 
     if (!docs.length) return [];
 
+    if (process.env.REDIS_URL?.trim()) {
+      const jobs = await enqueueBulkNotifications(docs);
+      return jobs.map((job) => ({ queued: true, jobId: job.id }));
+    }
+
+    const Notification = require("../models/NotificationModel");
+    const User = require("../models/usermodel");
+    const Video = require("../models/Videomodel");
+    const Channel = require("../models/Channel/ChannelModel");
+    const { emitNotificationCreated } = require("../services/socketService");
     const notifications = await Notification.insertMany(docs);
     const populated = await Notification.find({
       _id: { $in: notifications.map((notification) => notification._id) },

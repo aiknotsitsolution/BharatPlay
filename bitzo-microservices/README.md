@@ -200,6 +200,34 @@ sign-in. If your deployment uses a different number of trusted proxies, set
 `TRUST_PROXY_HOPS` to that positive hop count for the auth service; never use
 untrusted client-supplied forwarding headers as a substitute.
 
+### Redis, BullMQ, and dashboards
+
+Docker Compose starts an authenticated Redis container on its private network.
+Set `REDIS_PASSWORD` in the root `.env` file before starting the stack; Redis
+does not publish its port to the host. Compose connects the auth, admin, video,
+category, copyright, and notification services to that Redis instance.
+
+Auth/video/copyright enqueue notification jobs in BullMQ. The notification
+service worker persists them, retries failures, and sends the realtime event.
+The category list is cached for 60 seconds, and write operations invalidate
+that cache. Video details, discovery, search, search hints, related-video, and
+hashtag statistics results use a 15-minute TTL. Per-user feed personalization
+and playback progress are still calculated on each request, and video/channel
+writes advance a shared cache version so old catalog entries are skipped.
+Outside Compose, set `REDIS_URL` and `REDIS_PASSWORD` in the
+relevant service environments; without Redis, the existing direct notification
+path and per-process rate limits remain available.
+
+The local dashboards are:
+
+- RedisInsight: `http://localhost:5540` (preconfigured for the Compose Redis).
+- BullMQ: `http://localhost:5541/admin/queues` (HTTP Basic Auth; username is
+  `BULL_BOARD_USER`, default `admin`, and password is `REDIS_PASSWORD`).
+- Website: `http://localhost`; API gateway health: `http://localhost:5000/health`.
+
+The RedisInsight and BullMQ dashboard ports bind to loopback only. The API
+remains JWT-based and does not enable server-side sessions.
+
 For website or Android/iOS testing from a device on the local network, keep the
 device and development computer on the same network. Allow inbound TCP ports
 `5000` and `5173` in the computer's firewall. The website Vite dev server
@@ -253,3 +281,16 @@ talks directly to an old monolith URL, change that base URL to
   real-time events only reach clients connected to that specific instance.
 - Configure host-level TLS, firewall rules, monitoring, and tested backup
   restore procedures as part of the deployment.
+
+
+
+
+
+
+Redis, BullMQ, and the dashboards are running. All Compose services are healthy.
+
+Website: http://localhost
+RedisInsight: http://localhost:5540 — Redis connection preconfigured
+Bull Board: http://localhost:5541/admin/queues — username admin by default; password is REDIS_PASSWORD in the root .env
+Gateway health: http://localhost:5000/health
+Verified the dashboards and health URLs return HTTP 200; Bull Board correctly requires authentication (unauthenticated requests return 401). The focused Redis/BullMQ tests passed: 6 suites, 13 tests. Setup details are in README.md.

@@ -1,8 +1,13 @@
 const Category = require("../../models/CategoryModel/category.model");
+const { cached, invalidateCache } = require("../../../../services/caching");
+
+const CATEGORY_LIST_CACHE_KEY = "categories:list";
 // Get all Categorys
 const getAllCategorys = async (req, res) => {
   try {
-    const Categorys = await Category.find();
+    const Categorys = await cached(CATEGORY_LIST_CACHE_KEY, 60, () =>
+      Category.find().lean(),
+    );
     res.status(200).json(Categorys);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -40,6 +45,7 @@ const createCategory = async (req, res) => {
 
     const newCategory = new Category({ name, slug });
     await newCategory.save();
+    await invalidateCache(CATEGORY_LIST_CACHE_KEY);
     res.status(201).json(newCategory);
   } catch (error) {
     if (error.code === 11000) {
@@ -66,6 +72,7 @@ const updateCategory = async (req, res) => {
     if (!updatedCategory) {
       return res.status(404).json({ message: "Category not found" });
     }
+    await invalidateCache(CATEGORY_LIST_CACHE_KEY);
     const Categorys = await Category.find();
     res
       .status(200)
@@ -82,6 +89,7 @@ const deleteCategory = async (req, res) => {
     if (!deletedCategory) {
       return res.status(404).json({ message: "Category not found" });
     }
+    await invalidateCache(CATEGORY_LIST_CACHE_KEY);
     const Categorys = await Category.find();
     res
       .status(200)
