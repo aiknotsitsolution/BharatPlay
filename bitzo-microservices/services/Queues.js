@@ -9,6 +9,7 @@ const defaultJobOptions = {
   removeOnFail: 5000,
 };
 
+
 function getQueueConnection() {
   const connection = getRedisClient({ forQueue: true });
   if (!connection) {
