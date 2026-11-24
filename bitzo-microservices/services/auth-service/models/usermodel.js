@@ -252,6 +252,13 @@ const userSchema = new mongoose.Schema(
         ref: "Channel",
       },
     ],
+    blockedChannels: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Channel",
+        index: true,
+      },
+    ],
 
     watchLaterVideos: [
       {

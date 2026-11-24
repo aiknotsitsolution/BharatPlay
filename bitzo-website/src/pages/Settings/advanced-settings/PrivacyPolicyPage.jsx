@@ -82,7 +82,7 @@ const SECTIONS = [
   },
   {
     title: "16. Children's Privacy",
-    body: "The Service is not directed to children below the minimum age required to create an account (at least 13 years of age, or older if required by applicable law in your jurisdiction). We do not knowingly collect personal information from children under this age. If you believe a child has provided us with personal information, please contact us so we can take appropriate action.",
+    body: "The Service is not directed to anyone below 18 years of age. We do not knowingly collect personal information from children or minors. If you believe a minor has provided us with personal information, please contact us so we can take appropriate action.",
   },
   {
     title: "17. User Privacy Rights",

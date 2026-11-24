@@ -10,7 +10,7 @@ const SECTIONS = [
   },
   {
     title: "2. Eligibility",
-    body: "You must be at least 13 years of age (or the minimum age required in your jurisdiction) to create an account and use the Service. By using the Service, you represent that you meet this age requirement and have the legal capacity to enter into these Terms.",
+    body: "You must be at least 18 years of age to create an account and use the Service. By using the Service, you represent that you meet this age requirement and have the legal capacity to enter into these Terms.",
   },
   {
     title: "3. Account Registration",
@@ -71,7 +71,7 @@ const SECTIONS = [
   },
   {
     title: "10. Rewards, Advertising and Withdrawals",
-    body: "VidBuxApp may offer points or other in-app rewards for eligible activity, including approved rewarded-ad experiences. Rewards are promotional, have no guaranteed cash value until a withdrawal is approved, and may be limited, reversed, withheld, or removed for invalid activity, duplicate accounts, automation, fraud, chargebacks, policy violations, or technical errors. Conversion rates, minimum thresholds, supported payout methods, fees, regions, and processing times may change and are shown in the app when available. A withdrawal request is not a payment guarantee; payouts require an active VidBuxApp account, successful verification, an available payout system, and final approval. Users must not encourage accidental ad clicks or use methods that manipulate ad measurement.",
+    body: "VidBuxApp may offer points or other in-app rewards for eligible activity, including approved rewarded-ad experiences. Rewards are promotional and do not represent a fixed payout until a withdrawal is approved. They may be limited, reversed, withheld, or removed for invalid activity, duplicate accounts, automation, fraud, chargebacks, policy violations, or technical errors. Conversion rates, the minimum redemption threshold of ₹100, supported payout methods, fees, regions, and processing times of 45–60 days may change and are shown in the app when available. A withdrawal request is not a payment guarantee; payouts require an active VidBuxApp account, successful verification, an available payout system, and final approval. Users must not encourage accidental ad clicks or use methods that manipulate ad measurement.",
   },
   {
     title: "11. Disclaimers",

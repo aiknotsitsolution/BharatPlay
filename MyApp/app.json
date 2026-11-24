@@ -44,6 +44,7 @@
     },
     "plugins": [
       "expo-updates",
+      "@react-native-google-signin/google-signin",
       [
         "expo-image-picker",
         {

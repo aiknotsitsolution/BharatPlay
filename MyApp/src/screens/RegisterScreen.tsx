@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import CustomInput from "../components/CustomInput";
 import CustomButton from "../components/CustomButton";
 import styles from "../styles/globalStyles";
@@ -12,10 +12,15 @@ export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [acceptedTerms, setAcceptedTerms] = React.useState(false);
 
   const handleRegister = async () => {
     if (!email || !password) {
       showToast("error", "Please fill in all fields");
+      return;
+    }
+    if (!acceptedTerms) {
+      showToast("error", "Accept the Terms of Service and Privacy Policy");
       return;
     }
 
@@ -34,6 +39,8 @@ export default function RegisterScreen({ navigation }) {
           name: email.split("@")[0],
           email,
           password,
+          termsAccepted: true,
+          ageConfirmed: true,
           clientHardwareUuid,
           ...integrityProof,
         }),
@@ -70,6 +77,30 @@ export default function RegisterScreen({ navigation }) {
         value={password}
         onChangeText={setPassword}
       />
+
+      <TouchableOpacity
+        onPress={() => setAcceptedTerms((current) => !current)}
+        style={{ flexDirection: "row", alignItems: "center", marginVertical: 12 }}
+      >
+        <View
+          style={{
+            width: 20,
+            height: 20,
+            borderWidth: 1,
+            borderRadius: 4,
+            borderColor: "#71717a",
+            marginRight: 10,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: acceptedTerms ? "#ef4444" : "transparent",
+          }}
+        >
+          {acceptedTerms && <Text style={{ color: "#fff" }}>✓</Text>}
+        </View>
+        <Text style={{ color: "#d4d4d8", flex: 1 }}>
+          I am 18 or older and agree to the Terms of Service and Privacy Policy.
+        </Text>
+      </TouchableOpacity>
 
       <CustomButton
         title={loading ? "Registering..." : "Register"}

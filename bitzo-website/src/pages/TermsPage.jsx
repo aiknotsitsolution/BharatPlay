@@ -7,7 +7,7 @@ const SECTIONS = [
   },
   {
     title: "2. User Accounts",
-    body: "You must be at least 13 years old to create an account. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You agree to provide accurate and complete information when creating your account and to update it as necessary.",
+    body: "You must be at least 18 years old to create an account. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You agree to provide accurate and complete information when creating your account and to update it as necessary.",
   },
   {
     title: "3. User Content",

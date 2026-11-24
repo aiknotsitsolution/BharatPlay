@@ -15,6 +15,7 @@ import {
   Dimensions,
   FlatList,
   StatusBar,
+  Linking,
 } from "react-native";
 import {
   useFocusEffect,
@@ -1298,7 +1299,7 @@ export function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f0f" />
+      <StatusBar barStyle="light-content" />
       <Navbar onMenuPress={() => {}} points={0} />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -1682,7 +1683,7 @@ export function ProfileScreen() {
 
         {activeTab === "my-videos" && (
           <View style={[styles.section, { paddingHorizontal: 16 }]}>
-            <Text style={styles.sectionTitle}>Earnings</Text>
+            <Text style={styles.sectionTitle}>Creator Rewards</Text>
             <View style={styles.earningsRow}>
               <View style={styles.earnCard}>
                 <Text style={styles.earnLabel}>This month</Text>
@@ -1824,6 +1825,19 @@ export function ProfileScreen() {
             <TouchableOpacity style={styles.menuItem}>
               <HelpCircle size={22} color="#fff" />
               <Text style={styles.menuText}>Help & feedback</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowMenu(false);
+                Linking.openURL("https://vidbuxapp.com/delete-account");
+              }}
+            >
+              <Trash2 size={22} color="#f87171" />
+              <Text style={[styles.menuText, { color: "#f87171" }]}>
+                Delete My Account
+              </Text>
             </TouchableOpacity>
 
             <View style={styles.menuDivider} />

@@ -34,7 +34,7 @@ Do not click or interact with ads only to manipulate rewards. VidBuxApp may limi
 
 We explain our data practices in the VidBuxApp Privacy Policy. You can review the Privacy Policy, Terms and Conditions, Community Guidelines, Content Policy, Copyright Policy, Help and Support information, and Account & Data Deletion instructions from the VidBuxApp website and app policy center.
 
-VidBuxApp is designed for users aged 13 and above, or the minimum age required in the user's jurisdiction. Users under 18 should use the service with parent or guardian consent.
+VidBuxApp is designed for users aged 18 and above.
 
 ## Content rating notes
 

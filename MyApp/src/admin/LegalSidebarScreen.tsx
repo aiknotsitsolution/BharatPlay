@@ -75,9 +75,8 @@ export default function LegalSidebarScreen() {
 
             <Text style={styles.heading}>2. Who May Use the Service</Text>
             <Text style={styles.paragraph}>
-              • You must be at least 13 years old to use the Service.{"\n"}• If
-              you are under 18, you must have parental or guardian consent.
-              {"\n"}• You must not use the Service for unlawful, abusive,
+              • You must be at least 18 years old to use the Service.{"\n"}• You
+              must not use the Service for unlawful, abusive,
               deceptive, or harmful purposes.
             </Text>
 
@@ -203,7 +202,7 @@ export default function LegalSidebarScreen() {
             <Text style={styles.paragraph}>
               Rewarded ads may provide in-app points when an eligible ad is
               completed and the server confirms the event. Points are not a
-              guaranteed cash payment. Rewards may be limited, reversed, or
+              fixed payout. Rewards may be limited, reversed, or
               frozen for duplicate accounts, automation, invalid activity,
               fraud, policy violations, or technical errors. Conversion rates,
               eligibility, minimum withdrawal thresholds, supported payout

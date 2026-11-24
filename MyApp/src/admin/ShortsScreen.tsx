@@ -17,7 +17,6 @@ import {
   Platform,
   ActivityIndicator,
   ListRenderItem,
-  ViewToken,
   Share,
   Alert,
   Modal,
@@ -43,6 +42,13 @@ import {
 import { API_ORIGIN, API_USERVIDEO } from "../../config/api";
 import { getViewSocket } from "../utils/viewSocket";
 import { showToast } from "../utils/notifications";
+
+type ViewToken = {
+  item: unknown;
+  key: string;
+  isViewable: boolean;
+  index?: number | null;
+};
 
 const { height, width } = Dimensions.get("window");
 
@@ -892,18 +898,91 @@ export default function ShortsScreen() {
   };
 
   const handleCopyright = (item: ShortItem) => {
+    Alert.alert("Report or block", "Choose an action for this short.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Report content",
+        onPress: () => void submitContentReport(item),
+      },
+      {
+        text: "Report copyright",
+        onPress: () =>
+          navigation.navigate("CopyrightClaim", {
+            videoId: item.id,
+            title: item.title,
+          }),
+      },
+      {
+        text: "Block creator",
+        style: "destructive",
+        onPress: () => void blockCreator(item),
+      },
+    ]);
+  };
+
+  const submitContentReport = async (item: ShortItem) => {
+    const token = await AsyncStorage.getItem("token");
+    if (!token) {
+      navigation.navigate("Login");
+      return;
+    }
+    try {
+      const response = await fetch(`${API_ORIGIN}/api/support/content-report`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          videoId: item.id,
+          reason: "Inappropriate or policy-violating content",
+        }),
+      });
+      const data = await response.json();
+      showToast(
+        response.ok ? "success" : "error",
+        response.ok ? "Report submitted" : "Report failed",
+        data.message,
+      );
+    } catch {
+      showToast("error", "Report failed", "Please try again.");
+    }
+  };
+
+  const blockCreator = async (item: ShortItem) => {
+    const channelId = getChannelId(item);
+    if (!channelId) {
+      showToast("error", "Unable to block", "Creator information is unavailable.");
+      return;
+    }
     Alert.alert(
-      "Copyright",
-      "Do you want to report a copyright issue for this short?",
+      "Block creator",
+      "Blocked creators will be hidden from your local feed.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Report copyright",
-          onPress: () =>
-            navigation.navigate("CopyrightClaim", {
-              videoId: item.id,
-              title: item.title,
-            }),
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem("token");
+              const raw = await AsyncStorage.getItem("blockedCreatorIds");
+              const ids = raw ? JSON.parse(raw) : [];
+              if (token) {
+                await fetch(`${API_ORIGIN}/api/uservideo/block/${channelId}`, {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+              }
+              await AsyncStorage.setItem(
+                "blockedCreatorIds",
+                JSON.stringify([...new Set([...ids, channelId])]),
+              );
+              showToast("success", "Creator blocked", "This creator was blocked.");
+            } catch {
+              showToast("error", "Block failed", "Please try again.");
+            }
+          },
         },
       ],
     );
@@ -1404,7 +1483,7 @@ export default function ShortsScreen() {
   if (loading) {
     return (
       <View style={styles.loaderWrap}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+        <StatusBar barStyle="light-content" />
 
         <ActivityIndicator size="large" color="#fff" />
 
@@ -1420,7 +1499,7 @@ export default function ShortsScreen() {
   if (!shortsData.length) {
     return (
       <View style={styles.loaderWrap}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+        <StatusBar barStyle="light-content" />
 
         <Ionicons name="videocam-off-outline" size={50} color="#777" />
 
@@ -1437,7 +1516,6 @@ export default function ShortsScreen() {
     <View style={styles.container}>
       <StatusBar
         barStyle="light-content"
-        backgroundColor="#000"
         translucent={false}
       />
 

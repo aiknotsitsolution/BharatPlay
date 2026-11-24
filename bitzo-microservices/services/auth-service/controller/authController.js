@@ -243,6 +243,20 @@ const issueOtpToDevice = async ({
 exports.registerUser = async (req, res) => {
   try {
     const { name, email, password, otp } = req.body;
+    if (req.body.termsAccepted !== true) {
+      return res.status(400).json({
+        success: false,
+        code: "TERMS_ACCEPTANCE_REQUIRED",
+        message: "Accept the Terms of Service and Privacy Policy to create an account.",
+      });
+    }
+    if (req.body.ageConfirmed !== true) {
+      return res.status(400).json({
+        success: false,
+        code: "AGE_CONFIRMATION_REQUIRED",
+        message: "You must confirm that you are at least 18 years old.",
+      });
+    }
     const normalizedName = typeof name === "string" ? name.trim() : "";
     const normalizedEmail =
       typeof email === "string" ? email.trim().toLowerCase() : "";
@@ -1396,6 +1410,21 @@ exports.loginUser = async (req, res) => {
 
 exports.googleLogin = async (req, res) => {
   try {
+    const intent = req.body?.intent === "signup" ? "signup" : "login";
+    if (intent === "signup" && req.body?.termsAccepted !== true) {
+      return res.status(400).json({
+        success: false,
+        code: "TERMS_ACCEPTANCE_REQUIRED",
+        message: "Accept the Terms of Service and Privacy Policy to create an account.",
+      });
+    }
+    if (intent === "signup" && req.body?.ageConfirmed !== true) {
+      return res.status(400).json({
+        success: false,
+        code: "AGE_CONFIRMATION_REQUIRED",
+        message: "You must confirm that you are at least 18 years old.",
+      });
+    }
     const credential =
       typeof req.body?.credential === "string" ? req.body.credential : "";
     const clientIds = Array.from(

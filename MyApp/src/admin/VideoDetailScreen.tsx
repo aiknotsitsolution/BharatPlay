@@ -919,18 +919,96 @@ export default function VideoDetailScreen() {
   };
 
   const handleCopyrightReport = () => {
+    Alert.alert("Report or block", "Choose a safety action for this video.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Report content",
+        onPress: () => void submitContentReport(),
+      },
+      {
+        text: "Report copyright",
+        onPress: () =>
+          navigation.navigate("CopyrightClaim", {
+            videoId: String(routeId),
+            title: videoDetails?.title || FALLBACK_VIDEO.title,
+          }),
+      },
+      {
+        text: "Block creator",
+        style: "destructive",
+        onPress: () => void blockCreator(),
+      },
+    ]);
+  };
+
+  const submitContentReport = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        navigation.navigate("Login");
+        return;
+      }
+      const response = await fetch(`${API_ORIGIN}/api/support/content-report`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          videoId: String(routeId),
+          reason: "Inappropriate or policy-violating content",
+        }),
+      });
+      const data = await response.json();
+      showToast(
+        response.ok ? "success" : "error",
+        response.ok ? "Report submitted" : "Report failed",
+        data.message,
+      );
+    } catch {
+      showToast("error", "Report failed", "Please try again.");
+    }
+  };
+
+  const blockCreator = async () => {
+    const channel =
+      typeof videoDetails?.channel === "object"
+        ? videoDetails.channel
+        : null;
+    const channelId =
+      channel?._id || channel?.id || channel?.channelId || videoDetails?.channelId;
+    if (!channelId) {
+      showToast("error", "Unable to block", "Creator information is unavailable.");
+      return;
+    }
     Alert.alert(
-      "Copyright",
-      "Do you want to report a copyright issue for this video?",
+      "Block creator",
+      "Blocked creators will be hidden from your local feed.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Report copyright",
-          onPress: () =>
-            navigation.navigate("CopyrightClaim", {
-              videoId: String(routeId),
-              title: videoDetails?.title || FALLBACK_VIDEO.title,
-            }),
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem("token");
+              const raw = await AsyncStorage.getItem("blockedCreatorIds");
+              const ids = raw ? JSON.parse(raw) : [];
+              if (token) {
+                await fetch(`${API_ORIGIN}/api/uservideo/block/${channelId}`, {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+              }
+              await AsyncStorage.setItem(
+                "blockedCreatorIds",
+                JSON.stringify([...new Set([...ids, channelId])]),
+              );
+              showToast("success", "Creator blocked", "This creator was blocked.");
+            } catch {
+              showToast("error", "Block failed", "Please try again.");
+            }
+          },
         },
       ],
     );
@@ -1235,7 +1313,6 @@ export default function VideoDetailScreen() {
     <View style={styles.container}>
       <StatusBar
         barStyle="light-content"
-        backgroundColor="#0f0f0f"
         hidden={isFullscreen}
       />
 

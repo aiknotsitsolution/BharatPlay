@@ -47,14 +47,14 @@ export default function WithdrawScreen() {
     {
       id: "upi",
       name: "UPI (Google Pay / PhonePe)",
-      min: 5,
+      min: 100,
       fee: 0,
       icon: "₹",
     },
     {
       id: "bank",
       name: "Bank Transfer",
-      min: 20,
+      min: 100,
       fee: 1.5,
       icon: "🏦",
     },
@@ -199,7 +199,7 @@ export default function WithdrawScreen() {
       showToast(
         "success",
         "Request Submitted",
-        `₹${withdrawAmount.toFixed(2)} withdrawal request submitted! Money will be credited within 45 working days.`,
+        `₹${withdrawAmount.toFixed(2)} redemption request submitted. Processing time is 45–60 days.`,
       );
 
       setAmount("");

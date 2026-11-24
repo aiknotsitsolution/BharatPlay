@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
+const User = require("../models/usermodel");
 const {
   getAllVideos,
   getVideoById,
@@ -103,6 +105,20 @@ router.get("/top-shorts", optionalAuth, topShorts);
 router.get("/", isAuthenticated, getAllVideos);
 router.get("/liked", isAuthenticated, LikedVideos);
 router.post("/subscribe/:channelId", isAuthenticated, subscribeChannel);
+router.post("/block/:channelId", isAuthenticated, async (req, res) => {
+  try {
+    const { channelId } = req.params;
+    const userId = req.user?.id || req.user?.userId || req.user?._id;
+    if (!mongoose.Types.ObjectId.isValid(channelId)) {
+      return res.status(400).json({ success: false, message: "Invalid channel ID." });
+    }
+    await User.findByIdAndUpdate(userId, { $addToSet: { blockedChannels: channelId } });
+    return res.status(200).json({ success: true, blocked: true });
+  } catch (error) {
+    console.error("[block] Failed to block creator:", error);
+    return res.status(500).json({ success: false, message: "Failed to block creator." });
+  }
+});
 
 router.get("/search", isAuthenticated, searchVideos);
 router.get("/search/hints", getSearchHints);

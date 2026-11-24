@@ -398,7 +398,10 @@ exports.deleteVideo = async (req, res) => {
       });
     }
 
-    if (video.uploadedBy?.toString() !== String(req.user.id)) {
+    if (
+      !req.admin &&
+      video.uploadedBy?.toString() !== String(req.user?.id || req.user?._id)
+    ) {
       return res.status(403).json({
         success: false,
         message: "You are not authorized to delete this video",

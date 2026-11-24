@@ -31,6 +31,11 @@ router.delete(
 
 router.get("/", requireAdmin, requirePermission("content:read"), adminUserListLimiter, getAllVideos);
 
-router.delete("/:id", isAuthenticated, deleteVideo);
+router.delete(
+  "/:id",
+  requireAdmin,
+  requirePermission("moderation:delete"),
+  deleteVideo,
+);
 
 module.exports = router;

@@ -36,25 +36,38 @@ const googleWebClientId = isGoogleClientId(configuredGoogleWebClientId)
   : getEnv("GOOGLE_CLIENT_ID");
 
 const googlePlugin =
-  isGoogleClientId(googleWebClientId) &&
-  isGoogleClientId(googleIosClientId)
+  isGoogleClientId(googleWebClientId)
     ? [
         "@react-native-google-signin/google-signin",
         {
           webClientId: googleWebClientId,
-          androidClientId: googleAndroidClientId,
-          iosClientId: googleIosClientId,
-          iosUrlScheme: `com.googleusercontent.apps.${googleIosClientId.split("-")[0]}`,
+          androidClientId: isGoogleClientId(googleAndroidClientId)
+            ? googleAndroidClientId
+            : googleWebClientId,
+          iosClientId: isGoogleClientId(googleIosClientId)
+            ? googleIosClientId
+            : googleWebClientId,
+          ...(isGoogleClientId(googleIosClientId)
+            ? {
+                iosUrlScheme: `com.googleusercontent.apps.${googleIosClientId.split("-")[0]}`,
+              }
+            : {}),
         },
       ]
     : null;
+
+const basePlugins = (app.expo.plugins || []).filter((plugin) => {
+  const pluginName =
+    typeof plugin === "string" ? plugin : Array.isArray(plugin) ? plugin[0] : "";
+  return pluginName !== "@react-native-google-signin/google-signin";
+});
 
 module.exports = {
   ...app,
   expo: {
     ...app.expo,
     plugins: [
-      ...(app.expo.plugins || []),
+      ...basePlugins,
       ...(googlePlugin ? [googlePlugin] : []),
       [
         "expo-splash-screen",

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { submitContactRequest, getContactRequests, getMyContactRequests, getContactRequestById, updateContactStatus } = require("../controller/contactController");
 const { submitDeletionRequest, getDeletionRequests, getMyDeletionRequests, getDeletionRequestById, updateDeletionStatus } = require("../controller/deletionController");
+const { submitContentReport } = require("../controller/contentReportController");
 const { getSupportAssociates } = require("../controller/supportAssociateController");
 const requireAdmin = require("../middlewares/requireAdmin");
 const optionalAuth = require("../middlewares/optionalAuth");
@@ -12,6 +13,7 @@ const { contactLimiter, deletionLimiter } = require("../middlewares/rateLimit");
 // Public routes (optional auth attaches the logged-in userId)
 router.post("/contact", contactLimiter, optionalAuth, submitContactRequest);
 router.post("/deletion-request", deletionLimiter, optionalAuth, submitDeletionRequest);
+router.post("/content-report", contactLimiter, optionalAuth, submitContentReport);
 
 // User routes (must come before admin /:id routes)
 router.get("/contact/mine", isAuthenticated, getMyContactRequests);
