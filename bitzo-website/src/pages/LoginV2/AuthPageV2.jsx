@@ -689,7 +689,7 @@ export default function AuthPageV2() {
                   </div>
                 )}
 
-              {!registrationPhoneRequired && !migrationMode && (
+              {!registrationPhoneRequired && (
                 <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs leading-relaxed text-gray-300">
                   <label className="flex items-start gap-2.5">
                     <input

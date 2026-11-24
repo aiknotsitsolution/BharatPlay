@@ -108,6 +108,8 @@ const makeRequest = (otp) => ({
     name: registeredUser.name,
     email: registeredUser.email,
     password: "correct-password",
+    termsAccepted: true,
+    ageConfirmed: true,
     clientHardwareUuid: "hardware-uuid-123",
     browserDeviceSignals: {
       version: "web-v1",

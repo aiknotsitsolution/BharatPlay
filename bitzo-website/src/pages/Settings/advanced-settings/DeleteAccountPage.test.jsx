@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../context/ThemeContext", () => ({
@@ -34,7 +35,11 @@ describe("DeleteAccountPage", () => {
   });
 
   it("submits a deletion request only after the user confirms", async () => {
-    render(<DeleteAccountPage />);
+    render(
+      <MemoryRouter>
+        <DeleteAccountPage />
+      </MemoryRouter>,
+    );
 
     fireEvent.change(screen.getByLabelText("Email Address *"), {
       target: { value: "member@example.com" },
