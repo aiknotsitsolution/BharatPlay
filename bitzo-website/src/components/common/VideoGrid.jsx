@@ -4,7 +4,6 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   BadgeCheck,
   Check,
-  ChevronLeft,
   ChevronRight,
   Play,
   Plus,
@@ -70,9 +69,9 @@ const HOME_SECTIONS = [
 // Reusable components
 // ────────────────────────────────────────────────
 
-function SectionHeader({ title, onClick, onScrollLeft, onScrollRight }) {
+function SectionHeader({ title, onClick }) {
   return (
-    <div className="mb-3 flex items-center justify-between">
+    <div className="mb-3 flex items-center">
       <h2
         onClick={onClick}
         className="text-white text-xl font-semibold flex items-center gap-2 hover:text-white/80 transition-colors cursor-pointer"
@@ -80,24 +79,6 @@ function SectionHeader({ title, onClick, onScrollLeft, onScrollRight }) {
         {title}
         <ChevronRight size={20} className="text-zinc-400" />
       </h2>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onScrollLeft}
-          aria-label={`Scroll ${title} left`}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-zinc-900 text-white transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <button
-          type="button"
-          onClick={onScrollRight}
-          aria-label={`Scroll ${title} right`}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-zinc-900 text-white transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-        >
-          <ChevronRight size={20} />
-        </button>
-      </div>
     </div>
   );
 }
@@ -479,7 +460,6 @@ export default function NetflixStylePage() {
     sectionFetching,
   } = useSelector((state) => state.videos);
   const loadMoreRef = useRef(null);
-  const rowScrollRefs = useRef(new Map());
 
   useEffect(() => {
     dispatch(fetchHomeVideos({ category: selectedCategory, page: 1 }));
@@ -537,15 +517,6 @@ export default function NetflixStylePage() {
   };
 
   const goToViewAll = (type) => navigate(`/videos/${type}`);
-  const scrollRow = (rowKey, direction) => {
-    const rowElement = rowScrollRefs.current.get(rowKey);
-    if (!rowElement) return;
-
-    rowElement.scrollBy({
-      left: direction * rowElement.clientWidth * 0.8,
-      behavior: "smooth",
-    });
-  };
   const handleAddToWatchLater = (item) => {
     if (promptLogin(navigate, location)) return { success: false };
     return addToWatchLater(item);
@@ -665,17 +636,8 @@ export default function NetflixStylePage() {
               <SectionHeader
                 title={row.title}
                 onClick={() => goToViewAll(row.viewAll)}
-                onScrollLeft={() => scrollRow(row.key, -1)}
-                onScrollRight={() => scrollRow(row.key, 1)}
               />
               <div
-                ref={(element) => {
-                  if (element) {
-                    rowScrollRefs.current.set(row.key, element);
-                  } else {
-                    rowScrollRefs.current.delete(row.key);
-                  }
-                }}
                 className={
                   row.kind === "shorts"
                     ? "flex gap-3 sm:gap-4 overflow-x-auto pb-3 scrollbar-hide hover:scrollbar-show snap-x snap-mandatory"
