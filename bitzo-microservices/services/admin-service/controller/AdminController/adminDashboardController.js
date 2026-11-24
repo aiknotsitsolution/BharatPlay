@@ -102,18 +102,28 @@ exports.getDashboard = async (req, res) => {
 
     const weekDays = buildWeekDays();
     const weekStart = weekDays[0].start;
+    const weekEnd = weekDays[weekDays.length - 1].end;
     const monthWindow = buildMonths();
-    const sevenDaysAgo = new Date(weekStart);
     const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const weeklyCountPipeline = [
+      { $match: { createdAt: { $gte: weekStart, $lt: weekEnd } } },
+      {
+        $bucket: {
+          groupBy: "$createdAt",
+          boundaries: [...weekDays.map(({ start }) => start), weekEnd],
+          output: { total: { $sum: 1 } },
+        },
+      },
+    ];
 
     const [
       totalUsers,
       totalVideos,
       totalShorts,
       activeUsers,
-      usersThisWeek,
-      videosThisWeek,
+      usersByDayAgg,
+      videosByDayAgg,
       newUsersToday,
       videosToday,
       viewsAgg,
@@ -128,8 +138,8 @@ exports.getDashboard = async (req, res) => {
       Video.estimatedDocumentCount(),
       Video.countDocuments({ videoType: "short" }),
       User.countDocuments({ status: "active" }),
-      User.find({ createdAt: { $gte: weekStart } }, { createdAt: 1 }).lean(),
-      Video.find({ createdAt: { $gte: weekStart } }, { createdAt: 1 }).lean(),
+      User.aggregate(weeklyCountPipeline),
+      Video.aggregate(weeklyCountPipeline),
       User.countDocuments({ createdAt: { $gte: startOfToday } }),
       Video.countDocuments({ createdAt: { $gte: startOfToday } }),
       Video.aggregate([{ $group: { _id: null, total: { $sum: "$views" } } }]),
@@ -368,17 +378,17 @@ exports.getDashboard = async (req, res) => {
       : null;
 
     const onlineSet = new Set(onlineIds.map((item) => String(item._id)));
+    const countsByDay = (rows) =>
+      new Map(rows.map((row) => [new Date(row._id).getTime(), row.total]));
+    const usersByDay = countsByDay(usersByDayAgg);
+    const videosByDay = countsByDay(videosByDayAgg);
 
-    const weekly = weekDays.map(({ day, start, end }) => {
+    const weekly = weekDays.map(({ day, start }) => {
       const dateKey = start.toISOString().slice(0, 10);
       return {
         day,
-        users: usersThisWeek.filter(
-          (user) => user.createdAt >= start && user.createdAt < end,
-        ).length,
-        videos: videosThisWeek.filter(
-          (video) => video.createdAt >= start && video.createdAt < end,
-        ).length,
+        users: usersByDay.get(start.getTime()) || 0,
+        videos: videosByDay.get(start.getTime()) || 0,
         inquiries: inquiriesMap ? inquiriesMap.get(dateKey) || 0 : null,
         copyrightCases: copyrightMap ? copyrightMap.get(dateKey) || 0 : null,
         adImpressions: adsMap ? adsMap.get(dateKey)?.impressions || 0 : null,
@@ -465,7 +475,7 @@ exports.getDashboard = async (req, res) => {
       totalShorts,
       totalLongVideos: totalVideos - totalShorts,
       activeUsers,
-      newUsersThisWeek: usersThisWeek.length,
+      newUsersThisWeek: usersByDayAgg.reduce((total, row) => total + row.total, 0),
     };
 
     const snapshot = {
