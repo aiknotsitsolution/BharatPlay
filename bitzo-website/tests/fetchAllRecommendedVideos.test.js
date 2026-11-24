@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   fetchAllLatestVideos,
   fetchAllRecommendedVideos,
-} from "./fetchAllRecommendedVideos";
+} from "../src/utils/fetchAllRecommendedVideos";
 
 describe("fetchAllRecommendedVideos", () => {
   it("loads every recommended video in API-supported batches", async () => {

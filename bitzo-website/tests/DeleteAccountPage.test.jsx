@@ -2,11 +2,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../../context/ThemeContext", () => ({
+vi.mock("../src/context/ThemeContext", () => ({
   useTheme: () => ({ theme: "dark" }),
 }));
 
-vi.mock("../../../components/public/LegalPageLayout", () => ({
+vi.mock("../src/components/public/LegalPageLayout", () => ({
   default: ({ children, title }) => (
     <main>
       <h1>{title}</h1>
@@ -15,13 +15,13 @@ vi.mock("../../../components/public/LegalPageLayout", () => ({
   ),
 }));
 
-vi.mock("../../../api/support", () => ({
+vi.mock("../src/api/support", () => ({
   deleteMyAccount: vi.fn(),
   submitDeletionRequest: vi.fn(),
 }));
 
-import { submitDeletionRequest } from "../../../api/support";
-import DeleteAccountPage from "./DeleteAccountPage";
+import { submitDeletionRequest } from "../src/api/support";
+import DeleteAccountPage from "../src/pages/Settings/advanced-settings/DeleteAccountPage";
 
 describe("DeleteAccountPage", () => {
   beforeEach(() => {

@@ -1,10 +1,10 @@
-jest.mock("./redis", () => ({
+jest.mock("../../services/redis", () => ({
   getRedisClient: jest.fn(),
   getServiceDependency: jest.fn(),
 }));
 
-const { getRedisClient, getServiceDependency } = require("./redis");
-const { createRateLimitStore } = require("./ratelimiting");
+const { getRedisClient, getServiceDependency } = require("../../services/redis");
+const { createRateLimitStore } = require("../../services/ratelimiting");
 
 describe("Redis rate-limit store", () => {
   beforeEach(() => {

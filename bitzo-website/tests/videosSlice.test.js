@@ -7,7 +7,7 @@ import videosReducer, {
   prioritizeCategoryChannels,
   rankShortsByEngagement,
   shuffleAfterPinnedItems,
-} from "./videosSlice";
+} from "../src/features/videos/videosSlice";
 
 describe("Shorts feed pagination", () => {
   let store;

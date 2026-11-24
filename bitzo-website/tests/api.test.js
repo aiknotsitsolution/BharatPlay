@@ -13,7 +13,7 @@ describe("API origin", () => {
       location: { hostname: "localhost", port: "5173" },
     });
 
-    const { API_ORIGIN } = await import("./api");
+    const { API_ORIGIN } = await import("../src/config/api");
 
     expect(API_ORIGIN).toBe("http://localhost:5000");
   });
@@ -24,7 +24,7 @@ describe("API origin", () => {
       location: { hostname: "192.168.1.20", port: "5173" },
     });
 
-    const { API_ORIGIN } = await import("./api");
+    const { API_ORIGIN } = await import("../src/config/api");
 
     expect(API_ORIGIN).toBe("http://192.168.1.20:5000");
   });
@@ -35,7 +35,7 @@ describe("API origin", () => {
       location: { hostname: "localhost", port: "5174" },
     });
 
-    const { API_ORIGIN } = await import("./api");
+    const { API_ORIGIN } = await import("../src/config/api");
 
     expect(API_ORIGIN).toBe("http://localhost:5000");
   });
@@ -51,7 +51,7 @@ describe("API origin", () => {
       },
     });
 
-    const { API_ORIGIN } = await import("./api");
+    const { API_ORIGIN } = await import("../src/config/api");
 
     expect(API_ORIGIN).toBe("https://vidbux.example.com");
   });
@@ -62,7 +62,7 @@ describe("API origin", () => {
       location: { hostname: "192.168.1.20", port: "5173" },
     });
 
-    const { API_ORIGIN } = await import("./api");
+    const { API_ORIGIN } = await import("../src/config/api");
 
     expect(API_ORIGIN).toBe("https://api.example.com");
   });

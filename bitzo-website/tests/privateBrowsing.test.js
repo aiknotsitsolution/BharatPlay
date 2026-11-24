@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   isLikelyPrivateBrowsing,
   PRIVATE_BROWSING_BYPASS_UNTIL,
-} from "./privateBrowsing";
+} from "../src/utils/privateBrowsing";
 
 const chromeUserAgent = "Mozilla/5.0 Chrome/150.0.0.0 Safari/537.36";
 

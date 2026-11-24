@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, test } from "vitest";
 import { Provider } from "react-redux";
-import { store } from "./store/store";
-import App from "./App";
+import { store } from "../src/store/store";
+import App from "../src/App";
 
 describe("App", () => {
   beforeEach(() => {

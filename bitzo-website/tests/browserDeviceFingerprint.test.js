@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getBrowserDeviceSignals } from "./browserDeviceFingerprint";
+import { getBrowserDeviceSignals } from "../src/utils/browserDeviceFingerprint";
 
 const createBrowser = (userAgent = "Chrome") => ({
   navigator: {

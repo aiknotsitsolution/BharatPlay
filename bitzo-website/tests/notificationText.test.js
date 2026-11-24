@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getNotificationText } from "./notificationText";
+import { getNotificationText } from "../src/utils/notificationText";
 
 describe("notification text", () => {
   it.each([

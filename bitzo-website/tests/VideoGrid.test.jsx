@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { MovieCard } from "./VideoGrid";
-import ShortCard from "./ShortCard";
+import { MovieCard } from "../src/components/common/VideoGrid";
+import ShortCard from "../src/components/common/ShortCard";
 
 describe("feed cards", () => {
   it("shows a video thumbnail without mounting a preview player", () => {

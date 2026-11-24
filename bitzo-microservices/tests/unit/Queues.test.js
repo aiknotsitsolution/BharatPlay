@@ -1,10 +1,10 @@
-jest.mock("./redis", () => ({
+jest.mock("../../services/redis", () => ({
   getRedisClient: jest.fn(),
   getServiceDependency: jest.fn(),
 }));
 
-const { getRedisClient, getServiceDependency } = require("./redis");
-const { enqueueNotification } = require("./Queues");
+const { getRedisClient, getServiceDependency } = require("../../services/redis");
+const { enqueueNotification } = require("../../services/Queues");
 
 describe("BullMQ notification producer", () => {
   test("queues a notification with stable retry defaults and a Mongo-safe ID", async () => {

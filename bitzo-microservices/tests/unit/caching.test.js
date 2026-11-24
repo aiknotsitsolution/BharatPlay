@@ -1,9 +1,9 @@
-jest.mock("./redis", () => ({
+jest.mock("../../services/redis", () => ({
   getRedisClient: jest.fn(),
 }));
 
-const { getRedisClient } = require("./redis");
-const { cached, invalidateCache } = require("./caching");
+const { getRedisClient } = require("../../services/redis");
+const { cached, invalidateCache } = require("../../services/caching");
 
 describe("Redis cache helpers", () => {
   beforeEach(() => {
