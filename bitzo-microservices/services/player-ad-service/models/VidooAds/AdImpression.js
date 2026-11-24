@@ -43,11 +43,19 @@ const adImpressionSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+adImpressionSchema.index({ userId: 1, event: 1, createdAt: -1 });
 
 module.exports = mongoose.model(
   "AdImpression",

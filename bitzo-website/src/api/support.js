@@ -40,6 +40,24 @@ export const submitDeletionRequest = async (formData) => {
   }
 };
 
+export const deleteMyAccount = async (confirmation) => {
+  const token = getToken();
+  if (!token) return { success: false, message: "Please sign in again." };
+
+  try {
+    const res = await fetch(`${API_BASE}/account`, {
+      method: "DELETE",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(confirmation),
+    });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error("[API] Account deletion error:", err);
+    return { success: false, message: "Network error. Please try again." };
+  }
+};
+
 export const getMyContactRequests = async (params = {}) => {
   const token = getToken();
   if (!token) return { success: false, message: "Unauthorized" };

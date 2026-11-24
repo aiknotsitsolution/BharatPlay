@@ -1,5 +1,6 @@
 const AdImpression = require("../models/VidooAds/AdImpression");
 const AdNetwork = require("../models/VidooAds/AdNetwork");
+const mongoose = require("mongoose");
 const User = require("../models/usermodel");
 const TrustScoreLog = require("../models/TrustScoreLog");
 const {
@@ -9,6 +10,8 @@ const {
 } = require("./trustScoreService");
 
 const { getAdFromWaterfall } = require("./waterfallService");
+
+const AD_FREQUENCY_CAP_MS = 10 * 60 * 1000;
 
 // GET /v1/player/manifest/:video_id
 const getPlayerManifest = async (req, res) => {
@@ -26,6 +29,29 @@ const getPlayerManifest = async (req, res) => {
       ? await User.findById(req.user.id).select("trustScore")
       : null;
     const adAccess = getAdAccess(user?.trustScore ?? 50);
+    if (req.user?.id) {
+      const recentImpression = await AdImpression.findOne({
+        userId: req.user.id,
+        event: "impression",
+        createdAt: { $gte: new Date(Date.now() - AD_FREQUENCY_CAP_MS) },
+      })
+        .sort({ createdAt: -1 })
+        .select("createdAt")
+        .lean();
+      if (recentImpression) {
+        return res.status(200).json({
+          success: true,
+          videoId: video_id,
+          adAvailable: false,
+          adAccess,
+          nextAdAvailableAt: new Date(
+            recentImpression.createdAt.getTime() + AD_FREQUENCY_CAP_MS,
+          ),
+          message: "Ad frequency limit reached",
+        });
+      }
+    }
+
     const result = await getAdFromWaterfall();
 
     if (!result) {
@@ -86,6 +112,37 @@ const trackAdImpression = async (req, res) => {
         message: "videoId and networkId are required",
       });
     }
+    if (
+      ![
+        "impression",
+        "start",
+        "25%",
+        "50%",
+        "75%",
+        "complete",
+        "skip",
+        "error",
+      ].includes(event)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid ad event.",
+      });
+    }
+    if (event === "impression" && req.user?.id) {
+      const recentImpression = await AdImpression.exists({
+        userId: req.user.id,
+        event: "impression",
+        createdAt: { $gte: new Date(Date.now() - AD_FREQUENCY_CAP_MS) },
+      });
+      if (recentImpression) {
+        return res.status(429).json({
+          success: false,
+          code: "AD_FREQUENCY_LIMIT",
+          message: "Only one advertisement may be played every 10 minutes.",
+        });
+      }
+    }
 
     const network = await AdNetwork.findById(networkId);
 
@@ -103,6 +160,7 @@ const trackAdImpression = async (req, res) => {
       event,
       sessionId: sessionId || null,
       deviceId: deviceId || null,
+      userId: req.user?.id || null,
     });
 
     return res.status(201).json({
@@ -189,8 +247,30 @@ const completeRewardedAd = async (req, res) => {
   }
 };
 
+const deleteUserAdData = async (req, res) => {
+  const { userId } = req.body || {};
+  if (!mongoose.Types.ObjectId.isValid(String(userId || ""))) {
+    return res.status(400).json({
+      success: false,
+      message: "A valid user ID is required.",
+    });
+  }
+
+  try {
+    await AdImpression.deleteMany({ userId });
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("[account-deletion] Ad data cleanup failed:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Could not delete the account's ad data.",
+    });
+  }
+};
+
 module.exports = {
   getPlayerManifest,
   trackAdImpression,
   completeRewardedAd,
+  deleteUserAdData,
 };

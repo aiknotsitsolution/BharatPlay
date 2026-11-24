@@ -287,6 +287,65 @@ const uploadBufferToB2 = async (file, folderName) => {
   }
 };
 
+const getB2FileNameFromUrl = (fileUrl, bucketName) => {
+  try {
+    const segments = new URL(fileUrl).pathname
+      .split("/")
+      .filter(Boolean)
+      .map(decodeURIComponent);
+    if (segments.length < 3 || segments[0] !== "file" || segments[1] !== bucketName) {
+      return null;
+    }
+    return segments.slice(2).join("/");
+  } catch {
+    return null;
+  }
+};
+
+const deleteFilesFromB2 = async (fileUrls) => {
+  const cfg = getB2Config();
+  const fileNames = [
+    ...new Set(
+      fileUrls
+        .map((fileUrl) => getB2FileNameFromUrl(fileUrl, cfg.bucketName))
+        .filter(Boolean),
+    ),
+  ];
+  if (!fileNames.length) return;
+  if (!cfg.bucketId || !cfg.bucketName) {
+    throw new Error("Backblaze B2 configuration is incomplete");
+  }
+
+  const authData = await authorizeB2();
+  const headers = { Authorization: authData.authorizationToken };
+  for (let index = 0; index < fileNames.length; index += 5) {
+    const batch = fileNames.slice(index, index + 5);
+    await Promise.all(
+      batch.map(async (fileName) => {
+        const response = await axios.post(
+          `${authData.apiUrl}/b2api/v4/b2_list_file_versions`,
+          {
+            bucketId: cfg.bucketId,
+            startFileName: fileName,
+            maxFileCount: 100,
+          },
+          { headers, timeout: 30000 },
+        );
+        const versions = (response.data.files || []).filter(
+          (file) => file.fileName === fileName,
+        );
+        for (const version of versions) {
+          await axios.post(
+            `${authData.apiUrl}/b2api/v4/b2_delete_file_version`,
+            { fileName: version.fileName, fileId: version.fileId },
+            { headers, timeout: 30000 },
+          );
+        }
+      }),
+    );
+  }
+};
+
 /**
  * Middleware
  */
@@ -420,3 +479,4 @@ const uploadToBackblaze = [
 ];
 
 module.exports = uploadToBackblaze;
+module.exports.deleteFilesFromB2 = deleteFilesFromB2;

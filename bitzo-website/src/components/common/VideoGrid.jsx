@@ -19,6 +19,24 @@ import { ShortsCardSkeletonRow, VideoCardSkeletonRow } from "./Skeletons";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 import { promptLogin } from "../../utils/loginPrompt";
 
+const FEED_AD_FREQUENCY_MS = 10 * 60 * 1000;
+const FEED_AD_LAST_IMPRESSION_KEY = "vidbux:last-feed-ad-impression";
+
+const hasRecentFeedAdImpression = () => {
+  try {
+    const lastImpression = Number(
+      localStorage.getItem(FEED_AD_LAST_IMPRESSION_KEY),
+    );
+    return (
+      Number.isFinite(lastImpression) &&
+      lastImpression > 0 &&
+      Date.now() - lastImpression < FEED_AD_FREQUENCY_MS
+    );
+  } catch {
+    return false;
+  }
+};
+
 const HOME_ROW_SIZE = 5;
 const HOME_SECTIONS = [
   {
@@ -339,8 +357,13 @@ function FeedAdvertisementCard({ videoId }) {
     let cancelled = false;
     const loadAdvertisement = async () => {
       try {
+        if (hasRecentFeedAdImpression()) return;
+        const token = localStorage.getItem("token");
         const response = await fetch(
           `${BACKEND_URL}/v1/player/manifest/${encodeURIComponent(videoId)}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          },
         );
         if (!response.ok) {
           throw new Error(`Ad manifest request failed (${response.status})`);
@@ -391,9 +414,13 @@ function FeedAdvertisementCard({ videoId }) {
   }, [nearViewport, videoId]);
 
   const trackEvent = (event) => {
+    const token = localStorage.getItem("token");
     fetch(`${BACKEND_URL}/v1/player/ad-impression`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({
         videoId,
         networkId: advertisement.networkId,
@@ -419,8 +446,21 @@ function FeedAdvertisementCard({ videoId }) {
               playsInline
               preload="none"
               className="aspect-video w-full bg-black"
-              onPlay={() => {
+              onPlay={(event) => {
                 if (!impressionTracked.current) {
+                  if (hasRecentFeedAdImpression()) {
+                    event.currentTarget.pause();
+                    setAdvertisement(null);
+                    return;
+                  }
+                  try {
+                    localStorage.setItem(
+                      FEED_AD_LAST_IMPRESSION_KEY,
+                      String(Date.now()),
+                    );
+                  } catch (error) {
+                    console.warn("Could not save ad frequency limit:", error);
+                  }
                   impressionTracked.current = true;
                   trackEvent("impression");
                 }

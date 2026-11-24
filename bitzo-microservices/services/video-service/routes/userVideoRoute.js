@@ -51,6 +51,10 @@ const { viewLimiter } = require("../middlewares/rateLimit");
 const upload = require("../middlewares/multer");
 const uploadToBackblaze = require("../middlewares/blazerMiddlware");
 const requireAdmin = require("../middlewares/requireAdmin");
+const internalServiceAuth = require("../middlewares/internalServiceAuth");
+const { deleteAccountContent } = require("../controller/userVideoController");
+router.delete("/account-content", internalServiceAuth, deleteAccountContent);
+
 router.post(
   "/createchannel",
   isAuthenticated,

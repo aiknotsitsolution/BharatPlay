@@ -109,8 +109,9 @@ const SECTIONS = [
     title: "19. Account & Data Deletion",
     body: (
       <>
-        You can request the deletion of your VidBuxApp account and the personal
-        information associated with it through the{" "}
+        Signed-in users can permanently delete their VidBuxApp account and
+        associated content, or submit a data deletion request if they cannot
+        access the account, through the{" "}
         <Link
           to="/delete-account"
           className="text-blue-500 underline underline-offset-2 hover:text-blue-400"

@@ -38,6 +38,7 @@ const {
   verifyLegacyMigration,
 } = require("../controller/phoneAuthController");
 const { imageUpload } = require("../middlewares/multer");
+const { deleteMyAccount } = require("../controller/accountDeletionController");
 
 router.post("/register", registerLimiter, registerUser);
 router.post("/login", loginLimiter, loginUser);
@@ -133,6 +134,7 @@ router.put(
   authMiddleware,
   updatePassword,
 );
+router.delete("/account", passwordLimiter, authMiddleware, deleteMyAccount);
 router.get("/me", authMiddleware, getMyProfile);
 
 module.exports = router;

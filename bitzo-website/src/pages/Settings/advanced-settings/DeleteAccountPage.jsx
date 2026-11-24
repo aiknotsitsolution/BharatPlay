@@ -9,12 +9,17 @@ import {
   Mail,
   Loader2,
 } from "lucide-react";
+import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import LegalPageLayout from "../../../components/public/LegalPageLayout";
 import { useTheme } from "../../../context/ThemeContext";
-import { submitDeletionRequest } from "../../../api/support";
+import {
+  deleteMyAccount,
+  submitDeletionRequest,
+} from "../../../api/support";
 import { formatTicketId } from "../../../utils/ticketId";
 import SITE from "../../../config/site";
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 const REASONS = [
   "Not the account I want",
   "Too many emails or notifications",
@@ -52,6 +57,18 @@ export default function DeleteAccountPage() {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
   const [ticketId, setTicketId] = useState("");
+  const [loggedInUser, setLoggedInUser] = useState(getLoggedInUser);
+  const [deleteEmail, setDeleteEmail] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [googleCredential, setGoogleCredential] = useState("");
+  const [deleteConfirmations, setDeleteConfirmations] = useState({
+    content: false,
+    account: false,
+    permanent: false,
+  });
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [directDeletionSuccess, setDirectDeletionSuccess] = useState(false);
 
   const setField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -76,28 +93,13 @@ export default function DeleteAccountPage() {
     return next;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     const next = validate();
     setErrors(next);
     if (Object.values(next).some(Boolean)) return;
-
-    setSubmitting(true);
     setServerError("");
-
-    const result = await submitDeletionRequest({
-      email: form.email.trim(),
-      accountIdentifier: form.accountIdentifier.trim(),
-      reason: form.reason.trim(),
-    });
-
-    setSubmitting(false);
-
-    if (result.success) {
-      setStep("confirm");
-    } else {
-      setServerError(result.message || "Failed to submit. Please try again.");
-    }
+    setStep("confirm");
   };
 
   const handleConfirm = async () => {
@@ -118,6 +120,48 @@ export default function DeleteAccountPage() {
     } else {
       setServerError(result.message || "Failed to submit. Please try again.");
     }
+  };
+
+  const handleDirectDeletion = async (event) => {
+    event.preventDefault();
+    setDeleteError("");
+
+    if (
+      !deleteConfirmations.content ||
+      !deleteConfirmations.account ||
+      !deleteConfirmations.permanent
+    ) {
+      setDeleteError("Confirm each item before continuing.");
+      return;
+    }
+    if (deleteEmail.trim().toLowerCase() !== loggedInUser?.email?.toLowerCase()) {
+      setDeleteError("Enter the email address linked to your signed-in account.");
+      return;
+    }
+    if (!deletePassword && !googleCredential) {
+      setDeleteError("Enter your account password or verify with Google.");
+      return;
+    }
+
+    setDeleteSubmitting(true);
+    const result = await deleteMyAccount({
+      confirmEmail: deleteEmail.trim(),
+      password: deletePassword,
+      googleCredential,
+      confirmations: deleteConfirmations,
+    });
+    setDeleteSubmitting(false);
+
+    if (!result.success) {
+      setDeleteError(result.message || "Could not delete the account.");
+      return;
+    }
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.dispatchEvent(new Event("auth-change"));
+    setLoggedInUser(null);
+    setDirectDeletionSuccess(true);
   };
 
   const errorText = (key) =>
@@ -167,15 +211,146 @@ export default function DeleteAccountPage() {
         </p>
       </div>
 
+      {(loggedInUser || directDeletionSuccess) && (
+        <section
+          className={`mt-8 rounded-2xl border p-6 sm:p-8 ${isDark ? "border-red-900/50 bg-[#161616]" : "border-red-200 bg-white"}`}
+        >
+          {directDeletionSuccess ? (
+            <div className="text-center">
+              <CheckCircle2 size={32} className="mx-auto text-emerald-400" />
+              <h2 className={`mt-3 text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
+                Account deleted
+              </h2>
+              <p className={`mt-2 text-sm ${isDark ? "text-zinc-400" : "text-gray-500"}`}>
+                Your VidBux account and associated videos, comments, subscriptions,
+                and account data have been deleted.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleDirectDeletion}>
+              <h2 className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
+                Delete my account now
+              </h2>
+              <p className={`mt-1 text-sm leading-relaxed ${isDark ? "text-zinc-400" : "text-gray-500"}`}>
+                This permanently removes your account, uploaded videos and channels,
+                comments, subscriptions, reward points, and account history.
+                Information required by law may be retained.
+              </p>
+
+              <div className="mt-5 space-y-3">
+                {[
+                  ["content", "I understand my uploaded videos, channels, and comments will be removed."],
+                  ["account", "I understand my subscriptions, loyalty points, and account history will be removed."],
+                  ["permanent", "I understand this action is permanent and cannot be undone."],
+                ].map(([key, label]) => (
+                  <label key={key} className={`flex items-start gap-2.5 text-sm ${isDark ? "text-zinc-300" : "text-gray-700"}`}>
+                    <input
+                      type="checkbox"
+                      checked={deleteConfirmations[key]}
+                      onChange={(event) =>
+                        setDeleteConfirmations((current) => ({
+                          ...current,
+                          [key]: event.target.checked,
+                        }))
+                      }
+                      className="mt-1 accent-red-600"
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="mt-5 space-y-4">
+                <div>
+                  <label htmlFor="delete-confirm-email" className={`mb-1.5 block text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}>
+                    Type your account email to confirm
+                  </label>
+                  <input
+                    id="delete-confirm-email"
+                    type="email"
+                    autoComplete="email"
+                    value={deleteEmail}
+                    onChange={(event) => setDeleteEmail(event.target.value)}
+                    className={inputClasses("deleteEmail")}
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="delete-confirm-password" className={`mb-1.5 block text-sm font-medium ${isDark ? "text-zinc-300" : "text-gray-700"}`}>
+                    Account password
+                  </label>
+                  <input
+                    id="delete-confirm-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={deletePassword}
+                    onChange={(event) => setDeletePassword(event.target.value)}
+                    className={inputClasses("deletePassword")}
+                    placeholder="Use Google verification if you sign in with Google"
+                  />
+                </div>
+                {GOOGLE_CLIENT_ID && (
+                  <div>
+                    <p className={`mb-2 text-xs ${isDark ? "text-zinc-500" : "text-gray-500"}`}>
+                      Or re-verify your Google account. We will never ask for your Google password.
+                    </p>
+                    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+                      <GoogleLogin
+                        onSuccess={(response) => {
+                          setGoogleCredential(response.credential || "");
+                          setDeleteError("");
+                        }}
+                        onError={() => setDeleteError("Google verification failed. Please try again.")}
+                        text="signin_with"
+                        shape="rectangular"
+                      />
+                    </GoogleOAuthProvider>
+                    {googleCredential && (
+                      <p className="mt-2 text-xs text-emerald-400">
+                        Google account verified for this deletion request.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {deleteError && (
+                <p className="mt-4 text-sm text-red-400" role="alert">
+                  {deleteError}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={
+                  deleteSubmitting ||
+                  (!deletePassword && !googleCredential) ||
+                  !deleteConfirmations.content ||
+                  !deleteConfirmations.account ||
+                  !deleteConfirmations.permanent
+                }
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleteSubmitting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Trash2 size={16} />
+                )}
+                {deleteSubmitting ? "Deleting account..." : "Permanently delete my account"}
+              </button>
+            </form>
+          )}
+        </section>
+      )}
+
       {/* Deletion request form */}
-      <div
+      {!directDeletionSuccess && <div
         className={`mt-8 rounded-2xl border p-6 sm:p-8 ${isDark ? "border-zinc-800/70 bg-[#161616]" : "border-gray-200 bg-white"}`}
       >
         {step === "success" ? (
           <div className="flex flex-col items-center py-10 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/30">
               <CheckCircle2 size={28} className="text-emerald-400" />
-            </div>
+            </div>}
             <h2
               className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}
             >

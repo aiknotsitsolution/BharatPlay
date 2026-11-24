@@ -16,7 +16,7 @@ const FAQ_DATA = [
     items: [
       { q: "I forgot my password. How do I reset it?", a: "Tap 'Forgot Password?' on the login page. Enter your registered email address, and we will send you an OTP to reset your password." },
       { q: "How do I change my profile picture?", a: "Go to your profile page and tap the edit icon on your avatar. You can upload a new image from your device." },
-      { q: "Can I delete my account?", a: "Please contact customer support to request account deletion. This action is permanent and cannot be undone." },
+      { q: "Can I delete my account?", a: "Sign in and use the Account & Data Deletion page to permanently delete your account and associated content. If you cannot sign in, you can submit a data deletion request for verification." },
     ],
   },
   {
@@ -39,9 +39,9 @@ const FAQ_DATA = [
   {
     category: "Payments & Rewards",
     items: [
-      { q: "How do I earn rewards?", a: "You can earn rewards through the Watch & Earn program, referrals, and creator monetization features. Visit the Earn section for details." },
-      { q: "How do I withdraw my earnings?", a: "Go to your profile and tap 'Withdraw Rewards'. You can transfer earnings to your linked payment method." },
-      { q: "What is the minimum withdrawal amount?", a: "The minimum withdrawal amount and available payment methods may vary by region. Check the Withdraw page for current thresholds." },
+      { q: "How do I earn rewards?", a: "Eligible activity may earn promotional loyalty points. Points are not guaranteed cash, and withdrawals are currently unavailable." },
+      { q: "How do I withdraw my loyalty points?", a: "Withdrawals are currently unavailable, so points cannot be redeemed for cash. Do not provide payment details to anyone claiming otherwise." },
+      { q: "What are the withdrawal terms?", a: "If a verified payout program becomes available, the minimum redemption threshold will be ₹100. Approved requests may take 45–60 days to process; eligibility, approval, and payment are not guaranteed." },
     ],
   },
   {

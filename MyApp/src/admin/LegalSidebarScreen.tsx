@@ -200,23 +200,23 @@ export default function LegalSidebarScreen() {
 
             <Text style={styles.heading}>Rewards and Advertising</Text>
             <Text style={styles.paragraph}>
-              Rewarded ads may provide in-app points when an eligible ad is
-              completed and the server confirms the event. Points are not a
-              fixed payout. Rewards may be limited, reversed, or
-              frozen for duplicate accounts, automation, invalid activity,
-              fraud, policy violations, or technical errors. Conversion rates,
-              eligibility, minimum withdrawal thresholds, supported payout
-              methods, and processing times depend on the active VidBuxApp
-              rewards program and are shown when available. Never click ads or
-              interact with ads solely to manipulate rewards.
+              Eligible activity may provide promotional loyalty points. Points
+              are not guaranteed cash and withdrawals are currently
+              unavailable. If a verified payout program becomes available, the
+              minimum redemption threshold will be ₹100 and approved requests
+              may take 45–60 days to process; eligibility, approval, and payment
+              are not guaranteed. Rewards may be limited or removed for fraud,
+              invalid activity, or policy violations. Never interact with ads
+              solely to manipulate rewards.
             </Text>
 
             <Text style={styles.heading}>Your Rights</Text>
             <Text style={styles.paragraph}>
-              You can review, update, or request deletion of your account and
-              related data through the app settings or by contacting our support
-              team. We aim to respond to privacy requests in a timely and
-              transparent manner.
+              You can review or update account information in the app. You can
+              permanently delete your account and associated content through
+              the Account & Data Deletion page, or submit a data deletion
+              request if you cannot sign in. Information required by law may be
+              retained.
             </Text>
           </View>
         );

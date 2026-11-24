@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Linking,
   Modal,
   StyleSheet,
   Animated,
@@ -1150,6 +1151,43 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                   </Animated.View>
                 ) : null}
                 {resetStep === 0 &&
+                  !registrationPhoneRequired &&
+                  !migrationMode && (
+                    <View
+                      style={{
+                        marginBottom: 12,
+                        padding: 12,
+                        borderWidth: 1,
+                        borderColor: "rgba(255,255,255,0.12)",
+                        borderRadius: 12,
+                        backgroundColor: "rgba(255,255,255,0.03)",
+                      }}
+                    >
+                      <Text style={{ color: "#a1a1aa", fontSize: 12, lineHeight: 18 }}>
+                        VidBux is for people aged 18 and over. Loyalty points
+                        are promotional, not guaranteed cash; withdrawals are
+                        currently unavailable.{" "}
+                        <Text
+                          style={{ color: "#fca5a5" }}
+                          onPress={() =>
+                            Linking.openURL("https://vidbuxapp.com/terms")
+                          }
+                        >
+                          Terms
+                        </Text>
+                        {" · "}
+                        <Text
+                          style={{ color: "#fca5a5" }}
+                          onPress={() =>
+                            Linking.openURL("https://vidbuxapp.com/privacy-policy")
+                          }
+                        >
+                          Privacy Policy
+                        </Text>
+                      </Text>
+                    </View>
+                  )}
+                {resetStep === 0 &&
                   !otpRequired &&
                   !registrationPhoneRequired &&
                   !migrationMode && (
@@ -1428,7 +1466,8 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                             )}
                           </View>
                           <Text style={styles.termsConsentText}>
-                            I agree to the Terms of Service and Privacy Policy.
+                            I confirm that I am 18 or older and agree to the
+                            Terms of Service and Privacy Policy.
                           </Text>
                         </TouchableOpacity>
                       )}

@@ -17,6 +17,7 @@ const API_USERVIDEO = `${API_ORIGIN}/api/uservideo`;
 const AUTH_API = {
   register: `${API_BASE}/register`,
   login: `${API_BASE}/login`,
+  deleteAccount: `${API_BASE}/account`,
   mapPhone: `${API_BASE}/phone/map`,
   claimDevice: `${API_BASE}/claim-device`,
   google: `${API_BASE}/auth/google`,

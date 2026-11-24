@@ -12,6 +12,7 @@ const {
   notifyDeletionUser,
 } = require("../utils/supportNotification");
 const { ticketIdFromMongoId } = require("../utils/ticketId");
+const { deleteUserAccountData } = require("../services/accountDeletionService");
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || process.env.EMAIL;
 
@@ -301,31 +302,46 @@ exports.updateDeletionStatus = async (req, res) => {
       update.assignedBy = req.admin?._id ? String(req.admin._id) : "system";
     }
 
-    const request = await DeletionRequest.findByIdAndUpdate(id, update, {
-      returnDocument: "after",
-      runValidators: true,
-    });
-    if (!request) {
+    const existingRequest = await DeletionRequest.findById(id);
+    if (!existingRequest) {
       return res
         .status(404)
         .json({ success: false, message: "Request not found." });
     }
 
-    // If completed, mark user as deleted
-    if (status === "completed" && request.userId) {
-      try {
-        await User.findByIdAndUpdate(request.userId, { status: "deleted" });
-      } catch (userErr) {
-        console.error(
-          "[deletion] Failed to mark user as deleted:",
-          userErr.message,
-        );
-      }
+    let requestForNotification = existingRequest;
+    let request;
+    if (status === "completed" && existingRequest.userId) {
+      await deleteUserAccountData(existingRequest.userId, {
+        preserveDeletionRequestId: existingRequest._id,
+      });
+      requestForNotification = {
+        ...existingRequest.toObject(),
+        ...update,
+        userId: null,
+      };
+      request = await DeletionRequest.findByIdAndUpdate(
+        id,
+        {
+          ...update,
+          userId: null,
+          email: `deleted-${id}@redacted.invalid`,
+          accountIdentifier: "",
+          reason: "",
+          adminNotes: "",
+        },
+        { returnDocument: "after", runValidators: true },
+      );
+    } else {
+      request = await DeletionRequest.findByIdAndUpdate(id, update, {
+        returnDocument: "after",
+        runValidators: true,
+      });
     }
 
     // Notify the user when the status changes
     if (status) {
-      notifyDeletionUser({ ticket: request, newStatus: status });
+      notifyDeletionUser({ ticket: requestForNotification, newStatus: status });
     }
 
     return res.status(200).json({ success: true, request });

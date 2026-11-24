@@ -2,6 +2,7 @@ const Video = require("../models/Videomodel");
 const Channel = require("../models/Channel/ChannelModel");
 const mongoose = require("mongoose");
 const path = require("path");
+const fs = require("node:fs/promises");
 const imagekit = require("../utils/imagekit");
 const categoryModel = require("../models/CategoryModel/category.model");
 const HashtagStats = require("../models/CategoryModel/HashtagStats");
@@ -27,6 +28,7 @@ const {
   emitHistoryUpdated,
   emitViewCountUpdated,
 } = require("../services/socketService");
+const { deleteFilesFromB2 } = require("../middlewares/blazerMiddlware");
 
 const ABS_WATCH_SECONDS_CAP = 12 * 60 * 60; // 43200s hard cap per session
 const RESTRICTED_ACCOUNT_STATUSES = ["suspended", "banned", "deleted"];
@@ -1245,6 +1247,126 @@ const deleteChannel = async (req, res) => {
   } catch (error) {
     console.error("Error in deleteChannel:", error);
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+const deleteAccountContent = async (req, res) => {
+  try {
+    const userId = req.body?.userId;
+    if (!mongoose.Types.ObjectId.isValid(String(userId || ""))) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid user ID is required.",
+      });
+    }
+
+    const channels = await Channel.find({ creator: userId })
+      .select("_id channelImage channelBanner")
+      .lean();
+    const channelIds = channels.map((channel) => channel._id);
+    const videoFilter = {
+      $or: [
+        { uploadedBy: userId },
+        { creator: userId },
+        ...(channelIds.length ? [{ channel: { $in: channelIds } }] : []),
+      ],
+    };
+    const videos = await Video.find(videoFilter)
+      .select("_id videoUrl thumbnail")
+      .lean();
+    const videoIds = videos.map((video) => video._id);
+    const mediaUrls = [
+      ...videos.flatMap((video) => [video.videoUrl, video.thumbnail]),
+      ...channels.flatMap((channel) => [
+        channel.channelImage,
+        channel.channelBanner,
+      ]),
+    ].filter((mediaUrl) => typeof mediaUrl === "string" && mediaUrl);
+
+    await deleteFilesFromB2(mediaUrls);
+
+    const uploadsRoot = path.resolve(process.cwd(), "uploads");
+    const localUploadPaths = [
+      ...new Set(
+        mediaUrls
+          .map((mediaUrl) => mediaUrl.replace(/\\/g, "/"))
+          .filter(
+            (mediaUrl) =>
+              !/^https?:\/\//i.test(mediaUrl) &&
+              mediaUrl.startsWith("uploads/"),
+          ),
+      ),
+    ];
+    for (const mediaUrl of localUploadPaths) {
+      const filePath = path.resolve(process.cwd(), mediaUrl);
+      const relativePath = path.relative(uploadsRoot, filePath);
+      if (
+        relativePath === ".." ||
+        relativePath.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(relativePath)
+      ) {
+        throw new Error("Stored upload path is outside the uploads directory.");
+      }
+      try {
+        await fs.unlink(filePath);
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
+    }
+
+    await Promise.all([
+      Video.deleteMany(videoFilter),
+      Channel.deleteMany({ creator: userId }),
+      Video.updateMany(
+        { "comments.user": userId },
+        { $pull: { comments: { user: userId } } },
+      ),
+      Video.updateMany(
+        { "viewers.userId": userId },
+        { $pull: { viewers: { userId } } },
+      ),
+      Channel.updateMany(
+        {},
+        {
+          $pull: {
+            subscribedBy: userId,
+            subscribe: String(userId),
+          },
+        },
+      ),
+      User.updateMany(
+        {},
+        {
+          $pull: {
+            channels: { $in: channelIds },
+            videos: { $in: videoIds },
+            likedVideos: { $in: videoIds },
+            dislikedVideos: { $in: videoIds },
+            subscribedChannels: { $in: channelIds },
+            watchLaterVideos: { $in: videoIds },
+            viewedVideos: { $in: videoIds },
+          },
+        },
+      ),
+      WatchSession.deleteMany({
+        $or: [
+          { userId },
+          ...(videoIds.length ? [{ videoId: { $in: videoIds } }] : []),
+        ],
+      }),
+    ]);
+
+    await invalidateVideoCatalogCache();
+    return res.status(200).json({
+      success: true,
+      message: "Account videos, comments, channels, and subscriptions deleted.",
+    });
+  } catch (error) {
+    console.error("[account-deletion] Video content cleanup failed:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Could not delete the account's video content.",
+    });
   }
 };
 
@@ -3331,6 +3453,7 @@ module.exports = {
   getUserUploadedVideos,
   getvideosByChannel,
   deleteChannel,
+  deleteAccountContent,
   uploadVideo,
   recommendedVideos,
   getRelatedVideos,

@@ -71,7 +71,7 @@ const SECTIONS = [
   },
   {
     title: "10. Rewards, Advertising and Withdrawals",
-    body: "VidBuxApp may offer points or other in-app rewards for eligible activity, including approved rewarded-ad experiences. Rewards are promotional and do not represent a fixed payout until a withdrawal is approved. They may be limited, reversed, withheld, or removed for invalid activity, duplicate accounts, automation, fraud, chargebacks, policy violations, or technical errors. Conversion rates, the minimum redemption threshold of ₹100, supported payout methods, fees, regions, and processing times of 45–60 days may change and are shown in the app when available. A withdrawal request is not a payment guarantee; payouts require an active VidBuxApp account, successful verification, an available payout system, and final approval. Users must not encourage accidental ad clicks or use methods that manipulate ad measurement.",
+    body: "VidBuxApp may offer promotional loyalty points for eligible activity, including approved rewarded-ad experiences. Points are not guaranteed cash and withdrawals are currently unavailable. If a verified payout program becomes available, the minimum redemption threshold will be ₹100 and approved requests may take 45–60 days to process. Eligibility, approval, and payment are not guaranteed; future payout methods, fees, regions, thresholds, or processing times may change. Rewards may be limited, reversed, withheld, or removed for invalid activity, duplicate accounts, automation, fraud, chargebacks, policy violations, or technical errors. Users must not encourage accidental ad clicks or use methods that manipulate ad measurement.",
   },
   {
     title: "11. Disclaimers",

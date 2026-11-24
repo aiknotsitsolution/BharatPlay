@@ -25,7 +25,6 @@ export default function WithdrawScreen() {
 
   const [points, setPoints] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
 
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [amount, setAmount] = useState("");
@@ -40,8 +39,6 @@ export default function WithdrawScreen() {
   const [accountNumber, setAccountNumber] = useState("");
   const [ifsc, setIfsc] = useState("");
   const [bankName, setBankName] = useState("");
-
-  const rupeeBalance = Number(points).toFixed(2);
 
   const methods = [
     {
@@ -103,114 +100,8 @@ export default function WithdrawScreen() {
     setBankName("");
   };
 
-  const handleWithdraw = async () => {
-    const withdrawAmount = parseFloat(amount);
-
-    if (!WITHDRAWALS_ENABLED) {
-      setError(
-        "Withdrawals are not available yet. Your points remain in your account until VidBuxApp enables verified payouts.",
-      );
-      return;
-    }
-
-    if (!withdrawAmount || withdrawAmount <= 0) {
-      setError("Enter a valid amount");
-      return;
-    }
-    if (!selectedMethod) {
-      setError("Select a withdrawal method");
-      return;
-    }
-    if (withdrawAmount < selectedMethod.min) {
-      setError(`Minimum withdrawal is ₹${selectedMethod.min}`);
-      return;
-    }
-    if (withdrawAmount > parseFloat(rupeeBalance)) {
-      setError("Insufficient balance");
-      return;
-    }
-
-    // Validation
-    if (selectedMethod.id === "upi") {
-      if (!upiId.trim()) {
-        setError("Please enter your UPI ID");
-        return;
-      }
-      if (!upiName.trim()) {
-        setError("Please enter your name");
-        return;
-      }
-    }
-
-    if (selectedMethod.id === "bank") {
-      if (!accountName.trim()) {
-        setError("Please enter Account Holder Name");
-        return;
-      }
-      if (!accountNumber.trim()) {
-        setError("Please enter Account Number");
-        return;
-      }
-      if (!ifsc.trim()) {
-        setError("Please enter IFSC Code");
-        return;
-      }
-      if (!bankName.trim()) {
-        setError("Please enter Bank Name");
-        return;
-      }
-    }
-
-    try {
-      setSubmitting(true);
-      setError("");
-
-      const token = await AsyncStorage.getItem("token");
-      if (!token) throw new Error("Please login again");
-
-      const payload: Record<string, string | number> = {
-        amount: withdrawAmount,
-        method: selectedMethod.id,
-      };
-
-      if (selectedMethod.id === "upi") {
-        payload.upiId = upiId.trim();
-        payload.name = upiName.trim();
-      } else {
-        payload.accountName = accountName.trim();
-        payload.accountNumber = accountNumber.trim();
-        payload.ifsc = ifsc.trim().toUpperCase();
-        payload.bankName = bankName.trim();
-      }
-
-      // Backend call (uncomment when ready)
-      // const res = await fetch(`${API_BASE}/withdraw`, {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     Authorization: `Bearer ${token}`,
-      //   },
-      //   body: JSON.stringify(payload),
-      // });
-      // const data = await res.json();
-      // if (!res.ok || !data.success) throw new Error(data.message || "Withdraw failed");
-
-      // Success Toast
-      showToast(
-        "success",
-        "Request Submitted",
-        `₹${withdrawAmount.toFixed(2)} redemption request submitted. Processing time is 45–60 days.`,
-      );
-
-      setAmount("");
-      setSelectedMethod(null);
-      resetForms();
-    } catch (err) {
-      setError(err.message || "Something went wrong");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const handleWithdraw = () =>
+    setError("Withdrawals are currently unavailable.");
 
   if (loading) {
     return (
@@ -238,24 +129,31 @@ export default function WithdrawScreen() {
         <View style={styles.balanceCard}>
           <View style={styles.balanceRow}>
             <View>
-              <Text style={styles.balanceLabel}>VidBuxApp Points</Text>
+              <Text style={styles.balanceLabel}>Loyalty Points</Text>
               <Text style={styles.balanceValue}>
-                {Number(points).toFixed(2)}
+                {Number(points).toLocaleString("en-IN")}
               </Text>
             </View>
             <Wallet size={48} color="#facc15" style={{ opacity: 0.85 }} />
           </View>
           <Text style={styles.pointsText}>
-            Promotional points only. They are not cash until a verified
-            VidBuxApp payout program is enabled.
+            Promotional loyalty points do not have a guaranteed cash value.
           </Text>
         </View>
 
         <View style={styles.noticeBox}>
           <Text style={styles.noticeText}>
-            Withdrawals are not available in this release. Do not send money or
-            payment details to anyone claiming to represent VidBuxApp. Your
-            points remain associated with your account.
+            Withdrawals are currently unavailable. Do not send money or payment
+            details to anyone claiming to represent VidBuxApp.
+          </Text>
+        </View>
+
+        <View style={styles.noticeBox}>
+          <Text style={styles.noticeText}>
+            If a verified payout program becomes available, the minimum
+            redemption threshold will be ₹100. Approved requests may take
+            45–60 days to process. Eligibility, approval, and payment are not
+            guaranteed.
           </Text>
         </View>
 
@@ -421,8 +319,7 @@ export default function WithdrawScreen() {
             !WITHDRAWALS_ENABLED && styles.withdrawBtnDisabled,
             (!selectedMethod ||
               !amount ||
-              parseFloat(amount) <= 0 ||
-              submitting) &&
+              parseFloat(amount) <= 0) &&
               styles.withdrawBtnDisabled,
           ]}
           onPress={handleWithdraw}
@@ -430,18 +327,11 @@ export default function WithdrawScreen() {
             !WITHDRAWALS_ENABLED ||
             !selectedMethod ||
             !amount ||
-            parseFloat(amount) <= 0 ||
-            submitting
+            parseFloat(amount) <= 0
           }
           activeOpacity={0.85}
         >
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.withdrawBtnText}>
-              {WITHDRAWALS_ENABLED ? "Withdraw Now" : "Withdrawals Unavailable"}
-            </Text>
-          )}
+          <Text style={styles.withdrawBtnText}>Withdrawals Unavailable</Text>
         </TouchableOpacity>
 
         <Text style={styles.footerNote}>

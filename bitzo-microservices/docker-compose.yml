@@ -161,8 +161,14 @@ services:
       <<: *redis-environment
       PORT: "5001"
       TRUST_PROXY_HOPS: "${TRUST_PROXY_HOPS:-2}"
+      VIDEO_SERVICE_URL: http://video-service:5003
+      PLAYER_AD_SERVICE_URL: http://player-ad-service:5007
     depends_on:
       redis:
+        condition: service_healthy
+      video-service:
+        condition: service_healthy
+      player-ad-service:
         condition: service_healthy
 
   admin-service:

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Eye,
   EyeOff,
@@ -47,6 +47,8 @@ export default function AuthPageV2() {
   const [migrationMode, setMigrationMode] = useState(false);
   const [migrationEmailOtp, setMigrationEmailOtp] = useState("");
   const [migrationPhoneOtp, setMigrationPhoneOtp] = useState("");
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -134,6 +136,12 @@ export default function AuthPageV2() {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     if (privateModeStatus !== "available") return;
+    if (!isLogin && (!ageConfirmed || !termsAccepted)) {
+      const message = "Confirm that you are 18+ and accept the Terms and Privacy Policy to register.";
+      setError(message);
+      toast.error(message);
+      return;
+    }
     setLoading(true);
     setError("");
 
@@ -151,6 +159,8 @@ export default function AuthPageV2() {
         credentials: "include",
         body: JSON.stringify({
           credential: credentialResponse.credential,
+          intent: isLogin ? "login" : "signup",
+          ...(isLogin ? {} : { ageConfirmed, termsAccepted }),
           clientHardwareUuid: getClientHardwareUuid(),
           browserDeviceSignals,
         }),
@@ -192,6 +202,16 @@ export default function AuthPageV2() {
   const handleEmailSubmit = async (e) => {
     if (e) e.preventDefault();
     if (privateModeStatus !== "available") return;
+    if (!isLogin && !migrationMode && !registrationPhoneRequired) {
+      if (!ageConfirmed) {
+        setError("Confirm that you are at least 18 years old to register.");
+        return;
+      }
+      if (!termsAccepted) {
+        setError("Accept the Terms of Service and Privacy Policy to register.");
+        return;
+      }
+    }
     setLoading(true);
     setError("");
 
@@ -339,6 +359,8 @@ export default function AuthPageV2() {
           name: formData.name,
           email: formData.email.trim(),
           password: formData.password,
+          termsAccepted,
+          ageConfirmed,
           ...(otpRequired ? { otp } : {}),
           clientHardwareUuid: getClientHardwareUuid(),
           browserDeviceSignals,
@@ -402,6 +424,8 @@ export default function AuthPageV2() {
               name: formData.name,
               email: formData.email.trim(),
               password: formData.password,
+              termsAccepted,
+              ageConfirmed,
               clientHardwareUuid: getClientHardwareUuid(),
               browserDeviceSignals,
             };
@@ -444,7 +468,7 @@ export default function AuthPageV2() {
 
   return (
     <>
-    <div className="h-screen w-full relative flex items-center justify-center px-3 sm:px-4 overflow-hidden">
+    <div className="relative flex min-h-screen w-full items-center justify-center overflow-x-hidden px-3 py-6 sm:px-4">
       <AnimatedBackground />
 
         <div className="loginv2-card relative z-10 w-full max-w-[400px] px-5 py-5 sm:px-7 sm:py-6 rounded-2xl animate-cardIn">
@@ -517,6 +541,23 @@ export default function AuthPageV2() {
               >
                 Login and registration are unavailable in a likely private or
                 Incognito window. Open VidBux in a regular browser window.
+              </div>
+            )}
+
+            {!registrationPhoneRequired && !migrationMode && (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs leading-relaxed text-gray-400">
+                VidBux is for people aged 18 and over. Loyalty points are not
+                guaranteed cash, and withdrawals are currently unavailable.{" "}
+                <Link to="/terms" className="text-red-300 underline underline-offset-2">
+                  Terms
+                </Link>{" "}
+                ·{" "}
+                <Link
+                  to="/privacy-policy"
+                  className="text-red-300 underline underline-offset-2"
+                >
+                  Privacy Policy
+                </Link>
               </div>
             )}
 
@@ -638,6 +679,47 @@ export default function AuthPageV2() {
                     </button>
                   </div>
                 )}
+
+              {!registrationPhoneRequired && !isLogin && !migrationMode && (
+                <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs leading-relaxed text-gray-300">
+                  <label className="flex items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={ageConfirmed}
+                      onChange={(event) => setAgeConfirmed(event.target.checked)}
+                      required
+                      className="mt-0.5 accent-red-500"
+                    />
+                    <span>I confirm that I am at least 18 years old.</span>
+                  </label>
+                  <label className="flex items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(event) => setTermsAccepted(event.target.checked)}
+                      required
+                      className="mt-0.5 accent-red-500"
+                    />
+                    <span>
+                      I agree to the{" "}
+                      <Link
+                        to="/terms"
+                        className="text-red-300 underline underline-offset-2"
+                      >
+                        Terms of Service
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        to="/privacy-policy"
+                        className="text-red-300 underline underline-offset-2"
+                      >
+                        Privacy Policy
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                </div>
+              )}
 
               {migrationMode && !otpRequired && (
                 <>

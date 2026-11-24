@@ -63,6 +63,7 @@ morgan.token("body", (req) => {
       "token",
       "resetToken",
       "credential",
+      "googleCredential",
       "otp",
       "emailOtp",
       "phoneOtp",
