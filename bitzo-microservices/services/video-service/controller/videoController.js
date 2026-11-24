@@ -3,7 +3,11 @@ const User = require("../models/usermodel");
 const Channel = require("../models/Channel/ChannelModel");
 const categoryModel = require("../models/CategoryModel/category.model");
 const { getVideoDuration } = require("../utils/mediaDuration");
-const { invalidateVideoCatalogCache } = require("../utils/videoCatalogCache");
+const {
+  cacheVideoCatalog,
+  invalidateVideoCatalogCache,
+  VIDEO_CATALOG_CACHE_TTL_SECONDS,
+} = require("../utils/videoCatalogCache");
 const fs = require("fs");
 
 /**
@@ -169,49 +173,51 @@ exports.getAllVideos = async (req, res) => {
       filter.videoType = req.query.videoType;
     }
 
-    const videos = await Video.find(filter).sort({ createdAt: -1 }).lean();
-    const getIds = (field) => [
-      ...new Set(
-        videos.map((video) => video[field]?.toString()).filter(Boolean),
-      ),
-    ];
-    const [uploaders, channels, categories] = await Promise.all([
-      User.find({ _id: { $in: getIds("uploadedBy") } })
-        .select("name email")
-        .lean(),
-      Channel.find({ _id: { $in: getIds("channel") } })
-        .select("name handle")
-        .lean(),
-      categoryModel
-        .find({ _id: { $in: getIds("category") } })
-        .select("name")
-        .lean(),
-    ]);
-    const uploadersById = new Map(
-      uploaders.map((uploader) => [String(uploader._id), uploader]),
-    );
-    const channelsById = new Map(
-      channels.map((channel) => [String(channel._id), channel]),
-    );
-    const categoriesById = new Map(
-      categories.map((category) => [String(category._id), category]),
-    );
+    const updatedVideos = await cacheVideoCatalog(
+      "admin-video-list",
+      { videoType: req.query.videoType || "all" },
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      async () => {
+        const videos = await Video.find(filter).sort({ createdAt: -1 }).lean();
+        const getIds = (field) => [
+          ...new Set(
+            videos.map((video) => video[field]?.toString()).filter(Boolean),
+          ),
+        ];
+        const [uploaders, channels, categories] = await Promise.all([
+          User.find({ _id: { $in: getIds("uploadedBy") } })
+            .select("name email")
+            .lean(),
+          Channel.find({ _id: { $in: getIds("channel") } })
+            .select("name handle")
+            .lean(),
+          categoryModel
+            .find({ _id: { $in: getIds("category") } })
+            .select("name")
+            .lean(),
+        ]);
+        const uploadersById = new Map(
+          uploaders.map((uploader) => [String(uploader._id), uploader]),
+        );
+        const channelsById = new Map(
+          channels.map((channel) => [String(channel._id), channel]),
+        );
+        const categoriesById = new Map(
+          categories.map((category) => [String(category._id), category]),
+        );
+        const baseUrl = `${req.protocol}://${req.get("host")}`;
 
-    // Get the base URL for the server
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
-
-    // Add full video URL for frontend consumption
-    const updatedVideos = videos.map((video) => {
-      return {
-        ...video,
-        uploadedBy: uploadersById.get(String(video.uploadedBy)) || null,
-        channel: channelsById.get(String(video.channel)) || null,
-        category: categoriesById.get(String(video.category)) || null,
-        videoUrl: video.videoUrl?.startsWith("http")
-          ? video.videoUrl
-          : `${baseUrl}/${video.videoUrl}`,
-      };
-    });
+        return videos.map((video) => ({
+          ...video,
+          uploadedBy: uploadersById.get(String(video.uploadedBy)) || null,
+          channel: channelsById.get(String(video.channel)) || null,
+          category: categoriesById.get(String(video.category)) || null,
+          videoUrl: video.videoUrl?.startsWith("http")
+            ? video.videoUrl
+            : `${baseUrl}/${video.videoUrl}`,
+        }));
+      },
+    );
 
     res.status(200).json({
       success: true,
@@ -325,17 +331,25 @@ exports.getMyVideos = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const videos = await Video.find({
-      $or: [{ uploadedBy: userId }, { creator: userId }],
-    })
-      .populate({ path: "category", select: "name", model: categoryModel })
-      .populate({ path: "subCategory", select: "name", model: categoryModel })
-      .sort({ createdAt: -1 });
+    const videos = await cacheVideoCatalog(
+      "my-videos",
+      { userId },
+      60,
+      () =>
+        Video.find({
+          $or: [{ uploadedBy: userId }, { creator: userId }],
+        })
+          .populate({ path: "category", select: "name", model: categoryModel })
+          .populate({ path: "subCategory", select: "name", model: categoryModel })
+          .sort({ createdAt: -1 })
+          .lean(),
+    );
 
     const baseUrl = `${req.protocol}://${req.get("host")}`;
 
     const updatedVideos = videos.map((video) => {
-      const videoObj = video.toObject();
+      const videoObj =
+        typeof video.toObject === "function" ? video.toObject() : video;
       return {
         ...videoObj,
         videoUrl: videoObj.videoUrl?.startsWith("http")
@@ -363,7 +377,12 @@ exports.getMyVideos = async (req, res) => {
  */
 exports.getSingleVideo = async (req, res) => {
   try {
-    const video = await Video.findById(req.params.id);
+    const video = await cacheVideoCatalog(
+      "video-detail",
+      { videoId: req.params.id },
+      VIDEO_CATALOG_CACHE_TTL_SECONDS,
+      () => Video.findById(req.params.id).lean(),
+    );
 
     if (!video) {
       return res.status(404).json({

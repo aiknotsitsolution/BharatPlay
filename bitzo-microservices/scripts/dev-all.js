@@ -2,6 +2,9 @@ const { spawn } = require("child_process");
 const http = require("http");
 const net = require("net");
 const path = require("path");
+require("dotenv").config({
+  path: path.join(__dirname, "..", ".env"),
+});
 
 const root = path.resolve(__dirname, "..");
 const npmCli = process.env.npm_execpath?.endsWith(".js")

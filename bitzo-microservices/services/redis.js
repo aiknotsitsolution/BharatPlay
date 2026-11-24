@@ -12,8 +12,21 @@ function getServiceDependency(name) {
 }
 
 function getRedisClient({ forQueue = false } = {}) {
-  const url = process.env.REDIS_URL?.trim();
+  let url = process.env.REDIS_URL?.trim();
   if (!url) return null;
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "redis" && process.env.NODE_ENV !== "production") {
+      parsed.hostname = "127.0.0.1";
+    }
+    parsed.username = "";
+    parsed.password = "";
+    url = parsed.toString();
+  } catch (error) {
+    console.error("Invalid REDIS_URL:", error.message);
+    return null;
+  }
 
   const clientKey = forQueue ? "queue" : "default";
   if (!clients.has(clientKey)) {

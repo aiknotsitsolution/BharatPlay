@@ -15,6 +15,7 @@ const {
   invalidateVideoCatalogCache,
   VIDEO_CATALOG_CACHE_TTL_SECONDS,
 } = require("../utils/videoCatalogCache");
+const { cached, invalidateCache } = require("../../../services/caching");
 const {
   createNotification,
   createBulkNotifications,
@@ -350,6 +351,8 @@ const createChannel = async (req, res) => {
       $push: { channels: newChannel._id },
     });
     await invalidateVideoCatalogCache();
+    await invalidateCache(`channel-page:${newChannel._id}`);
+    await invalidateCache(`channel-videos:${newChannel._id}`);
 
     await logAuditEvent({
       userId,
@@ -494,6 +497,8 @@ const updateChannel = async (req, res) => {
 
     await channel.save();
     await invalidateVideoCatalogCache();
+    await invalidateCache(`channel-page:${channel._id}`);
+    await invalidateCache(`channel-videos:${channel._id}`);
     const updatedChannel = channel.toObject();
     updatedChannel.category = {
       _id: categoryData._id,
@@ -803,24 +808,30 @@ const getChannelById = async (req, res) => {
       });
     }
 
-    // Channel details
-    const channel = await Channel.findOne({ _id: channelId, status: "active" })
-      .populate({ path: "category", select: "_id name", model: categoryModel })
-      .populate({ path: "creator", select: "name email", model: User })
-      .lean();
+    const payload = await cached(`channel-page:${channelId}`, 60, async () => {
+      const channel = await Channel.findOne({ _id: channelId, status: "active" })
+        .populate({ path: "category", select: "_id name", model: categoryModel })
+        .populate({ path: "creator", select: "name email", model: User })
+        .lean();
 
-    if (!channel) {
+      if (!channel) return null;
+
+      const videos = await Video.find({ channel: channelId, status: "active" })
+        .populate({ path: "uploadedBy", select: "_id name email", model: User })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return { channel, videos };
+    });
+
+    if (!payload) {
       return res.status(404).json({
         success: false,
         message: "Channel not found",
       });
     }
 
-    // Videos of this channel
-    const videos = await Video.find({ channel: channelId, status: "active" })
-      .populate({ path: "uploadedBy", select: "_id name email", model: User })
-      .sort({ createdAt: -1 })
-      .lean();
+    const { channel, videos } = payload;
 
     // Check if current user is subscribed
     let isSubscribed = false;
@@ -1156,11 +1167,6 @@ const getUserUploadedVideos = async (req, res) => {
 
 const getvideosByChannel = async (req, res) => {
   try {
-    console.log("───────────────────────────────");
-    console.log("URL hit:", req.originalUrl);
-    console.log("req.params:", req.params);
-    console.log("───────────────────────────────");
-
     // ✅ FIXED
     const channelId = req.params.id;
 
@@ -1181,25 +1187,30 @@ const getvideosByChannel = async (req, res) => {
     }
 
     // Only active channels and videos are publicly visible.
-    const channel = await Channel.findOne({ _id: channelId, status: "active" })
-      .select("_id")
-      .lean();
-    if (!channel) {
+    const payload = await cached(`channel-videos:${channelId}`, 60, async () => {
+      const channel = await Channel.findOne({ _id: channelId, status: "active" })
+        .select("_id")
+        .lean();
+      if (!channel) return null;
+
+      const videos = await Video.find({ channel: channelId, status: "active" })
+        .populate({ path: "uploadedBy", select: "_id name email", model: User })
+        .populate({
+          path: "channel",
+          select: "name channelImage channelBanner channeldescription category",
+        })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return { videos };
+    });
+
+    if (!payload) {
       return res
         .status(404)
         .json({ success: false, message: "Channel not found" });
     }
-
-    const videos = await Video.find({ channel: channelId, status: "active" })
-      .populate({ path: "uploadedBy", select: "_id name email", model: User })
-      .populate({
-        path: "channel",
-        select: "name channelImage channelBanner channeldescription category",
-      })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    console.log(`Videos found: ${videos.length}`);
+    const { videos } = payload;
 
     return res.status(200).json({
       success: true,
@@ -1229,6 +1240,8 @@ const deleteChannel = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Channel not found or unauthorized" });
     }
+    await invalidateCache(`channel-page:${id}`);
+    await invalidateCache(`channel-videos:${id}`);
     await Video.deleteMany({ channel: id });
     await invalidateVideoCatalogCache();
 
@@ -2556,6 +2569,8 @@ const addComment = async (req, res) => {
 
     video.comments.push(newComment);
     await video.save();
+    await invalidateCache(`video-comments:${videoId}`);
+    await invalidateVideoCatalogCache();
 
     if (userId) {
       await createNotification({
@@ -2589,18 +2604,24 @@ const getComments = async (req, res) => {
   try {
     const { videoId } = req.params;
 
-    const video = await Video.findOne({
-      _id: videoId,
-      status: "active",
-    }).select("comments");
-    if (!video) {
+    const comments = await cached(`video-comments:${videoId}`, 30, async () => {
+      const video = await Video.findOne({
+        _id: videoId,
+        status: "active",
+      }).select("comments");
+      if (!video) return null;
+
+      return video.comments.map((comment) =>
+        typeof comment.toObject === "function" ? comment.toObject() : comment,
+      );
+    });
+
+    if (!comments) {
       return res.status(404).json({
         success: false,
         message: "Video not found",
       });
     }
-
-    const comments = video.comments.map((comment) => comment.toObject());
 
     // Attach the commenter's name + avatar from the User collection so every
     // comment shows a real profile picture, even ones stored without one.
@@ -2659,6 +2680,8 @@ const deleteComment = async (req, res) => {
     }
     video.comments.splice(commentIndex, 1);
     await video.save();
+    await invalidateCache(`video-comments:${videoId}`);
+    await invalidateVideoCatalogCache();
 
     await logAuditEvent({
       userId,

@@ -7,6 +7,7 @@ const {
   getContactRequestModel,
   getCopyrightCaseModel,
 } = require("../../models/DashboardMetrics");
+const { cached } = require("../../../../services/caching");
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = [
@@ -95,7 +96,7 @@ const getDailyMetrics = async (label, modelFactory, pipeline) => {
   }
 };
 
-exports.getDashboard = async (req, res) => {
+const buildDashboard = async () => {
   try {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -485,30 +486,49 @@ exports.getDashboard = async (req, res) => {
       watchTime: Math.round((watchTimeAgg[0]?.total || 0) / 3600),
     };
 
-    return res.status(200).json({
-      success: true,
-      data: {
-        stats,
-        weekly,
-        monthly,
-        monthlyVideos,
-        monthlyCopyright,
-        monthlyAds,
-        snapshot,
-        recentUsers,
-        recentUploads,
-        topVideos: {
-          monthwise: topVideosMonthwise,
-          daywise: topVideosDaywise,
+    return {
+      status: 200,
+      body: {
+        success: true,
+        data: {
+          stats,
+          weekly,
+          monthly,
+          monthlyVideos,
+          monthlyCopyright,
+          monthlyAds,
+          snapshot,
+          recentUsers,
+          recentUploads,
+          topVideos: {
+            monthwise: topVideosMonthwise,
+            daywise: topVideosDaywise,
+          },
         },
+        generatedAt: new Date().toISOString(),
       },
-      generatedAt: new Date().toISOString(),
-    });
+    };
   } catch (error) {
     console.error("getDashboard error:", error);
+    return {
+      status: 500,
+      body: {
+        success: false,
+        message: error.message || "Failed to fetch dashboard data",
+      },
+    };
+  }
+};
+
+exports.getDashboard = async (req, res) => {
+  try {
+    const payload = await cached("admin:dashboard:overview", 60, buildDashboard);
+    return res.status(payload.status).json(payload.body);
+  } catch (error) {
+    console.error("getDashboard cache error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to fetch dashboard data",
+      message: "Failed to fetch dashboard data",
     });
   }
 };
