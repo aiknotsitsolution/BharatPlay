@@ -52,10 +52,12 @@ describe("recommendedVideos", () => {
     expectedHasMore,
   ) => {
     const query = {
+      select: jest.fn().mockReturnThis(),
       sort: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       populate: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
       then: (resolve, reject) =>
         Promise.resolve([{ _id: "video-1" }]).then(resolve, reject),
     };
@@ -72,6 +74,9 @@ describe("recommendedVideos", () => {
     );
 
     expect(response.status).toHaveBeenCalledWith(200);
+    expect(query.select).toHaveBeenCalledWith(
+      expect.not.stringContaining("videoUrl"),
+    );
     expect(response.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: true,

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -9,44 +10,48 @@ import {
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "./context/ThemeContext";
 
-import Layout from "./components/layout/Layout";
 import RoleGuard from "./components/RoleGuard";
 import IntroScreen from "./components/IntroScreen";
 import FlowerCelebration from "./components/FlowerCelebration";
-import AdminLogin from "./Admin/pages/Auth/AdminLogin";
-import EmployeeLogin from "./Admin/pages/Auth/EmployeeLogin";
-import ForgotPassword from "./Admin/pages/Auth/ForgotPassword";
-import Dashboard from "./Admin/pages/Dashboard";
-import FinanceDashboard from "./FinanceAdmin/Pages/FinanceDashboard";
-import SupportDashboard from "./Admin/pages/Support/SupportDashboard";
-import ReadOnlyDashboard from "./Admin/pages/ReadOnlyDashbaord/ReadOnlyDashboard";
-import Orders from "./Admin/pages/Orders";
-import Products from "./Admin/pages/Products";
-import NotFound from "./Admin/pages/NotFound";
-import VideoUpload from "./Admin/pages/LongVideo/VideoUpload";
-import Shorts from "./Admin/pages/ShortsVideo/Shorts";
-import CategoryManagement from "./Admin/CategoryManagement/Category";
-import AllUsers from "./Admin/Users/AllUser";
-import DeletedUsers from "./Admin/Users/DeletedUsers";
-import EmployeeRegister from "./Admin/pages/Auth/EmployeeRegister";
-import Register from "./Admin/pages/Auth/Register";
-import User360 from "./Admin/Users/User360";
-import EditUser from "./Admin/Users/EditUser";
-import AllUploads from "./Admin/pages/AllUploads";
-import Notifications from "./Admin/pages/Notifications";
-import Profile from "./Admin/pages/Profile";
-import CopyrightCaseList, {
-  CopyrightCaseReview,
-} from "./Admin/pages/Copyright/CopyrightCaseList";
-import CopyrightStrikeList from "./Admin/pages/Copyright/CopyrightStrikeList";
-import CopyrightCreateCase from "./Admin/pages/Copyright/CopyrightCreateCase";
-import CopyrightStrikeDetail from "./Admin/pages/Copyright/CopyrightStrikeDetail";
-import ContactRequestDetail from "./Admin/pages/Support/ContactRequestDetail";
-import DeletionRequestDetail from "./Admin/pages/Support/DeletionRequestDetail";
-import ContactRequestList from "./Admin/pages/Support/ContactRequestList";
-import DeletionRequestList from "./Admin/pages/Support/DeletionRequestList";
-import MyTickets from "./Admin/pages/Support/MyTickets";
 import { getCurrentRole, getDashboardRoute } from "./config/roleConfig";
+
+const Layout = lazy(() => import("./components/layout/Layout"));
+const AdminLogin = lazy(() => import("./Admin/pages/Auth/AdminLogin"));
+const EmployeeLogin = lazy(() => import("./Admin/pages/Auth/EmployeeLogin"));
+const ForgotPassword = lazy(() => import("./Admin/pages/Auth/ForgotPassword"));
+const Dashboard = lazy(() => import("./Admin/pages/Dashboard"));
+const FinanceDashboard = lazy(() => import("./FinanceAdmin/Pages/FinanceDashboard"));
+const SupportDashboard = lazy(() => import("./Admin/pages/Support/SupportDashboard"));
+const ReadOnlyDashboard = lazy(() => import("./Admin/pages/ReadOnlyDashbaord/ReadOnlyDashboard"));
+const Orders = lazy(() => import("./Admin/pages/Orders"));
+const Products = lazy(() => import("./Admin/pages/Products"));
+const NotFound = lazy(() => import("./Admin/pages/NotFound"));
+const VideoUpload = lazy(() => import("./Admin/pages/LongVideo/VideoUpload"));
+const Shorts = lazy(() => import("./Admin/pages/ShortsVideo/Shorts"));
+const CategoryManagement = lazy(() => import("./Admin/CategoryManagement/Category"));
+const AllUsers = lazy(() => import("./Admin/Users/AllUser"));
+const DeletedUsers = lazy(() => import("./Admin/Users/DeletedUsers"));
+const EmployeeRegister = lazy(() => import("./Admin/pages/Auth/EmployeeRegister"));
+const Register = lazy(() => import("./Admin/pages/Auth/Register"));
+const User360 = lazy(() => import("./Admin/Users/User360"));
+const EditUser = lazy(() => import("./Admin/Users/EditUser"));
+const AllUploads = lazy(() => import("./Admin/pages/AllUploads"));
+const Notifications = lazy(() => import("./Admin/pages/Notifications"));
+const Profile = lazy(() => import("./Admin/pages/Profile"));
+const CopyrightCaseList = lazy(() => import("./Admin/pages/Copyright/CopyrightCaseList"));
+const CopyrightCaseReview = lazy(() =>
+  import("./Admin/pages/Copyright/CopyrightCaseList").then((module) => ({
+    default: module.CopyrightCaseReview,
+  })),
+);
+const CopyrightStrikeList = lazy(() => import("./Admin/pages/Copyright/CopyrightStrikeList"));
+const CopyrightCreateCase = lazy(() => import("./Admin/pages/Copyright/CopyrightCreateCase"));
+const CopyrightStrikeDetail = lazy(() => import("./Admin/pages/Copyright/CopyrightStrikeDetail"));
+const ContactRequestDetail = lazy(() => import("./Admin/pages/Support/ContactRequestDetail"));
+const DeletionRequestDetail = lazy(() => import("./Admin/pages/Support/DeletionRequestDetail"));
+const ContactRequestList = lazy(() => import("./Admin/pages/Support/ContactRequestList"));
+const DeletionRequestList = lazy(() => import("./Admin/pages/Support/DeletionRequestList"));
+const MyTickets = lazy(() => import("./Admin/pages/Support/MyTickets"));
 
 const isAuthenticated = () => {
   return !!localStorage.getItem("adminToken");
@@ -122,6 +127,16 @@ function App() {
           }}
         />
 
+        <Suspense
+          fallback={
+            <div
+              className="flex min-h-screen items-center justify-center bg-[#080B14] text-sm text-gray-300"
+              role="status"
+            >
+              Loading page...
+            </div>
+          }
+        >
         <Routes>
           {/* ================= PUBLIC ROUTES ================= */}
           <Route element={<PublicOnlyRoute />}>
@@ -209,6 +224,7 @@ function App() {
           <Route path="/404" element={<NotFound />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        </Suspense>
       </ThemeProvider>
     </BrowserRouter>
   );

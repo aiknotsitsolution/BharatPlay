@@ -8,8 +8,6 @@ import {
   ChevronRight,
   Play,
   Plus,
-  Volume2,
-  VolumeX,
 } from "lucide-react";
 import {
   fetchHomeVideos,
@@ -22,107 +20,55 @@ import { ShortsCardSkeletonRow, VideoCardSkeletonRow } from "./Skeletons";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 import { promptLogin } from "../../utils/loginPrompt";
 
-const supportsHover =
-  typeof window !== "undefined" &&
-  window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-
-let activePreviewVideo = null;
-
-const stopActivePreview = () => {
-  if (activePreviewVideo) {
-    activePreviewVideo.pause();
-    activePreviewVideo.currentTime = 0;
-    activePreviewVideo = null;
-  }
-};
-
-const romanticShows = [
+const HOME_ROW_SIZE = 5;
+const HOME_SECTIONS = [
   {
-    id: 1,
-    title: "Love in the Clouds",
-    thumb:
-      "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=400&h=225&fit=crop",
+    buffer: "recommended",
+    title: "Recommended for you",
+    viewAll: "recommended",
+    kind: "video",
+    emptyText: "No recommended videos available right now.",
   },
   {
-    id: 2,
-    title: "Hidden Love",
-    thumb:
-      "https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=400&h=225&fit=crop",
+    buffer: "trending",
+    title: "Trending Videos",
+    viewAll: "trending",
+    kind: "video",
+    emptyText: "No trending videos available right now.",
   },
   {
-    id: 3,
-    title: "Queen of Tears",
-    thumb:
-      "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400&h=225&fit=crop",
+    buffer: "shorts",
+    title: "Trending Shorts",
+    viewAll: "shorts",
+    kind: "shorts",
+    emptyText: "No trending shorts available right now.",
   },
   {
-    id: 4,
-    title: "Inheritors",
-    thumb:
-      "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&h=225&fit=crop",
+    buffer: "latest",
+    title: "Latest Videos",
+    viewAll: "latest",
+    kind: "video",
+    emptyText: "No latest videos available right now.",
   },
   {
-    id: 5,
-    title: "When I Fly Towards You",
-    thumb:
-      "https://images.unsplash.com/photo-1522158637959-30385a09e0da?w=400&h=225&fit=crop",
-  },
-];
-
-const kidsFilms = [
-  {
-    id: 101,
-    title: "Chhota Bheem: The Crown",
-    thumb:
-      "https://images.unsplash.com/photo-1608889825103-eb5ed706fc64?w=400&h=225&fit=crop",
+    buffer: "subscriptions",
+    title: "Subscription Videos",
+    viewAll: "subscriptions",
+    kind: "video",
+    emptyText: "Subscribe to channels to see their videos here.",
   },
   {
-    id: 102,
-    title: "Motu Patlu: Kung Fu",
-    thumb:
-      "https://images.unsplash.com/photo-1578632292335-df3abbb0d586?w=400&h=225&fit=crop",
-  },
-  {
-    id: 103,
-    title: "Doraemon: Nobita",
-    thumb:
-      "https://images.unsplash.com/photo-1509347528160-9a9e33742cdb?w=400&h=225&fit=crop",
-  },
-  {
-    id: 104,
-    title: "Oggy & Cockroaches",
-    thumb:
-      "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400&h=225&fit=crop",
-  },
-  {
-    id: 105,
-    title: "Shinchan Movie",
-    thumb:
-      "https://images.unsplash.com/photo-1606164587034-81b84c4e11d0?w=400&h=225&fit=crop",
-  },
-  {
-    id: 106,
-    title: "Tom & Jerry",
-    thumb:
-      "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=400&h=225&fit=crop",
+    buffer: "shorts",
+    title: "Top Shorts",
+    viewAll: "top-shorts",
+    kind: "shorts",
+    emptyText: "No top shorts available right now.",
   },
 ];
 
 // ────────────────────────────────────────────────
 // Reusable components
 // ────────────────────────────────────────────────
-
-function useWidth() {
-  const [width, setWidth] = useState(
-    typeof window !== "undefined" ? window.innerWidth : 1024,
-  );
-  useEffect(() => {
-    const handleResize = () => setWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-  return width;
-}
 
 function SectionHeader({ title, onClick, onScrollLeft, onScrollRight }) {
   return (
@@ -208,91 +154,6 @@ export function MovieCard({
 }) {
   const [adding, setAdding] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [isPreviewing, setPreviewing] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
-  const videoRef = useRef(null);
-  const hoverTimerRef = useRef(null);
-  const timelineFillRef = useRef(null);
-  const hoveredRef = useRef(false);
-  const isMutedRef = useRef(true);
-
-  const updateTimeline = () => {
-    const video = videoRef.current;
-    const fill = timelineFillRef.current;
-    if (!video || !fill) return;
-    const duration = video.duration || 0;
-    const pct = duration > 0 ? (video.currentTime / video.duration) * 100 : 0;
-    fill.style.width = `${Math.min(100, Math.max(0, pct))}%`;
-  };
-
-  const stopPreview = () => {
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
-    }
-    setPreviewing(false);
-    const video = videoRef.current;
-    if (video) {
-      video.pause();
-      video.currentTime = 0;
-      if (activePreviewVideo === video) activePreviewVideo = null;
-    }
-  };
-
-  const startPreview = () => {
-    if (!supportsHover || !item.videoUrl) return;
-    if (videoRef.current && activePreviewVideo === videoRef.current) return;
-    stopActivePreview();
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current = setTimeout(() => {
-      hoverTimerRef.current = null;
-      setPreviewing(true);
-    }, 300);
-  };
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (isPreviewing && video && item.videoUrl) {
-      stopActivePreview();
-      activePreviewVideo = video;
-      video.muted = isMutedRef.current;
-      video.currentTime = 0;
-      if (timelineFillRef.current) timelineFillRef.current.style.width = "0%";
-      video.play().catch(() => {});
-    }
-  }, [isPreviewing, item.videoUrl]);
-
-  useEffect(() => {
-    if (!isPreviewing) return;
-    let rafId;
-    const tick = () => {
-      updateTimeline();
-      rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [isPreviewing]);
-
-  useEffect(() => {
-    return () => {
-      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-      const video = videoRef.current;
-      if (video) {
-        video.pause();
-        video.currentTime = 0;
-        if (activePreviewVideo === video) activePreviewVideo = null;
-      }
-    };
-  }, []);
-
-  const handleMuteClick = (e) => {
-    e.stopPropagation();
-    const next = !isMutedRef.current;
-    isMutedRef.current = next;
-    setIsMuted(next);
-    const video = videoRef.current;
-    if (video) video.muted = next;
-  };
 
   const handleWatchLaterClick = async (e) => {
     e.stopPropagation(); // video open na ho
@@ -319,8 +180,6 @@ export function MovieCard({
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onClick(item);
-    } else if (e.key === "Escape") {
-      stopPreview();
     }
   };
 
@@ -362,18 +221,6 @@ export function MovieCard({
     <div
       onClick={() => onClick(item)}
       onKeyDown={handleKeyDown}
-      onMouseEnter={() => {
-        hoveredRef.current = true;
-        startPreview();
-      }}
-      onMouseLeave={() => {
-        hoveredRef.current = false;
-        stopPreview();
-      }}
-      onFocus={startPreview}
-      onBlur={() => {
-        if (!hoveredRef.current) stopPreview();
-      }}
       role="button"
       tabIndex={0}
       className="card-hover group w-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
@@ -392,28 +239,11 @@ export function MovieCard({
           className="h-full w-full object-cover transition-all duration-200 group-hover:brightness-[1.02]"
         />
 
-        {item.videoUrl && (
-          <video
-            ref={videoRef}
-            src={item.videoUrl}
-            muted={isMuted}
-            loop
-            playsInline
-            preload="metadata"
-            onTimeUpdate={updateTimeline}
-            className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-              isPreviewing ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        )}
-
-        {/* Progress strip: live preview progress on hover, watched progress otherwise */}
-        {(isPreviewing || watchedPercent > 0) && (
+        {watchedPercent > 0 && (
           <div className="absolute inset-x-0 bottom-0 h-1 bg-black/50">
             <div
-              ref={timelineFillRef}
               className="h-full bg-red-600"
-              style={{ width: isPreviewing ? "0%" : `${watchedPercent}%` }}
+              style={{ width: `${watchedPercent}%` }}
             />
           </div>
         )}
@@ -424,20 +254,6 @@ export function MovieCard({
             {durationText}
           </span>
         )}
-
-        {/* Mute / unmute button (top-right, visible on hover) */}
-        <button
-          onClick={handleMuteClick}
-          className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white opacity-0 shadow-lg transition-all duration-300 hover:bg-black/60 group-focus-within:opacity-100 group-hover:opacity-100 md:h-9 md:w-9"
-          title={isMuted ? "Unmute" : "Mute"}
-          aria-label={isMuted ? "Unmute" : "Mute"}
-        >
-          {isMuted ? (
-            <VolumeX size={16} className="h-4 w-4" />
-          ) : (
-            <Volume2 size={16} className="h-4 w-4" />
-          )}
-        </button>
 
         {/* Overlay controls: Play + Watch Later (bottom-left) */}
         <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 opacity-0 transition-all duration-300 focus-within:opacity-100 group-hover:scale-105 group-hover:opacity-100">
@@ -512,9 +328,33 @@ export function MovieCard({
 
 function FeedAdvertisementCard({ videoId }) {
   const [advertisement, setAdvertisement] = useState(null);
+  const [nearViewport, setNearViewport] = useState(false);
   const impressionTracked = useRef(false);
+  const containerRef = useRef(null);
 
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return undefined;
+    if (typeof IntersectionObserver === "undefined") {
+      setNearViewport(true);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setNearViewport(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "600px 0px" },
+    );
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!nearViewport) return undefined;
     let cancelled = false;
     const loadAdvertisement = async () => {
       try {
@@ -567,9 +407,7 @@ function FeedAdvertisementCard({ videoId }) {
     return () => {
       cancelled = true;
     };
-  }, [videoId]);
-
-  if (!advertisement) return null;
+  }, [nearViewport, videoId]);
 
   const trackEvent = (event) => {
     fetch(`${BACKEND_URL}/v1/player/ad-impression`, {
@@ -586,45 +424,48 @@ function FeedAdvertisementCard({ videoId }) {
   };
 
   return (
-    <section className="mx-auto mb-10 w-full max-w-screen-2xl px-4 md:px-12 lg:px-16">
-      <div className="max-w-xl overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
-        <div className="flex items-center justify-between px-4 py-2 text-xs text-zinc-400">
-          <span>Sponsored</span>
-          <span>{advertisement.networkName || "Advertisement"}</span>
-        </div>
-        <video
-          src={advertisement.mediaUrl}
-          controls
-          playsInline
-          preload="metadata"
-          className="aspect-video w-full bg-black"
-          onPlay={() => {
-            if (!impressionTracked.current) {
-              impressionTracked.current = true;
-              trackEvent("impression");
-            }
-          }}
-          onEnded={() => trackEvent("complete")}
-        />
-        {advertisement.clickThrough ? (
-          <a
-            href={advertisement.clickThrough}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block px-4 py-3 text-sm font-medium text-white hover:bg-zinc-900"
-          >
-            Visit advertiser
-          </a>
-        ) : null}
-      </div>
-    </section>
+    <div ref={containerRef} className="min-h-px">
+      {advertisement ? (
+        <section className="mx-auto mb-10 w-full max-w-screen-2xl px-4 md:px-12 lg:px-16">
+          <div className="max-w-xl overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
+            <div className="flex items-center justify-between px-4 py-2 text-xs text-zinc-400">
+              <span>Sponsored</span>
+              <span>{advertisement.networkName || "Advertisement"}</span>
+            </div>
+            <video
+              src={advertisement.mediaUrl}
+              controls
+              playsInline
+              preload="none"
+              className="aspect-video w-full bg-black"
+              onPlay={() => {
+                if (!impressionTracked.current) {
+                  impressionTracked.current = true;
+                  trackEvent("impression");
+                }
+              }}
+              onEnded={() => trackEvent("complete")}
+            />
+            {advertisement.clickThrough ? (
+              <a
+                href={advertisement.clickThrough}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block px-4 py-3 text-sm font-medium text-white hover:bg-zinc-900"
+              >
+                Visit advertiser
+              </a>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+    </div>
   );
 }
 
 export default function NetflixStylePage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const isMobile = useWidth() < 768;
   const dispatch = useDispatch();
   const {
     recommended,
@@ -669,7 +510,7 @@ export default function NetflixStylePage() {
 
     observer.observe(loadMore);
     return () => observer.disconnect();
-  }, [dispatch, sectionHasMore, anySectionFetching, loading]);
+  }, [dispatch, sectionHasMore, anyHomeHasMore, anySectionFetching, loading]);
 
   const isShortContent = (item) => {
     const rawTypes = item?.videoType ?? item?.raw?.videoType ?? [];
@@ -720,53 +561,10 @@ export default function NetflixStylePage() {
   // (Trending Shorts and Top Shorts share the shorts list, taking their
   // batches one after another.) A row pulls the next page of its section
   // whenever it needs more videos.
-  const HOME_ROW_SIZE = 5;
-  const HOME_SECTIONS = [
-    {
-      buffer: "recommended",
-      title: "Recommended for you",
-      viewAll: "recommended",
-      kind: "video",
-      emptyText: "No recommended videos available right now.",
-    },
-    {
-      buffer: "trending",
-      title: "Trending Videos",
-      viewAll: "trending",
-      kind: "video",
-      emptyText: "No trending videos available right now.",
-    },
-    {
-      buffer: "shorts",
-      title: "Trending Shorts",
-      viewAll: "shorts",
-      kind: "shorts",
-      emptyText: "No trending shorts available right now.",
-    },
-    {
-      buffer: "latest",
-      title: "Latest Videos",
-      viewAll: "latest",
-      kind: "video",
-      emptyText: "No latest videos available right now.",
-    },
-    {
-      buffer: "subscriptions",
-      title: "Subscription Videos",
-      viewAll: "subscriptions",
-      kind: "video",
-      emptyText: "Subscribe to channels to see their videos here.",
-    },
-    {
-      buffer: "shorts",
-      title: "Top Shorts",
-      viewAll: "top-shorts",
-      kind: "shorts",
-      emptyText: "No top shorts available right now.",
-    },
-  ];
-
-  const buffers = { recommended, trending, latest, subscriptions, shorts };
+  const buffers = useMemo(
+    () => ({ recommended, trending, latest, subscriptions, shorts }),
+    [recommended, trending, latest, subscriptions, shorts],
+  );
 
   const { homeRows, topUpSections } = useMemo(() => {
     const ptr = { recommended: 0, trending: 0, latest: 0, subscriptions: 0, shorts: 0 };
@@ -832,11 +630,7 @@ export default function NetflixStylePage() {
 
     return { homeRows: rows, topUpSections };
   }, [
-    recommended,
-    trending,
-    latest,
-    subscriptions,
-    shorts,
+    buffers,
     sectionHasMore,
     sectionFetching,
   ]);

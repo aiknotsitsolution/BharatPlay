@@ -1,4 +1,5 @@
-﻿import { useState } from "react";
+import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Mail,
@@ -12,17 +13,26 @@ import {
 import API from "../../../api";
 import toast from "react-hot-toast";
 import RocketButton from "../../../components/RocketButton";
+import {
+  loginSucceeded,
+  otpRequested,
+  resetLogin,
+  submitFailed,
+  submitStarted,
+} from "../../../redux/slices/adminLoginSlice";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { status, requiresOtp, error: loginError } = useSelector(
+    (state) => state.adminLogin,
+  );
+  const isLoading = status === "pending";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
-  const [requiresOtp, setRequiresOtp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loginError, setLoginError] = useState("");
 
   const getErrorMessage = (err) => {
     const data = err?.response?.data;
@@ -37,8 +47,7 @@ export default function AdminLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
-    setLoginError("");
+    dispatch(submitStarted());
 
     try {
       const res = await API.post(
@@ -53,15 +62,20 @@ export default function AdminLogin() {
       }
 
       if (res.data.requiresOtp) {
-        setRequiresOtp(true);
+        dispatch(otpRequested());
         setPassword("");
         toast.success(res.data.message || "OTP sent to your email");
         return;
       }
 
+      if (!res.data.token || !res.data.user) {
+        throw new Error("The server returned an incomplete login response.");
+      }
+
       localStorage.setItem("adminToken", res.data.token);
       localStorage.setItem("adminUser", JSON.stringify(res.data.user));
       localStorage.setItem("adminRole", "admin");
+      dispatch(loginSucceeded());
 
       window.dispatchEvent(new Event("auth-change"));
       window.dispatchEvent(new Event("bp-login-celebrate"));
@@ -70,10 +84,8 @@ export default function AdminLogin() {
       navigate("/", { replace: true });
     } catch (err) {
       const message = getErrorMessage(err);
-      setLoginError(message);
+      dispatch(submitFailed(message));
       toast.error(message);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -296,9 +308,8 @@ export default function AdminLogin() {
               <button
                 type="button"
                 onClick={() => {
-                  setRequiresOtp(false);
+                    dispatch(resetLogin());
                   setOtp("");
-                  setLoginError("");
                 }}
                 className="w-full text-sm text-gray-400 transition hover:text-white"
               >

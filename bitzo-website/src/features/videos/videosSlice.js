@@ -1,11 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
-import {
-  fetchAllRecommendedVideos,
-  fetchAllShortsVideos,
-  fetchAllTrendingVideos,
-  fetchAllLatestVideos,
-} from "../../utils/fetchAllRecommendedVideos";
 export const API_BASE = `${BACKEND_URL}/api/uservideo`;
 
 export const normalizeVideoListItem = (video) => ({
@@ -163,80 +157,58 @@ export const fetchHomeVideos = createAsyncThunk(
     try {
       const token = localStorage.getItem("token");
 
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(limit),
-      });
-      if (category) params.set("category", category);
-      const categoryParam = `?${params.toString()}`;
+      const fetchPage = async (endpoint, includeCategory = true) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit),
+        });
+        if (includeCategory && category) params.set("category", category);
 
-      const [
-        recommendedVideos,
-        trendingVideos,
-        latestVideos,
-        shortsVideos,
-      ] = await Promise.all([
-        fetchAllRecommendedVideos({
-          apiBase: API_BASE,
-          token,
-        }),
-        fetchAllTrendingVideos({
-          apiBase: API_BASE,
-          category,
-          token,
-        }),
-        fetchAllLatestVideos({
-          apiBase: API_BASE,
-          category,
-          token,
-        }),
-        fetchAllShortsVideos({
-          apiBase: API_BASE,
-          category,
-          token,
-        }),
-      ]);
-      const subscriptionsRes = token
-        ? await fetch(`${API_BASE}/subscriptions${categoryParam}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-        : null;
+        const response = await fetch(
+          `${API_BASE}/${endpoint}?${params.toString()}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          },
+        );
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.success === false) {
+          throw new Error(
+            data.message || `Failed to load ${endpoint} (${response.status})`,
+          );
+        }
+        return data;
+      };
 
-      if (requestId !== homeFetchRequestId) return { cancelled: true };
-
-      const trendingData = {
-        videos: [...trendingVideos].sort(
-          (left, right) => Number(right.views || 0) - Number(left.views || 0),
-        ),
-        total: trendingVideos.length,
-        allPagesLoaded: true,
-      };
-      const latestData = {
-        videos: latestVideos,
-        total: latestVideos.length,
-        allPagesLoaded: true,
-      };
-      const shortsData = {
-        videos: rankShortsByEngagement(shortsVideos.map(normalizeShort)),
-        total: shortsVideos.length,
-        allPagesLoaded: true,
-      };
-      const recommendedData = {
-        videos: recommendedVideos,
-        total: recommendedVideos.length,
-        allPagesLoaded: true,
-      };
-      const subscriptionsData = subscriptionsRes
-        ? await subscriptionsRes.json().catch(() => ({ videos: [] }))
+      const [recommendedData, trendingData, latestData, shortsData] =
+        await Promise.all([
+          fetchPage("recommended", false),
+          fetchPage("trending"),
+          fetchPage("latest"),
+          fetchPage("trending-shorts"),
+        ]);
+      const subscriptionsData = token
+        ? await fetchPage("subscriptions")
         : { videos: [], total: 0 };
 
       if (requestId !== homeFetchRequestId) return { cancelled: true };
+
+      const rankedTrendingData = {
+        ...trendingData,
+        videos: [...getVideosArray(trendingData)].sort(
+          (left, right) => Number(right.views || 0) - Number(left.views || 0),
+        ),
+      };
+      const rankedShortsData = {
+        ...shortsData,
+        videos: rankShortsByEngagement(
+          getVideosArray(shortsData).map(normalizeShort),
+        ),
+      };
 
       const getSection = (
         data,
         normalize,
         pinnedCount = 0,
-        allPagesLoaded = false,
         shuffle = true,
         categoryPriority = null,
       ) => {
@@ -248,9 +220,7 @@ export const fetchHomeVideos = createAsyncThunk(
             : shuffle
               ? shuffleAfterPinnedItems(items, page === 1 ? pinnedCount : 0)
               : items,
-          hasMore:
-            !allPagesLoaded &&
-            (Number(data?.total) > page * limit || list.length === limit),
+          hasMore: Number(data?.total) > page * limit || list.length === limit,
         };
       };
 
@@ -261,23 +231,25 @@ export const fetchHomeVideos = createAsyncThunk(
           normalizeVideoListItem,
           0,
           true,
-          true,
           category,
         ),
         trending: getSection(
-          trendingData,
+          rankedTrendingData,
           normalizeVideoListItem,
           2,
-          true,
         ),
         latest: getSection(
           latestData,
           normalizeVideoListItem,
           1,
-          true,
         ),
         subscriptions: getSection(subscriptionsData, normalizeVideoListItem),
-        shorts: getSection(shortsData, (short) => short, 2, true),
+        shorts: getSection(
+          rankedShortsData,
+          (short) => short,
+          2,
+          true,
+        ),
       };
     } catch (error) {
       return rejectWithValue(error.message || "Failed to load videos");
@@ -378,17 +350,12 @@ export const fetchNextHomeSection = createAsyncThunk(
       const freshItems = list
         .map(normalize)
         .filter((video) => !existingIds.has(video.id));
-      const pinnedCount =
-        section === "trending" || section === "shorts" ? 3 : 0;
       return {
         section,
         page,
         limit,
         category,
-        orderedItems: shuffleAfterPinnedItems(
-          [...existingItems, ...freshItems],
-          pinnedCount,
-        ),
+        orderedItems: [...existingItems, ...freshItems],
         receivedCount: list.length,
         total: Number(data?.total) || 0,
       };

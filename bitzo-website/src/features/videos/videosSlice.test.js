@@ -222,7 +222,7 @@ describe("Shorts feed pagination", () => {
     ]);
   });
 
-  it("loads and shuffles the full Recommended list for Home", async () => {
+  it("loads only the first Home page and leaves later pages for scrolling", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     const recommendedPages = [];
     const trendingPages = [];
@@ -315,57 +315,28 @@ describe("Shorts feed pagination", () => {
 
     const { recommended, trending, latest, shorts, sectionHasMore } =
       store.getState().videos;
-    expect(recommended).toHaveLength(235);
-    expect(new Set(recommended.map((video) => video.id)).size).toBe(235);
+    expect(recommended).toHaveLength(5);
+    expect(new Set(recommended.map((video) => video.id)).size).toBe(5);
     expect(recommended.map((video) => video.id)).not.toEqual(
-      Array.from({ length: 235 }, (_, index) => `recommended-${index + 1}`),
+      Array.from({ length: 5 }, (_, index) => `recommended-${index + 1}`),
     );
-    expect(recommendedPages).toEqual([
-      { page: 1, limit: 100 },
-      { page: 2, limit: 100 },
-      { page: 3, limit: 100 },
-    ]);
-    expect(trending).toHaveLength(235);
-    expect(trending.slice(0, 2).map((video) => video.id)).toEqual([
-      "trending-235",
-      "trending-234",
-    ]);
-    expect(trending.slice(2).map((video) => video.id)).not.toEqual(
-      Array.from({ length: 233 }, (_, index) => `trending-${233 - index}`),
-    );
-    expect(new Set(trending.map((video) => video.id)).size).toBe(235);
-    expect(trendingPages).toEqual([
-      { page: 1, limit: 100 },
-      { page: 2, limit: 100 },
-      { page: 3, limit: 100 },
-    ]);
-    expect(sectionHasMore.recommended).toBe(false);
-    expect(sectionHasMore.trending).toBe(false);
-    expect(latest).toHaveLength(235);
+    expect(recommendedPages).toEqual([{ page: 1, limit: 5 }]);
+    expect(trending).toHaveLength(5);
+    expect(new Set(trending.map((video) => video.id)).size).toBe(5);
+    expect(trendingPages).toEqual([{ page: 1, limit: 5 }]);
+    expect(latest).toHaveLength(5);
     expect(latest[0].id).toBe("latest-235");
-    expect(latest.slice(1).map((video) => video.id)).not.toEqual(
-      Array.from({ length: 234 }, (_, index) => `latest-${234 - index}`),
-    );
-    expect(new Set(latest.map((video) => video.id)).size).toBe(235);
-    expect(latestPages).toEqual([
-      { page: 1, limit: 100 },
-      { page: 2, limit: 100 },
-      { page: 3, limit: 100 },
-    ]);
-    expect(sectionHasMore.latest).toBe(false);
-    expect(shorts).toHaveLength(235);
-    expect(shorts.slice(0, 2).map((short) => short.id)).toEqual([
-      "short-235",
-      "short-234",
-    ]);
-    expect(shorts.slice(2).map((short) => short.id)).not.toEqual(
-      Array.from({ length: 233 }, (_, index) => `short-${233 - index}`),
-    );
-    expect(new Set(shorts.map((short) => short.id)).size).toBe(235);
-    expect(sectionHasMore.shorts).toBe(false);
+    expect(new Set(latest.map((video) => video.id)).size).toBe(5);
+    expect(latestPages).toEqual([{ page: 1, limit: 5 }]);
+    expect(shorts).toHaveLength(5);
+    expect(new Set(shorts.map((short) => short.id)).size).toBe(5);
+    expect(sectionHasMore.recommended).toBe(true);
+    expect(sectionHasMore.trending).toBe(true);
+    expect(sectionHasMore.latest).toBe(true);
+    expect(sectionHasMore.shorts).toBe(true);
   });
 
-  it("reshuffles the complete recommended list as more pages load", async () => {
+  it("keeps loaded videos in place when the next page is appended", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     vi.stubGlobal(
       "fetch",
@@ -400,11 +371,7 @@ describe("Shorts feed pagination", () => {
     const allRecommended = store
       .getState()
       .videos.recommended.map((item) => item.id);
-    expect(allRecommended).toHaveLength(10);
-    expect(new Set(allRecommended)).toEqual(
-      new Set(Array.from({ length: 10 }, (_, index) => `recommended-${index + 1}`)),
-    );
-    expect(allRecommended).not.toEqual([
+    expect(allRecommended).toEqual([
       ...firstPageOrder,
       "recommended-6",
       "recommended-7",

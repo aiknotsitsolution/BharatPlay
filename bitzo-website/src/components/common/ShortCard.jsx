@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { MoreHorizontal, Share2, Volume2, VolumeX } from "lucide-react";
+import { useState } from "react";
+import { MoreHorizontal, Share2 } from "lucide-react";
 
 const formatViews = (num) => {
   const n = Number(num) || 0;
@@ -12,88 +12,8 @@ const formatViews = (num) => {
   return `${n} views`;
 };
 
-const supportsHover =
-  typeof window !== "undefined" &&
-  window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-
-let activePreviewVideo = null;
-
-const stopActivePreview = () => {
-  if (activePreviewVideo) {
-    activePreviewVideo.pause();
-    activePreviewVideo.currentTime = 0;
-    activePreviewVideo = null;
-  }
-};
-
 export default function ShortCard({ item, onClick }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isPreviewing, setPreviewing] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
-  const videoRef = useRef(null);
-  const hoverTimerRef = useRef(null);
-  const hoveredRef = useRef(false);
-  const isMutedRef = useRef(true);
-
-  const stopPreview = () => {
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
-    }
-    setPreviewing(false);
-    setIsMuted(true);
-    isMutedRef.current = true;
-    const video = videoRef.current;
-    if (video) {
-      video.muted = true;
-      video.pause();
-      video.currentTime = 0;
-      if (activePreviewVideo === video) activePreviewVideo = null;
-    }
-  };
-
-  const startPreview = () => {
-    if (!supportsHover || !item.videoUrl) return;
-    if (videoRef.current && activePreviewVideo === videoRef.current) return;
-    stopActivePreview();
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current = setTimeout(() => {
-      hoverTimerRef.current = null;
-      setPreviewing(true);
-    }, 150);
-  };
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (isPreviewing && video && item.videoUrl) {
-      stopActivePreview();
-      activePreviewVideo = video;
-      video.muted = isMutedRef.current;
-      video.currentTime = 0;
-      video.play().catch(() => {});
-    }
-  }, [isPreviewing, item.videoUrl]);
-
-  useEffect(() => {
-    return () => {
-      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-      const video = videoRef.current;
-      if (video) {
-        video.pause();
-        video.currentTime = 0;
-        if (activePreviewVideo === video) activePreviewVideo = null;
-      }
-    };
-  }, []);
-
-  const handleMuteClick = (e) => {
-    e.stopPropagation();
-    const next = !isMutedRef.current;
-    isMutedRef.current = next;
-    setIsMuted(next);
-    const video = videoRef.current;
-    if (video) video.muted = next;
-  };
 
   const thumbnail =
     item.thumbnail ||
@@ -125,7 +45,6 @@ export default function ShortCard({ item, onClick }) {
       openShort();
     } else if (e.key === "Escape") {
       setMenuOpen(false);
-      stopPreview();
     }
   };
 
@@ -133,18 +52,6 @@ export default function ShortCard({ item, onClick }) {
     <div
       onClick={openShort}
       onKeyDown={handleKeyDown}
-      onMouseEnter={() => {
-        hoveredRef.current = true;
-        startPreview();
-      }}
-      onMouseLeave={() => {
-        hoveredRef.current = false;
-        stopPreview();
-      }}
-      onFocus={startPreview}
-      onBlur={() => {
-        if (!hoveredRef.current) stopPreview();
-      }}
       role="button"
       tabIndex={0}
       className="card-hover group w-full cursor-pointer hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
@@ -156,33 +63,6 @@ export default function ShortCard({ item, onClick }) {
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
         />
-
-        {item.videoUrl && (
-          <video
-            ref={videoRef}
-            src={item.videoUrl}
-            muted={isMuted}
-            loop
-            playsInline
-            preload="metadata"
-            className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-              isPreviewing ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        )}
-
-        <button
-          onClick={handleMuteClick}
-          aria-label={isMuted ? "Unmute" : "Mute"}
-          title={isMuted ? "Unmute" : "Mute"}
-          className="absolute right-11 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 shadow-lg backdrop-blur-sm transition-all duration-300 hover:bg-black/80 focus-visible:opacity-100 group-hover:opacity-100"
-        >
-          {isMuted ? (
-            <VolumeX size={16} className="h-4 w-4" />
-          ) : (
-            <Volume2 size={16} className="h-4 w-4" />
-          )}
-        </button>
 
         <div className="absolute right-1.5 top-1.5 z-10 opacity-0 transition-opacity duration-300 group-focus-within:opacity-100 group-hover:opacity-100">
           <button

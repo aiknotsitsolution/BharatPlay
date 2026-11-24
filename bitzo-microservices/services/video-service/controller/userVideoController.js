@@ -1273,6 +1273,10 @@ const getPagination = (req) => {
   return { page, limit, skip: (page - 1) * limit };
 };
 
+const HOME_VIDEO_FIELDS =
+  "title thumbnail duration views createdAt videoType category likesCount channel uploadedBy";
+const HOME_SHORT_FIELDS = `${HOME_VIDEO_FIELDS} videoUrl comments`;
+
 const getCategoryFilter = (req) => {
   const raw = req.query.category;
   if (!raw || typeof raw !== "string") return null;
@@ -1305,6 +1309,7 @@ const recommendedVideos = async (req, res) => {
           () =>
             Promise.all([
               Video.find(filter)
+                .select(HOME_VIDEO_FIELDS)
                 .sort({ createdAt: -1 })
                 .skip((page - 1) * perTypeLimit)
                 .limit(perTypeLimit)
@@ -1313,8 +1318,10 @@ const recommendedVideos = async (req, res) => {
                   path: "uploadedBy",
                   select: "name avatar",
                   model: User,
-                }),
+                })
+                .lean(),
               Video.find(shortFilter)
+                .select(HOME_SHORT_FIELDS)
                 .sort({ views: -1, createdAt: -1 })
                 .skip((page - 1) * perTypeLimit)
                 .limit(perTypeLimit)
@@ -1323,7 +1330,8 @@ const recommendedVideos = async (req, res) => {
                   path: "uploadedBy",
                   select: "name avatar",
                   model: User,
-                }),
+                })
+                .lean(),
               Video.countDocuments(filter),
               Video.countDocuments(shortFilter),
             ]),
@@ -1356,6 +1364,7 @@ const recommendedVideos = async (req, res) => {
       async () => {
         const [videos, total] = await Promise.all([
           Video.find(filter)
+            .select(HOME_VIDEO_FIELDS)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
@@ -1364,7 +1373,8 @@ const recommendedVideos = async (req, res) => {
               path: "uploadedBy",
               select: "name avatar",
               model: User,
-            }),
+            })
+            .lean(),
           Video.countDocuments(filter),
         ]);
         return { videos, total };
@@ -1569,6 +1579,7 @@ const trendingVideos = async (req, res) => {
       async () => {
         const [videos, total] = await Promise.all([
           Video.find(filter)
+            .select(HOME_VIDEO_FIELDS)
             .sort({ views: -1, createdAt: -1 })
             .skip(skip)
             .limit(limit)
@@ -1577,7 +1588,8 @@ const trendingVideos = async (req, res) => {
               path: "uploadedBy",
               select: "name avatar",
               model: User,
-            }),
+            })
+            .lean(),
           Video.countDocuments(filter),
         ]);
         return { videos, total };
@@ -1615,6 +1627,7 @@ const LatestVideos = async (req, res) => {
       async () => {
         const [videos, total] = await Promise.all([
           Video.find(filter)
+            .select(HOME_VIDEO_FIELDS)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
@@ -1623,7 +1636,8 @@ const LatestVideos = async (req, res) => {
               path: "uploadedBy",
               select: "name avatar",
               model: User,
-            }),
+            })
+            .lean(),
           Video.countDocuments(filter),
         ]);
         return { videos, total };
@@ -1661,6 +1675,7 @@ const trendingShorts = async (req, res) => {
       async () => {
         const [videos, total] = await Promise.all([
           Video.find(filter)
+            .select(HOME_SHORT_FIELDS)
             .sort({ views: -1, createdAt: -1 })
             .skip(skip)
             .limit(limit)
@@ -1669,7 +1684,8 @@ const trendingShorts = async (req, res) => {
               path: "uploadedBy",
               select: "name avatar",
               model: User,
-            }),
+            })
+            .lean(),
           Video.countDocuments(filter),
         ]);
         return { videos, total };
@@ -2661,11 +2677,13 @@ const getSubscribedVideos = async (req, res) => {
     const total = await Video.countDocuments(filter);
 
     const videos = await Video.find(filter)
+      .select(HOME_SHORT_FIELDS)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .populate("channel", "name channelImage")
-      .populate({ path: "uploadedBy", select: "name avatar", model: User });
+      .populate({ path: "uploadedBy", select: "name avatar", model: User })
+      .lean();
 
     res.status(200).json({
       success: true,

@@ -1056,11 +1056,7 @@ export default function Shorts() {
                               poster={short.thumbnail}
                               title={short.title}
                               muted={muted}
-                              preload={
-                                active || index === currentIndex + 1
-                                  ? "auto"
-                                  : "metadata"
-                              }
+                              preload={active ? "auto" : "none"}
                               disabled={Boolean(commentOpenForId)}
                               onRegister={setVideoRef}
                               onReady={handleVideoReady}
