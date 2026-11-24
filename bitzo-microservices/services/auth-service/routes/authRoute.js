@@ -39,9 +39,10 @@ const {
 } = require("../controller/phoneAuthController");
 const { imageUpload } = require("../middlewares/multer");
 const { deleteMyAccount } = require("../controller/accountDeletionController");
+const requireAccountConsent = require("../middlewares/requireAccountConsent");
 
 router.post("/register", registerLimiter, registerUser);
-router.post("/login", loginLimiter, loginUser);
+router.post("/login", loginLimiter, requireAccountConsent, loginUser);
 router.post("/phone/map", registerLimiter, authMiddleware, mapRegistrationPhone);
 router.post("/device-fingerprint", saveDeviceFingerprint);
 router.post("/claim-device", loginLimiter, (_req, res) =>
@@ -69,10 +70,30 @@ router.post(
   authMiddleware,
   verifyPhoneBindingOtp,
 );
-router.post("/phone-auth/request-otp", registerLimiter, requestPhoneOtp);
-router.post("/phone-auth/verify-otp", loginLimiter, verifyPhoneOtp);
-router.post("/phone-auth/migrate", registerLimiter, startLegacyMigration);
-router.post("/phone-auth/migrate/verify", loginLimiter, verifyLegacyMigration);
+router.post(
+  "/phone-auth/request-otp",
+  registerLimiter,
+  requireAccountConsent,
+  requestPhoneOtp,
+);
+router.post(
+  "/phone-auth/verify-otp",
+  loginLimiter,
+  requireAccountConsent,
+  verifyPhoneOtp,
+);
+router.post(
+  "/phone-auth/migrate",
+  registerLimiter,
+  requireAccountConsent,
+  startLegacyMigration,
+);
+router.post(
+  "/phone-auth/migrate/verify",
+  loginLimiter,
+  requireAccountConsent,
+  verifyLegacyMigration,
+);
 router.post(
   "/phone-auth/email/request-otp",
   authMiddleware,
@@ -84,7 +105,12 @@ router.post(
   verifyEmailBindingOtp,
 );
 
-router.post("/auth/google", loginLimiter, googleLogin);
+router.post(
+  "/auth/google",
+  loginLimiter,
+  requireAccountConsent,
+  googleLogin,
+);
 router.get("/profile", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id; // ya req.user._id  (jo bhi aapke authMiddleware mein hai)

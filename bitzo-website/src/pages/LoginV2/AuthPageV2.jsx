@@ -136,8 +136,8 @@ export default function AuthPageV2() {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     if (privateModeStatus !== "available") return;
-    if (!isLogin && (!ageConfirmed || !termsAccepted)) {
-      const message = "Confirm that you are 18+ and accept the Terms and Privacy Policy to register.";
+    if (!ageConfirmed || !termsAccepted) {
+      const message = "Confirm that you are 18+ and accept the Terms and Privacy Policy before continuing.";
       setError(message);
       toast.error(message);
       return;
@@ -160,7 +160,8 @@ export default function AuthPageV2() {
         body: JSON.stringify({
           credential: credentialResponse.credential,
           intent: isLogin ? "login" : "signup",
-          ...(isLogin ? {} : { ageConfirmed, termsAccepted }),
+          ageConfirmed,
+          termsAccepted,
           clientHardwareUuid: getClientHardwareUuid(),
           browserDeviceSignals,
         }),
@@ -202,15 +203,13 @@ export default function AuthPageV2() {
   const handleEmailSubmit = async (e) => {
     if (e) e.preventDefault();
     if (privateModeStatus !== "available") return;
-    if (!isLogin && !migrationMode && !registrationPhoneRequired) {
-      if (!ageConfirmed) {
-        setError("Confirm that you are at least 18 years old to register.");
-        return;
-      }
-      if (!termsAccepted) {
-        setError("Accept the Terms of Service and Privacy Policy to register.");
-        return;
-      }
+    if (!registrationPhoneRequired && !ageConfirmed) {
+      setError("Confirm that you are at least 18 years old to continue.");
+      return;
+    }
+    if (!registrationPhoneRequired && !termsAccepted) {
+      setError("Accept the Terms of Service and Privacy Policy to continue.");
+      return;
     }
     setLoading(true);
     setError("");
@@ -231,6 +230,8 @@ export default function AuthPageV2() {
           ? {
               email: formData.email,
               phone: formData.phone,
+              ageConfirmed,
+              termsAccepted,
               emailOtp: migrationEmailOtp,
               phoneOtp: migrationPhoneOtp,
               clientHardwareUuid: getClientHardwareUuid(),
@@ -240,6 +241,8 @@ export default function AuthPageV2() {
               email: formData.email,
               password: formData.password,
               phone: formData.phone,
+              ageConfirmed,
+              termsAccepted,
               clientHardwareUuid: getClientHardwareUuid(),
               browserDeviceSignals,
             };
@@ -315,6 +318,8 @@ export default function AuthPageV2() {
           body: JSON.stringify({
             email: identifier,
             ...(otpRequired ? { otp } : { password: formData.password }),
+            ageConfirmed,
+            termsAccepted,
             clientHardwareUuid: getClientHardwareUuid(),
             browserDeviceSignals,
           }),
@@ -410,6 +415,8 @@ export default function AuthPageV2() {
             email: formData.email,
             password: formData.password,
             phone: formData.phone,
+            ageConfirmed,
+            termsAccepted,
             clientHardwareUuid: getClientHardwareUuid(),
             browserDeviceSignals,
           }
@@ -417,6 +424,8 @@ export default function AuthPageV2() {
           ? {
               email: formData.email.trim().toLowerCase(),
               password: formData.password,
+              ageConfirmed,
+              termsAccepted,
               clientHardwareUuid: getClientHardwareUuid(),
               browserDeviceSignals,
             }
@@ -544,7 +553,7 @@ export default function AuthPageV2() {
               </div>
             )}
 
-            {!registrationPhoneRequired && !migrationMode && (
+            {!registrationPhoneRequired && (
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs leading-relaxed text-gray-400">
                 VidBux is for people aged 18 and over. Loyalty points are not
                 guaranteed cash, and withdrawals are currently unavailable.{" "}
@@ -587,7 +596,7 @@ export default function AuthPageV2() {
               )}
 
             <form onSubmit={handleEmailSubmit} className="space-y-3">
-              {!registrationPhoneRequired && !isLogin && !migrationMode && (
+              {!registrationPhoneRequired && !otpRequired && (
                 <div className="relative group">
                   <User
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-400 transition-colors duration-300"
@@ -680,7 +689,7 @@ export default function AuthPageV2() {
                   </div>
                 )}
 
-              {!registrationPhoneRequired && !isLogin && !migrationMode && (
+              {!registrationPhoneRequired && !migrationMode && (
                 <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs leading-relaxed text-gray-300">
                   <label className="flex items-start gap-2.5">
                     <input
@@ -860,7 +869,12 @@ export default function AuthPageV2() {
 
               <button
                 type="submit"
-                disabled={loading || privateModeStatus !== "available"}
+                disabled={
+                  loading ||
+                  privateModeStatus !== "available" ||
+                  (!registrationPhoneRequired &&
+                    (!ageConfirmed || !termsAccepted))
+                }
                 className="loginv2-button w-full py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 text-sm"
               >
                 {loading ? (

@@ -343,14 +343,15 @@ export default function DeleteAccountPage() {
       )}
 
       {/* Deletion request form */}
-      {!directDeletionSuccess && <div
-        className={`mt-8 rounded-2xl border p-6 sm:p-8 ${isDark ? "border-zinc-800/70 bg-[#161616]" : "border-gray-200 bg-white"}`}
-      >
+      {!directDeletionSuccess && (
+        <div
+          className={`mt-8 rounded-2xl border p-6 sm:p-8 ${isDark ? "border-zinc-800/70 bg-[#161616]" : "border-gray-200 bg-white"}`}
+        >
         {step === "success" ? (
           <div className="flex flex-col items-center py-10 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/30">
               <CheckCircle2 size={28} className="text-emerald-400" />
-            </div>}
+            </div>
             <h2
               className={`text-lg font-semibold ${isDark ? "text-white" : "text-gray-900"}`}
             >
@@ -577,7 +578,8 @@ export default function DeleteAccountPage() {
             )}
           </>
         )}
-      </div>
+        </div>
+      )}
 
       {/* Data handling details */}
       <div className="mt-8 space-y-5">

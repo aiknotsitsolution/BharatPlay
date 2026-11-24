@@ -967,6 +967,20 @@ exports.saveDeviceFingerprint = async (req, res) => {
 
 exports.loginUser = async (req, res) => {
   try {
+    if (req.body?.ageConfirmed !== true) {
+      return res.status(400).json({
+        success: false,
+        code: "AGE_CONFIRMATION_REQUIRED",
+        message: "You must confirm that you are at least 18 years old.",
+      });
+    }
+    if (req.body?.termsAccepted !== true) {
+      return res.status(400).json({
+        success: false,
+        code: "TERMS_ACCEPTANCE_REQUIRED",
+        message: "Accept the Terms of Service and Privacy Policy to continue.",
+      });
+    }
     const { email, password, otp } = req.body;
     const normalizedEmail =
       typeof email === "string" ? email.trim().toLowerCase() : "";
@@ -1411,14 +1425,14 @@ exports.loginUser = async (req, res) => {
 exports.googleLogin = async (req, res) => {
   try {
     const intent = req.body?.intent === "signup" ? "signup" : "login";
-    if (intent === "signup" && req.body?.termsAccepted !== true) {
+    if (req.body?.termsAccepted !== true) {
       return res.status(400).json({
         success: false,
         code: "TERMS_ACCEPTANCE_REQUIRED",
-        message: "Accept the Terms of Service and Privacy Policy to create an account.",
+        message: "Accept the Terms of Service and Privacy Policy to continue.",
       });
     }
-    if (intent === "signup" && req.body?.ageConfirmed !== true) {
+    if (req.body?.ageConfirmed !== true) {
       return res.status(400).json({
         success: false,
         code: "AGE_CONFIRMATION_REQUIRED",
