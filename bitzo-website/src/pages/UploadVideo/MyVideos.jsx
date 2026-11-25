@@ -63,7 +63,7 @@ export default function MyVideos() {
           >
             <option value="latest">Latest</option>
             <option value="views">Highest Views</option>
-            <option value="earnings">Highest Earnings</option>
+            <option value="earnings">Highest Rewards</option>
           </select>
         </div>
       </div>
@@ -198,7 +198,7 @@ export default function MyVideos() {
                   {
                     icon: DollarSign,
                     color: "red",
-                    label: "Total Earnings",
+                    label: "Total Rewards",
                     value: `₹${selectedVideo.earnings.toFixed(2)}`,
                   },
                 ].map((item, i) => (

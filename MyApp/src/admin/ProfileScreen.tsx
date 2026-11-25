@@ -1667,7 +1667,7 @@ export function ProfileScreen() {
                     ? "Latest"
                     : sortBy === "views"
                       ? "Most viewed"
-                      : "Highest earnings"}
+                      : "Highest rewards"}
                 </Text>
               </TouchableOpacity>
             </View>

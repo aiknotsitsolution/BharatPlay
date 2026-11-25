@@ -24,10 +24,10 @@ const recentShorts = [
 ];
 
 const topShorts = [
-  { id: "t1", title: "High Earning Video", creator: "@Swaet", earn: "₹500", thumb: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=560&fit=crop" },
-  { id: "t2", title: "High Earning Video", creator: "@Crimflow", earn: "₹162.00", thumb: "https://images.unsplash.com/photo-1470146718580-010796192dd8?w=400&h=560&fit=crop" },
-  { id: "t3", title: "High Earning Video", creator: "@ZarnMore", earn: "₹81.00", thumb: "https://images.unsplash.com/photo-1551244653-a5a5a1ace188?w=400&h=560&fit=crop" },
-  { id: "t4", title: "Top Earning Short", creator: "@NatureVib", earn: "₹240.00", thumb: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=560&fit=crop" },
+  { id: "t1", title: "High Reward Video", creator: "@Swaet", earn: "₹500", thumb: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=560&fit=crop" },
+  { id: "t2", title: "High Reward Video", creator: "@Crimflow", earn: "₹162.00", thumb: "https://images.unsplash.com/photo-1470146718580-010796192dd8?w=400&h=560&fit=crop" },
+  { id: "t3", title: "High Reward Video", creator: "@ZarnMore", earn: "₹81.00", thumb: "https://images.unsplash.com/photo-1551244653-a5a5a1ace188?w=400&h=560&fit=crop" },
+  { id: "t4", title: "Top Reward Short", creator: "@NatureVib", earn: "₹240.00", thumb: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=560&fit=crop" },
   { id: "t5", title: "Viral Street Food", creator: "@FoodieMP", earn: "₹95.00", thumb: "https://images.unsplash.com/photo-1470146718580-010796192dd8?w=400&h=560&fit=crop" },
   { id: "t6", title: "Sunset Timelapse", creator: "@NatureVib", earn: "₹180.00", thumb: "https://images.unsplash.com/photo-1551244653-a5a5a1ace188?w=400&h=560&fit=crop" },
 ];

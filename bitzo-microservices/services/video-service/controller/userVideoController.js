@@ -16,6 +16,7 @@ const {
   VIDEO_CATALOG_CACHE_TTL_SECONDS,
 } = require("../utils/videoCatalogCache");
 const { cached, invalidateCache } = require("../../../services/caching");
+const { withVisibleVideoFilter } = require("../utils/videoVisibility");
 const {
   createNotification,
   createBulkNotifications,
@@ -32,55 +33,6 @@ const {
 const { deleteFilesFromB2 } = require("../middlewares/blazerMiddlware");
 
 const ABS_WATCH_SECONDS_CAP = 12 * 60 * 60; // 43200s hard cap per session
-const RESTRICTED_ACCOUNT_STATUSES = ["suspended", "banned", "deleted"];
-const RESTRICTED_CONTENT_CACHE_MS = 3_000;
-let restrictedContentCache = {
-  expiresAt: 0,
-  userIds: [],
-  channelIds: [],
-};
-let restrictedContentCachePromise = null;
-
-const getRestrictedContentIds = async () => {
-  if (restrictedContentCache.expiresAt > Date.now()) {
-    return restrictedContentCache;
-  }
-  if (restrictedContentCachePromise) return restrictedContentCachePromise;
-
-  restrictedContentCachePromise = (async () => {
-    const userIds = await User.distinct("_id", {
-      status: { $in: RESTRICTED_ACCOUNT_STATUSES },
-    });
-    const channelIds = userIds.length
-      ? await Channel.distinct("_id", { creator: { $in: userIds } })
-      : [];
-
-    restrictedContentCache = {
-      expiresAt: Date.now() + RESTRICTED_CONTENT_CACHE_MS,
-      userIds,
-      channelIds,
-    };
-    return restrictedContentCache;
-  })().finally(() => {
-    restrictedContentCachePromise = null;
-  });
-
-  return restrictedContentCachePromise;
-};
-
-const withVisibleVideoFilter = async (filter = {}) => {
-  const { userIds, channelIds } = await getRestrictedContentIds();
-  return {
-    $and: [
-      filter,
-      { status: "active" },
-      ...(userIds.length
-        ? [{ uploadedBy: { $nin: userIds } }, { creator: { $nin: userIds } }]
-        : []),
-      ...(channelIds.length ? [{ channel: { $nin: channelIds } }] : []),
-    ],
-  };
-};
 
 const withUnwatchedVideoFilter = async (req, filter = {}) => {
   const visibleFilter = await withVisibleVideoFilter(filter);
@@ -816,7 +768,9 @@ const getChannelById = async (req, res) => {
 
       if (!channel) return null;
 
-      const videos = await Video.find({ channel: channelId, status: "active" })
+      const videos = await Video.find(
+        await withVisibleVideoFilter({ channel: channelId }),
+      )
         .populate({ path: "uploadedBy", select: "_id name email", model: User })
         .sort({ createdAt: -1 })
         .lean();
@@ -923,10 +877,9 @@ const getUserWatchHistory = async (req, res) => {
         .json({ success: true, videos: [], total, page, limit });
     }
 
-    const videos = await Video.find({
-      _id: { $in: pagedIds },
-      status: "active",
-    })
+    const videos = await Video.find(
+      await withVisibleVideoFilter({ _id: { $in: pagedIds } }),
+    )
       .populate("channel", "name channelImage subscribedBy")
       .populate({ path: "uploadedBy", select: "name email", model: User });
 
@@ -960,7 +913,9 @@ const saveToWatchHistory = async (req, res) => {
         .json({ success: false, message: "Invalid video ID" });
     }
 
-    const video = await Video.exists({ _id: videoId });
+    const video = await Video.exists(
+      await withVisibleVideoFilter({ _id: videoId }),
+    );
     if (!video) {
       return res
         .status(404)
@@ -1067,7 +1022,7 @@ const getUserLikedVideos = async (req, res) => {
     const user = await User.findById(userId).populate({
       path: "likedVideos",
       model: Video,
-      match: { status: "active" },
+      match: await withVisibleVideoFilter(),
       populate: {
         path: "channel",
         select: "name channelImage",
@@ -1108,10 +1063,9 @@ const getUserWatchLaterVideos = async (req, res) => {
         .json({ success: true, videos: [], total, page, limit });
     }
 
-    const videos = await Video.find({
-      _id: { $in: pagedIds },
-      status: "active",
-    })
+    const videos = await Video.find(
+      await withVisibleVideoFilter({ _id: { $in: pagedIds } }),
+    )
       .populate("channel", "name channelImage")
       .populate({ path: "uploadedBy", select: "name email", model: User });
 
@@ -1193,7 +1147,9 @@ const getvideosByChannel = async (req, res) => {
         .lean();
       if (!channel) return null;
 
-      const videos = await Video.find({ channel: channelId, status: "active" })
+      const videos = await Video.find(
+        await withVisibleVideoFilter({ channel: channelId }),
+      )
         .populate({ path: "uploadedBy", select: "_id name email", model: User })
         .populate({
           path: "channel",
@@ -1389,8 +1345,8 @@ const getAllVideos = async (req, res) => {
       "all-videos",
       {},
       VIDEO_CATALOG_CACHE_TTL_SECONDS,
-      () =>
-        Video.find({ status: "active" })
+      async () =>
+        Video.find(await withVisibleVideoFilter())
           .populate("channel", "name channelImage")
           .populate({ path: "uploadedBy", select: "name email", model: User })
           .lean(),
@@ -1935,8 +1891,8 @@ const getVideoById = async (req, res) => {
       "video-detail",
       { videoId: String(videoId) },
       VIDEO_CATALOG_CACHE_TTL_SECONDS,
-      () =>
-        Video.findOne({ _id: videoId, status: "active" })
+      async () =>
+        Video.findOne(await withVisibleVideoFilter({ _id: videoId }))
           .populate(
             "channel",
             "name subscribersCount channelImage subscribedBy",
@@ -2115,7 +2071,9 @@ const addView = async (req, res) => {
     const { videoId } = req.params;
     const { watchedPercent } = req.body || {};
 
-    const video = await Video.findOne({ _id: videoId, status: "active" });
+    const video = await Video.findOne(
+      await withVisibleVideoFilter({ _id: videoId }),
+    );
     if (!video) {
       return res
         .status(404)
@@ -2249,7 +2207,7 @@ const likeVideo = async (req, res) => {
     // Guest users (no auth) – just increment, no toggle
     if (!userId) {
       const video = await Video.findOneAndUpdate(
-        { _id: videoId, status: "active" },
+        await withVisibleVideoFilter({ _id: videoId }),
         { $inc: { likesCount: 1 } },
         { new: true },
       );
@@ -2268,7 +2226,9 @@ const likeVideo = async (req, res) => {
 
     // Authenticated user
     const [video, user] = await Promise.all([
-      Video.findOne({ _id: normalizedVideoId, status: "active" }),
+      Video.findOne(
+        await withVisibleVideoFilter({ _id: normalizedVideoId }),
+      ),
       User.findById(userId),
     ]);
 
@@ -2357,7 +2317,7 @@ const dislikeVideo = async (req, res) => {
 
     if (!userId) {
       const video = await Video.findOneAndUpdate(
-        { _id: videoId, status: "active" },
+        await withVisibleVideoFilter({ _id: videoId }),
         { $inc: { dislikesCount: 1 } },
         { new: true },
       );
@@ -2375,7 +2335,7 @@ const dislikeVideo = async (req, res) => {
     }
 
     const [video, user] = await Promise.all([
-      Video.findOne({ _id: videoId, status: "active" }),
+      Video.findOne(await withVisibleVideoFilter({ _id: videoId })),
       User.findById(userId),
     ]);
 
@@ -2551,7 +2511,9 @@ const addComment = async (req, res) => {
       });
     }
 
-    const video = await Video.findOne({ _id: videoId, status: "active" });
+    const video = await Video.findOne(
+      await withVisibleVideoFilter({ _id: videoId }),
+    );
     if (!video) {
       return res.status(404).json({
         success: false,
@@ -2604,11 +2566,20 @@ const getComments = async (req, res) => {
   try {
     const { videoId } = req.params;
 
+    const visibleVideo = await Video.exists(
+      await withVisibleVideoFilter({ _id: videoId }),
+    );
+    if (!visibleVideo) {
+      return res.status(404).json({
+        success: false,
+        message: "Video not found",
+      });
+    }
+
     const comments = await cached(`video-comments:${videoId}`, 30, async () => {
-      const video = await Video.findOne({
-        _id: videoId,
-        status: "active",
-      }).select("comments");
+      const video = await Video.findOne(
+        await withVisibleVideoFilter({ _id: videoId }),
+      ).select("comments");
       if (!video) return null;
 
       return video.comments.map((comment) =>
@@ -2657,7 +2628,9 @@ const deleteComment = async (req, res) => {
   try {
     const { videoId, commentId } = req.params;
     const userId = req.user.id;
-    const video = await Video.findOne({ _id: videoId, status: "active" });
+    const video = await Video.findOne(
+      await withVisibleVideoFilter({ _id: videoId }),
+    );
     if (!video) {
       return res
         .status(404)
@@ -2702,10 +2675,9 @@ const getVideoInteraction = async (req, res) => {
   try {
     const { videoId } = req.params;
 
-    const video = await Video.findOne({
-      _id: videoId,
-      status: "active",
-    }).lean();
+    const video = await Video.findOne(
+      await withVisibleVideoFilter({ _id: videoId }),
+    ).lean();
 
     if (!video) {
       return res.status(404).json({
@@ -2869,10 +2841,9 @@ const HistoricalVideos = async (req, res) => {
     }
 
     // Fetch all videos that the user has viewed
-    const videos = await Video.find({
-      _id: { $in: viewedVideoIds },
-      status: "active",
-    })
+    const videos = await Video.find(
+      await withVisibleVideoFilter({ _id: { $in: viewedVideoIds } }),
+    )
       .populate("channel", "name channelImage")
       .populate({ path: "uploadedBy", select: "name email", model: User });
 
@@ -2928,10 +2899,9 @@ const LikedVideos = async (req, res) => {
     const pagedIds = reversedIds.slice(skip, skip + limit);
     const total = reversedIds.length;
 
-    const videos = await Video.find({
-      _id: { $in: pagedIds },
-      status: "active",
-    })
+    const videos = await Video.find(
+      await withVisibleVideoFilter({ _id: { $in: pagedIds } }),
+    )
       .populate("channel", "name channelImage")
       .populate({ path: "uploadedBy", select: "name email", model: User });
 
@@ -2978,10 +2948,9 @@ const WatchLaterVideos = async (req, res) => {
     }
 
     // Fetch all watch later videos
-    const videos = await Video.find({
-      _id: { $in: watchLaterIds },
-      status: "active",
-    })
+    const videos = await Video.find(
+      await withVisibleVideoFilter({ _id: { $in: watchLaterIds } }),
+    )
       .populate("channel", "name channelImage")
       .populate({ path: "uploadedBy", select: "name email", model: User });
 
@@ -3256,7 +3225,7 @@ const searchVideos = async (req, res) => {
           }
         }
 
-        const filter = { status: "active", $or: orConditions };
+        const filter = await withVisibleVideoFilter({ $or: orConditions });
 
         const [videos, total] = await Promise.all([
           Video.aggregate([
@@ -3357,7 +3326,7 @@ const getSearchHints = async (req, res) => {
       async () => {
         const regex = new RegExp(escapeRegex(q), "i");
         const [videoHints, channelHints] = await Promise.all([
-          Video.find({ title: regex, status: "active" })
+          Video.find(await withVisibleVideoFilter({ title: regex }))
             .select("title")
             .limit(6)
             .lean(),

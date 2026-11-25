@@ -21,7 +21,7 @@ const PAGE_SIZE = 20;
 const SORT_OPTIONS = [
   { value: "latest", label: "Latest" },
   { value: "views", label: "Most Viewed" },
-  { value: "earnings", label: "Most Earnings" },
+  { value: "earnings", label: "Most Rewards" },
 ];
 
 export default function YourVideosTab({

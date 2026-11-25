@@ -103,4 +103,13 @@ const channelSchema = new mongoose.Schema(
 
 channelSchema.index({ creator: 1, createdAt: -1 });
 
-module.exports = mongoose.model("Channel", channelSchema);
+// Keep the Channel schema in the default registry because Video queries populate
+// "Channel" through Mongoose, while moderation reads must use the video database.
+if (!mongoose.models.Channel) {
+  mongoose.model("Channel", channelSchema);
+}
+
+const videoConnection = require("../../config/connections").videoDB();
+module.exports =
+  videoConnection.models.Channel ||
+  videoConnection.model("Channel", channelSchema);

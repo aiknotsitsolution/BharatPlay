@@ -154,10 +154,8 @@ export const banAdminChannel = (userId, channelId, reason) =>
   API.post(`/admin/users/${userId}/channels/${channelId}/ban`, { reason });
 export const restoreAdminChannel = (userId, channelId) =>
   API.post(`/admin/users/${userId}/channels/${channelId}/restore`);
-export const deleteAdminChannel = (userId, channelId, reason) =>
-  API.delete(`/admin/users/${userId}/channels/${channelId}`, {
-    data: { reason },
-  });
+export const deleteAdminChannel = (userId, channelId) =>
+  API.delete(`/admin/users/${userId}/channels/${channelId}`);
 
 // Admin Video Moderation
 export const disableAdminVideo = (userId, videoId, reason) =>

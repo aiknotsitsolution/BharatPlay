@@ -560,7 +560,7 @@ export default function Profile() {
 
   const tabs = [
     { id: "my-videos", label: "My Videos", icon: Eye },
-    { id: "earnings", label: "Earnings", icon: IndianRupee },
+    { id: "earnings", label: "Rewards", icon: IndianRupee },
     { id: "watch-history", label: "Watch History", icon: History },
   ];
 
@@ -578,7 +578,7 @@ export default function Profile() {
     if (activeTab === "earnings") {
       return (
         <div className="space-y-6">
-          <h3 className="text-lg font-semibold">Earnings Overview</h3>
+          <h3 className="text-lg font-semibold">Rewards Overview</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               {
@@ -586,7 +586,7 @@ export default function Profile() {
                 value: `₹${(user?.earningsThisMonth || 0).toLocaleString()}`,
               },
               {
-                label: "Total Earnings",
+                label: "Total Rewards",
                 value: `₹${(user?.totalEarnings || 0).toLocaleString()}`,
               },
               {
@@ -605,7 +605,7 @@ export default function Profile() {
             ))}
           </div>
           <div className="text-center text-zinc-500 py-10">
-            Earnings history will appear here once available
+            Rewards history will appear here once available
           </div>
         </div>
       );
@@ -696,7 +696,7 @@ export default function Profile() {
             >
               <option value="latest">Latest</option>
               <option value="views">Highest Views</option>
-              <option value="earnings">Highest Earnings</option>
+              <option value="earnings">Highest Rewards</option>
             </select>
           </div>
         </div>
@@ -809,7 +809,7 @@ export default function Profile() {
               icon: DollarSign,
               color: "red",
               value: `₹${(user.totalEarnings || 0).toLocaleString()}`,
-              label: "Total Earnings",
+              label: "Total Rewards",
             },
             {
               icon: TrendingUp,
@@ -821,7 +821,7 @@ export default function Profile() {
               icon: IndianRupee,
               color: "red",
               value: `₹${(user.totalEarnings || 0).toLocaleString()}`,
-              label: "Earning as Viewer",
+              label: "Viewer Rewards",
             },
           ].map((item) => {
             const StatIcon = item.icon;

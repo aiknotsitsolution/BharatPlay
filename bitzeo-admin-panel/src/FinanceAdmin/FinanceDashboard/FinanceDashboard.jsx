@@ -682,7 +682,7 @@ export default function FinanceDashboard() {
           <thead className="bg-bp-elevated/50 text-bp-text-secondary text-xs uppercase">
             <tr>
               <th className="px-5 py-3 text-left">Creator</th>
-              <th className="px-5 py-3 text-right">Earnings</th>
+              <th className="px-5 py-3 text-right">Rewards</th>
               <th className="px-5 py-3 text-center">Videos</th>
               <th className="px-5 py-3 text-center">Flags</th>
               <th className="px-5 py-3 text-center">Status</th>
@@ -815,7 +815,7 @@ export default function FinanceDashboard() {
   const renderLogs = () => (
     <div className="space-y-4">
       <div className="flex gap-2">
-        {["All", "Admin", "Earnings", "Fraud"].map((t) => (
+        {["All", "Admin", "Rewards", "Fraud"].map((t) => (
           <button
             key={t}
             className="px-3 py-1.5 text-sm rounded-lg border border-bp-border text-bp-text-secondary hover:bg-bp-elevated hover:text-bp-text transition"
@@ -898,7 +898,7 @@ export default function FinanceDashboard() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white">Finance Dashboard</h1>
           <p className="text-bp-text-secondary text-[13px] mt-1">
-            Earning monitoring • Security controls • System oversight
+            Rewards monitoring • Security controls • System oversight
           </p>
         </div>
 

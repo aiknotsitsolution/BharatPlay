@@ -1,18 +1,21 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
+import { authFetch } from "../../utils/session";
 
 const getToken = () => localStorage.getItem("token");
+
+const notificationRequest = (url, options) => {
+  if (!getToken()) {
+    throw new Error("No token found. Please login first.");
+  }
+  return authFetch(url, options);
+};
 
 export const fetchNotifications = createAsyncThunk(
   "notifications/fetchNotifications",
   async (_, { rejectWithValue }) => {
     try {
-      const token = getToken();
-      if (!token) throw new Error("No token found. Please login first.");
-
-      const res = await fetch(`${BACKEND_URL}/api/notifications`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await notificationRequest(`${BACKEND_URL}/api/notifications`);
 
       if (!res.ok) {
         throw new Error(`Server error: ${res.status}`);
@@ -41,13 +44,12 @@ export const markNotificationRead = createAsyncThunk(
   "notifications/markNotificationRead",
   async (id, { rejectWithValue }) => {
     try {
-      const token = getToken();
-      if (!token) throw new Error("No token found. Please login first.");
-
-      const res = await fetch(`${BACKEND_URL}/api/notifications/${id}/read`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await notificationRequest(
+        `${BACKEND_URL}/api/notifications/${id}/read`,
+        {
+          method: "PATCH",
+        },
+      );
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
@@ -70,13 +72,10 @@ export const markAllNotificationsRead = createAsyncThunk(
   "notifications/markAllNotificationsRead",
   async (_, { rejectWithValue }) => {
     try {
-      const token = getToken();
-      if (!token) throw new Error("No token found. Please login first.");
-
-      const res = await fetch(`${BACKEND_URL}/api/notifications/read-all`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await notificationRequest(
+        `${BACKEND_URL}/api/notifications/read-all`,
+        { method: "PATCH" },
+      );
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
@@ -96,13 +95,10 @@ export const clearAllNotifications = createAsyncThunk(
   "notifications/clearAllNotifications",
   async (_, { rejectWithValue }) => {
     try {
-      const token = getToken();
-      if (!token) throw new Error("No token found. Please login first.");
-
-      const res = await fetch(`${BACKEND_URL}/api/notifications/clear-all`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await notificationRequest(
+        `${BACKEND_URL}/api/notifications/clear-all`,
+        { method: "DELETE" },
+      );
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
@@ -120,13 +116,10 @@ export const deleteNotification = createAsyncThunk(
   "notifications/deleteNotification",
   async (id, { rejectWithValue }) => {
     try {
-      const token = getToken();
-      if (!token) throw new Error("No token found. Please login first.");
-
-      const res = await fetch(`${BACKEND_URL}/api/notifications/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await notificationRequest(
+        `${BACKEND_URL}/api/notifications/${id}`,
+        { method: "DELETE" },
+      );
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
 

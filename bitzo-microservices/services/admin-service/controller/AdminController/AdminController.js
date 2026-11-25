@@ -31,6 +31,10 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const { logAuditEvent } = require("../../services/auditEventService");
 const { changeTrustScore } = require("../../services/trustScoreService");
+const { invalidateCache } = require("../../../../services/caching");
+const {
+  invalidateVideoCatalogCache,
+} = require("../../../../services/video-service/utils/videoCatalogCache");
 
 const VALID_ROLES = ["viewer", "creator", "admin"];
 const MAX_SEARCH_LENGTH = 100;
@@ -55,6 +59,15 @@ function isValidObjectId(id) {
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+const invalidateChannelVisibilityCache = async (channelId) => {
+  await Promise.all([
+    invalidateVideoCatalogCache(),
+    invalidateCache("video:restricted-content-ids"),
+    invalidateCache(`channel-page:${channelId}`),
+    invalidateCache(`channel-videos:${channelId}`),
+  ]);
+};
 
 const sendMailSafely = async (mailOptions) => {
   if (!mailOptions?.to || !transporter?.sendMail) {
@@ -2958,6 +2971,7 @@ exports.disableChannel = async (req, res) => {
     channel.disabledBy = adminId || null;
     channel.disableReason = reason || null;
     await channel.save();
+    await invalidateChannelVisibilityCache(channelId);
 
     logAuditEvent({
       userId,
@@ -3024,6 +3038,7 @@ exports.enableChannel = async (req, res) => {
     channel.disabledBy = null;
     channel.disableReason = null;
     await channel.save();
+    await invalidateChannelVisibilityCache(channelId);
 
     logAuditEvent({
       userId,
@@ -3081,6 +3096,7 @@ exports.banChannel = async (req, res) => {
     channel.bannedBy = adminId || null;
     channel.banReason = reason || null;
     await channel.save();
+    await invalidateChannelVisibilityCache(channelId);
 
     logAuditEvent({
       userId,
@@ -3146,6 +3162,7 @@ exports.restoreChannel = async (req, res) => {
     channel.bannedBy = null;
     channel.banReason = null;
     await channel.save();
+    await invalidateChannelVisibilityCache(channelId);
 
     logAuditEvent({
       userId,
@@ -3196,6 +3213,7 @@ exports.deleteChannel = async (req, res) => {
     channel.deletedBy = adminId || null;
     channel.deleteReason = reason || null;
     await channel.save();
+    await invalidateChannelVisibilityCache(channelId);
 
     // Remove channel reference from user
     await AllUser.updateOne(

@@ -367,9 +367,9 @@ export const restoreChannel = createAsyncThunk(
 
 export const deleteChannel = createAsyncThunk(
   "adminUser360/deleteChannel",
-  async ({ userId, channelId, reason }, { rejectWithValue }) => {
+  async ({ userId, channelId }, { rejectWithValue }) => {
     try {
-      const res = await deleteAdminChannel(userId, channelId, reason);
+      const res = await deleteAdminChannel(userId, channelId);
       return { userId, channelId, data: res.data };
     } catch (err) {
       return rejectWithValue({

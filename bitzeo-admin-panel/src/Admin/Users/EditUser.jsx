@@ -464,7 +464,7 @@ export default function EditUser() {
       else if (action === "enableChannel") dispatch(enableChannel({ userId, channelId: targetId }));
       else if (action === "banChannel") dispatch(banChannel({ userId, channelId: targetId, reason }));
       else if (action === "restoreChannel") dispatch(restoreChannel({ userId, channelId: targetId }));
-      else if (action === "deleteChannel") dispatch(deleteChannel({ userId, channelId: targetId, reason }));
+      else if (action === "deleteChannel") dispatch(deleteChannel({ userId, channelId: targetId }));
     } else if (targetType === "video") {
       if (action === "disableVideo") dispatch(disableVideo({ userId, videoId: targetId, reason }));
       else if (action === "enableVideo") dispatch(enableVideo({ userId, videoId: targetId }));

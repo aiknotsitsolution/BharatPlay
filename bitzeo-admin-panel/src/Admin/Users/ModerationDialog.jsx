@@ -80,13 +80,13 @@ const ACTION_CONFIG = {
   },
   deleteChannel: {
     title: "Delete Channel",
-    description: "This channel will be permanently deleted. This action cannot be undone.",
+    description:
+      "This channel will be removed from the user's channel list and hidden from viewers. Confirm to continue.",
     icon: Trash2,
     color: "red",
     buttonLabel: "Delete",
     buttonClass: "bg-red-600 hover:bg-red-500",
-    requireReason: true,
-    reasonPlaceholder: "e.g. Channel violates community guidelines",
+    requireReason: false,
   },
   disableVideo: {
     title: "Disable Video",
