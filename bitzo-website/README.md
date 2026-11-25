@@ -1,16 +1,80 @@
-# React + Vite
+# BharatPlay Website
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The BharatPlay website is a React application built with Vite. Its source is
+organized around application setup, product features, reusable UI, and route
+screens.
 
-Currently, two official plugins are available:
+## Project structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```text
+src/
+  app/                 App shell, route composition, and Redux store
+    routes/
+  components/          Reusable UI grouped by domain
+    channels/
+    common/
+    player/
+    public/
+    shorts/
+  config/              API and site configuration
+  context/             Theme and reward providers
+  features/            Feature state and feature APIs
+    notifications/
+    profile/
+    support/
+    upload/
+    video-page/
+    videos/
+  hooks/               Shared React hooks
+  pages/               Route screens grouped by product area
+    auth/
+    legacy-auth/
+    public-site/
+    Settings/
+    Studio/
+    upload/
+    video/
+  utils/               Shared browser, media, and notification helpers
+  main.jsx              Browser entry point
+public/
+  advertising/          Optimized static WebP images
+tests/                  Vitest and Testing Library tests
+```
 
-## React Compiler
+Use the `@/` alias for imports from `src`; relative imports are still suitable
+for neighboring modules. Keep new state, API calls, and UI close to the feature
+that owns them. Put genuinely reusable components and utilities in the shared
+folders.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Local development
 
-## Expanding the ESLint configuration
+Install the locked dependencies and start Vite:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```sh
+npm ci
+npm run dev
+```
+
+Copy `.env.example` to `.env` and set the optional `VITE_` values as needed.
+Vite embeds these values in the client bundle, so they must never contain
+secrets:
+
+- `VITE_API_BASE_URL` — API origin; leave empty in development to use port 5000.
+- `VITE_GOOGLE_CLIENT_ID` — public Google OAuth client ID.
+- `VITE_SITE_URL` — canonical public website URL.
+- `VITE_GOOGLE_PLAY_URL` — Google Play listing URL.
+- `VITE_SUPPORT_EMAIL` and `VITE_UPDATE_EMAIL` — public contact addresses.
+
+## Checks and production build
+
+```sh
+npm run lint
+npm test
+npm run build
+```
+
+The build is served by Nginx in the Docker image. Set the same `VITE_` values
+as Docker build arguments; they are compiled into the static bundle at build
+time. Nginx serves the SPA fallback, proxies API traffic to the `gateway`
+service, compresses text responses, and caches hashed build assets separately
+from un-hashed public images.

@@ -12,7 +12,10 @@ import {
   fetchHomeVideos,
   fetchNextHomeSection,
 } from "../../features/videos/videosSlice";
-import { addToWatchLater, removeFromWatchLater } from "../../api/watchLater";
+import {
+  addToWatchLater,
+  removeFromWatchLater,
+} from "../../features/videos/watchLaterApi";
 import { formatTime } from "../player/utils";
 import ShortCard from "./ShortCard";
 import { ShortsCardSkeletonRow, VideoCardSkeletonRow } from "./Skeletons";

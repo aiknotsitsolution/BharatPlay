@@ -18,7 +18,7 @@ import {
 import {
   getMyContactRequests,
   getMyDeletionRequests,
-} from "../api/support";
+} from "../features/support/api";
 import { formatTicketId } from "../utils/ticketId";
 
 const contactStatusConfig = {

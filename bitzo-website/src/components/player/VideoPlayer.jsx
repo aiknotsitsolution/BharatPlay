@@ -3,7 +3,7 @@ import { Pause, Play } from "lucide-react";
 import { toast } from "../../utils/toast";
 import PlayerControls from "./PlayerControls";
 import { clamp } from "./utils";
-import useHlsSource from "../../hooks/useHlsSource";
+import useHlsSource from "./useHlsSource";
 import "./player.css";
 
 const HIDE_DELAY_MS = 2500;

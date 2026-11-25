@@ -3,13 +3,16 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
-  API_BASE,
   normalizeVideoListItem,
   normalizeShort,
   prioritizeCategoryChannels,
   shuffleAfterPinnedItems,
 } from "../features/videos/videosSlice";
-import { addToWatchLater, removeFromWatchLater } from "../api/watchLater";
+import { API_BASE } from "../features/videos/api";
+import {
+  addToWatchLater,
+  removeFromWatchLater,
+} from "../features/videos/watchLaterApi";
 import { MovieCard } from "../components/common/VideoGrid";
 import ShortCard from "../components/common/ShortCard";
 import { fetchVideoPage } from "../utils/fetchAllRecommendedVideos";

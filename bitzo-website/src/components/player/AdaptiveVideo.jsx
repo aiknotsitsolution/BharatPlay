@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from "react";
-import useHlsSource from "../../hooks/useHlsSource";
+import useHlsSource from "./useHlsSource";
 
 const AdaptiveVideo = forwardRef(function AdaptiveVideo(
   { src, preload = "metadata", ...props },

@@ -1,5 +1,5 @@
 {
-  "name": "vite-project",
+  "name": "bharatplay-website",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -16,7 +16,6 @@
     "@reduxjs/toolkit": "^2.12.0",
     "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.13.4",
-    "cors": "^2.8.6",
     "hls.js": "^1.7.4",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
@@ -44,5 +43,6 @@
     "jsdom": "^29.1.1",
     "vite": "^7.2.4",
     "vitest": "^5.0.1"
-  }
+  },
+  "description": "BharatPlay video streaming web application"
 }

@@ -6,7 +6,10 @@ import {
   clearSearch,
   searchVideos,
 } from "../features/videos/videosSlice";
-import { addToWatchLater, removeFromWatchLater } from "../api/watchLater";
+import {
+  addToWatchLater,
+  removeFromWatchLater,
+} from "../features/videos/watchLaterApi";
 import { MovieCard } from "../components/common/VideoGrid";
 import ShortCard from "../components/common/ShortCard";
 

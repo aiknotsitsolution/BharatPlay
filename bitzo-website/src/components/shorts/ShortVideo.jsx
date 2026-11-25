@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Heart, RefreshCw } from "lucide-react";
 import LoadingSpinner from "./LoadingSpinner";
-import useHlsSource from "../../hooks/useHlsSource";
+import useHlsSource from "../player/useHlsSource";
 
 const LONG_PRESS_MS = 600;
 const DOUBLE_TAP_MS = 250;

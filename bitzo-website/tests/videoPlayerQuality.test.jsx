@@ -11,11 +11,11 @@ const hlsMocks = vi.hoisted(() => ({
   useHlsSource: vi.fn(),
 }));
 
-vi.mock("../src/hooks/useHlsSource", () => ({
+vi.mock("../src/components/player/useHlsSource", () => ({
   default: hlsMocks.useHlsSource,
 }));
 
-import useHlsSource from "../src/hooks/useHlsSource";
+import useHlsSource from "../src/components/player/useHlsSource";
 import VideoPlayer from "../src/components/player/VideoPlayer";
 
 describe("VideoPlayer quality selection", () => {

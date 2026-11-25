@@ -15,13 +15,13 @@ vi.mock("../src/components/public/LegalPageLayout", () => ({
   ),
 }));
 
-vi.mock("../src/api/support", () => ({
+vi.mock("../src/features/support/api", () => ({
   deleteMyAccount: vi.fn(),
   submitDeletionRequest: vi.fn(),
 }));
 
-import { submitDeletionRequest } from "../src/api/support";
-import DeleteAccountPage from "../src/pages/Settings/advanced-settings/DeleteAccountPage";
+import { submitDeletionRequest } from "../src/features/support/api";
+import DeleteAccountPage from "../src/pages/public-site/DeleteAccountPage";
 
 describe("DeleteAccountPage", () => {
   beforeEach(() => {

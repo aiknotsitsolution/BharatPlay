@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
-export const API_BASE = `${BACKEND_URL}/api/uservideo`;
+import { API_BASE } from "./api";
 
 export const normalizeVideoListItem = (video) => ({
   id: video._id || video.id,

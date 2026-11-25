@@ -2,7 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import videoPageReducer, {
   fetchVideoPage,
-} from "../src/features/videoPage/videoPageSlice";
+} from "../src/features/video-page/videoPageSlice";
 
 describe("video page loading", () => {
   afterEach(() => {

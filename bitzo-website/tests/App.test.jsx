@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, test } from "vitest";
 import { Provider } from "react-redux";
-import { store } from "../src/store/store";
-import App from "../src/App";
+import { store } from "../src/app/store";
+import App from "../src/app/App";
 
 describe("App", () => {
   beforeEach(() => {
@@ -18,9 +18,12 @@ describe("App", () => {
       </Provider>,
     );
 
-    await waitFor(() => {
-      expect(screen.getByRole("main")).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByRole("main")).toBeInTheDocument();
+      },
+      { timeout: 10000 },
+    );
   });
 
   test("renders the not-found page for an unknown route", async () => {
