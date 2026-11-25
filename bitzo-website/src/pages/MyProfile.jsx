@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { API_BASE, API_ORIGIN as BACKEND_URL } from "../config/api";
 import { authFetch } from "../utils/session";
+import AdaptiveVideo from "../components/player/AdaptiveVideo";
 
 const resolveMediaUrl = (value) => {
   if (!value) return "";
@@ -1298,7 +1299,7 @@ export default function Profile() {
             </div>
             <div className="p-6">
               {selectedVideo.videoUrl ? (
-                <video
+                <AdaptiveVideo
                   key={selectedVideo.videoUrl}
                   src={resolveMediaUrl(selectedVideo.videoUrl)}
                   poster={resolveMediaUrl(selectedVideo.thumbnail)}

@@ -27,8 +27,23 @@ export default function MyVideos() {
   const openDetail = (video) => setSelectedVideo(video);
   const closeDetail = () => setSelectedVideo(null);
 
-  const getStatusBadge = (status) => {
-    const isActive = String(status || "Public").toLowerCase() === "public";
+  const getStatusBadge = (video) => {
+    const processingLabels = {
+      uploading: "Uploading",
+      queued: "Queued",
+      processing: "Processing",
+      failed: "Processing failed",
+    };
+    const processingLabel = processingLabels[video.processingStatus];
+    if (processingLabel) {
+      return (
+        <span className="inline-flex items-center rounded-full border border-amber-800/50 bg-amber-900/40 px-2.5 py-1 text-xs font-medium text-amber-300">
+          {processingLabel}
+        </span>
+      );
+    }
+    const normalizedStatus = String(video.status || "Public").toLowerCase();
+    const isActive = normalizedStatus === "public" || normalizedStatus === "active";
     return (
       <span
         className={`
@@ -70,7 +85,16 @@ export default function MyVideos() {
 
       {/* Video List - scrollable area with hidden scrollbar */}
       <div className="p-4 space-y-4 max-h-[calc(100vh-76px)] overflow-y-auto scrollbar-hide">
-        {sortedVideos.map((video) => (
+        {myVideosLoading ? (
+          <div className="py-12 text-center text-sm text-zinc-400" role="status">
+            Loading your videos...
+          </div>
+        ) : sortedVideos.length === 0 ? (
+          <div className="py-12 text-center text-sm text-zinc-400">
+            You have not uploaded any videos yet.
+          </div>
+        ) : (
+          sortedVideos.map((video) => (
           <div
             key={video.id}
             onClick={() => openDetail(video)}
@@ -113,7 +137,7 @@ export default function MyVideos() {
                 </div>
 
                 <div className="flex items-center justify-between sm:justify-end gap-3 mt-auto">
-                  {getStatusBadge(video.status)}
+                  {getStatusBadge(video)}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -131,7 +155,8 @@ export default function MyVideos() {
               </div>
             </div>
           </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Modal */}
@@ -226,7 +251,7 @@ export default function MyVideos() {
                   <span className="text-sm font-medium text-zinc-400">
                     Status
                   </span>
-                  {getStatusBadge(selectedVideo.status)}
+                  {getStatusBadge(selectedVideo)}
                 </div>
               </div>
             </div>

@@ -99,8 +99,22 @@ export default function YourVideosTab({
     return num.toLocaleString();
   };
 
-  const getStatusBadge = (status) => {
-    const isActive = status?.toLowerCase() === "active";
+  const getStatusBadge = (video) => {
+    const processingLabels = {
+      uploading: "Uploading",
+      queued: "Queued",
+      processing: "Processing",
+      failed: "Processing failed",
+    };
+    const processingLabel = processingLabels[video.processingStatus];
+    if (processingLabel) {
+      return (
+        <span className="inline-flex items-center rounded-full bg-amber-900/40 px-2 py-0.5 text-[11px] font-medium text-amber-300 ring-1 ring-amber-800/50">
+          {processingLabel}
+        </span>
+      );
+    }
+    const isActive = video.status?.toLowerCase() === "active";
     return (
       <span
         className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
@@ -185,7 +199,7 @@ export default function YourVideosTab({
                         undefined,
                     }}
                     onClick={handleOpen}
-                    badge={getStatusBadge(video.status)}
+                    badge={getStatusBadge(video)}
                     meta={
                       <>
                         <span className="inline-flex items-center gap-1">

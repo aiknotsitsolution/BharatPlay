@@ -34,24 +34,27 @@ export function QualityMenu({
     if (!menuVisible) setOpen(false);
   }
 
-  const standardQualities = ["144p", "240p", "360p", "480p", "720p", "1080p"];
-  const availableValues = new Set(qualities.map((option) => option.value));
-  const options = [
-    ...standardQualities.map((value) => ({
-      label: value,
+  const standardQualities = [
+    { value: "auto", label: "Auto" },
+    ...["144p", "240p", "360p", "480p", "720p", "1080p"].map((value) => ({
       value,
-      available: availableValues.has(value),
+      label: value,
     })),
   ];
+  const availableValues = new Set(qualities.map((option) => option.value));
+  const options = standardQualities.map((option) => ({
+    ...option,
+    available: option.value === "auto" || availableValues.has(option.value),
+  }));
   return (
     <div className="bp-menu-anchor">
       <ControlButton
-        label={`Video quality: ${quality === "auto" ? "Quality" : quality}`}
+        label={`Video quality: ${quality === "auto" ? "Auto" : quality}`}
         onClick={() => setOpen((value) => !value)}
         active={open}
       >
         <span className="bp-speed-label">
-          {quality === "auto" ? "Quality" : quality}
+          {quality === "auto" ? "Auto" : quality}
         </span>
       </ControlButton>
       <Menu open={open} onClose={() => setOpen(false)} ariaLabel="Video quality">

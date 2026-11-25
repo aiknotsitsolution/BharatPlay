@@ -3,6 +3,7 @@ import { Pause, Play } from "lucide-react";
 import { toast } from "react-toastify";
 import PlayerControls from "./PlayerControls";
 import { clamp } from "./utils";
+import useHlsSource from "../../hooks/useHlsSource";
 import "./player.css";
 
 const HIDE_DELAY_MS = 2500;
@@ -65,6 +66,7 @@ export default function VideoPlayer({
   const [quality, setQuality] = useState("auto");
   const [networkQuality, setNetworkQuality] = useState(null);
   const [activeSrc, setActiveSrc] = useState(src);
+  const hlsRef = useHlsSource(videoRef, activeSrc);
 
   const pipSupported = useMemo(
     () =>
@@ -114,14 +116,24 @@ export default function VideoPlayer({
   useEffect(() => {
     const selectedQuality =
       quality === "auto" ? networkQuality : quality;
+    const isHlsSource = /\.m3u8(?:$|[?#])/i.test(src || "");
     setActiveSrc(
-      selectedQuality ? qualitySources[selectedQuality] || src : src,
+      quality === "auto" && isHlsSource
+        ? src
+        : selectedQuality
+          ? qualitySources[selectedQuality] || src
+          : src,
     );
   }, [networkQuality, quality, qualitySources, src]);
 
   const changeQuality = useCallback(
     (nextQuality) => {
       const video = videoRef.current;
+      if (hlsRef.current && nextQuality === "auto") {
+        hlsRef.current.currentLevel = -1;
+        setQuality(nextQuality);
+        return;
+      }
       const nextSrc =
         nextQuality === "auto" ? src : qualitySources[nextQuality] || src;
       if (!video || nextSrc === activeSrc) {
@@ -145,7 +157,7 @@ export default function VideoPlayer({
         { once: true },
       );
     },
-    [activeSrc, qualitySources, src],
+    [activeSrc, hlsRef, qualitySources, src],
   );
 
   // ---- buffered progress -------------------------------------------------
@@ -462,17 +474,6 @@ export default function VideoPlayer({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // ---- source changes ----------------------------------------------------
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v || !activeSrc) return;
-    if (v.getAttribute("src") !== activeSrc) {
-      v.preload = "auto";
-      v.src = activeSrc;
-      v.load();
-    }
-  }, [activeSrc]);
 
   useEffect(() => {
     if (!autoplay) return;

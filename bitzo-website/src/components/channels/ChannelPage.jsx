@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import {
@@ -15,6 +14,8 @@ import {
 } from "lucide-react";
 import { API_BASE, API_ORIGIN } from "../../config/api";
 import { authFetch } from "../../utils/session";
+import { uploadVideoMultipart } from "../../utils/multipartVideoUpload";
+import AdaptiveVideo from "../player/AdaptiveVideo";
 import {
   uploadFailed,
   uploadProgressUpdated,
@@ -41,24 +42,21 @@ const isCreativeCornerCategory = (cat) =>
   cat?.slug === "creative-corner" ||
   cat?.name?.toLowerCase() === "creative corner";
 
-const uploadWithProgress = async (url, options = {}) => {
-  try {
-    const response = await axios.post(url, options.body, {
-      headers: options.headers,
-      onUploadProgress: options.onUploadProgress,
-    });
-    return {
-      ok: true,
-      json: async () => response.data,
+const readVideoDuration = (file) =>
+  new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(Number.isFinite(video.duration) ? video.duration : 0);
     };
-  } catch (error) {
-    return {
-      ok: false,
-      json: async () =>
-        error.response?.data || { message: "Failed to upload video" },
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(0);
     };
-  }
-};
+    video.src = url;
+  });
 
 const isShortVideo = (video) => {
   const rawTypes = video?.videoType ?? video?.raw?.videoType ?? [];
@@ -624,26 +622,6 @@ export default function ChannelPage() {
     setCreatePromptDismissed(true);
   };
 
-  // Generate thumbnail from video if user didn't upload one
-  const generateVideoThumbnail = (file) => {
-    return new Promise((resolve) => {
-      const video = document.createElement("video");
-      video.src = URL.createObjectURL(file);
-      video.onloadedmetadata = () => {
-        video.currentTime = Math.min(1, video.duration / 4 || 1);
-      };
-      video.onseeked = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85);
-      };
-      video.onerror = () => resolve(null);
-    });
-  };
-
   const handleUploadVideo = async (e) => {
     e.preventDefault();
     const token = getToken();
@@ -696,55 +674,36 @@ export default function ChannelPage() {
       setUploading(true);
       dispatch(uploadStarted());
       setUploadError("");
-
-      const formData = new FormData();
-      formData.append("name", videoname.trim());
-      formData.append("description", videoDescription || "");
-      formData.append("category", videoCategory); // can be ObjectId or "creative-corner"
-      formData.append("videoType", videoType);
-      formData.append("isCreativeCorner", String(isCreativeCorner));
-      formData.append("hashtags", videoHashtags);
-      formData.append("video", videoFile);
-
-      // Thumbnail: use uploaded or generate
-      if (thumbnailFile) {
-        formData.append("thumbnail", thumbnailFile);
-      } else {
-        const generated = await generateVideoThumbnail(videoFile);
-        if (generated) {
-          formData.append("thumbnail", generated, "auto-thumbnail.jpg");
-        }
+      const duration = await readVideoDuration(videoFile);
+      if (!duration) {
+        throw new Error("Video duration could not be read. Choose another file.");
+      }
+      if (videoType === "short" && duration > 60) {
+        throw new Error("Short videos must be 60 seconds or shorter.");
+      }
+      if (videoType === "long" && (duration < 60 || duration > 300)) {
+        throw new Error("Long videos must be between 1 and 5 minutes.");
       }
 
-      const response = await uploadWithProgress(
-        `${API_BASE}/uservideo/upload/${selectedUploadChannelId}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-          onUploadProgress: (event) => {
-            if (event.total) {
-              dispatch(
-                uploadProgressUpdated(
-                  Math.min(100, Math.round((event.loaded / event.total) * 100)),
-                ),
-              );
-            }
-          },
+      await uploadVideoMultipart({
+        api: API_BASE,
+        channelId: selectedUploadChannelId,
+        token,
+        file: videoFile,
+        metadata: {
+          name: videoname.trim(),
+          description: videoDescription || "",
+          category: videoCategory,
+          videoType,
+          duration,
+          isCreativeCorner,
+          hashtags: videoHashtags,
         },
-      );
+        thumbnail: thumbnailFile,
+        onProgress: (progress) => dispatch(uploadProgressUpdated(progress)),
+      });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.message || result.error || "Failed to upload video",
-        );
-      }
-
-      toast.success("Video uploaded successfully!");
+      toast.success("Video uploaded. Processing has started.");
       dispatch(uploadSucceeded());
 
       // Refresh videos
@@ -1210,14 +1169,12 @@ export default function ChannelPage() {
             </div>
 
             <div className="bg-black rounded-lg overflow-hidden flex items-center justify-center">
-              <video
+              <AdaptiveVideo
                 className="w-full max-h-[70vh] object-contain"
                 controls
                 autoPlay
                 playsInline
-                src={getVideoUrl(
-                  currentVideo.videofile || currentVideo.videoUrl,
-                )}
+                src={getVideoUrl(currentVideo.videofile || currentVideo.videoUrl)}
                 onLoadedMetadata={(e) => {
                   const duration = e.currentTarget.duration;
                   if (Number.isFinite(duration) && duration > 0) {
@@ -1226,7 +1183,7 @@ export default function ChannelPage() {
                 }}
               >
                 Your browser does not support the video tag.
-              </video>
+              </AdaptiveVideo>
             </div>
 
             <div className="mt-4 bg-[#1a1a1a] rounded-lg p-4">

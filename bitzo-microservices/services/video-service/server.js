@@ -15,9 +15,11 @@ const http = require("node:http");
 const { Server: SocketIOServer } = require("socket.io");
 const { verifyAccessToken } = require("./utils/tokenService");
 const { attachSocketServer } = require("./services/socketService");
+const { startVideoProcessingWorker } = require("./services/videoProcessingWorker");
 
 const route0 = require("./routes/VideoRoutes");
 const route1 = require("./routes/userVideoRoute");
+let videoProcessingWorker;
 
 const app = express();
 const PORT = process.env.PORT || 5003;
@@ -64,7 +66,16 @@ app.use(
 if (require.main === module) {
   mongoose
     .connect(process.env.MONGO_URI)
-    .then(() => console.log("✅ [video-service] MongoDB Connected"))
+    .then(() => {
+      console.log("✅ [video-service] MongoDB Connected");
+      if (process.env.REDIS_URL?.trim()) {
+        videoProcessingWorker = startVideoProcessingWorker();
+      } else {
+        console.error(
+          "[video-service] REDIS_URL is missing; background video processing is disabled.",
+        );
+      }
+    })
     .catch((err) => {
       console.error("❌ [video-service] MongoDB Connection Error:", err);
       process.exit(1);
@@ -156,6 +167,22 @@ if (require.main === module) {
   httpServer.listen(PORT, () => {
     console.log(`🌐 video-service running on port ${PORT}`);
   });
+
+  const shutdown = async () => {
+    try {
+      if (videoProcessingWorker) await videoProcessingWorker.close();
+      await require("../../services/Queues").closeQueues();
+      await require("../../services/redis").closeRedisConnections();
+      await mongoose.disconnect();
+      socketServer.close();
+      httpServer.close();
+    } catch (error) {
+      console.error("[video-service] Shutdown failed:", error.message);
+      process.exitCode = 1;
+    }
+  };
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
 }
 
 module.exports = app;

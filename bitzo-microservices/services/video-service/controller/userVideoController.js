@@ -841,6 +841,8 @@ const mapVideoToListItem = (video) => ({
   likesCount: video?.likesCount || 0,
   commentCount: video?.comments?.length || 0,
   status: video?.status || "active",
+  processingStatus: video?.processingStatus || "ready",
+  processingError: video?.processingError || null,
 });
 
 const getUserWatchHistory = async (req, res) => {
@@ -3463,4 +3465,5 @@ module.exports = {
   searchVideos,
   getSearchHints,
   getCreativeCornerHashtagStats,
+  resolveCategory,
 };

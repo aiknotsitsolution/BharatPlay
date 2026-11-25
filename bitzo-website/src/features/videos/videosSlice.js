@@ -26,6 +26,8 @@ export const normalizeVideoListItem = (video) => ({
   channelName: video.channelName || video.channel?.name || null,
   uploadDate: video.createdAt || video.uploadDate || null,
   status: video.status || (video.isPublic === false ? "Private" : "Public"),
+  processingStatus: video.processingStatus || "ready",
+  processingError: video.processingError || null,
   likesCount: Number(video.likesCount || video.likes || 0),
   avgWatchPercent: Number(video.avgWatchPercent || 0),
   earnings: Number(video.earnings || 0),

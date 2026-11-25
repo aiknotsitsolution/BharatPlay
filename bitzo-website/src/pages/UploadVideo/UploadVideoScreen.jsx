@@ -5,6 +5,7 @@ import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { API_BASE as API } from "../../config/api";
+import { uploadVideoMultipart } from "../../utils/multipartVideoUpload";
 import {
   uploadFailed,
   uploadProgressUpdated,
@@ -121,6 +122,21 @@ export default function UploadVideo() {
       ? "Shorts: maximum 1 minute"
       : "Long video: between 1 and 5 minutes";
 
+  const resetUploadForm = () => {
+    setTitle("");
+    setDescription("");
+    setCategory("");
+    setIsCreativeCorner(false);
+    setHashtags("");
+    setVideoType("short");
+    setAgreeTerms(false);
+    setVideoFile(null);
+    setVideoDuration(null);
+    setDurationError("");
+    setThumbnailFile(null);
+    setErrorMsg("");
+  };
+
   const displayCategories = categories.some(isCreativeCornerCategory)
     ? categories
     : [
@@ -185,26 +201,6 @@ export default function UploadVideo() {
     if (videoFile) validateSelectedVideo(videoFile, type);
   };
 
-  // Generate thumbnail from video if user didn't upload one
-  const generateVideoThumbnail = (file) => {
-    return new Promise((resolve) => {
-      const video = document.createElement("video");
-      video.src = URL.createObjectURL(file);
-      video.onloadedmetadata = () => {
-        video.currentTime = Math.min(1, video.duration / 4 || 1);
-      };
-      video.onseeked = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85);
-      };
-      video.onerror = () => resolve(null);
-    });
-  };
-
   const handleUpload = async () => {
     if (!isFormValid) return;
 
@@ -230,65 +226,26 @@ export default function UploadVideo() {
         );
       }
 
-      const formData = new FormData();
-      formData.append("name", title.trim()); // backend expects "name"
-      formData.append("description", description);
-      formData.append("category", category);
-      formData.append("videoType", videoType);
-      formData.append("isCreativeCorner", String(isCreativeCorner));
-      formData.append("hashtags", hashtags);
-      formData.append("video", videoFile);
-
-      formData.append("duration", String(duration));
-
-      // Thumbnail: use uploaded or generate
-      if (thumbnailFile) {
-        formData.append("thumbnail", thumbnailFile);
-      } else {
-        const generated = await generateVideoThumbnail(videoFile);
-        if (generated) {
-          formData.append("thumbnail", generated, "auto-thumbnail.jpg");
-        }
-      }
-
-      const res = await axios.post(
-        `${API}/uservideo/upload/${selectedChannelId}`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-          onUploadProgress: (event) => {
-            if (event.total) {
-              dispatch(
-                uploadProgressUpdated(
-                  Math.min(100, Math.round((event.loaded / event.total) * 100)),
-                ),
-              );
-            }
-          },
+      await uploadVideoMultipart({
+        api: API,
+        channelId: selectedChannelId,
+        token,
+        file: videoFile,
+        metadata: {
+          name: title.trim(),
+          description,
+          category,
+          videoType,
+          duration,
+          hashtags,
+          isCreativeCorner,
         },
-      );
-
-      if (!res.data?.success) {
-        throw new Error(res.data?.message || "Failed to upload video.");
-      }
-
-      toast.success("Video uploaded successfully! 🎉");
+        thumbnail: thumbnailFile,
+        onProgress: (progress) => dispatch(uploadProgressUpdated(progress)),
+      });
+      toast.success("Video uploaded. Processing has started.");
       dispatch(uploadSucceeded());
-      setTitle("");
-      setDescription("");
-      setCategory("");
-      setIsCreativeCorner(false);
-      setHashtags("");
-      setVideoType("short");
-      setAgreeTerms(false);
-      setVideoFile(null);
-      setVideoDuration(null);
-      setDurationError("");
-      setThumbnailFile(null);
-      setErrorMsg("");
+      resetUploadForm();
     } catch (error) {
       console.error(error);
       const msg =
@@ -570,7 +527,7 @@ export default function UploadVideo() {
                 />
               </div>
               <p className="text-center text-xs text-zinc-400">
-                Upload progress: {uploadProgress}%
+                Uploading directly to Backblaze B2: {uploadProgress}%
               </p>
             </div>
           )}

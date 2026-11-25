@@ -50,6 +50,13 @@ const optionalAuth = require("../middlewares/optionalAuth");
 const { viewLimiter } = require("../middlewares/rateLimit");
 const upload = require("../middlewares/multer");
 const uploadToBackblaze = require("../middlewares/blazerMiddlware");
+const {
+  abortMultipartUpload,
+  completeMultipartUpload,
+  getPartUploadUrl,
+  initiateMultipartUpload,
+  resumeMultipartUpload,
+} = require("../controller/multipartVideoUploadController");
 const requireAdmin = require("../middlewares/requireAdmin");
 const internalServiceAuth = require("../middlewares/internalServiceAuth");
 const { deleteAccountContent } = require("../controller/userVideoController");
@@ -70,6 +77,31 @@ router.post(
   isAuthenticated,
   uploadToBackblaze,
   uploadVideo,
+);
+router.post(
+  "/upload/:channelId/multipart/initiate",
+  isAuthenticated,
+  initiateMultipartUpload,
+);
+router.post(
+  "/upload/:channelId/multipart/:videoId/part",
+  isAuthenticated,
+  getPartUploadUrl,
+);
+router.get(
+  "/upload/:channelId/multipart/:videoId",
+  isAuthenticated,
+  resumeMultipartUpload,
+);
+router.post(
+  "/upload/:channelId/multipart/:videoId/complete",
+  isAuthenticated,
+  completeMultipartUpload,
+);
+router.delete(
+  "/upload/:channelId/multipart/:videoId",
+  isAuthenticated,
+  abortMultipartUpload,
 );
 router.get("/channel", isAuthenticated, getChannels);
 router.get("/subscribed-channels", isAuthenticated, getSubscribedChannels);

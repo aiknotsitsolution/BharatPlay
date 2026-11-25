@@ -1,9 +1,17 @@
 const { spawn } = require("child_process");
 const http = require("http");
 const net = require("net");
+const fs = require("fs");
 const path = require("path");
 
 const root = path.resolve(__dirname, "..");
+const rootEnvironment = require("dotenv").parse(
+  fs.readFileSync(path.join(root, ".env")),
+);
+const sharedEnvironment = {};
+for (const name of ["REDIS_URL", "REDIS_PASSWORD"]) {
+  if (rootEnvironment[name]) sharedEnvironment[name] = rootEnvironment[name];
+}
 const npmCli = process.env.npm_execpath?.endsWith(".js")
   ? process.env.npm_execpath
   : path.join(
@@ -94,7 +102,7 @@ async function startServices() {
     // Restart the affected service manually when code changes need loading.
     const child = spawn(process.execPath, [npmCli, "run", "start"], {
       cwd: path.join(root, directory),
-      env: { ...process.env, PORT: String(port) },
+      env: { ...sharedEnvironment, ...process.env, PORT: String(port) },
       stdio: ["inherit", "pipe", "pipe"],
       windowsHide: true,
     });

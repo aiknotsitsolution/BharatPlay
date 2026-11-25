@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Heart, RefreshCw } from "lucide-react";
 import LoadingSpinner from "./LoadingSpinner";
+import useHlsSource from "../../hooks/useHlsSource";
 
 const LONG_PRESS_MS = 600;
 const DOUBLE_TAP_MS = 250;
@@ -23,6 +24,7 @@ export default function ShortVideo({
   onLike,
 }) {
   const videoRef = useRef(null);
+  useHlsSource(videoRef, src, preload !== "none");
   const downRef = useRef({ x: 0, y: 0 });
   const tapTimerRef = useRef(null);
   const longPressTimerRef = useRef(null);
@@ -160,7 +162,6 @@ export default function ShortVideo({
       <video
         key={`${src}-${reloadKey}`}
         ref={setRef}
-        src={src}
         poster={poster || undefined}
         aria-label={title}
         className="h-full w-full object-cover"

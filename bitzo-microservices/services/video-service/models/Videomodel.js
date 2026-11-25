@@ -48,6 +48,50 @@ const videoSchema = new mongoose.Schema(
       required: true,
     },
 
+    processingStatus: {
+      type: String,
+      enum: ["uploading", "queued", "processing", "ready", "failed"],
+      default: "ready",
+      index: true,
+    },
+    processingError: {
+      type: String,
+      default: null,
+    },
+    sourceKey: {
+      type: String,
+      default: null,
+    },
+    b2UploadId: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    sourceSize: {
+      type: Number,
+      default: null,
+    },
+    sourceContentType: {
+      type: String,
+      default: null,
+    },
+    sourceFileName: {
+      type: String,
+      default: null,
+    },
+    thumbnailKey: {
+      type: String,
+      default: null,
+    },
+    thumbnailContentType: {
+      type: String,
+      default: null,
+    },
+    qualitySources: {
+      type: mongoose.Schema.Types.Mixed,
+      default: () => ({}),
+    },
+
     duration: {
       type: Number,
       min: 0,
