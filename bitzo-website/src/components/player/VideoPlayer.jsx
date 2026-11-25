@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "../../utils/toast";
 import PlayerControls from "./PlayerControls";
 import { clamp } from "./utils";
 import useHlsSource from "../../hooks/useHlsSource";

@@ -1,26 +1,18 @@
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./routes/AppRoutes";
 import { RewardProvider } from "./context/RewardContext";
-import { ThemeProvider, useTheme } from "./context/ThemeContext";
-import { ToastContainer } from "react-toastify";
+import { ThemeProvider } from "./context/ThemeContext";
+import { Toaster } from "react-hot-toast";
 
 function AppContent() {
-  const { theme } = useTheme();
-
   return (
     <>
       <AppRoutes />
-      <ToastContainer
-        position="top-right"
-        autoClose={4000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme={theme}
+      <Toaster
+        position="top-center"
+        gutter={10}
+        containerStyle={{ top: "4.5rem", zIndex: 9999 }}
+        toastOptions={{ duration: 4000 }}
       />
     </>
   );

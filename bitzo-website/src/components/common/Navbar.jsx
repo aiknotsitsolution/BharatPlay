@@ -38,7 +38,7 @@ import {
 import { fetchProfileData } from "../../features/profile/profileSlice";
 import axios from "axios";
 import { API_ORIGIN as API_BASE_URL } from "../../config/api";
-import { toast } from "react-toastify";
+import { toast } from "../../utils/toast";
 const logo = "/VidBuxApp-logo.png";
 
 const HINTS_URL = `${API_BASE_URL}/api/uservideo/search/hints`;

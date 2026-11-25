@@ -14,8 +14,7 @@ import {
   fetchShortsFeed,
   fetchNextHomeSection,
 } from "../features/videos/videosSlice";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "../utils/toast";
 import { useSwipeable } from "react-swipeable"; // ← install: npm install react-swipeable
 import { promptLogin } from "../utils/loginPrompt";
 import ShortVideo from "../components/shorts/ShortVideo";

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bookmark, X } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "../../utils/toast";
 import { formatTime } from "../../components/player/utils";
 import { API_USERVIDEO as API_BASE } from "../../config/api";
 import { authFetch } from "../../utils/session";

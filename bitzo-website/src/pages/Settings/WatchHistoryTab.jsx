@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock, Trash2, AlertTriangle, History } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "../../utils/toast";
 import { formatTime } from "../../components/player/utils";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 import { authFetch } from "../../utils/session";

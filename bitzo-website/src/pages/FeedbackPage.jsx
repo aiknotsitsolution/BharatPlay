@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Send, CheckCircle } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "../utils/toast";
 import { SettingsPageShell, SettingsPageHeader } from "../components/common/SettingsShared";
 
 const FEEDBACK_TYPES = [

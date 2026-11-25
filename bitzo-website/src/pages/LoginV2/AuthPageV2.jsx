@@ -10,7 +10,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
-import { toast } from "react-toastify";
+import { toast } from "../../utils/toast";
 import { v4 as uuidv4 } from "uuid";
 import { AUTH_API } from "../../config/api";
 import { getBrowserDeviceSignals } from "../../utils/browserDeviceFingerprint";
@@ -1155,7 +1155,7 @@ export default function AuthPageV2() {
 // import { useNavigate, useLocation } from "react-router-dom";
 // import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
 // import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-// import { toast } from "react-toastify";
+// import { toast } from "../../utils/toast";
 // import { API_BASE } from "../../config/api";
 // import AnimatedBackground from "./AnimatedBackground";
 

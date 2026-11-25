@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, KeyRound, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "../../utils/toast";
 import { API_BASE } from "../../config/api";
 import AnimatedBackground from "./AnimatedBackground";
 

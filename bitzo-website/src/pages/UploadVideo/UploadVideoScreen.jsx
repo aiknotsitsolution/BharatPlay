@@ -2,8 +2,9 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { ArrowLeft, ChevronDown, Loader2 } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "../../utils/toast";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { API_BASE as API } from "../../config/api";
 import { uploadVideoMultipart } from "../../utils/multipartVideoUpload";
 import {
@@ -38,6 +39,7 @@ export default function UploadVideo() {
   const [errorMsg, setErrorMsg] = useState("");
   const validationRequestRef = useRef(0);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { progress: uploadProgress } = useSelector(
     (state) => state.upload,
   );
@@ -243,9 +245,10 @@ export default function UploadVideo() {
         thumbnail: thumbnailFile,
         onProgress: (progress) => dispatch(uploadProgressUpdated(progress)),
       });
-      toast.success("Video uploaded. Processing has started.");
+      toast.success("Video uploaded. You can track its processing in Your Videos.");
       dispatch(uploadSucceeded());
       resetUploadForm();
+      navigate("/your-videos");
     } catch (error) {
       console.error(error);
       const msg =

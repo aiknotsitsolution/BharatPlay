@@ -10,7 +10,7 @@ import {
   X,
   AlertTriangle,
 } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "../../utils/toast";
 import { API_USERVIDEO, API_ORIGIN } from "../../config/api";
 import { authFetch } from "../../utils/session";
 import {

@@ -1,4 +1,4 @@
-import { toast } from "react-toastify";
+import { toast } from "../utils/toast";
 import { API_BASE } from "../features/videos/videosSlice";
 
 const getToken = () => localStorage.getItem("token");

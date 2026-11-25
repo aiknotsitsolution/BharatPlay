@@ -5,7 +5,7 @@ import {
   fetchProfileData,
   removeHistoryItem,
 } from "../features/profile/profileSlice";
-import { toast } from "react-toastify";
+import { toast } from "../utils/toast";
 import {
   Eye,
   Clock,

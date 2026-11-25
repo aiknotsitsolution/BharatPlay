@@ -77,7 +77,7 @@ export default defineConfig({
           if (
             [
               "lucide-react",
-              "react-toastify",
+              "react-hot-toast",
               "react-swipeable",
               "uuid",
             ].includes(packageName)

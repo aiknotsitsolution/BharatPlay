@@ -338,7 +338,7 @@ import {
   Shield,
 } from "lucide-react";
 import { API_ORIGIN } from "../config/api";
-import { toast } from "react-toastify";
+import { toast } from "../utils/toast";
 
 const getToken = () => localStorage.getItem("token");
 

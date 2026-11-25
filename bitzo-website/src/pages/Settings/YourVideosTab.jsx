@@ -42,8 +42,8 @@ export default function YourVideosTab({
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
   const fetchMyVideos = useCallback(
-    async (pageNum) => {
-      setLoading(true);
+    async (pageNum, { silent = false } = {}) => {
+      if (!silent) setLoading(true);
       setError(null);
       try {
         const res = await authFetch(
@@ -64,7 +64,7 @@ export default function YourVideosTab({
       } catch {
         setError("network");
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     },
     [],
@@ -73,6 +73,18 @@ export default function YourVideosTab({
   useEffect(() => {
     fetchMyVideos(page);
   }, [page, fetchMyVideos]);
+
+  useEffect(() => {
+    const hasPendingProcessing = videos.some((video) =>
+      ["uploading", "queued", "processing"].includes(video.processingStatus),
+    );
+    if (!hasPendingProcessing) return undefined;
+
+    const timeoutId = setTimeout(() => {
+      fetchMyVideos(page, { silent: true });
+    }, 5000);
+    return () => clearTimeout(timeoutId);
+  }, [videos, page, fetchMyVideos]);
 
   const handleOpen = (video) => {
     if (typeof openDetail === "function") {
@@ -184,6 +196,10 @@ export default function YourVideosTab({
                 return (
                   <VideoRowCard
                     key={videoId}
+                    disabled={
+                      video.processingStatus &&
+                      video.processingStatus !== "ready"
+                    }
                     video={{
                       ...video,
                       channelName:

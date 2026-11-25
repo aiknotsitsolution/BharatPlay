@@ -57,22 +57,39 @@ function formatDuration(value) {
 /*  Video Row Card — horizontal thumbnail + info layout                */
 /* ------------------------------------------------------------------ */
 
-export function VideoRowCard({ video, onClick, badge, meta, action, thumbnailFallback }) {
+export function VideoRowCard({
+  video,
+  onClick,
+  badge,
+  meta,
+  action,
+  thumbnailFallback,
+  disabled = false,
+}) {
   const thumbSrc =
     resolveMediaUrl(video.thumbnail) || thumbnailFallback || "";
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onClick?.(video)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick?.(video);
-        }
-      }}
-      className="group relative flex flex-col overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/60 transition-colors hover:border-zinc-700/80 hover:bg-zinc-900 cursor-pointer sm:flex-row focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 focus-visible:ring-offset-0"
+      role={disabled ? undefined : "button"}
+      tabIndex={disabled ? undefined : 0}
+      aria-disabled={disabled || undefined}
+      onClick={disabled ? undefined : () => onClick?.(video)}
+      onKeyDown={
+        disabled
+          ? undefined
+          : (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick?.(video);
+              }
+            }
+      }
+      className={`group relative flex flex-col overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/60 transition-colors sm:flex-row ${
+        disabled
+          ? "cursor-default"
+          : "cursor-pointer hover:border-zinc-700/80 hover:bg-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 focus-visible:ring-offset-0"
+      }`}
     >
       {/* Thumbnail */}
       <div className="relative w-full shrink-0 overflow-hidden sm:w-44 md:w-52">
