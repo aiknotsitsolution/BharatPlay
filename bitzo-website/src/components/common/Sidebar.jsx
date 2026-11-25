@@ -894,13 +894,17 @@
 // }
 
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NavLink, matchPath, useLocation, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   Home,
   Flame,
   PlusCircle,
   Library,
+  User,
+  Wallet,
+  LogOut,
   History,
   Heart,
   Clock,
@@ -913,15 +917,17 @@ import {
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 
 const mainItems = [
-  { icon: Home, label: "Home", path: "/" },
-  { icon: Flame, label: "Shorts", path: "/shorts" },
-  { icon: PlusCircle, label: "Upload", path: "/uploadvideo" },
-  { icon: Library, label: "You", path: "/profile" },
+  { icon: Home, label: "Home", path: "/", iconStyle: "bg-sky-500/10 text-sky-300" },
+  { icon: Flame, label: "Shorts", path: "/shorts", iconStyle: "bg-rose-500/10 text-rose-300" },
+  { icon: PlusCircle, label: "Upload", path: "/uploadvideo", iconStyle: "bg-emerald-500/10 text-emerald-300" },
+  { icon: Library, label: "You", path: "/profile", iconStyle: "bg-violet-500/10 text-violet-300" },
 ];
 
 export default function Sidebar({ isOpen }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const user = useSelector((state) => state.profile?.user);
+  const profileMenuRef = useRef(null);
 
   const isPathActive = (path) => {
     if (path === "/") return location.pathname === "/";
@@ -930,8 +936,39 @@ export default function Sidebar({ isOpen }) {
 
   const [showAllSubs, setShowAllSubs] = useState(false);
   const [isYouOpen, setIsYouOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    Boolean(localStorage.getItem("token")),
+  );
   const [subs, setSubs] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const syncAuthState = () => {
+      setIsLoggedIn(Boolean(localStorage.getItem("token")));
+      setIsProfileMenuOpen(false);
+    };
+
+    window.addEventListener("auth-change", syncAuthState);
+    window.addEventListener("storage", syncAuthState);
+    return () => {
+      window.removeEventListener("auth-change", syncAuthState);
+      window.removeEventListener("storage", syncAuthState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isProfileMenuOpen) return undefined;
+
+    const closeOnOutsideClick = (event) => {
+      if (!profileMenuRef.current?.contains(event.target)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, [isProfileMenuOpen]);
 
   useEffect(() => {
     const fetchSubs = async () => {
@@ -975,15 +1012,15 @@ export default function Sidebar({ isOpen }) {
   return (
     <aside
       className={`
-        hidden md:block fixed top-14 left-0 z-40
+        hidden md:flex fixed top-14 left-0 z-40 flex-col
         h-[calc(100dvh-3.5rem)]
         bg-[#0f0f0f] border-r border-gray-800
-        overflow-y-auto overflow-x-hidden
+        overflow-visible
         transition-all duration-200
         ${isOpen ? "w-60" : "w-[72px]"}
       `}
     >
-      <div className="py-3 flex flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden py-3">
         {/* Main items */}
         {mainItems.map((item) => {
           const Icon = item.icon;
@@ -996,35 +1033,37 @@ export default function Sidebar({ isOpen }) {
                 <button
                   onClick={() => setIsYouOpen((p) => !p)}
                   className={`
-                    relative flex items-center gap-6 w-full
-                    px-3 py-2.5 mx-2 rounded-lg text-sm font-medium
-                    transition-colors hover:bg-[#272727]
-                    ${active ? "bg-[#272727] text-white" : "text-gray-300"}
+    relative flex items-center gap-3 w-full
+    px-2.5 py-1.5 mx-2 rounded-xl text-sm font-medium
+    transition-colors hover:bg-[#1a1d24]
+    ${active ? "bg-[#1b2230] text-white shadow-sm ring-1 ring-white/5" : "text-gray-300"}
                   `}
                 >
-                  <Icon size={22} strokeWidth={active ? 2.4 : 1.8} />
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.iconStyle}`}>
+    <Icon size={20} strokeWidth={active ? 2.3 : 1.9} />
+                  </span>
                   {isOpen && (
                     <>
                       <span className="flex-1 text-left">{item.label}</span>
                       <ChevronDown
                         size={16}
-                        className={`transition-transform ${isYouOpen ? "rotate-180" : ""}`}
+        className={`text-gray-500 transition-transform ${isYouOpen ? "rotate-180" : ""}`}
                       />
                     </>
                   )}
                   {active && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full" />
+    <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-sky-400" />
                   )}
                 </button>
 
                 {isYouOpen && isOpen && (
                   <div className="mt-1 mb-2 space-y-0.5">
                     {[
-                      { path: "/history", icon: History, label: "History" },
-                      { path: "/liked-videos", icon: Heart, label: "Liked videos" },
-                      { path: "/watch-later", icon: Clock, label: "Watch later" },
-{ path: "/your-videos", icon: Video, label: "Your videos" },
-      { path: "/my-support-requests", icon: LifeBuoy, label: "Support requests" },
+      { path: "/history", icon: History, label: "History", iconStyle: "bg-sky-500/10 text-sky-300" },
+      { path: "/liked-videos", icon: Heart, label: "Liked videos", iconStyle: "bg-rose-500/10 text-rose-300" },
+      { path: "/watch-later", icon: Clock, label: "Watch later", iconStyle: "bg-amber-500/10 text-amber-300" },
+      { path: "/your-videos", icon: Video, label: "Your videos", iconStyle: "bg-violet-500/10 text-violet-300" },
+      { path: "/my-support-requests", icon: LifeBuoy, label: "Support requests", iconStyle: "bg-cyan-500/10 text-cyan-300" },
     ].map((sub) => (
                       <button
                         key={sub.path}
@@ -1032,9 +1071,11 @@ export default function Sidebar({ isOpen }) {
                           navigate(sub.path);
                           setIsYouOpen(false);
                         }}
-                        className="w-full flex items-center gap-5 pl-12 pr-4 py-2 text-sm text-gray-300 hover:bg-[#272727] rounded-lg mx-2"
+                        className="mx-2 flex w-[calc(100%-16px)] items-center gap-3 rounded-lg py-1.5 pl-10 pr-4 text-sm text-gray-300 transition-colors hover:bg-[#1a1d24]"
                       >
-                        <sub.icon size={18} />
+                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${sub.iconStyle}`}>
+                          <sub.icon size={16} />
+                        </span>
                         {sub.label}
                       </button>
                     ))}
@@ -1049,16 +1090,18 @@ export default function Sidebar({ isOpen }) {
               key={item.path}
               to={item.path}
               className={`
-                relative flex items-center gap-6
-                px-3 py-2.5 mx-2 rounded-lg text-sm font-medium
-                transition-colors hover:bg-[#272727]
-                ${active ? "bg-[#272727] text-white" : "text-gray-300"}
+                relative flex items-center gap-3
+                px-2.5 py-1.5 mx-2 rounded-xl text-sm font-medium
+                transition-colors hover:bg-[#1a1d24]
+                ${active ? "bg-[#1b2230] text-white shadow-sm ring-1 ring-white/5" : "text-gray-300"}
               `}
             >
-              <Icon size={22} strokeWidth={active ? 2.4 : 1.8} />
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.iconStyle}`}>
+                <Icon size={20} strokeWidth={active ? 2.3 : 1.9} />
+              </span>
               {isOpen && <span>{item.label}</span>}
               {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full" />
+                <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-sky-400" />
               )}
             </NavLink>
           );
@@ -1119,11 +1162,101 @@ export default function Sidebar({ isOpen }) {
 
         {/* Collapsed: Subscriptions icon */}
         {!isOpen && (
-          <div className="mt-2 flex justify-center py-3 hover:bg-[#272727] rounded-lg mx-2">
-            <Tv size={22} className="text-gray-300" />
+          <div className="mx-2 mt-2 flex justify-center rounded-xl py-3 transition-colors hover:bg-[#1a1d24]">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-300">
+              <Tv size={20} />
+            </span>
           </div>
         )}
       </div>
+
+      {isLoggedIn && (
+        <div
+          ref={profileMenuRef}
+          className="relative z-50 shrink-0 border-t border-gray-800 bg-[#0f0f0f] p-2"
+        >
+          <button
+            type="button"
+            onClick={() => setIsProfileMenuOpen((open) => !open)}
+            aria-label="Open profile menu"
+            aria-expanded={isProfileMenuOpen}
+            className="flex w-full items-center gap-3 rounded-xl p-1.5 text-left transition-colors hover:bg-[#1a1d24]"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-sm font-semibold text-white">
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                user?.name?.charAt(0)?.toUpperCase() || <User size={18} />
+              )}
+            </span>
+            {isOpen && (
+              <>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-white">
+                    {user?.name || "Profile"}
+                  </span>
+                  <span className="block truncate text-xs text-gray-500">
+                    {user?.email || "Account"}
+                  </span>
+                </span>
+                <ChevronUp
+                  size={16}
+                  className={`shrink-0 text-gray-500 transition-transform ${isProfileMenuOpen ? "rotate-180" : ""}`}
+                />
+              </>
+            )}
+          </button>
+
+          {isProfileMenuOpen && (
+            <div
+              className={`absolute z-50 w-56 overflow-hidden rounded-xl border border-gray-700 bg-[#151515] py-1 shadow-2xl ${
+                isOpen
+                  ? "bottom-full left-2 mb-2"
+                  : "bottom-2 left-[calc(100%+8px)]"
+              }`}
+            >
+              {[
+                { label: "Profile", icon: User, path: "/profile" },
+                {
+                  label: "Create channel",
+                  icon: PlusCircle,
+                  path: `/channel/${user?._id || "me"}`,
+                },
+                { label: "Withdraw", icon: Wallet, path: "/withdraw" },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => {
+                    navigate(item.path);
+                    setIsProfileMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-gray-300 transition-colors hover:bg-[#22252d] hover:text-white"
+                >
+                  <item.icon size={17} className="text-gray-400" />
+                  {item.label}
+                </button>
+              ))}
+              <div className="my-1 border-t border-gray-800" />
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileMenuOpen(false);
+                  window.dispatchEvent(new Event("sidebar-logout-request"));
+                }}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-red-400 transition-colors hover:bg-red-500/10"
+              >
+                <LogOut size={17} />
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </aside>
   );
 }

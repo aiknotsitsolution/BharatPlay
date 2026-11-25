@@ -301,6 +301,20 @@ export default function Navbar({ toggleSidebar }) {
     setShowLogoutWarning(true);
   };
 
+  useEffect(() => {
+    const handleSidebarLogoutRequest = () => {
+      setIsDropdownOpen(false);
+      setShowLogoutWarning(true);
+    };
+
+    window.addEventListener("sidebar-logout-request", handleSidebarLogoutRequest);
+    return () =>
+      window.removeEventListener(
+        "sidebar-logout-request",
+        handleSidebarLogoutRequest,
+      );
+  }, []);
+
   const confirmSignOut = () => {
     setShowLogoutWarning(false);
     return performSignOut();
