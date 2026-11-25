@@ -28,6 +28,7 @@ describe("branded toast notifications", () => {
     const icon = notification.querySelector('[aria-hidden="true"]');
 
     expect(notification).toHaveTextContent(message);
+    expect(messageElement).toHaveStyle({ fontSize: "13px" });
     expect(icon.style.background).toContain("linear-gradient");
     expect(icon.style.background).toContain("rgb(255, 120, 63)");
   });

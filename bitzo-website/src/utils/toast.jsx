@@ -76,7 +76,16 @@ function showToast(type, message, options = {}) {
         >
           <Icon size={18} strokeWidth={2.5} />
         </span>
-        <span style={{ flex: 1, fontWeight: 550 }}>{message}</span>
+        <span
+          style={{
+            flex: 1,
+            fontSize: "13px",
+            fontWeight: 500,
+            lineHeight: 1.4,
+          }}
+        >
+          {message}
+        </span>
         <button
           type="button"
           aria-label="Dismiss notification"
