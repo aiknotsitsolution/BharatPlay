@@ -181,16 +181,19 @@ export const fetchHomeVideos = createAsyncThunk(
         return data;
       };
 
-      const [recommendedData, trendingData, latestData, shortsData] =
-        await Promise.all([
-          fetchPage("recommended", false),
-          fetchPage("trending"),
-          fetchPage("latest"),
-          fetchPage("trending-shorts"),
-        ]);
-      const subscriptionsData = token
-        ? await fetchPage("subscriptions")
-        : { videos: [], total: 0 };
+      const [
+        recommendedData,
+        trendingData,
+        latestData,
+        shortsData,
+        subscriptionsData,
+      ] = await Promise.all([
+        fetchPage("recommended", false),
+        fetchPage("trending"),
+        fetchPage("latest"),
+        fetchPage("trending-shorts"),
+        token ? fetchPage("subscriptions") : Promise.resolve({ videos: [], total: 0 }),
+      ]);
 
       if (requestId !== homeFetchRequestId) return { cancelled: true };
 

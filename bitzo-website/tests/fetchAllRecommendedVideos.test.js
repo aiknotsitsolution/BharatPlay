@@ -2,9 +2,37 @@ import { describe, expect, it, vi } from "vitest";
 import {
   fetchAllLatestVideos,
   fetchAllRecommendedVideos,
+  fetchVideoPage,
 } from "../src/utils/fetchAllRecommendedVideos";
 
 describe("fetchAllRecommendedVideos", () => {
+  it("requests only the requested page", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, videos: [{ id: "page-video" }] }),
+    });
+
+    await expect(
+      fetchVideoPage({
+        apiBase: "http://localhost:5000/api/uservideo",
+        endpoint: "/trending",
+        page: 3,
+        limit: 20,
+        category: "category-id",
+        token: "test-token",
+        fetchImpl,
+      }),
+    ).resolves.toMatchObject({ videos: [{ id: "page-video" }] });
+
+    const [url, options] = fetchImpl.mock.calls[0];
+    expect(new URL(url).pathname).toBe("/api/uservideo/trending");
+    expect(new URL(url).searchParams.get("page")).toBe("3");
+    expect(new URL(url).searchParams.get("limit")).toBe("20");
+    expect(new URL(url).searchParams.get("category")).toBe("category-id");
+    expect(options.headers.Authorization).toBe("Bearer test-token");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it("loads every recommended video in API-supported batches", async () => {
     const fetchImpl = vi.fn(async (url) => {
       const parsedUrl = new URL(url);

@@ -62,6 +62,10 @@ const videoSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    sourceBucket: {
+      type: String,
+      default: null,
+    },
     b2UploadId: {
       type: String,
       default: null,
@@ -78,6 +82,19 @@ const videoSchema = new mongoose.Schema(
     sourceFileName: {
       type: String,
       default: null,
+    },
+    replacementFor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Video",
+      default: null,
+    },
+    replacementUploadId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+    },
+    mediaRevision: {
+      type: Number,
+      default: 1,
     },
     thumbnailKey: {
       type: String,

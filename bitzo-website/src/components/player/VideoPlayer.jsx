@@ -9,6 +9,7 @@ import "./player.css";
 const HIDE_DELAY_MS = 2500;
 const START_BUFFER_SECONDS = 3;
 const START_BUFFER_TIMEOUT_MS = 2500;
+const isHlsUrl = (value) => /\.m3u8(?:$|[?#])/i.test(value || "");
 
 export default function VideoPlayer({
   src,
@@ -85,6 +86,8 @@ export default function VideoPlayer({
         .map(([value]) => ({ value, label: value })),
     [qualitySources],
   );
+  const displayedQuality =
+    quality === "auto" || qualitySources[quality] ? quality : "auto";
 
   useEffect(() => {
     const connection =
@@ -115,25 +118,66 @@ export default function VideoPlayer({
 
   useEffect(() => {
     const selectedQuality =
-      quality === "auto" ? networkQuality : quality;
-    const isHlsSource = /\.m3u8(?:$|[?#])/i.test(src || "");
+      displayedQuality === "auto" ? networkQuality : displayedQuality;
+    const hls = hlsRef.current;
+
+    if (isHlsUrl(src) && activeSrc === src && hls) {
+      if (displayedQuality === "auto") {
+        hls.currentLevel = -1;
+        return;
+      }
+
+      const requestedHeight = Number.parseInt(displayedQuality, 10);
+      const levelIndex = hls.levels.findIndex(
+        (level) => level.height === requestedHeight,
+      );
+      if (levelIndex >= 0) {
+        hls.currentLevel = levelIndex;
+        return;
+      }
+    }
+
     setActiveSrc(
-      quality === "auto" && isHlsSource
+      displayedQuality === "auto" && isHlsUrl(src)
         ? src
         : selectedQuality
           ? qualitySources[selectedQuality] || src
           : src,
     );
-  }, [networkQuality, quality, qualitySources, src]);
+  }, [
+    activeSrc,
+    displayedQuality,
+    hlsRef,
+    networkQuality,
+    qualitySources,
+    src,
+  ]);
 
   const changeQuality = useCallback(
     (nextQuality) => {
       const video = videoRef.current;
-      if (hlsRef.current && nextQuality === "auto") {
-        hlsRef.current.currentLevel = -1;
+      const hls = hlsRef.current;
+      if (nextQuality === "auto") {
+        if (hls && isHlsUrl(src)) {
+          hls.currentLevel = -1;
+          setActiveSrc(src);
+        }
         setQuality(nextQuality);
         return;
       }
+
+      if (hls && isHlsUrl(src) && activeSrc === src) {
+        const requestedHeight = Number.parseInt(nextQuality, 10);
+        const levelIndex = hls.levels.findIndex(
+          (level) => level.height === requestedHeight,
+        );
+        if (levelIndex >= 0) {
+          hls.currentLevel = levelIndex;
+          setQuality(nextQuality);
+          return;
+        }
+      }
+
       const nextSrc =
         nextQuality === "auto" ? src : qualitySources[nextQuality] || src;
       if (!video || nextSrc === activeSrc) {
@@ -595,7 +639,7 @@ export default function VideoPlayer({
         muted={isMuted}
         volume={volume}
         onVolumeChange={changeVolume}
-        quality={quality}
+        quality={displayedQuality}
         qualities={qualityOptions}
         onQualityChange={changeQuality}
         playbackRate={playbackRate}

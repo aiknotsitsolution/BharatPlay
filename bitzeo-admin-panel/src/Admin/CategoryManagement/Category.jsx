@@ -28,6 +28,7 @@ const CategoryManagement = () => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [editName, setEditName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingCategoryId, setDeletingCategoryId] = useState(null);
   const [hashtagStats, setHashtagStats] = useState([]);
   const [hashtagLoading, setHashtagLoading] = useState(true);
 
@@ -138,17 +139,34 @@ const CategoryManagement = () => {
   };
 
   const handleDeleteCategory = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this category?")) return;
+    const categoryName =
+      categories.find((category) => category._id === id)?.name || "this category";
+    const confirmed = window.confirm(
+      `Deleting "${categoryName}" will also permanently delete all long videos and Shorts in this category. Continue?`,
+    );
+    if (!confirmed) return;
+
+    setDeletingCategoryId(id);
     try {
-      await deleteCategory(id);
+      const response = await deleteCategory(id);
       setCategories((prev) => prev.filter((cat) => cat._id !== id));
-      toast.success("Category deleted successfully!", toastStyle);
+      const deletedVideoCount = response?.data?.deletedVideoCount;
+      toast.success(
+        typeof deletedVideoCount === "number"
+          ? deletedVideoCount > 0
+            ? `Category deleted with ${deletedVideoCount} related videos/Shorts.`
+            : "Category deleted. No related videos or Shorts were found."
+          : "Category deleted successfully!",
+        toastStyle,
+      );
     } catch (err) {
       console.error("Error deleting category:", err);
       toast.error(
         err?.response?.data?.message || "Failed to delete category",
         toastStyle
       );
+    } finally {
+      setDeletingCategoryId(null);
     }
   };
 
@@ -295,10 +313,15 @@ const CategoryManagement = () => {
                             </button>
                             <button
                               onClick={() => handleDeleteCategory(category._id)}
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete"
+                              disabled={deletingCategoryId === category._id}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:cursor-wait disabled:opacity-50"
+                              title="Delete category and its videos/Shorts"
                             >
-                              <Trash2 size={17} />
+                              {deletingCategoryId === category._id ? (
+                                <Loader2 size={17} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={17} />
+                              )}
                             </button>
                           </>
                         )}

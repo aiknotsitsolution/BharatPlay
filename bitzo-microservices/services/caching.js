@@ -1,5 +1,7 @@
 const { getRedisClient } = require("./redis");
 
+const VIDEO_CATALOG_CACHE_VERSION_KEY = "video:catalog:version";
+
 async function cached(key, ttlSec, fetchFn) {
   if (
     typeof key !== "string" ||
@@ -55,4 +57,20 @@ async function invalidateCache(key) {
   }
 }
 
-module.exports = { cached, invalidateCache };
+async function invalidateVideoCatalogCache() {
+  const redis = getRedisClient();
+  if (!redis) return;
+
+  try {
+    await redis.incr(VIDEO_CATALOG_CACHE_VERSION_KEY);
+  } catch (error) {
+    console.error("Video catalog cache invalidation failed:", error.message);
+  }
+}
+
+module.exports = {
+  cached,
+  invalidateCache,
+  invalidateVideoCatalogCache,
+  VIDEO_CATALOG_CACHE_VERSION_KEY,
+};

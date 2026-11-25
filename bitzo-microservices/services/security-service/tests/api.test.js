@@ -1,4 +1,5 @@
 const request = require("supertest");
+const mongoose = require("mongoose");
 
 jest.mock("../jobs/strikeExpiryJob.js", () => ({
   startStrikeExpiryJob: jest.fn(),
@@ -23,12 +24,33 @@ process.env.IMAGEKIT_URL_ENDPOINT =
 const app = require("../server");
 
 describe("security-service API", () => {
-  test("GET /health returns service health", async () => {
+  const originalReadyState = mongoose.connection.readyState;
+
+  afterEach(() => {
+    mongoose.connection.readyState = originalReadyState;
+  });
+
+  test("GET /health reports MongoDB as unavailable when disconnected", async () => {
+    mongoose.connection.readyState = 0;
     const response = await request(app).get("/health");
+
+    expect(response.status).toBe(503);
+    expect(response.body).toMatchObject({
+      status: "unavailable",
+      service: "security-service",
+      dependencies: { mongodb: "disconnected" },
+    });
+  });
+
+  test("GET /health reports ready when MongoDB is connected", async () => {
+    mongoose.connection.readyState = 1;
+    const response = await request(app).get("/health");
+
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       status: "ok",
       service: "security-service",
+      dependencies: { mongodb: "connected" },
     });
   });
 

@@ -6,7 +6,16 @@ const isAuthenticated = require("../middlewares/isAuthenticated");
 const requireAdmin = require("../middlewares/requireAdmin");
 const { requirePermission } = require("../middlewares/checkAdminPermission");
 const { adminUserListLimiter } = require("../middlewares/rateLimit");
-const { uploadVideo, getAllVideos, deleteVideo, updateVideoupdated, getMyVideos, editMyVideo, deleteMyVideo } = require("../controller/videoController");
+const {
+  uploadVideo,
+  getAllVideos,
+  deleteVideo,
+  updateVideoupdated,
+  createVideoThumbnailUploadUrl,
+  getMyVideos,
+  editMyVideo,
+  deleteMyVideo,
+} = require("../controller/videoController");
 
 router.post(
   "/upload",
@@ -15,6 +24,12 @@ router.post(
   uploadVideo
 );
 router.get("/my-videos",riskCheck, isAuthenticated, getMyVideos);
+
+router.post(
+  "/thumbnail/:id/presign",
+  isAuthenticated,
+  createVideoThumbnailUploadUrl,
+);
 
 router.put(
   "/update/:id",

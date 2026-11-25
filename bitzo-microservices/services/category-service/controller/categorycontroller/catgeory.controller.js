@@ -1,5 +1,10 @@
 const Category = require("../../models/CategoryModel/category.model");
-const { cached, invalidateCache } = require("../../../../services/caching");
+const Video = require("../../models/Video");
+const {
+  cached,
+  invalidateCache,
+  invalidateVideoCatalogCache,
+} = require("../../../../services/caching");
 
 const CATEGORY_LIST_CACHE_KEY = "categories:list";
 // Get all Categorys
@@ -85,15 +90,36 @@ const updateCategory = async (req, res) => {
 // Delete a Category
 const deleteCategory = async (req, res) => {
   try {
-    const deletedCategory = await Category.findByIdAndDelete(req.params.id);
+    const category = await Category.findById(req.params.id);
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    const videoFilter = { category: category._id };
+    const channelIds = await Video.distinct("channel", videoFilter);
+    const deletionResult = await Video.deleteMany(videoFilter);
+    const deletedCategory = await Category.findByIdAndDelete(category._id);
     if (!deletedCategory) {
       return res.status(404).json({ message: "Category not found" });
     }
-    await invalidateCache(CATEGORY_LIST_CACHE_KEY);
+
+    await Promise.all([
+      invalidateCache(CATEGORY_LIST_CACHE_KEY),
+      invalidateVideoCatalogCache(),
+      ...channelIds
+        .filter(Boolean)
+        .flatMap((channelId) => [
+          invalidateCache(`channel-page:${channelId}`),
+          invalidateCache(`channel-videos:${channelId}`),
+        ]),
+    ]);
+
     const Categorys = await Category.find();
-    res
-      .status(200)
-      .json({ message: "Category deleted successfully", data: Categorys });
+    res.status(200).json({
+      message: "Category and its videos deleted successfully",
+      data: Categorys,
+      deletedVideoCount: deletionResult.deletedCount || 0,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

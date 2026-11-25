@@ -1,7 +1,10 @@
 import axios from "axios";
 
-const getUploadSessionKey = (channelId, file) =>
-  `video-upload:${channelId}:${file.name}:${file.size}:${file.lastModified}`;
+// Keep app-wide auth interceptors and cookies off Backblaze presigned requests.
+const b2UploadClient = axios.create({ withCredentials: false });
+
+const getUploadSessionKey = (channelId, file, replaceVideoId) =>
+  `video-upload:${channelId}:${replaceVideoId || "new"}:${file.name}:${file.size}:${file.lastModified}`;
 
 const getLegacyUploadSessionKey = (file) =>
   `video-upload:${file.name}:${file.size}:${file.lastModified}`;
@@ -32,7 +35,7 @@ async function putPartWithRetry({
         { partNumber },
         { headers: { Authorization: `Bearer ${token}` } },
       );
-      const response = await axios.put(data.url, part, {
+      const response = await b2UploadClient.put(data.url, part, {
         headers: { "Content-Type": "application/octet-stream" },
         onUploadProgress: (event) => onProgress(event.loaded),
       });
@@ -62,17 +65,18 @@ export async function uploadVideoMultipart({
   file,
   metadata,
   thumbnail,
+  replaceVideoId,
   onProgress = () => {},
 }) {
   const headers = { Authorization: `Bearer ${token}` };
-  const sessionKey = getUploadSessionKey(channelId, file);
+  const sessionKey = getUploadSessionKey(channelId, file, replaceVideoId);
   const legacySessionKey = getLegacyUploadSessionKey(file);
   let session = null;
   let completedParts = [];
   let savedSessionKey = sessionKey;
   let savedSession = localStorage.getItem(sessionKey);
 
-  if (!savedSession && legacySessionKey !== sessionKey) {
+  if (!replaceVideoId && !savedSession && legacySessionKey !== sessionKey) {
     savedSession = localStorage.getItem(legacySessionKey);
     if (savedSession) savedSessionKey = legacySessionKey;
   }
@@ -117,6 +121,7 @@ export async function uploadVideoMultipart({
       `${api}/uservideo/upload/${channelId}/multipart/initiate`,
       {
         ...metadata,
+        ...(replaceVideoId ? { replaceVideoId } : {}),
         fileName: file.name,
         contentType: getContentType(file),
         fileSize: file.size,
@@ -136,7 +141,7 @@ export async function uploadVideoMultipart({
 
   if (thumbnail && session.thumbnailUploadUrl) {
     try {
-      await axios.put(session.thumbnailUploadUrl, thumbnail, {
+      await b2UploadClient.put(session.thumbnailUploadUrl, thumbnail, {
         headers: { "Content-Type": thumbnail.type },
       });
     } catch (error) {
@@ -209,4 +214,20 @@ export async function uploadVideoMultipart({
   localStorage.removeItem(savedSessionKey);
   onProgress(100);
   return data;
+}
+
+export async function uploadVideoThumbnail({ api, token, videoId, file }) {
+  const { data } = await axios.post(
+    `${api}/adminvideo/thumbnail/${videoId}/presign`,
+    { contentType: file.type, fileSize: file.size },
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  await b2UploadClient.put(data.uploadUrl, file, {
+    headers: { "Content-Type": file.type },
+  });
+  return {
+    thumbnailKey: data.key,
+    thumbnailContentType: data.contentType,
+    thumbnailSize: data.fileSize,
+  };
 }

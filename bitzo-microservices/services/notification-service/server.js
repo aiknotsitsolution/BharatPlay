@@ -111,7 +111,13 @@ app.use(
 // =====================================================
 app.use("/api/notifications", route0);
 if (require.main === module && process.env.REDIS_URL?.trim()) {
-  require("./services/bullmqDashboard").mountBullMQDashboard(app);
+  const dashboardMounted =
+    require("./services/bullmqDashboard").mountBullMQDashboard(app);
+  if (!dashboardMounted) {
+    console.warn(
+      "[notification-service] BullMQ dashboard disabled; configure BULL_BOARD_PASSWORD to enable it.",
+    );
+  }
 }
 
 app.get("/", (req, res) => {

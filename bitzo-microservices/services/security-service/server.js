@@ -19,6 +19,7 @@ const { detectVPN } = require("./services/vpn.service/vpn.service.js");
 
 const app = express();
 const PORT = process.env.PORT || 5009;
+const MAX_MONGO_RETRY_DELAY_MS = 30000;
 const configuredOrigins = process.env.CORS_ORIGINS?.trim();
 const isProduction = process.env.NODE_ENV === "production";
 const allowedOrigins =
@@ -59,14 +60,46 @@ app.use(
 // =====================================================
 // MONGODB
 // =====================================================
-if (require.main === module) {
-  mongoose
-    .connect(process.env.MONGO_URI)
-    .then(() => console.log("✅ [security-service] MongoDB Connected"))
-    .catch((err) => {
-      console.error("❌ [security-service] MongoDB Connection Error:", err);
-      process.exit(1);
-    });
+function isRetryableMongoError(error) {
+  const name = error?.name || "";
+  return (
+    /Network|Timeout|ServerSelection/.test(name) ||
+    error?.errorLabelSet?.has?.("RetryableError") ||
+    error?.errorLabels?.includes?.("RetryableError")
+  );
+}
+
+async function connectToMongo() {
+  let attempt = 0;
+  while (true) {
+    try {
+      await mongoose.connect(process.env.MONGO_URI, {
+        serverSelectionTimeoutMS: 10000,
+      });
+      console.log("✅ [security-service] MongoDB Connected");
+      startTrustScoreJob();
+      startStrikeExpiryJob();
+      return;
+    } catch (error) {
+      if (!isRetryableMongoError(error)) {
+        console.error(
+          "❌ [security-service] MongoDB configuration/connection failed:",
+          error.message,
+        );
+        process.exit(1);
+      }
+
+      attempt += 1;
+      const delay = Math.min(
+        MAX_MONGO_RETRY_DELAY_MS,
+        1000 * 2 ** Math.min(attempt - 1, 5),
+      );
+      console.error(
+        `[security-service] MongoDB is unreachable (attempt ${attempt}); retrying in ${delay}ms: ${error.message}`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
 }
 
 // =====================================================
@@ -95,10 +128,8 @@ app.use(
 // ROUTES
 // =====================================================
 
-// Background cron jobs owned by security-service
 if (require.main === module) {
-  startTrustScoreJob();
-  startStrikeExpiryJob();
+  connectToMongo();
 }
 
 // VPN / fraud detection endpoint (used by ops/testing or other services)
@@ -133,9 +164,11 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
+  const connected = mongoose.connection.readyState === 1;
+  res.status(connected ? 200 : 503).json({
+    status: connected ? "ok" : "unavailable",
     service: "security-service",
+    dependencies: { mongodb: connected ? "connected" : "disconnected" },
     uptime: process.uptime(),
   });
 });

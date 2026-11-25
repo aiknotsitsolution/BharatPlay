@@ -9,7 +9,7 @@ export default function WithdrawPage() {
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] pb-20 text-white">
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center border-b border-gray-800 bg-[#0f0f0f] px-4">
+      <header className="flex h-14 items-center border-b border-gray-800 px-4">
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -21,7 +21,7 @@ export default function WithdrawPage() {
         <h1 className="ml-4 text-xl font-bold">Rewards</h1>
       </header>
 
-      <main className="mx-auto max-w-md px-4 pt-20">
+      <main className="mx-auto max-w-md px-4 py-6">
         <section className="mb-6 rounded-2xl border border-gray-700 bg-linear-to-br from-[#1a1a2e] to-[#0f0f1f] p-6 shadow-xl">
           <div className="mb-4 flex items-center justify-between">
             <div>

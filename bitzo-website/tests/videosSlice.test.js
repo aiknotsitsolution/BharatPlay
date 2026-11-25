@@ -482,6 +482,38 @@ describe("Shorts feed pagination", () => {
     );
   });
 
+  it("starts the signed-in Home section requests concurrently", async () => {
+    localStorage.setItem("token", "test-token");
+    const resolvers = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise((resolve) => {
+            resolvers.push(() =>
+              resolve({
+                ok: true,
+                json: async () => ({ success: true, total: 0, videos: [] }),
+              }),
+            );
+          }),
+      ),
+    );
+
+    const request = store.dispatch(fetchHomeVideos({ limit: 5 }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const initialRequestCount = resolvers.length;
+
+    resolvers.forEach((resolveRequest) => resolveRequest());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    resolvers.slice(initialRequestCount).forEach((resolveRequest) =>
+      resolveRequest(),
+    );
+    await request.unwrap();
+
+    expect(initialRequestCount).toBe(5);
+  });
+
   it("keeps Home and video sections available after login", async () => {
     localStorage.setItem("token", "test-token");
     const requestedUrls = [];

@@ -13,7 +13,15 @@ const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const Video = require("../models/Videomodel");
 const Channel = require("../models/Channel/ChannelModel");
 const { getQueue } = require("../../../services/Queues");
-const { getB2Client, getB2Config, getPublicUrl } = require("../utils/b2Storage");
+const {
+  getB2Client,
+  getB2Config,
+  getB2SourceClient,
+  getPublicUrl,
+  getVideoSourceBucket,
+  getVideoSourceClient,
+} = require("../utils/b2Storage");
+const { invalidateVideoCatalogCache } = require("../utils/videoCatalogCache");
 const { resolveCategory } = require("./userVideoController");
 
 const MiB = 1024 * 1024;
@@ -55,12 +63,14 @@ function getPartSize(fileSize) {
 }
 
 async function listAllParts(video) {
-  const { bucket } = getB2Config();
+  const config = getB2Config();
+  const bucket = getVideoSourceBucket(video, config);
+  const client = getVideoSourceClient(video, config);
   const parts = [];
   let partNumberMarker;
 
   do {
-    const result = await getB2Client().send(
+    const result = await client.send(
       new ListPartsCommand({
         Bucket: bucket,
         Key: video.sourceKey,
@@ -78,6 +88,7 @@ async function listAllParts(video) {
 async function initiateMultipartUpload(req, res) {
   let createdUploadId;
   let createdObjectKey;
+  let createdUploadBucket;
   let createdVideoId;
   try {
     if (!process.env.REDIS_URL?.trim()) {
@@ -100,6 +111,7 @@ async function initiateMultipartUpload(req, res) {
       thumbnailName,
       thumbnailContentType,
       thumbnailSize,
+      replaceVideoId,
     } = req.body || {};
     const size = Number(fileSize);
     const declaredDuration = Number(duration);
@@ -121,6 +133,26 @@ async function initiateMultipartUpload(req, res) {
     }
     if (!["short", "long"].includes(videoType)) {
       return sendError(res, "Video type must be short or long.", 400);
+    }
+
+    let replacementTarget = null;
+    if (replaceVideoId) {
+      if (!mongoose.Types.ObjectId.isValid(replaceVideoId)) {
+        return sendError(res, "Invalid video to replace.", 400);
+      }
+      replacementTarget = await Video.findOne({
+        _id: replaceVideoId,
+        $or: [{ uploadedBy: userId }, { creator: userId }],
+        status: "active",
+        processingStatus: { $in: ["ready", "failed"] },
+      });
+      if (!replacementTarget) {
+        return sendError(
+          res,
+          "This video cannot be replaced while it is unavailable or processing.",
+          409,
+        );
+      }
     }
 
     const channel = await Channel.findById(channelId).select("creator");
@@ -175,24 +207,32 @@ async function initiateMultipartUpload(req, res) {
       ) {
         return sendError(res, "Thumbnail must be a JPEG, PNG, or WebP under 10 MB.", 400);
       }
-      normalizedThumbnailName = `Video/${userId}/thumbnails/${new mongoose.Types.ObjectId()}`;
+      normalizedThumbnailName = replacementTarget
+        ? `Video/${userId}/${replacementTarget._id}/thumbnail/${new mongoose.Types.ObjectId()}`
+        : `Video/${userId}/thumbnails/${new mongoose.Types.ObjectId()}`;
     }
 
     const videoId = new mongoose.Types.ObjectId();
     createdVideoId = videoId;
-    const sourceKey = `Video/${userId}/${videoId}/source${ext}`;
+    const sourceKey = replacementTarget
+      ? `Video/${userId}/${replacementTarget._id}/source-${videoId}${ext}`
+      : `Video/${userId}/${videoId}/source${ext}`;
     createdObjectKey = sourceKey;
-    const { bucket } = getB2Config();
-    const client = getB2Client();
-    const multipart = await client.send(
+    const config = getB2Config();
+    const sourceBucket = config.sourceBucket || config.bucket;
+    const multipart = await getB2SourceClient().send(
       new CreateMultipartUploadCommand({
-        Bucket: bucket,
+        Bucket: sourceBucket,
         Key: sourceKey,
         ContentType: contentType,
-        CacheControl: "public, max-age=31536000, immutable",
+        CacheControl:
+          sourceBucket === config.bucket
+            ? "public, max-age=31536000, immutable"
+            : "private, no-store",
       }),
     );
     createdUploadId = multipart.UploadId;
+    createdUploadBucket = sourceBucket;
     if (!createdUploadId) throw new Error("B2 did not return an upload ID.");
 
     const video = await Video.create({
@@ -210,10 +250,12 @@ async function initiateMultipartUpload(req, res) {
       status: "disabled",
       processingStatus: "uploading",
       sourceKey,
+      sourceBucket,
       b2UploadId: createdUploadId,
       sourceSize: size,
       sourceContentType: contentType,
       sourceFileName: path.basename(String(fileName)).slice(0, 255),
+      replacementFor: replacementTarget?._id || null,
       thumbnailKey: normalizedThumbnailName || undefined,
       thumbnailContentType: thumbnailName ? thumbnailContentType : undefined,
     });
@@ -222,9 +264,9 @@ async function initiateMultipartUpload(req, res) {
     const partsCount = Math.ceil(size / partSize);
     const thumbnailUploadUrl = normalizedThumbnailName
       ? await getSignedUrl(
-          client,
+          getB2Client(),
           new PutObjectCommand({
-            Bucket: bucket,
+            Bucket: config.bucket,
             Key: normalizedThumbnailName,
             ContentType: thumbnailContentType,
             CacheControl: "public, max-age=31536000, immutable",
@@ -244,10 +286,9 @@ async function initiateMultipartUpload(req, res) {
   } catch (error) {
     if (createdUploadId) {
       try {
-        const { bucket } = getB2Config();
-        await getB2Client().send(
+        await getB2SourceClient().send(
           new AbortMultipartUploadCommand({
-            Bucket: bucket,
+            Bucket: createdUploadBucket,
             Key: createdObjectKey,
             UploadId: createdUploadId,
           }),
@@ -281,9 +322,10 @@ async function getPartUploadUrl(req, res) {
       return sendError(res, "Invalid upload part number.", 400);
     }
 
-    const { bucket } = getB2Config();
+    const config = getB2Config();
+    const bucket = getVideoSourceBucket(video, config);
     const url = await getSignedUrl(
-      getB2Client(),
+      getVideoSourceClient(video, config),
       new UploadPartCommand({
         Bucket: bucket,
         Key: video.sourceKey,
@@ -306,12 +348,40 @@ async function resumeMultipartUpload(req, res) {
         _id: req.params.videoId,
         channel: req.params.channelId,
         uploadedBy: getUserId(req),
-      }).select("processingStatus processingError");
+      }).select("+b2UploadId");
       if (completed) {
+        if (completed.replacementFor) {
+          const target = await finishReplacementUpload(
+            completed,
+            getUserId(req),
+          );
+          return res.status(200).json({
+            success: true,
+            videoId: String(target._id),
+            processingStatus: target.processingStatus,
+            processingError: target.processingError,
+            parts: [],
+          });
+        }
         return res.status(200).json({
           success: true,
+          videoId: String(completed._id),
           processingStatus: completed.processingStatus,
           processingError: completed.processingError,
+          parts: [],
+        });
+      }
+      const replacement = await Video.findOne({
+        replacementUploadId: req.params.videoId,
+        channel: req.params.channelId,
+        uploadedBy: getUserId(req),
+      }).select("processingStatus processingError");
+      if (replacement) {
+        return res.status(200).json({
+          success: true,
+          videoId: String(replacement._id),
+          processingStatus: replacement.processingStatus,
+          processingError: replacement.processingError,
           parts: [],
         });
       }
@@ -360,8 +430,19 @@ async function completeMultipartUpload(req, res) {
         _id: req.params.videoId,
         channel: req.params.channelId,
         uploadedBy: getUserId(req),
-      }).select("processingStatus processingError");
+      }).select("+b2UploadId");
       if (existing && existing.processingStatus !== "uploading") {
+        if (existing.replacementFor) {
+          const target = await finishReplacementUpload(
+            existing,
+            getUserId(req),
+          );
+          return res.status(200).json({
+            success: true,
+            processingStatus: target.processingStatus,
+            videoId: String(target._id),
+          });
+        }
         if (existing.processingStatus === "queued") {
           await enqueueVideoProcessing(existing._id);
         }
@@ -371,11 +452,24 @@ async function completeMultipartUpload(req, res) {
           videoId: String(existing._id),
         });
       }
+      const replacement = await Video.findOne({
+        replacementUploadId: req.params.videoId,
+        channel: req.params.channelId,
+        uploadedBy: getUserId(req),
+      }).select("processingStatus");
+      if (replacement) {
+        return res.status(200).json({
+          success: true,
+          processingStatus: replacement.processingStatus,
+          videoId: String(replacement._id),
+        });
+      }
       return sendError(res, "Upload session not found.", 404);
     }
 
-    const { bucket } = getB2Config();
-    const client = getB2Client();
+    const config = getB2Config();
+    const bucket = getVideoSourceBucket(video, config);
+    const client = getVideoSourceClient(video, config);
     const uploadedParts = await listAllParts(video);
     const expectedParts = Math.ceil(video.sourceSize / getPartSize(video.sourceSize));
     if (uploadedParts.length !== expectedParts) {
@@ -410,6 +504,19 @@ async function completeMultipartUpload(req, res) {
     video.b2UploadId = undefined;
     await video.save();
 
+    if (video.replacementFor) {
+      const replacement = await finishReplacementUpload(
+        video,
+        getUserId(req),
+      );
+      return res.status(202).json({
+        success: true,
+        videoId: String(replacement._id),
+        processingStatus: replacement.processingStatus,
+        message: "Replacement uploaded. Video processing has started.",
+      });
+    }
+
     await enqueueVideoProcessing(video._id);
 
     return res.status(202).json({
@@ -423,11 +530,77 @@ async function completeMultipartUpload(req, res) {
   }
 }
 
-async function enqueueVideoProcessing(videoId) {
+async function finishReplacementUpload(upload, userId) {
+  const video = await Video.findOne({
+    _id: upload.replacementFor,
+    $or: [{ uploadedBy: userId }, { creator: userId }],
+  });
+  if (!video) throw new Error("The video being replaced no longer exists.");
+
+  const alreadyApplied =
+    String(video.replacementUploadId || "") === String(upload._id);
+  if (!alreadyApplied) {
+    if (!["ready", "failed"].includes(video.processingStatus)) {
+      throw new Error("This video is already being processed.");
+    }
+
+    const previousChannelId = String(video.channel);
+    const nextChannelId = String(upload.channel);
+    video.uploadedBy = video.uploadedBy || userId;
+    video.channel = upload.channel;
+    video.category = upload.category;
+    video.title = upload.title;
+    video.description = upload.description;
+    video.videoType = upload.videoType;
+    video.hashtags = upload.hashtags;
+    video.isCreativeCorner = upload.isCreativeCorner;
+    video.duration = upload.duration;
+    video.sourceKey = upload.sourceKey;
+    video.sourceBucket = upload.sourceBucket;
+    video.sourceSize = upload.sourceSize;
+    video.sourceContentType = upload.sourceContentType;
+    video.sourceFileName = upload.sourceFileName;
+    video.thumbnailKey = upload.thumbnailKey || null;
+    video.thumbnailContentType = upload.thumbnailContentType || null;
+    if (upload.thumbnailKey) {
+      video.thumbnail = getPublicUrl(upload.thumbnailKey);
+    }
+    video.processingStatus = "queued";
+    video.processingError = null;
+    video.mediaRevision = (Number(video.mediaRevision) || 1) + 1;
+    video.replacementUploadId = upload._id;
+    await video.save();
+
+    if (previousChannelId !== nextChannelId) {
+      await Promise.all([
+        Channel.updateOne(
+          { _id: previousChannelId },
+          { $pull: { videos: video._id } },
+        ),
+        Channel.updateOne(
+          { _id: nextChannelId },
+          { $addToSet: { videos: video._id } },
+        ),
+      ]);
+    }
+    await invalidateVideoCatalogCache();
+  }
+
+  if (video.processingStatus === "queued") {
+    await enqueueVideoProcessing(
+      video._id,
+      `${video._id}-revision-${video.mediaRevision}`,
+    );
+  }
+  await Video.deleteOne({ _id: upload._id });
+  return video;
+}
+
+async function enqueueVideoProcessing(videoId, jobId = videoId) {
   await getQueue("video-processing").add(
     "process-video",
     { videoId: String(videoId) },
-    { jobId: String(videoId) },
+    { jobId: String(jobId) },
   );
 }
 
@@ -436,8 +609,9 @@ async function abortMultipartUpload(req, res) {
     const video = await findOwnedUpload(req);
     if (!video) return res.status(204).end();
 
-    const { bucket } = getB2Config();
-    await getB2Client().send(
+    const config = getB2Config();
+    const bucket = getVideoSourceBucket(video, config);
+    await getVideoSourceClient(video, config).send(
       new AbortMultipartUploadCommand({
         Bucket: bucket,
         Key: video.sourceKey,

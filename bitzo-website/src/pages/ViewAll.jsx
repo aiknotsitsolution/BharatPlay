@@ -12,11 +12,7 @@ import {
 import { addToWatchLater, removeFromWatchLater } from "../api/watchLater";
 import { MovieCard } from "../components/common/VideoGrid";
 import ShortCard from "../components/common/ShortCard";
-import {
-  fetchAllRecommendedVideos,
-  fetchAllTrendingVideos,
-  fetchAllLatestVideos,
-} from "../utils/fetchAllRecommendedVideos";
+import { fetchVideoPage } from "../utils/fetchAllRecommendedVideos";
 import { promptLogin } from "../utils/loginPrompt";
 
 const PAGE_SIZE = 20;
@@ -90,8 +86,7 @@ const ViewAll = () => {
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
   const needsLogin =
     type === "subscriptions" && !localStorage.getItem("token");
-  const requestPage =
-    ["recommended", "trending", "latest"].includes(type) ? 1 : page;
+  const requestPage = page;
   const requestKey = `${type}-${requestPage}-${selectedCategory || "all"}`;
   const loading = !needsLogin && loadedRequestKey !== requestKey;
 
@@ -101,90 +96,52 @@ const ViewAll = () => {
     if (type === "subscriptions" && !token) return;
 
     let active = true;
-    if (["recommended", "trending", "latest"].includes(type)) {
-      const loadAllVideos = {
-        recommended: fetchAllRecommendedVideos,
-        trending: fetchAllTrendingVideos,
-        latest: fetchAllLatestVideos,
-      }[type];
-      loadAllVideos({
-        apiBase: API_BASE,
-        category: type === "recommended" ? undefined : selectedCategory,
-        token,
-      })
-        .then((videos) => {
-          if (!active) return;
-          const normalizedVideos = videos.map(section.normalize);
-          const orderedVideos =
-            type === "trending"
-              ? shuffleAfterPinnedItems(
-                  [...normalizedVideos].sort(
-                    (left, right) => right.views - left.views,
-                  ),
-                  2,
-                )
-              : type === "latest"
-                ? shuffleAfterPinnedItems(
-                    [...normalizedVideos].sort(
-                      (left, right) =>
-                        new Date(right.uploadDate || 0).getTime() -
-                        new Date(left.uploadDate || 0).getTime(),
-                    ),
-                    1,
-                  )
-                : prioritizeCategoryChannels(
-                    normalizedVideos,
-                    selectedCategory,
-                  );
-          setItems(orderedVideos);
-          setTotal(orderedVideos.length);
-          setError(null);
-        })
-        .catch((err) => {
-          if (active) setError(err.message || "Failed to load videos.");
-        })
-        .finally(() => {
-          if (active) setLoadedRequestKey(requestKey);
-        });
-
-      return () => {
-        active = false;
-      };
-    }
-
-    const categoryParam = selectedCategory
-      ? `&category=${selectedCategory}`
-      : "";
-
-    fetch(
-      `${API_BASE}${section.endpoint}?page=${requestPage}&limit=${PAGE_SIZE}${categoryParam}`,
-      {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      },
-    )
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Failed to load videos (${res.status})`);
-        }
-        return res.json();
-      })
+    fetchVideoPage({
+      apiBase: API_BASE,
+      endpoint: section.endpoint,
+      page: requestPage,
+      limit: PAGE_SIZE,
+      category:
+        type === "recommended" ? undefined : selectedCategory || undefined,
+      token,
+    })
       .then((data) => {
         if (!active) return;
         if (!data.success) {
           throw new Error(data.message || "Failed to load videos");
         }
         const list = Array.isArray(data.videos) ? data.videos : [];
-        const pinnedCount =
-          requestPage === 1 &&
-          ["trending", "shorts", "top-shorts"].includes(type)
-            ? 3
-            : 0;
-        setItems(
-          shuffleAfterPinnedItems(
-            list.map(section.normalize),
-            pinnedCount,
-          ),
-        );
+        const normalizedVideos = list.map(section.normalize);
+        const orderedVideos =
+          type === "trending"
+            ? shuffleAfterPinnedItems(
+                [...normalizedVideos].sort(
+                  (left, right) => right.views - left.views,
+                ),
+                requestPage === 1 ? 2 : 0,
+              )
+            : type === "latest"
+              ? shuffleAfterPinnedItems(
+                  [...normalizedVideos].sort(
+                    (left, right) =>
+                      new Date(right.uploadDate || 0).getTime() -
+                      new Date(left.uploadDate || 0).getTime(),
+                  ),
+                  requestPage === 1 ? 1 : 0,
+                )
+              : type === "recommended"
+                ? prioritizeCategoryChannels(
+                    normalizedVideos,
+                    selectedCategory,
+                  )
+                : shuffleAfterPinnedItems(
+                    normalizedVideos,
+                    requestPage === 1 &&
+                      ["shorts", "top-shorts"].includes(type)
+                      ? 3
+                      : 0,
+                  );
+        setItems(orderedVideos);
         setTotal(Number(data.total) || list.length);
         setError(null);
       })
@@ -200,10 +157,7 @@ const ViewAll = () => {
     };
   }, [type, requestPage, section, selectedCategory, requestKey]);
 
-  const visibleItems =
-    ["recommended", "trending", "latest"].includes(type)
-      ? items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-      : items;
+  const visibleItems = items;
 
   const handleItemClick = (item) => {
     if (section.isShort || isShortVideo(item)) {

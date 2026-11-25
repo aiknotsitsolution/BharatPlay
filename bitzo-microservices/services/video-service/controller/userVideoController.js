@@ -16,7 +16,10 @@ const {
   VIDEO_CATALOG_CACHE_TTL_SECONDS,
 } = require("../utils/videoCatalogCache");
 const { cached, invalidateCache } = require("../../../services/caching");
-const { withVisibleVideoFilter } = require("../utils/videoVisibility");
+const {
+  getRestrictedContentIds,
+  withVisibleVideoFilter,
+} = require("../utils/videoVisibility");
 const {
   createNotification,
   createBulkNotifications,
@@ -748,7 +751,28 @@ const getSubscribedChannels = async (req, res) => {
 
 // GET /api/channels/:id
 // GET /api/uservideo/channel/:id
-// Public channel page (channel info + videos)
+const getChannelVideoPage = async (channelId, page, limit) =>
+  cacheVideoCatalog(
+    "channel-videos",
+    { channelId, page, limit },
+    60,
+    async () => {
+      const filter = await withVisibleVideoFilter({ channel: channelId });
+      const skip = (page - 1) * limit;
+      const [videos, total] = await Promise.all([
+        Video.find(filter)
+          .select("_id title thumbnail views createdAt videoType duration")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        Video.countDocuments(filter),
+      ]);
+      return { videos, total };
+    },
+  );
+
+// Public channel page (channel info + first video page)
 const getChannelById = async (req, res) => {
   try {
     const channelId = req.params.id;
@@ -760,32 +784,29 @@ const getChannelById = async (req, res) => {
       });
     }
 
-    const payload = await cached(`channel-page:${channelId}`, 60, async () => {
-      const channel = await Channel.findOne({ _id: channelId, status: "active" })
+    const channel = await cached(`channel-page:${channelId}`, 60, () =>
+      Channel.findOne({ _id: channelId, status: "active" })
         .populate({ path: "category", select: "_id name", model: categoryModel })
         .populate({ path: "creator", select: "name email", model: User })
-        .lean();
+        .lean(),
+    );
 
-      if (!channel) return null;
-
-      const videos = await Video.find(
-        await withVisibleVideoFilter({ channel: channelId }),
-      )
-        .populate({ path: "uploadedBy", select: "_id name email", model: User })
-        .sort({ createdAt: -1 })
-        .lean();
-
-      return { channel, videos };
-    });
-
-    if (!payload) {
+    if (!channel) {
       return res.status(404).json({
         success: false,
         message: "Channel not found",
       });
     }
 
-    const { channel, videos } = payload;
+    const { page, limit } = getPagination(req);
+    const ownerId = channel.creator?._id || channel.creator;
+    const [{ videos, total }, ownerChannels] = await Promise.all([
+      getChannelVideoPage(channelId, page, limit),
+      Channel.find({ creator: ownerId, status: "active" })
+        .select("_id name channelImage channelBanner subscribedBy")
+        .sort({ createdAt: 1 })
+        .lean(),
+    ]);
 
     // Check if current user is subscribed
     let isSubscribed = false;
@@ -804,7 +825,7 @@ const getChannelById = async (req, res) => {
         ...channel,
         isSubscribed,
         subscribersCount: channel.subscribedBy?.length || 0,
-        videoCount: videos.length,
+        videoCount: total,
         handle:
           channel.handle ||
           channel.name?.toLowerCase().replace(/\s+/g, "") ||
@@ -812,6 +833,14 @@ const getChannelById = async (req, res) => {
         description: channel.channeldescription || channel.description || "",
       },
       videos,
+      ownerChannels: ownerChannels.map(({ subscribedBy = [], ...item }) => ({
+        ...item,
+        subscribersCount: subscribedBy.length,
+      })),
+      page,
+      limit,
+      total,
+      hasMore: total > page * limit,
     });
   } catch (error) {
     console.error("Error in getChannelById:", error.message);
@@ -1142,38 +1171,32 @@ const getvideosByChannel = async (req, res) => {
       });
     }
 
-    // Only active channels and videos are publicly visible.
-    const payload = await cached(`channel-videos:${channelId}`, 60, async () => {
-      const channel = await Channel.findOne({ _id: channelId, status: "active" })
-        .select("_id")
-        .lean();
-      if (!channel) return null;
-
-      const videos = await Video.find(
-        await withVisibleVideoFilter({ channel: channelId }),
-      )
-        .populate({ path: "uploadedBy", select: "_id name email", model: User })
-        .populate({
-          path: "channel",
-          select: "name channelImage channelBanner channeldescription category",
-        })
-        .sort({ createdAt: -1 })
-        .lean();
-
-      return { videos };
-    });
-
-    if (!payload) {
+    const channel = await Channel.findOne({
+      _id: channelId,
+      status: "active",
+    })
+      .select("_id")
+      .lean();
+    if (!channel) {
       return res
         .status(404)
         .json({ success: false, message: "Channel not found" });
     }
-    const { videos } = payload;
+    const { page, limit } = getPagination(req);
+    const { videos, total } = await getChannelVideoPage(
+      channelId,
+      page,
+      limit,
+    );
 
     return res.status(200).json({
       success: true,
       count: videos.length,
       videos,
+      page,
+      limit,
+      total,
+      hasMore: total > page * limit,
     });
   } catch (error) {
     console.error("Error in getvideosByChannel:", error);

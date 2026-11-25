@@ -1,8 +1,11 @@
 const crypto = require("node:crypto");
-const { cached } = require("../../../services/caching");
+const {
+  cached,
+  invalidateVideoCatalogCache,
+  VIDEO_CATALOG_CACHE_VERSION_KEY,
+} = require("../../../services/caching");
 const { getRedisClient } = require("../../../services/redis");
 
-const VIDEO_CATALOG_CACHE_VERSION_KEY = "video:catalog:version";
 const VIDEO_CATALOG_CACHE_FORMAT_VERSION = 2;
 const VIDEO_CATALOG_CACHE_TTL_SECONDS = 15 * 60;
 
@@ -49,17 +52,6 @@ async function cacheVideoCatalog(namespace, keyParts, ttlSec, fetchFn) {
     ttlSec,
     fetchFn,
   );
-}
-
-async function invalidateVideoCatalogCache() {
-  const redis = getRedisClient();
-  if (!redis) return;
-
-  try {
-    await redis.incr(VIDEO_CATALOG_CACHE_VERSION_KEY);
-  } catch (error) {
-    console.error("Video catalog cache invalidation failed:", error.message);
-  }
 }
 
 module.exports = {

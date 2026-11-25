@@ -11,11 +11,18 @@ const {
 } = require("@aws-sdk/client-s3");
 const ffprobeStatic = require("ffprobe-static");
 const { createWorker } = require("../../../services/Queues");
+const { invalidateCache } = require("../../../services/caching");
 const Video = require("../models/Videomodel");
 const Channel = require("../models/Channel/ChannelModel");
 const User = require("../models/usermodel");
 const HashtagStats = require("../models/CategoryModel/HashtagStats");
-const { getB2Client, getB2Config, getPublicUrl } = require("../utils/b2Storage");
+const {
+  getB2Client,
+  getB2Config,
+  getPublicUrl,
+  getVideoSourceBucket,
+  getVideoSourceClient,
+} = require("../utils/b2Storage");
 const {
   buildTranscodeArgs,
   getAvailableResolutions,
@@ -70,8 +77,9 @@ function probeMedia(filePath) {
 }
 
 async function downloadSource(video, filePath) {
-  const { bucket } = getB2Config();
-  const response = await getB2Client().send(
+  const config = getB2Config();
+  const bucket = getVideoSourceBucket(video, config);
+  const response = await getVideoSourceClient(video, config).send(
     new GetObjectCommand({ Bucket: bucket, Key: video.sourceKey }),
   );
   if (!response.Body) throw new Error("B2 returned an empty source video.");
@@ -183,8 +191,12 @@ async function processVideo(videoId) {
         buildTranscodeArgs(sourcePath, outputDirectory, resolutions),
     );
 
+    const mediaRevision = Math.max(1, Number(video.mediaRevision) || 1);
+    const outputPrefix = `Video/${video.uploadedBy}/${video._id}/hls${
+      mediaRevision > 1 ? `/v${mediaRevision}` : ""
+    }`;
     let thumbnailKey =
-      video.thumbnailKey || `Video/${video.uploadedBy}/${video._id}/hls/thumbnail.jpg`;
+      video.thumbnailKey || `${outputPrefix}/thumbnail.jpg`;
     const { bucket } = getB2Config();
     let customThumbnailAvailable = false;
     if (video.thumbnailKey) {
@@ -220,7 +232,6 @@ async function processVideo(videoId) {
       videoStream.width,
       videoStream.height,
     );
-    const outputPrefix = `Video/${video.uploadedBy}/${video._id}/hls`;
     await uploadDirectory(outputDirectory, outputPrefix);
 
     video.videoUrl = getPublicUrl(`${outputPrefix}/master.m3u8`);
@@ -244,7 +255,11 @@ async function processVideo(videoId) {
       ),
     ]);
 
-    if (video.isCreativeCorner && video.hashtags?.length) {
+    if (
+      !video.replacementUploadId &&
+      video.isCreativeCorner &&
+      video.hashtags?.length
+    ) {
       await HashtagStats.bulkWrite(
         video.hashtags.map((hashtag) => ({
           updateOne: {
@@ -266,13 +281,17 @@ async function processVideo(videoId) {
     video.status = "active";
     await video.save();
     try {
-      await invalidateVideoCatalogCache();
+      await Promise.all([
+        invalidateVideoCatalogCache(),
+        invalidateCache(`channel-page:${video.channel}`),
+        invalidateCache(`channel-videos:${video.channel}`),
+      ]);
     } catch (error) {
-      console.error("[video-processing] Catalog cache invalidation failed:", error);
+      console.error("[video-processing] Video cache invalidation failed:", error);
     }
 
     const channel = await Channel.findById(video.channel).select("subscribedBy");
-    if (channel?.subscribedBy?.length) {
+    if (!video.replacementUploadId && channel?.subscribedBy?.length) {
       try {
         await createBulkNotifications({
           recipients: channel.subscribedBy,

@@ -128,7 +128,7 @@ router.put(
   updateChannel,
 );
 router.get("/channel/:id", optionalAuth, getChannelById);
-router.get("/channel/:id/videos", isAuthenticated, getvideosByChannel);
+router.get("/channel/:id/videos", optionalAuth, getvideosByChannel);
 router.delete("/channel/:id", isAuthenticated, deleteChannel);
 
 router.get("/recommended", optionalAuth, recommendedVideos);

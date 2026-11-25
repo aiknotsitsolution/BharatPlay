@@ -46,6 +46,10 @@ function createDashboardAuth() {
 }
 
 function mountBullMQDashboard(app) {
+  if (!process.env.BULL_BOARD_PASSWORD?.trim()) {
+    return false;
+  }
+
   const serverAdapter = new ExpressAdapter();
   serverAdapter.setBasePath("/admin/queues");
   createBullBoard({
@@ -57,6 +61,7 @@ function mountBullMQDashboard(app) {
     createDashboardAuth(),
     serverAdapter.getRouter(),
   );
+  return true;
 }
 
 module.exports = { mountBullMQDashboard };

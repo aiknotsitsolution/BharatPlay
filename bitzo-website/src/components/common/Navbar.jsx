@@ -5,7 +5,6 @@ import {
   Search,
   Mic,
   MicOff,
-  Plus,
   Bell,
   Star,
   User,
@@ -388,32 +387,18 @@ export default function Navbar({ toggleSidebar }) {
           <Link
             to="/"
             aria-label="VidBuxApp home"
-            className="flex items-center flex-shrink-0 ml-1"
+            className="flex items-center flex-shrink-0 ml-2 md:ml-3"
           >
             <img
               src={logo}
               alt="VidBuxApp"
-              className="w-16 h-12 object-contain"
+              className="w-18 h-12 object-contain"
             />
           </Link>
-          {/* Points (desktop) */}
-
-          {isLoggedIn && (
-            <div
-              className="hidden lg:flex items-center gap-1.5 bg-[#272727] px-2.5 py-1 rounded-full border border-blue-500/30 ml-1"
-              title={`Trust Score: ${trustScore}/100 (${trustTier})`}
-            >
-              <Shield size={14} className="text-blue-400" />
-              <span className="text-white font-semibold text-xs">
-                {trustScore}
-              </span>
-              <span className="text-gray-400 text-[10px]">trust</span>
-            </div>
-          )}
         </div>
 
         {/* Center Search (desktop) */}
-        <div className="flex-1 max-w-[640px] mx-4 lg:mx-8 hidden md:flex items-center gap-3">
+        <div className="flex-1 max-w-[640px] mx-4 lg:absolute lg:left-1/2 lg:-translate-x-1/2 lg:w-[calc(100vw-44rem)] lg:max-w-[640px] lg:mx-0 hidden md:flex items-center gap-3">
           <div className="relative w-full" ref={searchBoxRef}>
             <input
               type="text"
@@ -471,6 +456,19 @@ export default function Navbar({ toggleSidebar }) {
             <Search size={22} className="text-white" />
           </button>
 
+          {isLoggedIn && (
+            <div
+              className="hidden lg:flex items-center gap-1.5 bg-[#272727] px-2.5 py-1 rounded-full border border-blue-500/30"
+              title={`Trust Score: ${trustScore}/100 (${trustTier})`}
+            >
+              <Shield size={14} className="text-blue-400" />
+              <span className="text-white font-semibold text-xs">
+                {trustScore}
+              </span>
+              <span className="text-gray-400 text-[10px]">trust</span>
+            </div>
+          )}
+
           <div className="hidden sm:flex items-center gap-1.5 bg-[#272727] px-2.5 py-1 rounded-full border border-yellow-600/30 ml-3">
             <Star size={14} className="text-yellow-400 fill-yellow-400" />
             <span className="text-white font-semibold text-xs">
@@ -478,13 +476,6 @@ export default function Navbar({ toggleSidebar }) {
             </span>
             <span className="text-gray-400 text-[10px]">pts</span>
           </div>
-          <Link
-            to="/uploadvideo"
-            className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#272727] rounded-full transition-colors"
-          >
-            <Plus size={20} className="text-white" strokeWidth={2.5} />
-            <span className="text-sm font-medium text-white">Create</span>
-          </Link>
 
           {/* Notifications */}
           <div className="relative" ref={notifRef}>

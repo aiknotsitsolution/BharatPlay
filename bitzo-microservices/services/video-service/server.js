@@ -100,7 +100,7 @@ app.use(
       "Accept",
       "Origin",
     ],
-    exposedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Content-Type", "Authorization", "ETag"],
   }),
 );
 

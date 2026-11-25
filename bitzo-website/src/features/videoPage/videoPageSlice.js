@@ -17,27 +17,27 @@ export const fetchVideoPage = createAsyncThunk(
   "videoPage/fetchVideoPage",
   async (id, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_BASE}/${id}`, {
+      const videoRequest = fetch(`${API_BASE}/${id}`, {
         headers: authHeaders(),
       });
+      const commentsRequest = fetch(`${API_BASE}/${id}/comments`, {
+        headers: authHeaders(),
+      })
+        .then(async (commentsResponse) => {
+          if (!commentsResponse.ok) return [];
+          const commentsData = await commentsResponse.json();
+          return commentsData.success && Array.isArray(commentsData.comments)
+            ? commentsData.comments
+            : [];
+        })
+        .catch(() => []);
+      const [response, comments] = await Promise.all([
+        videoRequest,
+        commentsRequest,
+      ]);
       const data = await response.json();
       if (!response.ok || !data.success || !data.video) {
         throw new Error(data.message || "Failed to load video");
-      }
-
-      let comments = [];
-      try {
-        const commentsResponse = await fetch(`${API_BASE}/${id}/comments`, {
-          headers: authHeaders(),
-        });
-        const commentsData = await commentsResponse.json();
-        if (commentsResponse.ok && commentsData.success) {
-          comments = Array.isArray(commentsData.comments)
-            ? commentsData.comments
-            : [];
-        }
-      } catch {
-        comments = [];
       }
 
       return {

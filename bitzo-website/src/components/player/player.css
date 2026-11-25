@@ -589,6 +589,17 @@
     height: 30px;
   }
 
+  .bp-menu-anchor > .bp-ctrl-btn {
+    width: auto;
+    min-width: 30px;
+    padding: 0 4px;
+  }
+
+  .bp-speed-label {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
   .bp-volume-slider {
     display: none;
   }

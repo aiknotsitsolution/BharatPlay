@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
@@ -11,10 +11,22 @@ import {
   Users,
   Search,
   Loader2,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  X,
+  AlertTriangle,
 } from "lucide-react";
 import { API_BASE, API_ORIGIN } from "../../config/api";
 import { authFetch } from "../../utils/session";
-import { uploadVideoMultipart } from "../../utils/multipartVideoUpload";
+import {
+  uploadVideoMultipart,
+  uploadVideoThumbnail,
+} from "../../utils/multipartVideoUpload";
+import {
+  filterChannelVideos,
+  isShortVideo,
+} from "./channelVideoSearch";
 import AdaptiveVideo from "../player/AdaptiveVideo";
 import {
   uploadFailed,
@@ -36,6 +48,9 @@ const getUserId = () => {
 
 // Valid MongoDB ObjectId check (24 hex characters)
 const isValidObjectId = (id) => /^[0-9a-fA-F]{24}$/.test(String(id));
+const PROCESSING_POLL_INTERVAL_MS = 5000;
+const PROCESSING_POLL_ATTEMPTS = 60;
+const CHANNEL_VIDEO_PAGE_SIZE = 20;
 
 const isCreativeCornerCategory = (cat) =>
   cat?.isCreativeCorner ||
@@ -58,17 +73,645 @@ const readVideoDuration = (file) =>
     video.src = url;
   });
 
-const isShortVideo = (video) => {
-  const rawTypes = video?.videoType ?? video?.raw?.videoType ?? [];
-  const types = (Array.isArray(rawTypes) ? rawTypes : [rawTypes])
-    .filter(Boolean)
-    .map((type) => String(type).toLowerCase());
+const getVideoId = (video) => video?._id || video?.id;
+
+function ChannelVideoSearch({ value, onChange }) {
+  return (
+    <div
+      role="search"
+      aria-label="Search channel videos"
+      className="relative w-full sm:max-w-sm"
+    >
+      <Search
+        aria-hidden="true"
+        size={18}
+        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"
+      />
+      <input
+        type="text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label="Search videos in this channel"
+        placeholder="Search videos in this channel"
+        className="h-11 w-full rounded-full border border-zinc-700 bg-zinc-900/90 pl-11 pr-11 text-sm text-white shadow-inner outline-none transition placeholder:text-zinc-500 hover:border-zinc-600 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+      />
+      {value && (
+        <button
+          type="button"
+          aria-label="Clear video search"
+          onClick={() => onChange("")}
+          className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+        >
+          <X size={16} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function ChannelVideoActions({ isOpen, onToggle, onEdit, onDelete }) {
+  return (
+    <div
+      className="absolute right-2 top-2 z-20 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        aria-label="Video actions"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        onClick={onToggle}
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-black/75 text-white hover:bg-black"
+      >
+        <MoreVertical size={19} />
+      </button>
+      {isOpen && (
+        <div
+          role="menu"
+          className="absolute right-0 mt-1 min-w-36 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={onEdit}
+            className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-white hover:bg-zinc-800"
+          >
+            <Pencil size={15} />
+            Edit
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={onDelete}
+            className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-red-400 hover:bg-zinc-800"
+          >
+            <Trash2 size={15} />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OwnerChannelsGrid({
+  channels,
+  selectedChannelId,
+  getThumbnailUrl,
+  onSelect,
+}) {
+  if (!channels.length) {
+    return (
+      <p className="col-span-full py-10 text-center text-gray-400">
+        This creator has no other channels yet.
+      </p>
+    );
+  }
 
   return (
-    Boolean(video?.isShort) ||
-    types.some((type) => type === "short" || type === "shorts")
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {channels.map((channel) => (
+        <button
+          key={channel._id}
+          type="button"
+          onClick={() => onSelect(channel._id)}
+          aria-current={
+            String(selectedChannelId) === String(channel._id) ? "page" : null
+          }
+          className="flex items-center gap-4 rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-left transition hover:border-zinc-600 hover:bg-zinc-800"
+        >
+          {channel.channelImage ? (
+            <img
+              src={getThumbnailUrl(channel.channelImage)}
+              alt=""
+              loading="lazy"
+              className="h-14 w-14 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xl font-bold">
+              {channel.name?.charAt(0)?.toUpperCase() || "C"}
+            </span>
+          )}
+          <span className="min-w-0">
+            <span className="block truncate font-semibold text-white">
+              {channel.name}
+            </span>
+            <span className="mt-1 block text-sm text-zinc-400">
+              {Number(
+                channel.subscribersCount ?? channel.subscribedBy?.length ?? 0,
+              ).toLocaleString()} subscribers
+            </span>
+          </span>
+        </button>
+      ))}
+    </div>
   );
-};
+}
+
+function EditChannelVideoModal({
+  video,
+  channels,
+  categories,
+  categoriesLoading,
+  getThumbnailUrl,
+  onClose,
+  onSaved,
+}) {
+  const initialCategoryId =
+    typeof video.category === "object"
+      ? video.category?._id || ""
+      : video.category || "";
+  const initialCategory = categories.find(
+    (category) => String(category._id) === String(initialCategoryId),
+  );
+  const initialCreativeCorner = Boolean(
+    video.isCreativeCorner || isCreativeCornerCategory(initialCategory),
+  );
+  const rawVideoType = Array.isArray(video.videoType)
+    ? video.videoType[0]
+    : video.videoType;
+  const [channelId, setChannelId] = useState(
+    String(video.channel?._id || video.channel || channels[0]?._id || ""),
+  );
+  const [title, setTitle] = useState(video.title || "");
+  const [description, setDescription] = useState(video.description || "");
+  const [videoCategory, setVideoCategory] = useState(
+    initialCreativeCorner ? "creative-corner" : String(initialCategoryId),
+  );
+  const [videoType, setVideoType] = useState(
+    rawVideoType === "long" ? "long" : "short",
+  );
+  const [hashtags, setHashtags] = useState(
+    (video.hashtags || [])
+      .map((hashtag) => `#${String(hashtag).replace(/^#+/, "")}`)
+      .join(", "),
+  );
+  const [isCreativeCorner, setIsCreativeCorner] = useState(
+    initialCreativeCorner,
+  );
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoFileDuration, setVideoFileDuration] = useState(0);
+  const [thumbnailFile, setThumbnailFile] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState("");
+
+  const handleVideoFileChange = async (event) => {
+    const file = event.target.files?.[0] || null;
+    setVideoFile(file);
+    setVideoFileDuration(file ? await readVideoDuration(file) : 0);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+    const token = getToken();
+    const duration = videoFile
+      ? videoFileDuration
+      : Number(video.duration) || 0;
+    const categoryIsCreative = categories.some(
+      (category) =>
+        (String(category._id) === String(videoCategory) ||
+          (category.slug === "creative-corner" &&
+            videoCategory === "creative-corner")) &&
+        isCreativeCornerCategory(category),
+    );
+    const creativeCorner = isCreativeCorner || categoryIsCreative;
+    if (!token) return setError("Please sign in again to edit this video.");
+    if (!channelId) return setError("Select a channel.");
+    if (!title.trim()) return setError("Video title is required.");
+    if (
+      videoCategory !== "creative-corner" &&
+      !isValidObjectId(videoCategory)
+    ) {
+      return setError("Select a valid video category.");
+    }
+    if (creativeCorner && !hashtags.trim()) {
+      return setError("Add at least one hashtag for Creative Corner videos.");
+    }
+    if (videoFile && !duration) {
+      return setError("Video duration could not be read. Choose another file.");
+    }
+    if (
+      duration > 0 &&
+      ((videoType === "short" && duration > 60) ||
+        (videoType === "long" && (duration < 60 || duration > 300)))
+    ) {
+      return setError(
+        videoType === "short"
+          ? "Short videos must be 60 seconds or shorter."
+          : "Long videos must be between 1 and 5 minutes.",
+      );
+    }
+
+    setSaving(true);
+    try {
+      const metadata = {
+        name: title.trim(),
+        description: description.trim(),
+        category: videoCategory,
+        videoType,
+        duration,
+        isCreativeCorner: creativeCorner,
+        hashtags,
+      };
+      let updates = {
+        title: metadata.name,
+        description: metadata.description,
+        category: videoCategory,
+        videoType: [videoType],
+        hashtags,
+        isCreativeCorner: creativeCorner,
+        channelId,
+      };
+
+      if (videoFile) {
+        const uploadResult = await uploadVideoMultipart({
+          api: API_BASE,
+          channelId,
+          token,
+          file: videoFile,
+          metadata,
+          thumbnail: thumbnailFile,
+          replaceVideoId: getVideoId(video),
+          onProgress: setProgress,
+        });
+        updates = {
+          ...updates,
+          videoId: uploadResult.videoId,
+          processingStatus: uploadResult.processingStatus,
+        };
+        toast.success("Video uploaded. Reprocessing has started.");
+      } else {
+        const thumbnail = thumbnailFile
+          ? await uploadVideoThumbnail({
+              api: API_BASE,
+              token,
+              videoId: getVideoId(video),
+              file: thumbnailFile,
+            })
+          : {};
+        const response = await authFetch(
+          `${API_ORIGIN}/api/adminvideo/update/${getVideoId(video)}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: metadata.name,
+              description: metadata.description,
+              category: metadata.category,
+              videoType: metadata.videoType,
+              duration: metadata.duration,
+              isCreativeCorner: metadata.isCreativeCorner,
+              hashtags: metadata.hashtags,
+              channelId,
+              ...thumbnail,
+            }),
+          },
+        );
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || "Could not update this video.");
+        }
+        updates.thumbnail = data.video?.thumbnail || video.thumbnail;
+        toast.success("Video details updated");
+      }
+
+      onSaved(getVideoId(video), updates);
+      onClose();
+    } catch (error) {
+      setError(error.message || "Could not update this video.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4"
+      onClick={saving ? undefined : onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-channel-video-title"
+        className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-zinc-800 bg-[#1a1a1a] shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+          <h2 id="edit-channel-video-title" className="text-lg font-semibold">
+            Edit {isShortVideo(video) ? "Short" : "Video"} details
+          </h2>
+          <button
+            type="button"
+            aria-label="Close edit dialog"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:opacity-50"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4 px-5 py-5">
+          {error && (
+            <div className="rounded-lg bg-red-500/15 p-3 text-sm text-red-300">
+              {error}
+            </div>
+          )}
+          <div>
+            <label
+              htmlFor="edit-video-channel"
+              className="mb-1 block text-sm font-medium text-zinc-300"
+            >
+              Upload to channel
+            </label>
+            <select
+              id="edit-video-channel"
+              value={channelId}
+              onChange={(event) => setChannelId(event.target.value)}
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white"
+              required
+            >
+              {channels.map((channel) => (
+                <option key={channel._id} value={channel._id}>
+                  {channel.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="edit-video-file"
+              className="mb-1 block text-sm font-medium text-zinc-300"
+            >
+              Replace video file (optional)
+            </label>
+            <input
+              id="edit-video-file"
+              type="file"
+              accept="video/mp4,video/quicktime,video/webm,video/x-m4v"
+              onChange={handleVideoFileChange}
+              disabled={saving}
+              className="w-full text-sm text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-white"
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              {videoFile
+                ? `Selected: ${videoFile.name}`
+                : "Leave empty to keep the current video."}
+            </p>
+          </div>
+          <div>
+            <span className="mb-1 block text-sm font-medium text-zinc-300">
+              Video type
+            </span>
+            <div className="flex gap-3">
+              {[
+                { value: "short", label: "Short" },
+                { value: "long", label: "Long video" },
+              ].map((type) => (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => setVideoType(type.value)}
+                  disabled={saving}
+                  className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium ${
+                    videoType === type.value
+                      ? "bg-green-600 text-white"
+                      : "border border-zinc-700 bg-zinc-900 text-zinc-400"
+                  }`}
+                >
+                  {type.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label
+              htmlFor="edit-video-thumbnail"
+              className="mb-1 block text-sm font-medium text-zinc-300"
+            >
+              Thumbnail
+            </label>
+            <input
+              id="edit-video-thumbnail"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(event) => {
+                const file = event.target.files?.[0] || null;
+                setThumbnailFile(file);
+                setThumbnailPreview(file ? URL.createObjectURL(file) : "");
+              }}
+              disabled={saving}
+              className="w-full text-sm text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-white"
+            />
+            <img
+              src={
+                thumbnailPreview ||
+                getThumbnailUrl(video.thumbnail || video.thumb)
+              }
+              alt="Video thumbnail preview"
+              className="mt-2 h-32 w-full rounded-lg border border-zinc-700 object-cover"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="channel-video-title"
+              className="mb-1 block text-sm font-medium text-zinc-300"
+            >
+              Title
+            </label>
+            <input
+              id="channel-video-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              maxLength={150}
+              required
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white focus:border-red-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="channel-video-description"
+              className="mb-1 block text-sm font-medium text-zinc-300"
+            >
+              Description
+            </label>
+            <textarea
+              id="channel-video-description"
+              rows={4}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              className="w-full resize-y rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white focus:border-red-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="edit-video-category"
+              className="mb-1 block text-sm font-medium text-zinc-300"
+            >
+              Video category
+            </label>
+            <select
+              id="edit-video-category"
+              value={videoCategory}
+              onChange={(event) => {
+                setVideoCategory(event.target.value);
+                const selected = categories.find(
+                  (category) => String(category._id) === event.target.value,
+                );
+                setIsCreativeCorner(
+                  Boolean(selected && isCreativeCornerCategory(selected)),
+                );
+              }}
+              disabled={categoriesLoading || saving}
+              required
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white"
+            >
+              <option value="">Select category</option>
+              {categories.map((category) => (
+                <option
+                  key={category._id}
+                  value={
+                    isCreativeCornerCategory(category)
+                      ? "creative-corner"
+                      : category._id
+                  }
+                >
+                  {isCreativeCornerCategory(category)
+                    ? "Other (Creative Corner)"
+                    : category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm text-zinc-300">
+              <input
+                type="checkbox"
+                checked={isCreativeCorner}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  setIsCreativeCorner(checked);
+                  if (checked) setVideoCategory("creative-corner");
+                  else setVideoCategory("");
+                }}
+                disabled={saving}
+                className="h-4 w-4"
+              />
+              Creative Corner (Others)
+            </label>
+            {isCreativeCorner && (
+              <input
+                type="text"
+                aria-label="Video hashtags"
+                value={hashtags}
+                onChange={(event) => setHashtags(event.target.value)}
+                disabled={saving}
+                required
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white"
+                placeholder="#Cooking, #Vlog"
+              />
+            )}
+          </div>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="rounded-xl px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
+            >
+              {saving
+                ? videoFile
+                  ? `Uploading ${progress}%`
+                  : "Saving..."
+                : "Save changes"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function DeleteChannelVideoModal({ video, onClose, onDeleted }) {
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const response = await authFetch(
+        `${API_ORIGIN}/api/adminvideo/my-video/${getVideoId(video)}`,
+        { method: "DELETE" },
+      );
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Could not delete this video.");
+      }
+
+      toast.success(`${isShortVideo(video) ? "Short" : "Video"} deleted`);
+      onDeleted(getVideoId(video));
+      onClose();
+    } catch (error) {
+      toast.error(error.message || "Could not delete this video.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4"
+      onClick={deleting ? undefined : onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-channel-video-title"
+        className="w-full max-w-md rounded-2xl border border-zinc-800 bg-[#1a1a1a] p-6 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/15">
+            <AlertTriangle size={20} className="text-red-400" />
+          </div>
+          <h2 id="delete-channel-video-title" className="text-lg font-semibold">
+            Delete {isShortVideo(video) ? "Short" : "Video"}?
+          </h2>
+        </div>
+        <p className="mb-6 text-sm text-zinc-400">
+          &quot;{video.title || "Untitled"}&quot; will be permanently deleted.
+          This action cannot be undone.
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={deleting}
+            className="rounded-xl px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="rounded-xl bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
+          >
+            {deleting ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Static fallback categories
 const STATIC_CATEGORIES = [
@@ -86,14 +729,25 @@ export default function ChannelPage() {
   const navigate = useNavigate();
 
   const [channels, setChannels] = useState([]);
+  const [publicOwnerChannels, setPublicOwnerChannels] = useState([]);
   const [selectedChannelId, setSelectedChannelId] = useState(null);
   const [channel, setChannel] = useState(null);
+  const [channelVideoPage, setChannelVideoPage] = useState(1);
+  const [channelVideosHasMore, setChannelVideosHasMore] = useState(false);
+  const [openVideoMenuId, setOpenVideoMenuId] = useState(null);
+  const [loadingEditVideoId, setLoadingEditVideoId] = useState(null);
+  const [editingVideo, setEditingVideo] = useState(null);
+  const [deletingVideo, setDeletingVideo] = useState(null);
+  const [loadingMoreChannelVideos, setLoadingMoreChannelVideos] =
+    useState(false);
+  const channelVideoRequestId = useRef(0);
   const [isPublicChannel, setIsPublicChannel] = useState(false);
   const [channelsFetchSucceeded, setChannelsFetchSucceeded] = useState(false);
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Videos");
   const [videoTypeFilter, setVideoTypeFilter] = useState("all");
+  const [channelSearchQuery, setChannelSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   // Subscription State
@@ -275,6 +929,7 @@ export default function ChannelPage() {
         setLoading(true);
         setChannel(null);
         setIsPublicChannel(false);
+        setPublicOwnerChannels([]);
         setChannelsFetchSucceeded(false);
         let userChannels = [];
         if (token) {
@@ -313,7 +968,7 @@ export default function ChannelPage() {
 
         if (!initialChannelId && isValidObjectId(urlHandle)) {
           const publicRes = await authFetch(
-            `${API_BASE}/uservideo/channel/${urlHandle}`,
+            `${API_BASE}/uservideo/channel/${urlHandle}?page=1&limit=${CHANNEL_VIDEO_PAGE_SIZE}`,
           );
           const publicData = await publicRes.json();
           if (!publicRes.ok || !publicData.success || !publicData.channel) {
@@ -324,6 +979,13 @@ export default function ChannelPage() {
 
           const publicChannel = publicData.channel;
           const videos = publicData.videos || [];
+          setPublicOwnerChannels(
+            Array.isArray(publicData.ownerChannels)
+              ? publicData.ownerChannels
+              : [],
+          );
+          const videoCount =
+            Number(publicData.total ?? publicChannel.videoCount) || videos.length;
           setChannel({
             ...publicChannel,
             handle:
@@ -336,8 +998,10 @@ export default function ChannelPage() {
               publicChannel.channeldescription ||
               "No description available",
             videos,
-            videosCount: videos.length,
+            videosCount: videoCount,
           });
+          setChannelVideoPage(Number(publicData.page) || 1);
+          setChannelVideosHasMore(Boolean(publicData.hasMore));
           setSelectedChannelId(publicChannel._id);
           setSubscribersCount(Number(publicChannel.subscribersCount) || 0);
           setIsSubscribed(Boolean(publicChannel.isSubscribed));
@@ -362,8 +1026,13 @@ export default function ChannelPage() {
 
   // Fetch selected channel + videos
   useEffect(() => {
+    channelVideoRequestId.current += 1;
+  }, [selectedChannelId]);
+
+  useEffect(() => {
     if (!selectedChannelId) return;
 
+    let active = true;
     const fetchChannelVideos = async () => {
       const token = getToken();
       if (!token) return;
@@ -373,17 +1042,22 @@ export default function ChannelPage() {
         if (!selected) return;
 
         const videosRes = await authFetch(
-          `${API_BASE}/uservideo/channel/${selectedChannelId}/videos`,
+          `${API_BASE}/uservideo/channel/${selectedChannelId}/videos?page=1&limit=${CHANNEL_VIDEO_PAGE_SIZE}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           },
         );
 
         let videos = [];
+        let videosCount = 0;
+        let hasMore = false;
         if (videosRes.ok) {
           const result = await videosRes.json();
           videos = result.videos || [];
+          videosCount = Number(result.total) || videos.length;
+          hasMore = Boolean(result.hasMore);
         }
+        if (!active) return;
 
         const cleanHandle = selected.name?.replace(/\s+/g, "") || selected._id;
 
@@ -399,10 +1073,12 @@ export default function ChannelPage() {
           description:
             selected.channeldescription || "No description available",
           videos,
-          videosCount: videos.length,
+          videosCount,
         };
 
         setChannel(channelData);
+        setChannelVideoPage(1);
+        setChannelVideosHasMore(hasMore);
         setSubscribersCount(selected.subscribedBy?.length || 0);
         setIsSubscribed(
           (selected.subscribedBy || []).some(
@@ -417,7 +1093,69 @@ export default function ChannelPage() {
     };
 
     fetchChannelVideos();
+    return () => {
+      active = false;
+    };
   }, [selectedChannelId, channels, navigate]);
+
+  const loadMoreChannelVideos = async () => {
+    if (
+      !selectedChannelId ||
+      !channelVideosHasMore ||
+      loadingMoreChannelVideos
+    ) {
+      return;
+    }
+
+    const token = getToken();
+    const nextPage = channelVideoPage + 1;
+    const channelId = selectedChannelId;
+    const requestId = ++channelVideoRequestId.current;
+    setLoadingMoreChannelVideos(true);
+    try {
+      const response = await authFetch(
+        `${API_BASE}/uservideo/channel/${channelId}/videos?page=${nextPage}&limit=${CHANNEL_VIDEO_PAGE_SIZE}`,
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      );
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to load more channel videos.");
+      }
+      if (requestId !== channelVideoRequestId.current) return;
+
+      const nextVideos = Array.isArray(data.videos) ? data.videos : [];
+      setChannel((previous) => {
+        if (!previous || String(previous._id) !== String(channelId)) {
+          return previous;
+        }
+        const existingIds = new Set(
+          (previous.videos || []).map((video) => String(video._id || video.id)),
+        );
+        return {
+          ...previous,
+          videos: [
+            ...(previous.videos || []),
+            ...nextVideos.filter(
+              (video) => !existingIds.has(String(video._id || video.id)),
+            ),
+          ],
+          videosCount: Number(data.total) || previous.videosCount,
+        };
+      });
+      setChannelVideoPage(Number(data.page) || nextPage);
+      setChannelVideosHasMore(Boolean(data.hasMore));
+    } catch (error) {
+      if (requestId !== channelVideoRequestId.current) return;
+      console.error("Error loading more channel videos:", error);
+      toast.error(error.message || "Failed to load more channel videos.");
+    } finally {
+      if (requestId === channelVideoRequestId.current) {
+        setLoadingMoreChannelVideos(false);
+      }
+    }
+  };
 
   useEffect(() => {
     if (
@@ -674,6 +1412,7 @@ export default function ChannelPage() {
       setUploading(true);
       dispatch(uploadStarted());
       setUploadError("");
+      const uploadChannelId = selectedUploadChannelId;
       const duration = await readVideoDuration(videoFile);
       if (!duration) {
         throw new Error("Video duration could not be read. Choose another file.");
@@ -685,9 +1424,9 @@ export default function ChannelPage() {
         throw new Error("Long videos must be between 1 and 5 minutes.");
       }
 
-      await uploadVideoMultipart({
+      const uploadResult = await uploadVideoMultipart({
         api: API_BASE,
-        channelId: selectedUploadChannelId,
+        channelId: uploadChannelId,
         token,
         file: videoFile,
         metadata: {
@@ -706,21 +1445,92 @@ export default function ChannelPage() {
       toast.success("Video uploaded. Processing has started.");
       dispatch(uploadSucceeded());
 
-      // Refresh videos
-      const videosRes = await authFetch(
-        `${API_BASE}/uservideo/channel/${selectedChannelId}/videos`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      const refreshUploadedChannelVideos = async () => {
+        const videosRes = await authFetch(
+          `${API_BASE}/uservideo/channel/${uploadChannelId}/videos?page=1&limit=${CHANNEL_VIDEO_PAGE_SIZE}`,
+          {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        if (!videosRes.ok) return [];
 
-      if (videosRes.ok) {
         const data = await videosRes.json();
-        setChannel((prev) => ({
-          ...prev,
-          videos: data.videos || [],
-          videosCount: data.videos?.length || 0,
-        }));
+        const videos = data.videos || [];
+        setChannel((prev) =>
+          prev && String(prev._id) === String(uploadChannelId)
+            ? {
+                ...prev,
+                videos,
+                videosCount: Number(data.total) || videos.length,
+              }
+            : prev,
+        );
+        setChannelVideoPage(Number(data.page) || 1);
+        setChannelVideosHasMore(Boolean(data.hasMore));
+        return videos;
+      };
+
+      await refreshUploadedChannelVideos();
+
+      if (uploadResult.videoId && uploadResult.processingStatus !== "ready") {
+        const waitForVideoProcessing = async () => {
+          for (let attempt = 0; attempt < PROCESSING_POLL_ATTEMPTS; attempt += 1) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, PROCESSING_POLL_INTERVAL_MS),
+            );
+            const statusRes = await authFetch(
+              `${API_BASE}/uservideo/upload/${uploadChannelId}/multipart/${uploadResult.videoId}`,
+              {
+                cache: "no-store",
+                headers: { Authorization: `Bearer ${token}` },
+              },
+            );
+            if (!statusRes.ok) {
+              throw new Error(
+                `Video processing status check failed (${statusRes.status}).`,
+              );
+            }
+
+            const status = await statusRes.json();
+            if (status.processingStatus === "failed") {
+              toast.error(
+                "Video processing failed. Please try uploading it again.",
+              );
+              return;
+            }
+            if (status.processingStatus !== "ready") continue;
+
+            for (let refreshAttempt = 0; refreshAttempt < 5; refreshAttempt += 1) {
+              const videos = await refreshUploadedChannelVideos();
+              if (
+                videos.some(
+                  (video) =>
+                    String(video._id || video.id) ===
+                    String(uploadResult.videoId),
+                )
+              ) {
+                toast.success("Video processing complete. It is now on your channel.");
+                return;
+              }
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+            toast.info(
+              "Video is ready. Reload your channel if it is not visible yet.",
+            );
+            return;
+          }
+          toast.info(
+            "Video is still processing. It will appear on your channel when ready.",
+          );
+        };
+
+        void waitForVideoProcessing().catch((error) => {
+          console.error("Video processing status check failed:", error);
+          toast.error(
+            "Upload finished, but the channel could not be refreshed. Reload it later.",
+          );
+        });
       }
 
       // Reset form
@@ -785,6 +1595,138 @@ export default function ChannelPage() {
     setVideoDuration(null);
   };
 
+  const handleEditChannelVideo = async (video) => {
+    const videoId = getVideoId(video);
+    if (!videoId) {
+      toast.error("Could not find this video.");
+      return;
+    }
+
+    setOpenVideoMenuId(null);
+    setLoadingEditVideoId(String(videoId));
+    try {
+      const response = await authFetch(`${API_BASE}/uservideo/${videoId}`);
+      const data = await response.json();
+      if (!response.ok || !data.success || !data.video) {
+        throw new Error(data.message || "Could not load video details.");
+      }
+      setEditingVideo({ ...video, ...data.video });
+    } catch (error) {
+      toast.error(error.message || "Could not load video details.");
+    } finally {
+      setLoadingEditVideoId(null);
+    }
+  };
+
+  const handleChannelVideoSaved = (videoId, updates) => {
+    const currentChannelId = selectedChannelId || channel?._id;
+    const destinationChannelId = updates.channelId || currentChannelId;
+    if (String(destinationChannelId) !== String(currentChannelId)) {
+      handleChannelVideoDeleted(videoId);
+      navigate(`/channel/${destinationChannelId}`);
+    } else {
+      setChannel((previous) =>
+        previous
+          ? {
+              ...previous,
+              videos: previous.videos.map((video) =>
+                String(getVideoId(video)) === String(videoId)
+                  ? { ...video, ...updates }
+                  : video,
+              ),
+            }
+          : previous,
+      );
+    }
+
+    if (
+      updates.videoId &&
+      updates.processingStatus &&
+      updates.processingStatus !== "ready"
+    ) {
+      const token = getToken();
+      void (async () => {
+        for (let attempt = 0; attempt < PROCESSING_POLL_ATTEMPTS; attempt += 1) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, PROCESSING_POLL_INTERVAL_MS),
+          );
+          const statusResponse = await authFetch(
+            `${API_BASE}/uservideo/upload/${destinationChannelId}/multipart/${updates.videoId}`,
+            {
+              cache: "no-store",
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            },
+          );
+          if (!statusResponse.ok) {
+            throw new Error(
+              `Video processing status check failed (${statusResponse.status}).`,
+            );
+          }
+          const status = await statusResponse.json();
+          if (status.processingStatus === "failed") {
+            toast.error(
+              status.processingError ||
+                "Video processing failed. The previous video is still available.",
+            );
+            return;
+          }
+          if (status.processingStatus !== "ready") continue;
+
+          const videosResponse = await authFetch(
+            `${API_BASE}/uservideo/channel/${destinationChannelId}/videos?page=1&limit=${CHANNEL_VIDEO_PAGE_SIZE}`,
+            {
+              cache: "no-store",
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            },
+          );
+          if (!videosResponse.ok) {
+            throw new Error("Replacement is ready, but the channel refresh failed.");
+          }
+          const data = await videosResponse.json();
+          setChannel((previous) =>
+            previous &&
+            String(previous._id) === String(destinationChannelId)
+              ? {
+                  ...previous,
+                  videos: data.videos || [],
+                  videosCount: Number(data.total) || 0,
+                }
+              : previous,
+          );
+          setChannelVideoPage(Number(data.page) || 1);
+          setChannelVideosHasMore(Boolean(data.hasMore));
+          toast.success("Video replacement is ready.");
+          return;
+        }
+        toast.info(
+          "Video is still processing. It will update on your channel when ready.",
+        );
+      })().catch((error) => {
+        console.error("Video replacement status check failed:", error);
+        toast.error(
+          error.message || "Video replacement status could not be checked.",
+        );
+      });
+    }
+  };
+
+  const handleChannelVideoDeleted = (videoId) => {
+    setChannel((previous) =>
+      previous
+        ? {
+            ...previous,
+            videos: previous.videos.filter(
+              (video) => String(getVideoId(video)) !== String(videoId),
+            ),
+            videosCount: Math.max(
+              0,
+              (previous.videosCount ?? previous.videos.length) - 1,
+            ),
+          }
+        : previous,
+    );
+  };
+
   if (loading) {
     return (
       <div className="text-center py-20 text-gray-400">Loading channels...</div>
@@ -801,22 +1743,40 @@ export default function ChannelPage() {
     videos: [],
     category: { name: "" },
   };
+  const canManageChannelVideos = channels.some(
+    (item) => String(item._id) === String(currentChannel._id),
+  );
+  const creatorId =
+    currentChannel.creator?._id ||
+    currentChannel.creator?.id ||
+    currentChannel.creator;
+  const isOwnChannel =
+    canManageChannelVideos ||
+    Boolean(getUserId() && String(creatorId) === String(getUserId()));
 
-  const tabs = ["Videos", "Playlists",];
+  const tabs = ["Videos", "Channels"];
+  const displayedChannels = isPublicChannel
+    ? publicOwnerChannels
+    : channels;
+  const selectOwnerChannel = (channelId) => {
+    setActiveTab("Videos");
+    if (channels.some((item) => String(item._id) === String(channelId))) {
+      handleChannelChange(channelId);
+    } else {
+      navigate(`/channel/${channelId}`);
+    }
+  };
 
   // Categories for dropdown (include creative-corner even if static)
   const displayCategories = categories.filter(
     (cat) => isValidObjectId(cat._id) || isCreativeCornerCategory(cat),
   );
   const channelVideos = currentChannel.videos || [];
-  const filteredChannelVideos =
-    videoTypeFilter === "all"
-      ? channelVideos
-      : channelVideos.filter((video) =>
-          videoTypeFilter === "short"
-            ? isShortVideo(video)
-            : !isShortVideo(video),
-        );
+  const filteredChannelVideos = filterChannelVideos(
+    channelVideos,
+    videoTypeFilter,
+    channelSearchQuery,
+  );
 
   if (isPublicChannel) {
     return (
@@ -856,43 +1816,135 @@ export default function ChannelPage() {
                 </p>
               ) : null}
             </div>
-            <button
-              type="button"
-              onClick={handleSubscription}
-              className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
-                isSubscribed
-                  ? "bg-zinc-700 hover:bg-zinc-600"
-                  : "bg-white text-black hover:bg-white/90"
-              }`}
-            >
-              {isSubscribed ? "Subscribed" : "Subscribe"}
-            </button>
+            {!isOwnChannel && (
+              <button
+                type="button"
+                onClick={handleSubscription}
+                className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
+                  isSubscribed
+                    ? "bg-zinc-700 hover:bg-zinc-600"
+                    : "bg-white text-black hover:bg-white/90"
+                }`}
+              >
+                {isSubscribed ? "Subscribed" : "Subscribe"}
+              </button>
+            )}
           </div>
-          <h2 className="mb-4 text-xl font-semibold">Videos</h2>
-          {channelVideos.length ? (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-              {channelVideos.map((video) => (
-                <button
-                  key={video._id || video.id}
-                  type="button"
-                  onClick={() => handlePlayVideo(video)}
-                  className="overflow-hidden rounded-xl bg-zinc-900 text-left transition hover:bg-zinc-800"
+          <div className="mb-6 flex gap-6 border-b border-zinc-800">
+            {tabs.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`border-b-2 px-2 py-3 text-sm font-medium ${
+                  activeTab === tab
+                    ? "border-white text-white"
+                    : "border-transparent text-zinc-400 hover:text-white"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          {activeTab === "Videos" && (
+            <section>
+              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                  className="flex flex-wrap gap-2"
+                  role="group"
+                  aria-label="Filter channel videos by type"
                 >
-                  <img
-                    src={getThumbnailUrl(video.thumbnail || video.thumb)}
-                    alt=""
-                    className="aspect-video w-full object-cover"
-                  />
-                  <span className="block line-clamp-2 p-3 text-sm font-medium">
-                    {video.title || "Untitled video"}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="py-10 text-center text-gray-400">
-              This channel has no videos yet.
-            </p>
+                  {[
+                    { value: "all", label: "All" },
+                    { value: "long", label: "Videos" },
+                    { value: "short", label: "Shorts" },
+                  ].map((filter) => (
+                    <button
+                      key={filter.value}
+                      type="button"
+                      onClick={() => setVideoTypeFilter(filter.value)}
+                      aria-pressed={videoTypeFilter === filter.value}
+                      className={`rounded-full px-4 py-2 text-sm font-medium ${
+                        videoTypeFilter === filter.value
+                          ? "bg-white text-black"
+                          : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+                <ChannelVideoSearch
+                  value={channelSearchQuery}
+                  onChange={setChannelSearchQuery}
+                />
+              </div>
+              {filteredChannelVideos.length ? (
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                  {filteredChannelVideos.map((video) => (
+                    <button
+                      key={getVideoId(video)}
+                      type="button"
+                      onClick={() => handlePlayVideo(video)}
+                      className="overflow-hidden rounded-xl bg-zinc-900 text-left transition hover:bg-zinc-800"
+                    >
+                      <img
+                        src={getThumbnailUrl(video.thumbnail || video.thumb)}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="aspect-video w-full object-cover"
+                      />
+                      <span className="block line-clamp-2 p-3 text-sm font-medium">
+                        {video.title || "Untitled video"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="py-10 text-center text-gray-400">
+                  {channelSearchQuery.trim()
+                    ? (
+                        <>
+                          No videos match "{channelSearchQuery.trim()}".
+                          {channelVideosHasMore && (
+                            <span className="mt-1 block text-sm text-zinc-500">
+                              Load more to include older uploads.
+                            </span>
+                          )}
+                        </>
+                      )
+                    : channelVideos.length
+                      ? `This channel has no ${videoTypeFilter === "short" ? "Shorts" : "videos"} yet.`
+                      : "This channel has no videos yet."}
+                </p>
+              )}
+              {channelVideosHasMore && (
+                <div className="mt-6 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={loadMoreChannelVideos}
+                    disabled={loadingMoreChannelVideos}
+                    className="inline-flex items-center gap-2 rounded-full bg-zinc-800 px-5 py-2.5 text-sm font-medium hover:bg-zinc-700 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {loadingMoreChannelVideos && (
+                      <Loader2 size={16} className="animate-spin" />
+                    )}
+                    {loadingMoreChannelVideos
+                      ? "Loading videos..."
+                      : "Load more"}
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+          {activeTab === "Channels" && (
+            <OwnerChannelsGrid
+              channels={displayedChannels}
+              selectedChannelId={currentChannel._id}
+              getThumbnailUrl={getThumbnailUrl}
+              onSelect={selectOwnerChannel}
+            />
           )}
         </div>
       </div>
@@ -972,17 +2024,19 @@ export default function ChannelPage() {
               <span className="text-lg">{currentChannel.handle}</span>
             )}
 
-            <button
-              onClick={handleSubscription}
-              className={`px-6 py-2 rounded-full font-medium flex items-center gap-2 transition-all ${
-                isSubscribed
-                  ? "bg-zinc-700 hover:bg-zinc-600 text-white"
-                  : "bg-red-600 hover:bg-red-700 text-white"
-              }`}
-            >
-              <Users size={18} />
-              {isSubscribed ? "Subscribed" : "Subscribe"}
-            </button>
+            {!isOwnChannel && (
+              <button
+                onClick={handleSubscription}
+                className={`px-6 py-2 rounded-full font-medium flex items-center gap-2 transition-all ${
+                  isSubscribed
+                    ? "bg-zinc-700 hover:bg-zinc-600 text-white"
+                    : "bg-red-600 hover:bg-red-700 text-white"
+                }`}
+              >
+                <Users size={18} />
+                {isSubscribed ? "Subscribed" : "Subscribe"}
+              </button>
+            )}
 
             <span className="text-lg font-medium">
               {subscribersCount.toLocaleString()} subscribers
@@ -1019,9 +2073,6 @@ export default function ChannelPage() {
               {tab}
             </button>
           ))}
-          <button className="pb-4 px-2 text-gray-400 hover:text-gray-200">
-            <Search size={22} />
-          </button>
         </div>
 
         {channels.length > 0 && (
@@ -1054,43 +2105,46 @@ export default function ChannelPage() {
       <div className="px-6 md:px-12 lg:px-24 py-10">
         {activeTab === "Videos" && (
           <div>
-            <div
-              className="mb-6 flex flex-wrap items-center gap-2"
-              role="group"
-              aria-label="Filter channel videos by type"
-            >
-              {[
-                { value: "all", label: `All (${channelVideos.length})` },
-                {
-                  value: "long",
-                  label: `Videos (${channelVideos.filter((video) => !isShortVideo(video)).length})`,
-                },
-                {
-                  value: "short",
-                  label: `Shorts (${channelVideos.filter(isShortVideo).length})`,
-                },
-              ].map((filter) => (
-                <button
-                  key={filter.value}
-                  type="button"
-                  onClick={() => setVideoTypeFilter(filter.value)}
-                  aria-pressed={videoTypeFilter === filter.value}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    videoTypeFilter === filter.value
-                      ? "bg-white text-black"
-                      : "bg-[#272727] text-gray-300 hover:bg-[#3a3a3a] hover:text-white"
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              ))}
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div
+                className="flex flex-wrap items-center gap-2"
+                role="group"
+                aria-label="Filter channel videos by type"
+              >
+                {[
+                  {
+                    value: "all",
+                    label: `All (${currentChannel.videosCount ?? channelVideos.length})`,
+                  },
+                  { value: "long", label: "Videos" },
+                  { value: "short", label: "Shorts" },
+                ].map((filter) => (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    onClick={() => setVideoTypeFilter(filter.value)}
+                    aria-pressed={videoTypeFilter === filter.value}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                      videoTypeFilter === filter.value
+                        ? "bg-white text-black"
+                        : "bg-[#272727] text-gray-300 hover:bg-[#3a3a3a] hover:text-white"
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+              <ChannelVideoSearch
+                value={channelSearchQuery}
+                onChange={setChannelSearchQuery}
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 md:gap-6">
               {filteredChannelVideos.length > 0 ? (
                 filteredChannelVideos.map((video) => (
                   <div
-                    key={video._id}
+                    key={getVideoId(video)}
                     className="cursor-pointer group"
                     onClick={() => handlePlayVideo(video)}
                   >
@@ -1098,6 +2152,8 @@ export default function ChannelPage() {
                       <img
                         src={getThumbnailUrl(video.thumbnail)}
                         alt={video.title || video.name}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -1109,6 +2165,34 @@ export default function ChannelPage() {
                           />
                         </div>
                       </div>
+                      {canManageChannelVideos && (
+                        <ChannelVideoActions
+                          isOpen={
+                            openVideoMenuId === String(getVideoId(video))
+                          }
+                          onToggle={() =>
+                            setOpenVideoMenuId((openId) =>
+                              openId === String(getVideoId(video))
+                                ? null
+                                : String(getVideoId(video)),
+                            )
+                          }
+                          onEdit={() => handleEditChannelVideo(video)}
+                          onDelete={() => {
+                            setOpenVideoMenuId(null);
+                            setDeletingVideo(video);
+                          }}
+                        />
+                      )}
+                      {loadingEditVideoId === String(getVideoId(video)) && (
+                        <div className="absolute left-2 top-2 rounded-full bg-black/75 p-2">
+                          <Loader2
+                            size={16}
+                            className="animate-spin"
+                            aria-label="Loading video details"
+                          />
+                        </div>
+                      )}
                     </div>
                     <div className="mt-3">
                       <h3 className="font-medium line-clamp-2 group-hover:text-blue-400 transition-colors">
@@ -1123,19 +2207,48 @@ export default function ChannelPage() {
                 ))
               ) : (
                 <p className="text-center text-gray-400 py-10 col-span-full">
-                  {channelVideos.length === 0
-                    ? "No videos yet"
-                    : `No ${videoTypeFilter === "short" ? "Shorts" : "long videos"} yet`}
+                  {channelSearchQuery.trim()
+                    ? (
+                        <>
+                          No videos match "{channelSearchQuery.trim()}".
+                          {channelVideosHasMore && (
+                            <span className="mt-1 block text-sm text-zinc-500">
+                              Load more to include older uploads.
+                            </span>
+                          )}
+                        </>
+                      )
+                    : channelVideos.length === 0
+                      ? "No videos yet"
+                      : `No ${videoTypeFilter === "short" ? "Shorts" : "long videos"} yet`}
                 </p>
               )}
             </div>
+            {channelVideosHasMore && (
+              <div className="mt-6 flex justify-center">
+                <button
+                  type="button"
+                  onClick={loadMoreChannelVideos}
+                  disabled={loadingMoreChannelVideos}
+                  className="inline-flex items-center gap-2 rounded-full bg-zinc-800 px-5 py-2.5 text-sm font-medium hover:bg-zinc-700 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {loadingMoreChannelVideos && (
+                    <Loader2 size={16} className="animate-spin" />
+                  )}
+                  {loadingMoreChannelVideos ? "Loading videos..." : "Load more"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {activeTab === "Playlists" && (
-          <p className="text-center text-gray-400 py-20 text-lg">
-            No playlists created yet
-          </p>
+        {activeTab === "Channels" && (
+          <OwnerChannelsGrid
+            channels={displayedChannels}
+            selectedChannelId={currentChannel._id}
+            getThumbnailUrl={getThumbnailUrl}
+            onSelect={selectOwnerChannel}
+          />
         )}
 
         {activeTab === "Posts" && (
@@ -1144,6 +2257,25 @@ export default function ChannelPage() {
           </p>
         )}
       </div>
+
+      {editingVideo && (
+        <EditChannelVideoModal
+          video={editingVideo}
+          channels={channels}
+          categories={displayCategories}
+          categoriesLoading={categoriesLoading}
+          getThumbnailUrl={getThumbnailUrl}
+          onClose={() => setEditingVideo(null)}
+          onSaved={handleChannelVideoSaved}
+        />
+      )}
+      {deletingVideo && (
+        <DeleteChannelVideoModal
+          video={deletingVideo}
+          onClose={() => setDeletingVideo(null)}
+          onDeleted={handleChannelVideoDeleted}
+        />
+      )}
 
       {/* Video Player Modal */}
       {showVideoPlayer && currentVideo && (

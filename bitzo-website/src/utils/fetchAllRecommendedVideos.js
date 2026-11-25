@@ -1,5 +1,38 @@
 const VIDEO_BATCH_SIZE = 100;
 
+export const fetchVideoPage = async ({
+  apiBase,
+  endpoint,
+  page = 1,
+  limit = 20,
+  category,
+  token,
+  fetchImpl = fetch,
+}) => {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (category) params.set("category", category);
+
+  const normalizedEndpoint = endpoint.replace(/^\/+/, "");
+  const response = await fetchImpl(
+    `${apiBase}/${normalizedEndpoint}?${params.toString()}`,
+    {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to load videos (${response.status})`);
+  }
+
+  const data = await response.json();
+  if (data.success === false) {
+    throw new Error(data.message || "Failed to load videos");
+  }
+  return data;
+};
+
 const fetchAllVideoPages = async ({
   apiBase,
   endpoint,

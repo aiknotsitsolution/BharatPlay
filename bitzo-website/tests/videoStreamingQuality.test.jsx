@@ -3,11 +3,19 @@ import { describe, expect, it, vi } from "vitest";
 import { QualityMenu } from "../src/components/player/Menus";
 import { uploadVideoMultipart } from "../src/utils/multipartVideoUpload";
 
-const axiosMocks = vi.hoisted(() => ({
-  get: vi.fn(),
-  post: vi.fn(),
-  put: vi.fn(),
-}));
+const axiosMocks = vi.hoisted(() => {
+  const b2Client = { defaults: undefined, put: vi.fn() };
+  return {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    b2Client,
+    create: vi.fn((defaults) => {
+      b2Client.defaults = defaults;
+      return b2Client;
+    }),
+  };
+});
 
 vi.mock("axios", () => ({
   default: axiosMocks,
@@ -38,6 +46,7 @@ describe("video streaming quality and multipart upload", () => {
     localStorage.clear();
     axiosMocks.get.mockReset();
     axiosMocks.put.mockReset();
+    axiosMocks.b2Client.put.mockReset();
     axiosMocks.post.mockReset();
     axiosMocks.post.mockImplementation((url) => {
       if (url.endsWith("/initiate")) {
@@ -55,7 +64,9 @@ describe("video streaming quality and multipart upload", () => {
       }
       throw new Error(`Unexpected POST ${url}`);
     });
-    axiosMocks.put.mockResolvedValue({ headers: { etag: '"part-etag"' } });
+    axiosMocks.b2Client.put.mockResolvedValue({
+      headers: { etag: '"part-etag"' },
+    });
     const progress = vi.fn();
 
     const result = await uploadVideoMultipart({
@@ -75,14 +86,16 @@ describe("video streaming quality and multipart upload", () => {
       onProgress: progress,
     });
 
-    expect(axiosMocks.put).toHaveBeenCalledTimes(2);
-    expect(axiosMocks.put).toHaveBeenCalledWith(
+    expect(axiosMocks.b2Client.defaults).toEqual({ withCredentials: false });
+    expect(axiosMocks.b2Client.put).toHaveBeenCalledTimes(2);
+    expect(axiosMocks.b2Client.put).toHaveBeenCalledWith(
       "https://b2.example/part",
       expect.any(Blob),
       expect.objectContaining({
         headers: { "Content-Type": "application/octet-stream" },
       }),
     );
+    expect(axiosMocks.put).not.toHaveBeenCalled();
     expect(result.processingStatus).toBe("queued");
     expect(progress).toHaveBeenLastCalledWith(100);
     expect(localStorage.length).toBe(0);
