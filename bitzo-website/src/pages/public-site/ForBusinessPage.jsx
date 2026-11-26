@@ -6,7 +6,7 @@ import {
   HeartHandshake,
 } from "lucide-react";
 import usePageMeta from "@/hooks/usePageMeta";
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/context/useTheme";
 
 const OFFER_SECTIONS = [
   {

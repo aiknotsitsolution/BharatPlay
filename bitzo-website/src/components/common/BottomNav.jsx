@@ -20,7 +20,7 @@ export default function BottomNav() {
   const location = useLocation();
   const dispatch = useDispatch();
   const profileUser = useSelector((state) => state.profile?.user);
-  const [avatarFailed, setAvatarFailed] = useState(false);
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState(null);
 
   // Keep avatar URL handling consistent with the profile page.
   const avatarValue =
@@ -52,7 +52,7 @@ export default function BottomNav() {
       finalAvatarUrl: avatarUrl,
       API_ORIGIN,
     });
-  }, [profileUser, avatarUrl]);
+  }, [profileUser, avatarValue, normalizedAvatar, avatarUrl]);
 
   // Fetch profile if logged in and not loaded yet
   useEffect(() => {
@@ -60,11 +60,6 @@ export default function BottomNav() {
       dispatch(fetchProfileData());
     }
   }, [dispatch, profileUser]);
-
-  // Reset failed state when avatar changes
-  useEffect(() => {
-    setAvatarFailed(false);
-  }, [avatarUrl]);
 
   return (
     <nav
@@ -110,7 +105,7 @@ export default function BottomNav() {
           >
             {/* Profile Photo for "You" tab */}
             {item.label === "You" ? (
-              avatarUrl && !avatarFailed ? (
+              avatarUrl && failedAvatarUrl !== avatarUrl ? (
                 <img
                   key={avatarUrl}
                   src={avatarUrl}
@@ -130,7 +125,7 @@ export default function BottomNav() {
                       triedUrl: avatarUrl,
                       actualSrc: event.currentTarget?.src,
                     });
-                    setAvatarFailed(true);
+                    setFailedAvatarUrl(avatarUrl);
                   }}
                 />
               ) : (

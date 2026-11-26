@@ -27,7 +27,7 @@ export default function ProtectedRoute() {
           clearAuthState();
           setState('redirect');
         }
-      } catch (_) {
+      } catch {
         if (!mounted) return;
         clearAuthState();
         setState('redirect');

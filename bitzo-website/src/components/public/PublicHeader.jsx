@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Menu, X, ArrowRight, Sun, Moon } from "lucide-react";
 import { NAV_LINKS, SITE } from "../../config/site";
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/useTheme";
 import SiteLogo from "./SiteLogo";
 
 export default function PublicHeader() {

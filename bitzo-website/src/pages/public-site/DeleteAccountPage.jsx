@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import LegalPageLayout from "@/components/public/LegalPageLayout";
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/context/useTheme";
 import {
   deleteMyAccount,
   submitDeletionRequest,

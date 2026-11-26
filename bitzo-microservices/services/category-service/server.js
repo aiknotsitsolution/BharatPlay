@@ -31,8 +31,6 @@ const allowedOrigins =
 // LOGGING
 // =====================================================
 
-startHashtagCron();
-
 morgan.token("body", (req) => {
   try {
     const body = { ...(req.body || {}) };
@@ -158,6 +156,7 @@ app.use((err, req, res, next) => {
 });
 
 if (require.main === module) {
+  startHashtagCron();
   app.listen(PORT, () => {
     console.log(`🌐 category-service running on port ${PORT}`);
   });

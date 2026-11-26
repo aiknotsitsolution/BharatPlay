@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Code2, Users, ShieldCheck } from "lucide-react";
 import usePageMeta from "@/hooks/usePageMeta";
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/context/useTheme";
 import SITE from "@/config/site";
 
 const DEV_SECTIONS = [

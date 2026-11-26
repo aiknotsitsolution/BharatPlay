@@ -17,7 +17,7 @@ export const clearAuthState = () => {
   localStorage.removeItem("user");
   try {
     window.dispatchEvent(new Event("auth-change"));
-  } catch (_) {
+  } catch {
     // ignore
   }
 };
@@ -39,7 +39,7 @@ export const refreshAccessToken = async () => {
         return data.token;
       }
       return null;
-    } catch (_) {
+    } catch {
       return null;
     } finally {
       refreshPromise = null;

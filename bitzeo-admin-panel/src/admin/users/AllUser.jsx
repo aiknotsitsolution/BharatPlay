@@ -944,7 +944,7 @@ export default function Users() {
   const [activeMediaTab, setActiveMediaTab] = useState("videos");
   const [editModal, setEditModal] = useState(false);
   const [detailModal, setDetailModal] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({

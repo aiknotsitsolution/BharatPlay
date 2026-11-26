@@ -15,7 +15,6 @@ const http = require("node:http");
 const { Server: SocketIOServer } = require("socket.io");
 const { verifyAccessToken } = require("./utils/tokenService");
 const { attachSocketServer } = require("./services/socketService");
-const { startVideoProcessingWorker } = require("./services/videoProcessingWorker");
 
 const route0 = require("./routes/VideoRoutes");
 const route1 = require("./routes/userVideoRoute");
@@ -69,6 +68,7 @@ if (require.main === module) {
     .then(() => {
       console.log("✅ [video-service] MongoDB Connected");
       if (process.env.REDIS_URL?.trim()) {
+        const { startVideoProcessingWorker } = require("./services/videoProcessingWorker");
         videoProcessingWorker = startVideoProcessingWorker();
       } else {
         console.error(

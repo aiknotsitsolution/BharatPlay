@@ -9,7 +9,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import usePageMeta from "@/hooks/usePageMeta";
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/context/useTheme";
 import SITE from "@/config/site";
 
 function AppLink({ to, href, label, icon, isDark }) {

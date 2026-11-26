@@ -29,7 +29,7 @@ import {
   Zap,
 } from "lucide-react";
 import usePageMeta from "@/hooks/usePageMeta";
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/context/useTheme";
 import SITE from "@/config/site";
 
 /* ─── Reveal on scroll (same pattern as the public Home page) ─── */

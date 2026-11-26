@@ -1,15 +1,20 @@
-import { createContext, useContext, useState, useEffect } from "react";
-
-const AuthContext = createContext();
+import { useState } from "react";
+import AuthContext from "./auth-context-value";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const savedToken = localStorage.getItem("adminToken");
     const savedUser = localStorage.getItem("adminUser");
-    return savedToken && savedUser ? JSON.parse(savedUser) : null;
+    if (!savedToken || !savedUser) return null;
+    try {
+      return JSON.parse(savedUser);
+    } catch (error) {
+      console.error("Failed to parse stored finance admin user:", error);
+      return null;
+    }
   });
   const [token, setToken] = useState(localStorage.getItem("adminToken") || null);
-  const [loading] = useState(false);
+  const loading = false;
 
   const login = (userData, accessToken) => {
     setUser(userData);
@@ -31,5 +36,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = () => useContext(AuthContext);

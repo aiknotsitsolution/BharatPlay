@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-
-const RewardContext = createContext();
+import React, { useState, useEffect } from "react";
+import { RewardContext } from "./rewardContextValue";
 
 export function RewardProvider({ children }) {
   const [points, setPoints] = useState(() => {
@@ -42,11 +41,3 @@ export function RewardProvider({ children }) {
     <RewardContext.Provider value={value}>{children}</RewardContext.Provider>
   );
 }
-
-export const useRewards = () => {
-  const context = useContext(RewardContext);
-  if (!context) {
-    throw new Error("useRewards must be used within a RewardProvider");
-  }
-  return context;
-};

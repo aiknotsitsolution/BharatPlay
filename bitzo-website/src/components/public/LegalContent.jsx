@@ -1,11 +1,9 @@
 import usePageMeta from "../../hooks/usePageMeta";
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/useTheme";
 
 export default function LegalContent({
   title,
   description,
-  intro,
-  lastUpdated,
   sections,
 }) {
   usePageMeta(title, description);

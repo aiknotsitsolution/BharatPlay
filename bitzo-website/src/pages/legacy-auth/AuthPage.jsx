@@ -269,7 +269,7 @@ export default function AuthPage() {
         .replace(/-/g, "+")
         .replace(/_/g, "/");
       return JSON.parse(atob(payload)).email || "";
-    } catch (_) {
+    } catch {
       return "";
     }
   };

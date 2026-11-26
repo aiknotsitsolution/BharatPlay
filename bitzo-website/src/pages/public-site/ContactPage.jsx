@@ -12,7 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 import LegalPageLayout from "@/components/public/LegalPageLayout";
-import { useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/context/useTheme";
 import { submitContactForm } from "@/features/support/api";
 import { formatTicketId } from "@/utils/ticketId";
 import SITE from "@/config/site";

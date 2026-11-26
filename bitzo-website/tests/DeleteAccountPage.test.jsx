@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../src/context/ThemeContext", () => ({
+vi.mock("../src/context/useTheme", () => ({
   useTheme: () => ({ theme: "dark" }),
 }));
 

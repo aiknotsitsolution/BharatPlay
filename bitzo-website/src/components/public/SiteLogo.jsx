@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 const logo = "/VidBuxApp-logo.png";
 import SITE from "../../config/site";
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/useTheme";
 
 /**
  * VidBuxApp brand lockup used across public pages.

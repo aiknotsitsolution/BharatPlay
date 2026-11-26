@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ThumbsUp, ThumbsDown, Send } from 'lucide-react';
-import { useRewards } from '../../context/RewardContext';
+import { useRewards } from '../../context/useRewards';
 
 // Mock data (same as before)
 const mockVideos = [

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentRole, getRoleMeta } from "../../config/roleConfig";
 import { getAdminDisplayName, getInitials, getAdminPhoto } from "../../utils/helpers";
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/useTheme";
 import { clearAdminState } from "../../utils/session";
 import useNotifications from "../../hooks/useNotifications";
 import NotificationPanel from "./NotificationPanel";

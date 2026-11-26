@@ -201,7 +201,6 @@ export default function YouTubeLikeVideoPage() {
     videoDetails?.subscribersCount ||
     0;
   const saved = Boolean(videoDetails?.isWatchLater);
-  const [viewCounted, setViewCounted] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [theaterMode, setTheaterMode] = useState(false);
   const [autoplay, setAutoplay] = useState(() => {
@@ -217,6 +216,8 @@ export default function YouTubeLikeVideoPage() {
 
   const playerRef = useRef(null);
   const viewTracked = useRef(false);
+  const viewCountedRef = useRef(false);
+  const playbackVideoIdRef = useRef(null);
   const countdownTimerRef = useRef(null);
   const nextTargetRef = useRef(null);
   const autoplayNextRef = useRef(false);
@@ -314,11 +315,8 @@ export default function YouTubeLikeVideoPage() {
     const el = playerRef.current;
     if (el) getWatchSession(el, { id, videoType: "long" });
     viewTracked.current = false;
-    setViewCounted(false);
-    // Reset playback metrics so the 80% view effect can't fire with stale
-    // values from the previous video before the new one has loaded.
-    setCurrentTime(0);
-    setDuration(0);
+    viewCountedRef.current = false;
+    playbackVideoIdRef.current = null;
     return () => cancelCountdown();
   }, [id, cancelCountdown]);
 
@@ -364,7 +362,7 @@ export default function YouTubeLikeVideoPage() {
 
           // Restore previously watched percentage (agar backend se aaye)
           const prevPercent = video.watchedPercent || 0;
-          if (prevPercent >= 80) setViewCounted(true);
+          if (prevPercent >= 80) viewCountedRef.current = true;
         }
       } catch (error) {
         console.error("Error fetching video details:", error);
@@ -584,12 +582,19 @@ export default function YouTubeLikeVideoPage() {
 
   // Watch percentage tracking + view count when 80% watched
   useEffect(() => {
-    if (!id || !duration || !localStorage.getItem("token")) return;
+    if (
+      !id ||
+      playbackVideoIdRef.current !== id ||
+      !duration ||
+      !localStorage.getItem("token")
+    ) {
+      return;
+    }
 
     const percent = Math.min(100, Math.round((currentTime / duration) * 100));
 
-    if (percent >= 80 && !viewCounted) {
-      setViewCounted(true);
+    if (percent >= 80 && !viewCountedRef.current) {
+      viewCountedRef.current = true;
       dispatch(registerVideoView({ id, watchedPercent: percent }));
       return;
       /*
@@ -617,7 +622,7 @@ export default function YouTubeLikeVideoPage() {
         .catch(() => {});
       */
     }
-  }, [currentTime, duration, id, viewCounted]);
+  }, [currentTime, duration, id, dispatch]);
 
   // ==================== LIKE / DISLIKE (Correct) ====================
   const handleReaction = async (type) => {
@@ -899,6 +904,8 @@ export default function YouTubeLikeVideoPage() {
   // playback ended, so the countdown / "Play Next" flow sets an explicit
   // intent and this handler consumes it exactly when the new video can play.
   const handleLoadedMetadata = (videoDuration) => {
+    playbackVideoIdRef.current = id;
+    setCurrentTime(0);
     setDuration(videoDuration);
     if (autoplayNextRef.current) {
       autoplayNextRef.current = false;
@@ -912,13 +919,16 @@ export default function YouTubeLikeVideoPage() {
     if (!countdownTimerRef.current) return;
     if ((countdownLeft ?? AUTOPLAY_COUNTDOWN_SECONDS) <= 0) {
       const target = nextTargetRef.current;
-      cancelCountdown();
       if (target) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+        nextTargetRef.current = null;
         autoplayNextRef.current = true;
-        openVideo(target);
+        navigate(`/video/${target.id}`, { state: { video: target }, replace: true });
+        window.scrollTo(0, 0);
       }
     }
-  }, [countdownLeft, cancelCountdown, openVideo]);
+  }, [countdownLeft, navigate]);
 
   const upNextTarget = upNextOverlay;
   const upNextOverlayNode = upNextTarget ? (

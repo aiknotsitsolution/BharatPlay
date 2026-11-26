@@ -48,7 +48,6 @@ function SearchableSelect({
   useEffect(() => {
     if (!debouncedQuery.trim()) return;
     let cancelled = false;
-    setLoading(true);
     searchFn(debouncedQuery)
       .then((res) => {
         if (!cancelled) setResults(res.data?.data || []);
@@ -129,7 +128,7 @@ function SearchableSelect({
             onChange={(e) => {
               setQuery(e.target.value);
               setResults([]);
-              setLoading(false);
+              setLoading(Boolean(e.target.value.trim()));
               setOpen(true);
               setHighlight(-1);
             }}

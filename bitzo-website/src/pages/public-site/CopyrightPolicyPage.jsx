@@ -40,7 +40,7 @@ const SECTIONS = [
   {
     title: "6. Contact for Copyright Notices",
     body: SITE.supportEmail ? (
-      `Please send copyright-related notices to ${SITE.supportEmail} with the subject line \"Copyright Notice\".`
+      `Please send copyright-related notices to ${SITE.supportEmail} with the subject line "Copyright Notice".`
     ) : (
       <>
         Please use the{" "}

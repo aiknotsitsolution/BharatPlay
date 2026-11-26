@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Search, ChevronDown, ChevronUp } from "lucide-react";
 import { SettingsPageShell, SettingsPageHeader } from "../components/common/SettingsShared";
 
@@ -55,15 +55,6 @@ const FAQ_DATA = [
 ];
 
 function AccordionItem({ item, isOpen, onToggle }) {
-  const contentRef = useRef(null);
-  const [height, setHeight] = useState(0);
-
-  useEffect(() => {
-    if (contentRef.current) {
-      setHeight(isOpen ? contentRef.current.scrollHeight : 0);
-    }
-  }, [isOpen]);
-
   return (
     <div className="border-b border-zinc-800/60 last:border-b-0">
       <button
@@ -82,10 +73,11 @@ function AccordionItem({ item, isOpen, onToggle }) {
       </button>
       <div
         role="region"
-        style={{ height: height + "px" }}
-        className="overflow-hidden transition-[height] duration-200 ease-out"
+        className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+          isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        }`}
       >
-        <div ref={contentRef} className="px-4 pb-4 sm:px-5">
+        <div className="min-h-0 overflow-hidden px-4 pb-4 sm:px-5">
           <p className="text-sm leading-relaxed text-zinc-400">{item.a}</p>
         </div>
       </div>

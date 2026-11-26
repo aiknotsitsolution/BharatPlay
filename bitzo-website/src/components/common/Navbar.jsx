@@ -28,7 +28,7 @@ import {
   Globe,
   LifeBuoy,
 } from "lucide-react";
-import { useRewards } from "../../context/RewardContext";
+import { useRewards } from "../../context/useRewards";
 import { useSelector, useDispatch } from "react-redux";
 import NotificationPanel from "./NotificationPanel";
 import {
@@ -82,6 +82,31 @@ export default function Navbar({ toggleSidebar }) {
   const searchBoxRef = useRef(null);
   const mobileSearchRef = useRef(null);
   const mobileSearchBoxRef = useRef(null);
+
+  const performSignOut = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        await axios.post(
+          `${API_BASE_URL}/api/logout`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+      }
+    } catch (err) {
+      console.error("Sign out error:", err);
+    } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setIsLoggedIn(false);
+      setIsDropdownOpen(false);
+      setIsSettingsOpen(false);
+      setIsNotificationsOpen(false);
+      dispatch(resetNotifications());
+      window.dispatchEvent(new Event("auth-change"));
+      navigate("/");
+    }
+  }, [dispatch, navigate]);
 
   const handleSearch = useCallback(
     (query) => {
@@ -158,7 +183,9 @@ export default function Navbar({ toggleSidebar }) {
     return () => {
       try {
         recognitionRef.current?.abort();
-      } catch (_) {}
+      } catch {
+        // Recognition may already be inactive during cleanup.
+      }
     };
   }, [navigate]);
 
@@ -203,7 +230,9 @@ export default function Navbar({ toggleSidebar }) {
     if (isListening) {
       try {
         recognitionRef.current?.stop();
-      } catch (_) {}
+      } catch {
+        // Ignore stop errors when recognition is already inactive.
+      }
       setIsListening(false);
     } else {
       setSearchQuery("");
@@ -277,7 +306,7 @@ export default function Navbar({ toggleSidebar }) {
       window.removeEventListener("auth-change", handleAuthChange);
       window.removeEventListener("storage", handleAuthChange);
     };
-  }, [dispatch, isLoggedIn]);
+  }, [dispatch, isLoggedIn, performSignOut]);
 
   useEffect(() => {
     if (isLoggedIn) dispatch(fetchNotifications());
@@ -318,33 +347,6 @@ export default function Navbar({ toggleSidebar }) {
   const confirmSignOut = () => {
     setShowLogoutWarning(false);
     return performSignOut();
-  };
-
-  const performSignOut = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (token) {
-        await axios
-          .post(
-            `${API_BASE_URL}/api/logout`,
-            {},
-            { headers: { Authorization: `Bearer ${token}` } },
-          )
-          .catch(() => {});
-      }
-    } catch (err) {
-      console.error("Sign out error:", err);
-    } finally {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      setIsLoggedIn(false);
-      setIsDropdownOpen(false);
-      setIsSettingsOpen(false);
-      setIsNotificationsOpen(false);
-      dispatch(resetNotifications());
-      window.dispatchEvent(new Event("auth-change"));
-      navigate("/");
-    }
   };
 
   const onHintClick = (hint) => {

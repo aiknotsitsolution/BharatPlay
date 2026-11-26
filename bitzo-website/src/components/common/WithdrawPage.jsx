@@ -1,7 +1,7 @@
 import React from "react";
 import { ArrowLeft, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useRewards } from "../../context/RewardContext";
+import { useRewards } from "../../context/useRewards";
 
 export default function WithdrawPage() {
   const { points } = useRewards();

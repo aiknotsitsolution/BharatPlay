@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { SITE } from "../../config/site";
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/useTheme";
 import SiteLogo from "./SiteLogo";
 
 const COLUMNS = [

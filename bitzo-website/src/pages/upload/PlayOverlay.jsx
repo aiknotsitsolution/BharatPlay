@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   ChevronRight,
   Play,
@@ -49,9 +49,6 @@ const suggestedVideos = [
   { id: "s5", title: "Forest Canopy", creator: "@ForestWalker", views: "12.5K", earn: "₹310", thumb: "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=400&h=260&fit=crop" },
   { id: "s6", title: "River Flow", creator: "@RiverSoul", views: "3.1K", earn: "₹72", thumb: "https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=400&h=260&fit=crop" },
 ];
-
-// Master list — used for detail page lookup
-const allVideos = [...recentShorts, ...topShorts, ...earnMore, ...suggestedVideos];
 
 // ─────────────────────────────────────────────
 // UTILITY COMPONENTS
@@ -254,8 +251,6 @@ function ExplorePage({ onVideoClick }) {
 function FullVideoPage({ video, onBack }) {
   const [liked, setLiked] = useState(false);
   const [playing, setPlaying] = useState(true);
-  const videoRef = useRef(null);
-
   // Auto-play a looping dummy video overlay using a canvas shimmer
   // Since we don't have real video files, we simulate with a pulsing play state
 
