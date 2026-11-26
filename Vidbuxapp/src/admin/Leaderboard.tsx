@@ -129,7 +129,7 @@ const Leaderboard: React.FC = () => {
   // ---------- Render ----------
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle="light-content" />
 
       {/* Top Navbar */}
       <Navbar onMenuPress={() => {}} points={0} />

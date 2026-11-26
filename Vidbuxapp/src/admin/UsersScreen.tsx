@@ -132,7 +132,7 @@ export default function ShortsScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle="light-content" />
 
       <FlatList
         data={shortsData}

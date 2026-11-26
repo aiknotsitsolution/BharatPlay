@@ -1675,7 +1675,7 @@ export default function ViewAll() {
   if (!section) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+        <StatusBar barStyle="light-content" />
         <Navbar onMenuPress={() => {}} points={0} />
         <View style={styles.header}>
           <TouchableOpacity
@@ -1694,7 +1694,7 @@ export default function ViewAll() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle="light-content" />
 
       {/* ===== Navbar + TopicChips ===== */}
       <Navbar onMenuPress={() => {}} points={0} />

@@ -347,7 +347,7 @@ export default function SearchPage() {
   if (!query.trim()) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+        <StatusBar barStyle="light-content" />
 
         {/* Header with Search */}
         <View style={styles.header}>
@@ -384,7 +384,7 @@ export default function SearchPage() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle="light-content" />
 
       {/* Header */}
       <View style={styles.header}>

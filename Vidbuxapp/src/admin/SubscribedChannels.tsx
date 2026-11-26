@@ -305,7 +305,7 @@ export default function SubscribedChannels() {
     if (listLoading) {
       return (
         <View style={styles.loadingContainer}>
-          <StatusBar barStyle="light-content" backgroundColor="#0f0f0f" />
+          <StatusBar barStyle="light-content" />
           <Navbar onMenuPress={() => {}} points={0} />
           <TopicChips
             onTopicChange={(topic, categoryId) => {
@@ -323,7 +323,7 @@ export default function SubscribedChannels() {
 
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#0f0f0f" />
+        <StatusBar barStyle="light-content" />
 
         <Navbar onMenuPress={() => {}} points={0} />
         <TopicChips
@@ -388,7 +388,7 @@ export default function SubscribedChannels() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#0f0f0f" />
+        <StatusBar barStyle="light-content" />
         <Navbar onMenuPress={() => {}} points={0} />
         <TopicChips
           onTopicChange={(topic, categoryId) => {
@@ -498,7 +498,7 @@ export default function SubscribedChannels() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f0f" />
+      <StatusBar barStyle="light-content" />
 
       <Navbar onMenuPress={() => {}} points={0} />
       <TopicChips

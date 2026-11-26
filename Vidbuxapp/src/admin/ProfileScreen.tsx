@@ -1369,7 +1369,7 @@ export function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f0f" />
+      <StatusBar barStyle="light-content" />
       <Navbar onMenuPress={() => {}} points={0} />
       <ScrollView
         showsVerticalScrollIndicator={false}

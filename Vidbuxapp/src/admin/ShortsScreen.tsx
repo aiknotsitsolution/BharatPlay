@@ -1674,7 +1674,7 @@ export default function ShortsScreen() {
   if (loading) {
     return (
       <View style={styles.loaderWrap}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+        <StatusBar barStyle="light-content" />
 
         <ActivityIndicator size="large" color="#fff" />
 
@@ -1690,7 +1690,7 @@ export default function ShortsScreen() {
   if (!shortsData.length) {
     return (
       <View style={styles.loaderWrap}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
+        <StatusBar barStyle="light-content" />
 
         <Ionicons name="videocam-off-outline" size={50} color="#777" />
 
@@ -1715,8 +1715,6 @@ export default function ShortsScreen() {
     >
       <StatusBar
         barStyle="light-content"
-        backgroundColor="#000"
-        translucent={false}
       />
 
       <FlatList

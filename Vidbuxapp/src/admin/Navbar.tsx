@@ -220,11 +220,16 @@ export default function Navbar({ onMenuPress, points = 0 }) {
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#0f0f0f" />
+      <StatusBar barStyle="light-content" />
       <View style={styles.navbar}>
         {/* Top Row: Logo + badges + Avatar / Sign in */}
         <View style={styles.topRow}>
-          <View style={styles.logoSection}>
+          <View
+            style={[
+              styles.logoSection,
+              !isLoggedIn && styles.guestSide,
+            ]}
+          >
             <Image
               source={require("../../assets/vidbux.png")}
               style={styles.logoImage}
@@ -252,7 +257,9 @@ export default function Navbar({ onMenuPress, points = 0 }) {
           </View>
 
           {/* Right: Avatar / Sign in */}
-          <View style={styles.right}>
+          <View
+            style={[styles.right, !isLoggedIn && styles.guestSide]}
+          >
             {isLoggedIn ? (
               <TouchableOpacity
                 onPress={() => setIsDropdownOpen(true)}
@@ -586,6 +593,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  guestSide: {
+    width: 76,
+  },
   logoImage: {
     width: 40,
     height: 40,
@@ -715,7 +725,7 @@ const styles = StyleSheet.create({
     width: 48,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-end",
+    justifyContent: "center",
   },
   avatarBtn: {
     width: 40,
@@ -737,7 +747,9 @@ const styles = StyleSheet.create({
   },
   signInBtn: {
     backgroundColor: "#dc2626",
-    paddingHorizontal: 14,
+    minWidth: 72,
+    alignItems: "center",
+    paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: 18,
   },
