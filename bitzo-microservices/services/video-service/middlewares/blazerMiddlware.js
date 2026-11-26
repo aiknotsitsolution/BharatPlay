@@ -369,6 +369,12 @@ const uploadToBackblaze = [
           message: "Video file is required",
         });
       }
+      if (!process.env.REDIS_URL?.trim()) {
+        return res.status(503).json({
+          success: false,
+          message: "Video processing is temporarily unavailable.",
+        });
+      }
 
       const cfg = getB2Config();
 
@@ -432,6 +438,7 @@ const uploadToBackblaze = [
         fileName: uploadedVideo.fileName,
         mimeType: uploadedVideo.mimeType,
         size: uploadedVideo.size,
+        bucketName: cfg.bucketName,
       };
 
       /**
@@ -447,6 +454,8 @@ const uploadToBackblaze = [
 
         req.uploadedVideo.thumbnailUrl =
           uploadedThumbnail.url;
+        req.uploadedVideo.thumbnailKey = uploadedThumbnail.fileName;
+        req.uploadedVideo.thumbnailContentType = uploadedThumbnail.mimeType;
 
         req.uploadedVideo.thumbnail = {
           originalname: thumbnailFile.originalname,

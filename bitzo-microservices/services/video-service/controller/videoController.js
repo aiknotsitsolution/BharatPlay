@@ -4,6 +4,7 @@ const Channel = require("../models/Channel/ChannelModel");
 const categoryModel = require("../models/CategoryModel/category.model");
 const mongoose = require("mongoose");
 const {
+  DeleteObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
 } = require("@aws-sdk/client-s3");
@@ -12,8 +13,11 @@ const { getVideoDuration } = require("../utils/mediaDuration");
 const {
   getB2Client,
   getB2Config,
+  getB2SourceClient,
   getPublicUrl,
+  getVideoSourceBucket,
 } = require("../utils/b2Storage");
+const { getQueue } = require("../../../services/Queues");
 const { resolveCategory } = require("./userVideoController");
 const {
   cacheVideoCatalog,
@@ -22,11 +26,53 @@ const {
 } = require("../utils/videoCatalogCache");
 const { invalidateCache } = require("../../../services/caching");
 const fs = require("fs");
+const path = require("node:path");
+
+const getUploadUserId = (req) =>
+  req.user?.id || req.user?.userId || req.user?._id;
+
+async function uploadVideoSource(file, userId, videoId, revision = 1) {
+  const config = getB2Config();
+  const bucket = config.sourceBucket || config.bucket;
+  const extension = path.extname(file.originalname).toLowerCase();
+  if (![".mp4", ".mov", ".m4v", ".webm"].includes(extension)) {
+    const error = new Error("Use an MP4, MOV, M4V, or WebM video.");
+    error.status = 400;
+    throw error;
+  }
+  const sourceKey = `Video/${userId}/${videoId}/source${
+    revision > 1 ? `-v${revision}` : ""
+  }${extension}`;
+
+  await getB2SourceClient().send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: sourceKey,
+      Body: fs.createReadStream(file.path),
+      ContentLength: file.size,
+      ContentType: file.mimetype,
+      CacheControl:
+        bucket === config.bucket
+          ? "public, max-age=31536000, immutable"
+          : "private, no-store",
+    }),
+  );
+  return { sourceKey, sourceBucket: bucket };
+}
+
+const isValidDurationForType = (type, duration) =>
+  Number.isFinite(duration) &&
+  duration > 0 &&
+  (type === "short"
+    ? duration <= 60
+    : duration >= 60 && duration <= 300);
 
 /**
  * ✏️ Update Video
  */
 exports.updateVideoupdated = async (req, res) => {
+  let stagedSource;
+  let sourcePersisted = false;
   try {
     const { id } = req.params;
     const {
@@ -218,32 +264,66 @@ exports.updateVideoupdated = async (req, res) => {
     }
 
     if (req.file) {
-      const filePath = req.file.path.replace(/\\/g, "/");
-      video.videoUrl = filePath;
-
-      // Authoritative duration for re-uploaded media. Never blocks the update.
-      let authoritativeDuration = null;
-      try {
-        authoritativeDuration = await getVideoDuration(filePath);
-        if (!authoritativeDuration) {
-          console.error(
-            "[mediaDuration] Could not determine duration for:",
-            filePath,
-          );
-        }
-      } catch (err) {
-        console.error(
-          "[mediaDuration] Duration extraction failed:",
-          err.message,
-        );
+      if (!process.env.REDIS_URL?.trim()) {
+        return res.status(503).json({
+          success: false,
+          message: "Video processing is temporarily unavailable.",
+        });
       }
-      if (authoritativeDuration) video.duration = authoritativeDuration;
+      const actualDuration = await getVideoDuration(req.file.path);
+      const nextVideoType = video.videoType?.[0] || "long";
+      if (!isValidDurationForType(nextVideoType, actualDuration)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            nextVideoType === "short"
+              ? "Short videos must be 60 seconds or shorter."
+              : "Long videos must be between 60 and 300 seconds.",
+        });
+      }
+
+      const revision = (Number(video.mediaRevision) || 1) + 1;
+      stagedSource = await uploadVideoSource(
+        req.file,
+        userId,
+        video._id,
+        revision,
+      );
+      video.sourceKey = stagedSource.sourceKey;
+      video.sourceBucket = stagedSource.sourceBucket;
+      video.sourceSize = req.file.size;
+      video.sourceContentType = req.file.mimetype;
+      video.sourceFileName = path.basename(req.file.originalname).slice(0, 255);
+      video.videoUrl = getPublicUrl(stagedSource.sourceKey);
+      video.duration = actualDuration;
+      video.mediaRevision = revision;
+      video.thumbnailKey = null;
+      video.thumbnailContentType = null;
+      video.thumbnail = null;
+      video.processingStatus = "queued";
+      video.processingError = null;
+      video.status = "disabled";
     }
 
     const previousChannelId = String(video.channel || "");
     if (destinationChannel) video.channel = destinationChannel._id;
 
     await video.save();
+    sourcePersisted = Boolean(stagedSource);
+    if (stagedSource) {
+      try {
+        await getQueue("video-processing").add(
+          "process-video",
+          { videoId: String(video._id) },
+          { jobId: `${video._id}-revision-${video.mediaRevision}` },
+        );
+      } catch (queueError) {
+        video.processingStatus = "failed";
+        video.processingError = "Video processing could not be queued.";
+        await video.save();
+        throw queueError;
+      }
+    }
     await Promise.all([
       invalidateVideoCatalogCache(),
       previousChannelId
@@ -285,11 +365,33 @@ exports.updateVideoupdated = async (req, res) => {
     });
   } catch (error) {
     console.error("Update error:", error);
+    if (stagedSource && !sourcePersisted) {
+      try {
+        const config = getB2Config();
+        await getB2SourceClient().send(
+          new DeleteObjectCommand({
+            Bucket: getVideoSourceBucket(
+              { sourceBucket: stagedSource.sourceBucket },
+              config,
+            ),
+            Key: stagedSource.sourceKey,
+          }),
+        );
+      } catch (cleanupError) {
+        console.error("[video-update] Failed to remove staged B2 source:", cleanupError);
+      }
+    }
     res.status(500).json({
       success: false,
       message: "Server error during update",
       error: error.message,
     });
+  } finally {
+    if (req.file?.path) {
+      await fs.promises.rm(req.file.path, { force: true }).catch((cleanupError) => {
+        console.error("[video-update] Failed to remove staged file:", cleanupError);
+      });
+    }
   }
 };
 
@@ -364,6 +466,9 @@ exports.createVideoThumbnailUploadUrl = async (req, res) => {
 };
 
 exports.uploadVideo = async (req, res) => {
+  let stagedSource;
+  let sourcePersisted = false;
+  let video;
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -371,67 +476,141 @@ exports.uploadVideo = async (req, res) => {
         message: "Video file is required",
       });
     }
+    if (!process.env.REDIS_URL?.trim()) {
+      return res.status(503).json({
+        success: false,
+        message: "Video processing is temporarily unavailable.",
+      });
+    }
 
     const {
       title,
       description,
       type,
-      duration,
       category,
-      // subCategory removed
     } = req.body;
-
-    // Normalize content type (short/long). Defaults to long for backward compatibility.
-    const videoType = type === "short" || type === "long" ? [type] : ["long"];
-
-    const filePath = req.file.path.replace(/\\/g, "/");
-
-    // Authoritative duration from the media file; falls back to the client
-    // value. Never throws/fails the upload when extraction is not possible.
-    let authoritativeDuration = null;
-    try {
-      authoritativeDuration = await getVideoDuration(filePath);
-      if (!authoritativeDuration) {
-        console.error(
-          "[mediaDuration] Could not determine duration for:",
-          filePath,
-        );
-      }
-    } catch (err) {
-      console.error("[mediaDuration] Duration extraction failed:", err.message);
+    if (!String(title || "").trim() || String(title).trim().length > 150) {
+      return res.status(400).json({
+        success: false,
+        message: "A video title of 1–150 characters is required.",
+      });
     }
 
-    const video = await Video.create({
-      title,
+    const normalizedType =
+      type === "short" || type === "long" ? type : "long";
+    const userId = getUploadUserId(req);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication is required.",
+      });
+    }
+    const finalDuration = await getVideoDuration(req.file.path);
+    if (!isValidDurationForType(normalizedType, finalDuration)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          normalizedType === "short"
+            ? "Short videos must be 60 seconds or shorter."
+            : "Long videos must be between 60 and 300 seconds.",
+      });
+    }
+
+    let categoryId;
+    if (category) {
+      const categoryData = await resolveCategory(category);
+      if (!categoryData) {
+        return res.status(400).json({
+          success: false,
+          message: "Category not found.",
+        });
+      }
+      categoryId = categoryData._id;
+    }
+
+    const videoId = new mongoose.Types.ObjectId();
+    stagedSource = await uploadVideoSource(req.file, userId, videoId);
+    const videoType = [normalizedType];
+    video = await Video.create({
+      _id: videoId,
+      title: String(title).trim(),
       description: description || "",
       videoType,
-      duration:
-        authoritativeDuration || (duration ? Number(duration) : undefined),
-      category, // only category is saved now
-      creator: req.user.id,
-      uploadedBy: req.user.id,
-      videoUrl: filePath,
+      duration: finalDuration,
+      category: categoryId,
+      creator: userId,
+      uploadedBy: userId,
+      videoUrl: getPublicUrl(stagedSource.sourceKey),
+      sourceKey: stagedSource.sourceKey,
+      sourceBucket: stagedSource.sourceBucket,
+      sourceSize: req.file.size,
+      sourceContentType: req.file.mimetype,
+      sourceFileName: path.basename(req.file.originalname).slice(0, 255),
+      status: "disabled",
+      processingStatus: "queued",
     });
-    await invalidateVideoCatalogCache();
+    sourcePersisted = true;
+    await getQueue("video-processing").add(
+      "process-video",
+      { videoId: String(video._id) },
+      { jobId: String(video._id) },
+    );
+    try {
+      await invalidateVideoCatalogCache();
+    } catch (cacheError) {
+      console.error("[video-upload] Failed to invalidate video cache:", cacheError);
+    }
 
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
-    const fullVideoUrl = `${baseUrl}/${filePath}`;
-
-    res.status(201).json({
+    res.status(202).json({
       success: true,
-      message: "Video uploaded successfully",
+      message: "Video uploaded to Backblaze B2. Processing has started.",
+      processingStatus: "queued",
       video: {
         ...video.toObject(),
-        videoUrl: fullVideoUrl,
+        videoUrl: getPublicUrl(stagedSource.sourceKey),
       },
     });
   } catch (error) {
     console.error("Upload error:", error);
-    res.status(500).json({
+    if (video && !sourcePersisted) {
+      await Video.deleteOne({ _id: video._id }).catch((cleanupError) => {
+        console.error("[video-upload] Failed to remove incomplete video record:", cleanupError);
+      });
+    }
+    if (video && sourcePersisted) {
+      video.processingStatus = "failed";
+      video.processingError = "Video processing could not be queued.";
+      await video.save().catch((saveError) => {
+        console.error("[video-upload] Failed to record queue error:", saveError);
+      });
+    }
+    if (stagedSource && !sourcePersisted) {
+      try {
+        const config = getB2Config();
+        await getB2SourceClient().send(
+          new DeleteObjectCommand({
+            Bucket: getVideoSourceBucket(
+              { sourceBucket: stagedSource.sourceBucket },
+              config,
+            ),
+            Key: stagedSource.sourceKey,
+          }),
+        );
+      } catch (cleanupError) {
+        console.error("[video-upload] Failed to remove staged B2 source:", cleanupError);
+      }
+    }
+    res.status(error?.status || 500).json({
       success: false,
-      message: "Server error during upload",
-      error: error.message,
+      message:
+        error?.message || "Video upload could not be completed.",
     });
+  } finally {
+    if (req.file?.path) {
+      await fs.promises.rm(req.file.path, { force: true }).catch((cleanupError) => {
+        console.error("[video-upload] Failed to remove staged file:", cleanupError);
+      });
+    }
   }
 };
 

@@ -34,6 +34,7 @@ const {
   emitViewCountUpdated,
 } = require("../services/socketService");
 const { deleteFilesFromB2 } = require("../middlewares/blazerMiddlware");
+const { getQueue } = require("../../../services/Queues");
 
 const ABS_WATCH_SECONDS_CAP = 12 * 60 * 60; // 43200s hard cap per session
 
@@ -571,81 +572,49 @@ const uploadVideo = async (req, res) => {
       thumbnailPath = normalizeMediaPath(thumbnailFile?.path || null);
     }
 
-    // Authoritative duration from the media file
-    let authoritativeDuration = null;
-    try {
-      if (videoPath && !/^https?:\/\//i.test(videoPath)) {
-        authoritativeDuration = await getVideoDuration(videoPath);
-      }
-      if (!authoritativeDuration) {
-        console.error(
-          "[mediaDuration] Could not determine duration for:",
-          videoPath || "<no path>",
-        );
-      }
-    } catch (err) {
-      console.error("[mediaDuration] Duration extraction failed:", err.message);
-    }
-
-    // ✅ FIXED: categoryData._id use karo, raw "category" mat use karo
+    const userId = req.user?.id || req.user?.userId || req.user?._id;
     const newVideo = new Video({
       channel: channelId,
-      category: categoryData._id, // ← YEH LINE FIX HAI
+      category: categoryData._id,
       title: name?.trim() || "Untitled",
       description,
       videoUrl: videoPath,
       thumbnail: thumbnailPath,
+      thumbnailKey: b2UploadedVideo?.thumbnailKey || null,
+      thumbnailContentType: b2UploadedVideo?.thumbnailContentType || null,
       videoType: videoType ? [videoType] : undefined,
       hashtags: [...new Set(hashtags)],
       isCreativeCorner,
       isMonetized: true,
-      duration:
-        authoritativeDuration ||
-        req.videoDuration ||
-        (Number(duration) > 0 ? Number(duration) : undefined),
-      uploadedBy: req.user?.userId,
+      duration: req.videoDuration || (Number(duration) > 0 ? Number(duration) : undefined),
+      creator: userId,
+      uploadedBy: userId,
+      sourceKey: b2UploadedVideo?.fileName,
+      sourceBucket: b2UploadedVideo?.bucketName,
+      sourceSize: b2UploadedVideo?.size,
+      sourceContentType: b2UploadedVideo?.mimeType,
+      sourceFileName: path.basename(videoFile.originalname).slice(0, 255),
+      status: "disabled",
+      processingStatus: "queued",
     });
 
     await newVideo.save();
-
-    if (isCreativeCorner && hashtags.length > 0) {
-      await HashtagStats.bulkWrite(
-        hashtags.map((hashtag) => ({
-          updateOne: {
-            filter: { hashtag },
-            update: {
-              $setOnInsert: { hashtag },
-              $inc: { videoCount: 1 },
-              $addToSet: { uniqueCreators: req.user?.userId },
-              $set: { updatedAt: new Date() },
-            },
-            upsert: true,
-          },
-        })),
+    try {
+      await getQueue("video-processing").add(
+        "process-video",
+        { videoId: String(newVideo._id) },
+        { jobId: String(newVideo._id) },
       );
+    } catch (queueError) {
+      newVideo.processingStatus = "failed";
+      newVideo.processingError = "Video processing could not be queued.";
+      await newVideo.save();
+      throw queueError;
     }
-
-    // Push video ID into Channel's videos array
-    channel.videos.push(newVideo._id);
-    await channel.save();
-
-    // Push video ID into User's videos array
-    await User.findByIdAndUpdate(req.user?.userId, {
-      $push: { videos: newVideo._id },
-    });
     await invalidateVideoCatalogCache();
 
-    // Notify all subscribers of the channel
-    await createBulkNotifications({
-      recipients: channel.subscribedBy || [],
-      actor: req.user?.userId,
-      type: "upload",
-      video: newVideo._id,
-      channel: channelId,
-    });
-
     await logAuditEvent({
-      userId: req.user?.userId,
+      userId,
       eventType: "VIDEO_UPLOAD",
       ip: req.ip,
       userAgent: req.headers["user-agent"] || "unknown",
@@ -658,9 +627,10 @@ const uploadVideo = async (req, res) => {
       },
     });
 
-    res.status(201).json({
+    res.status(202).json({
       success: true,
-      message: "Video uploaded successfully",
+      message: "Video uploaded to Backblaze B2. Processing has started.",
+      processingStatus: "queued",
       video: newVideo,
     });
   } catch (err) {
@@ -1175,7 +1145,7 @@ const getvideosByChannel = async (req, res) => {
       _id: channelId,
       status: "active",
     })
-      .select("_id")
+      .select("_id creator")
       .lean();
     if (!channel) {
       return res
@@ -1183,11 +1153,36 @@ const getvideosByChannel = async (req, res) => {
         .json({ success: false, message: "Channel not found" });
     }
     const { page, limit } = getPagination(req);
-    const { videos, total } = await getChannelVideoPage(
+    const { videos: publishedVideos, total: publishedTotal } = await getChannelVideoPage(
       channelId,
       page,
       limit,
     );
+    let videos = publishedVideos;
+    let total = publishedTotal;
+    const userId = req.user?.id || req.user?.userId || req.user?._id;
+    if (userId && String(channel.creator) === String(userId)) {
+      const pendingVideos = await Video.find({
+        channel: channelId,
+        uploadedBy: userId,
+        processingStatus: {
+          $in: ["uploading", "queued", "processing", "failed"],
+        },
+      })
+        .select(
+          "_id title thumbnail videoUrl views createdAt videoType duration processingStatus processingError status",
+        )
+        .sort({ createdAt: -1 })
+        .lean();
+      const publishedIds = new Set(
+        publishedVideos.map((video) => String(video._id)),
+      );
+      const ownerPendingVideos = pendingVideos.filter(
+        (video) => !publishedIds.has(String(video._id)),
+      );
+      videos = [...ownerPendingVideos, ...publishedVideos];
+      total += ownerPendingVideos.length;
+    }
 
     return res.status(200).json({
       success: true,

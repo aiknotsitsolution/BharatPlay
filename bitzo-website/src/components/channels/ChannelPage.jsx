@@ -74,6 +74,13 @@ const readVideoDuration = (file) =>
   });
 
 const getVideoId = (video) => video?._id || video?.id;
+const getSuggestedVideoTitle = (file) =>
+  file.name
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 150);
 
 function ChannelVideoSearch({ value, onChange }) {
   return (
@@ -774,7 +781,6 @@ export default function ChannelPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedUploadChannelId, setSelectedUploadChannelId] = useState("");
   const [videoFile, setVideoFile] = useState(null);
-  const [videoPreview, setVideoPreview] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState("");
   const [videoname, setVideoname] = useState("");
@@ -786,9 +792,11 @@ export default function ChannelPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadPhase, setUploadPhase] = useState("");
   const [creating, setCreating] = useState(false);
   const dispatch = useDispatch();
   const uploadProgress = useSelector((state) => state.upload.progress);
+  const uploadInProgressRef = useRef(false);
 
   // Video player modal
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
@@ -1380,7 +1388,7 @@ export default function ChannelPage() {
     }
 
     if (!videoname.trim()) {
-      setUploadError("Please enter a video name");
+      setUploadError("Please enter a video title");
       return;
     }
 
@@ -1389,7 +1397,6 @@ export default function ChannelPage() {
       return;
     }
 
-    // Allow "creative-corner" slug OR valid ObjectId
     if (
       videoCategory !== "creative-corner" &&
       !isValidObjectId(videoCategory)
@@ -1408,10 +1415,14 @@ export default function ChannelPage() {
       return;
     }
 
+    if (uploadInProgressRef.current) return;
+    uploadInProgressRef.current = true;
+
     try {
       setUploading(true);
       dispatch(uploadStarted());
       setUploadError("");
+      setUploadPhase("Checking video");
       const uploadChannelId = selectedUploadChannelId;
       const duration = await readVideoDuration(videoFile);
       if (!duration) {
@@ -1424,6 +1435,7 @@ export default function ChannelPage() {
         throw new Error("Long videos must be between 1 and 5 minutes.");
       }
 
+      setUploadPhase("Uploading video");
       const uploadResult = await uploadVideoMultipart({
         api: API_BASE,
         channelId: uploadChannelId,
@@ -1439,7 +1451,8 @@ export default function ChannelPage() {
           hashtags: videoHashtags,
         },
         thumbnail: thumbnailFile,
-        onProgress: (progress) => dispatch(uploadProgressUpdated(progress)),
+        onProgress: (progress) =>
+          dispatch(uploadProgressUpdated(progress)),
       });
 
       toast.success("Video uploaded. Processing has started.");
@@ -1471,7 +1484,12 @@ export default function ChannelPage() {
         return videos;
       };
 
-      await refreshUploadedChannelVideos();
+      try {
+        await refreshUploadedChannelVideos();
+      } catch (error) {
+        console.error("Uploaded video list refresh failed:", error);
+        toast.error("Video uploaded, but the channel list could not refresh.");
+      }
 
       if (uploadResult.videoId && uploadResult.processingStatus !== "ready") {
         const waitForVideoProcessing = async () => {
@@ -1479,46 +1497,24 @@ export default function ChannelPage() {
             await new Promise((resolve) =>
               setTimeout(resolve, PROCESSING_POLL_INTERVAL_MS),
             );
-            const statusRes = await authFetch(
-              `${API_BASE}/uservideo/upload/${uploadChannelId}/multipart/${uploadResult.videoId}`,
-              {
-                cache: "no-store",
-                headers: { Authorization: `Bearer ${token}` },
-              },
+            const videos = await refreshUploadedChannelVideos();
+            const uploadedVideo = videos.find(
+              (video) =>
+                String(video._id || video.id) === String(uploadResult.videoId),
             );
-            if (!statusRes.ok) {
-              throw new Error(
-                `Video processing status check failed (${statusRes.status}).`,
-              );
-            }
-
-            const status = await statusRes.json();
-            if (status.processingStatus === "failed") {
+            if (uploadedVideo?.processingStatus === "failed") {
               toast.error(
                 "Video processing failed. Please try uploading it again.",
               );
               return;
             }
-            if (status.processingStatus !== "ready") continue;
-
-            for (let refreshAttempt = 0; refreshAttempt < 5; refreshAttempt += 1) {
-              const videos = await refreshUploadedChannelVideos();
-              if (
-                videos.some(
-                  (video) =>
-                    String(video._id || video.id) ===
-                    String(uploadResult.videoId),
-                )
-              ) {
-                toast.success("Video processing complete. It is now on your channel.");
-                return;
-              }
-              await new Promise((resolve) => setTimeout(resolve, 1000));
+            if (
+              uploadedVideo?.processingStatus === "ready" ||
+              uploadedVideo?.status === "active"
+            ) {
+              toast.success("Video processing complete. It is now on your channel.");
+              return;
             }
-            toast.info(
-              "Video is ready. Reload your channel if it is not visible yet.",
-            );
-            return;
           }
           toast.info(
             "Video is still processing. It will appear on your channel when ready.",
@@ -1528,15 +1524,13 @@ export default function ChannelPage() {
         void waitForVideoProcessing().catch((error) => {
           console.error("Video processing status check failed:", error);
           toast.error(
-            "Upload finished, but the channel could not be refreshed. Reload it later.",
+            "Upload finished, but channel status could not be refreshed.",
           );
         });
       }
 
-      // Reset form
       setShowUploadModal(false);
       setVideoFile(null);
-      setVideoPreview("");
       setThumbnailFile(null);
       setThumbnailPreview("");
       setVideoname("");
@@ -1547,13 +1541,17 @@ export default function ChannelPage() {
       setVideoType("short");
       setAgreeTerms(false);
       setSelectedUploadChannelId("");
+      setUploadPhase("");
     } catch (error) {
       console.error("Video upload error:", error);
       const message =
-        error.message || "Failed to upload video. Please try again.";
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to upload video. Please try again.";
       dispatch(uploadFailed(message));
       setUploadError(message);
     } finally {
+      uploadInProgressRef.current = false;
       setUploading(false);
     }
   };
@@ -1663,6 +1661,12 @@ export default function ChannelPage() {
             );
           }
           const status = await statusResponse.json();
+          if (status.found === false || status.processingStatus === "missing") {
+            toast.error(
+              "Video upload session is no longer available. Please try again.",
+            );
+            return;
+          }
           if (status.processingStatus === "failed") {
             toast.error(
               status.processingError ||
@@ -2496,26 +2500,6 @@ export default function ChannelPage() {
               </div>
 
               <div className="flex gap-3 justify-end pt-2">
-                {uploading && (
-                  <div className="w-full space-y-1">
-                    <div className="flex justify-between text-xs text-gray-400">
-                      <span>Video upload progress</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <div
-                      className="h-2 w-full overflow-hidden rounded-full bg-gray-700"
-                      role="progressbar"
-                      aria-valuemin="0"
-                      aria-valuemax="100"
-                      aria-valuenow={uploadProgress}
-                    >
-                      <div
-                        className="h-full rounded-full bg-green-500 transition-[width] duration-200"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
                 <button
                   type="button"
                   onClick={closeCreateModal}
@@ -2557,6 +2541,7 @@ export default function ChannelPage() {
                 <select
                   value={selectedUploadChannelId}
                   onChange={(e) => setSelectedUploadChannelId(e.target.value)}
+                  disabled={uploading}
                   className="w-full px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 text-sm"
                   required
                 >
@@ -2575,92 +2560,129 @@ export default function ChannelPage() {
                 </label>
                 <input
                   type="file"
-                  accept="video/*"
+                  accept="video/mp4,video/quicktime,video/webm,video/x-m4v"
                   onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setVideoFile(file);
-                      setVideoPreview(URL.createObjectURL(file));
-                    }
+                    const file = e.target.files?.[0] || null;
+                    setVideoFile(file);
+                    setVideoname(file ? getSuggestedVideoTitle(file) : "");
+                    setUploadError("");
+                    setThumbnailFile(null);
+                    setThumbnailPreview("");
+                    e.target.value = "";
                   }}
+                  disabled={uploading}
                   className="w-full px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                  required
                 />
-                {videoPreview && (
-                  <div className="mt-2 text-xs text-gray-400">
-                    Selected: {videoFile?.name}
-                  </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Upload one Short or Long video at a time.
+                </p>
+                {videoFile && (
+                  <p className="mt-2 break-all text-xs text-gray-400">
+                    {videoFile.name} · {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
+                  </p>
                 )}
               </div>
 
               <div>
                 <label className="block text-sm text-gray-300 mb-1">
-                  Video Type
-                </label>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setVideoType("short")}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition ${
-                      videoType === "short"
-                        ? "bg-green-600 text-white"
-                        : "bg-[#0f0f0f] border border-gray-700 text-gray-400 hover:bg-gray-800"
-                    }`}
-                  >
-                    Short
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setVideoType("long")}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition ${
-                      videoType === "long"
-                        ? "bg-green-600 text-white"
-                        : "bg-[#0f0f0f] border border-gray-700 text-gray-400 hover:bg-gray-800"
-                    }`}
-                  >
-                    Long
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-300 mb-1">
-                  Thumbnail (optional)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setThumbnailFile(file);
-                      setThumbnailPreview(URL.createObjectURL(file));
-                    }
-                  }}
-                  className="w-full px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                />
-                {thumbnailPreview && (
-                  <img
-                    src={thumbnailPreview}
-                    alt="Thumbnail preview"
-                    className="mt-2 w-full h-28 object-cover rounded-lg border border-gray-600"
-                  />
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-300 mb-1">
-                  Video Title *
+                  Video title *
                 </label>
                 <input
                   type="text"
                   value={videoname}
                   onChange={(e) => setVideoname(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 text-sm"
-                  placeholder="Enter video title"
+                  maxLength={150}
+                  placeholder="Video title"
+                  disabled={uploading}
+                  className="w-full px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 disabled:opacity-60"
                   required
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  A suggested title is filled from the file name; edit it as needed.
+                </p>
               </div>
+
+              <div>
+                <span className="mb-2 block text-sm text-gray-300">
+                  Video type *
+                </span>
+                <div
+                  className="grid grid-cols-2 gap-3"
+                  role="group"
+                  aria-label="Choose video type"
+                >
+                  {[
+                    {
+                      value: "short",
+                      label: "Short",
+                      detail: "Up to 60 seconds",
+                    },
+                    {
+                      value: "long",
+                      label: "Long video",
+                      detail: "1-5 minutes",
+                    },
+                  ].map((type) => {
+                    const isSelected = videoType === type.value;
+                    return (
+                      <button
+                        key={type.value}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => setVideoType(type.value)}
+                        disabled={uploading}
+                        className={`rounded-xl border px-4 py-3 text-left transition focus:outline-none focus:ring-2 focus:ring-green-400 disabled:cursor-not-allowed disabled:opacity-60 ${
+                          isSelected
+                            ? "border-green-400 bg-green-500/15 text-white shadow-[0_0_16px_rgba(34,197,94,0.12)]"
+                            : "border-gray-700 bg-[#0f0f0f] text-gray-300 hover:border-gray-500 hover:bg-[#151515]"
+                        }`}
+                      >
+                        <span className="block text-sm font-semibold">
+                          {type.label}
+                        </span>
+                        <span
+                          className={`mt-1 block text-xs ${
+                            isSelected ? "text-green-200" : "text-gray-500"
+                          }`}
+                        >
+                          {type.detail}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {videoFile ? (
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">
+                    Thumbnail (optional)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setThumbnailFile(file);
+                        setThumbnailPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    disabled={uploading}
+                    className="w-full px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                  />
+                  {thumbnailPreview && (
+                    <img
+                      src={thumbnailPreview}
+                      alt="Thumbnail preview"
+                      className="mt-2 w-full h-28 object-cover rounded-lg border border-gray-600"
+                    />
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    Leave blank to generate a thumbnail from the video.
+                  </p>
+                </div>
+              ) : null}
 
               <div>
                 <label className="block text-sm text-gray-300 mb-1">
@@ -2669,7 +2691,7 @@ export default function ChannelPage() {
                 <select
                   value={videoCategory}
                   onChange={(e) => setVideoCategory(e.target.value)}
-                  disabled={categoriesLoading}
+                  disabled={categoriesLoading || uploading}
                   className="w-full px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 text-sm"
                   required
                 >
@@ -2695,6 +2717,7 @@ export default function ChannelPage() {
                 <textarea
                   value={videoDescription}
                   onChange={(e) => setVideoDescription(e.target.value)}
+                  disabled={uploading}
                   className="w-full px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 h-20 text-sm resize-none"
                   placeholder="Describe your video..."
                 />
@@ -2705,6 +2728,7 @@ export default function ChannelPage() {
                   <input
                     type="checkbox"
                     checked={isCreativeCorner}
+                    disabled={uploading}
                     onChange={(e) => {
                       const checked = e.target.checked;
                       setIsCreativeCorner(checked);
@@ -2724,6 +2748,7 @@ export default function ChannelPage() {
                     type="text"
                     value={videoHashtags}
                     onChange={(e) => setVideoHashtags(e.target.value)}
+                    disabled={uploading}
                     className="w-full px-3 py-2 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 text-sm"
                     placeholder="#Cooking, #Vlog"
                     required
@@ -2738,6 +2763,7 @@ export default function ChannelPage() {
                     id="agreeTerms"
                     checked={agreeTerms}
                     onChange={(e) => setAgreeTerms(e.target.checked)}
+                    disabled={uploading}
                     className="mt-1 w-4 h-4 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
                     required
                   />
@@ -2748,12 +2774,44 @@ export default function ChannelPage() {
                 </div>
               </div>
 
+              {uploading && (
+                <div className="space-y-2 rounded-lg border border-gray-700 bg-[#111] p-3">
+                  <div className="flex justify-between gap-3 text-xs text-gray-300">
+                    <span className="truncate">
+                      {uploadPhase}
+                      {videoFile ? ` · ${videoFile.name}` : ""}
+                    </span>
+                    <span className="shrink-0 font-semibold">
+                      {uploadProgress}%
+                    </span>
+                  </div>
+                  <div
+                    className="h-2 w-full overflow-hidden rounded-full bg-gray-700"
+                    role="progressbar"
+                    aria-label="Video upload progress"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow={uploadProgress}
+                  >
+                    <div
+                      className="h-full rounded-full bg-green-500 transition-[width] duration-200"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-3 justify-end pt-2">
                 <button
                   type="button"
                   onClick={() => {
                     setShowUploadModal(false);
                     setUploadError("");
+                    setVideoFile(null);
+                    setThumbnailFile(null);
+                    setThumbnailPreview("");
+                    setVideoname("");
+                    setUploadPhase("");
                   }}
                   className="px-5 py-2 bg-gray-700 hover:bg-gray-600 rounded-full text-sm transition"
                   disabled={uploading}
@@ -2762,10 +2820,12 @@ export default function ChannelPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={uploading}
+                  disabled={uploading || !videoFile}
                   className="px-5 py-2 bg-green-600 hover:bg-green-700 rounded-full text-sm transition disabled:bg-gray-600 disabled:cursor-not-allowed"
                 >
-                  {uploading ? `Uploading ${uploadProgress}%` : "Upload"}
+                  {uploading
+                    ? `Uploading ${uploadProgress}%`
+                    : "Upload video"}
                 </button>
               </div>
             </form>

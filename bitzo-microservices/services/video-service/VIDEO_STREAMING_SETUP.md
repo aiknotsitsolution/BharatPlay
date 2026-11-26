@@ -30,9 +30,10 @@ browser. The S3 endpoint and keys must be configured for the same B2 region.
 ## Bucket CORS and delivery
 
 Configure bucket CORS to allow the exact website origins (production and local
-development), `GET`, `HEAD`, and `PUT`, request headers required by the browser,
-and expose the `ETag` response header. `ETag` is required by multipart upload
-completion. HLS playlists and segments also need cross-origin `GET` access.
+development), `GET`, `HEAD`, and `PUT`, and request headers required by the
+browser. HLS playlists and segments also need cross-origin `GET` access.
+Multipart completion reads part ETags server-side from B2, so the browser does
+not need the `ETag` response header exposed by CORS.
 Use a public delivery bucket or a CDN configured to serve it; point
 `B2_PUBLIC_BASE_URL` at that public/CDN object root. Keep a separate source
 bucket private; without a separate source bucket, source uploads share the

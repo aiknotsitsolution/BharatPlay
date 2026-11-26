@@ -132,6 +132,9 @@ export default function ChannelScreen({ navigation }) {
   const shortVideos = videos.filter((video) =>
     getVideoType(video).includes("short"),
   );
+  const hasPendingVideos = videos.some((video) =>
+    ["uploading", "queued", "processing"].includes(video.processingStatus),
+  );
   const filterVideos = (items) => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return items;
@@ -297,6 +300,47 @@ export default function ChannelScreen({ navigation }) {
 
     fetchVideos();
   }, [channelVideosKey, dispatch, selectedChannelId]);
+
+  useEffect(() => {
+    if (!selectedChannelId || !hasPendingVideos) return undefined;
+    let active = true;
+    const refreshProcessingVideos = async () => {
+      try {
+        const token = await getToken();
+        if (!token || !active) return;
+        const response = await fetch(
+          `${API_BASE}/uservideo/channel/${selectedChannelId}/videos`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!response.ok) {
+          throw new Error("Could not refresh video processing status.");
+        }
+        const result = await response.json();
+        if (!active) return;
+        const nextVideos = result.videos || [];
+        setVideos(nextVideos);
+        dispatch(
+          setCachedVideoData({
+            key: channelVideosKey,
+            data: nextVideos,
+          }),
+        );
+      } catch (error) {
+        console.warn("Could not refresh video processing status:", error);
+      }
+    };
+
+    const interval = setInterval(refreshProcessingVideos, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [
+    channelVideosKey,
+    dispatch,
+    hasPendingVideos,
+    selectedChannelId,
+  ]);
 
   // ================= IMAGE / VIDEO PICKER =================
   // ================= IMAGE / VIDEO PICKER =================
@@ -817,7 +861,7 @@ export default function ChannelScreen({ navigation }) {
       showToast("success", "Video uploaded. Processing has started.");
       try {
         const videosRes = await fetch(
-          `${API_BASE}/uservideo/channel/${selectedChannelId}/videos`,
+          `${API_BASE}/uservideo/channel/${selectedUploadChannelId}/videos`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
         if (!videosRes.ok) {
@@ -825,10 +869,17 @@ export default function ChannelScreen({ navigation }) {
         }
         const data = await videosRes.json();
         const updatedVideos = data.videos || [];
+        if (String(selectedChannelId) !== String(selectedUploadChannelId)) {
+          setSelectedChannelId(selectedUploadChannelId);
+          const uploadedChannel = channels.find(
+            (item) => String(item._id) === String(selectedUploadChannelId),
+          );
+          if (uploadedChannel) setChannel(uploadedChannel);
+        }
         setVideos(updatedVideos);
         dispatch(
           setCachedVideoData({
-            key: `creator:videos:${selectedChannelId}`,
+            key: `creator:videos:${selectedUploadChannelId}`,
             data: updatedVideos,
           }),
         );
@@ -908,6 +959,15 @@ export default function ChannelScreen({ navigation }) {
   const tabs = ["Videos", "Shorts"];
 
   const handleVideoPress = (video) => {
+    if (video?.processingStatus && video.processingStatus !== "ready") {
+      showToast(
+        "info",
+        video.processingStatus === "failed"
+          ? "This video could not be processed. Edit and upload it again."
+          : "Your video is processing and will be ready shortly.",
+      );
+      return;
+    }
     const videoId = video?._id || video?.id;
     const videoTypes = Array.isArray(video?.videoType)
       ? video.videoType
@@ -1057,6 +1117,12 @@ export default function ChannelScreen({ navigation }) {
       getImageUrl(item.thumbnail) ||
       "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=800";
     const videoId = String(item._id || item.id);
+    const processingLabel =
+      item.processingStatus === "failed"
+        ? "Processing failed"
+        : item.processingStatus && item.processingStatus !== "ready"
+          ? "Processing video…"
+          : "";
 
     return (
       <View style={styles.videoCard}>
@@ -1066,11 +1132,17 @@ export default function ChannelScreen({ navigation }) {
           onPress={() => handleVideoPress(item)}
         >
           <Image source={{ uri: thumb }} style={styles.thumbnail} />
-          <View style={styles.playOverlay}>
-            <View style={styles.playBtn}>
-              <Play size={22} color="#fff" fill="#fff" />
+          {processingLabel ? (
+            <View style={styles.processingBadge}>
+              <Text style={styles.processingBadgeText}>{processingLabel}</Text>
             </View>
-          </View>
+          ) : (
+            <View style={styles.playOverlay}>
+              <View style={styles.playBtn}>
+                <Play size={22} color="#fff" fill="#fff" />
+              </View>
+            </View>
+          )}
         </TouchableOpacity>
         <View style={styles.videoActions}>
           <TouchableOpacity
@@ -1989,6 +2061,22 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: "100%",
     height: "100%",
+  },
+  processingBadge: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    bottom: 8,
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.78)",
+  },
+  processingBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "600",
   },
   videoActions: {
     position: "absolute",

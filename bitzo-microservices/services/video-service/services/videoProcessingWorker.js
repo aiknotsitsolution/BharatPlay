@@ -244,16 +244,21 @@ async function processVideo(videoId) {
         getPublicUrl(`${outputPrefix}/${height}p/index.m3u8`),
       ]),
     );
-    await Promise.all([
-      Channel.updateOne(
-        { _id: video.channel },
-        { $addToSet: { videos: video._id } },
-      ),
+    const ownerUpdates = [
       User.updateOne(
         { _id: video.uploadedBy },
         { $addToSet: { videos: video._id } },
       ),
-    ]);
+    ];
+    if (video.channel) {
+      ownerUpdates.push(
+        Channel.updateOne(
+          { _id: video.channel },
+          { $addToSet: { videos: video._id } },
+        ),
+      );
+    }
+    await Promise.all(ownerUpdates);
 
     if (
       !video.replacementUploadId &&

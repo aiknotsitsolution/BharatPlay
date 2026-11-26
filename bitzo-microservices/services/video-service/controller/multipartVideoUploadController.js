@@ -134,6 +134,19 @@ async function initiateMultipartUpload(req, res) {
     if (!["short", "long"].includes(videoType)) {
       return sendError(res, "Video type must be short or long.", 400);
     }
+    if (videoType === "short" && declaredDuration > 60) {
+      return sendError(res, "Short videos must be 60 seconds or shorter.", 400);
+    }
+    if (
+      videoType === "long" &&
+      (declaredDuration < 60 || declaredDuration > 300)
+    ) {
+      return sendError(
+        res,
+        "Long videos must be between 60 and 300 seconds.",
+        400,
+      );
+    }
 
     let replacementTarget = null;
     if (replaceVideoId) {
@@ -385,7 +398,12 @@ async function resumeMultipartUpload(req, res) {
           parts: [],
         });
       }
-      return sendError(res, "Upload session not found.", 404);
+      return res.status(200).json({
+        success: true,
+        found: false,
+        processingStatus: "missing",
+        parts: [],
+      });
     }
 
     const [parts, thumbnailUploadUrl] = await Promise.all([

@@ -9,14 +9,26 @@ const getUploadSessionKey = (channelId, file, replaceVideoId) =>
 const getLegacyUploadSessionKey = (file) =>
   `video-upload:${file.name}:${file.size}:${file.lastModified}`;
 
-const getContentType = (file) =>
-  file.type ||
-  ({
-    ".mp4": "video/mp4",
-    ".mov": "video/quicktime",
-    ".m4v": "video/x-m4v",
-    ".webm": "video/webm",
-  }[file.name.slice(file.name.lastIndexOf(".")).toLowerCase()] || "");
+const VIDEO_CONTENT_TYPES = new Set([
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/x-m4v",
+]);
+const VIDEO_CONTENT_TYPES_BY_EXTENSION = {
+  ".mp4": "video/mp4",
+  ".mov": "video/quicktime",
+  ".m4v": "video/x-m4v",
+  ".webm": "video/webm",
+};
+
+const getContentType = (file) => {
+  const contentType = file.type?.toLowerCase();
+  if (VIDEO_CONTENT_TYPES.has(contentType)) return contentType;
+
+  const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+  return VIDEO_CONTENT_TYPES_BY_EXTENSION[extension] || "";
+};
 
 async function putPartWithRetry({
   api,
@@ -27,26 +39,24 @@ async function putPartWithRetry({
   token,
   onProgress,
 }) {
+  const { data } = await axios.post(
+    `${api}/uservideo/upload/${channelId}/multipart/${videoId}/part`,
+    { partNumber },
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!data?.url) {
+    throw new Error("The server did not return a video part upload URL.");
+  }
+
   let lastError;
   for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
-      const { data } = await axios.post(
-        `${api}/uservideo/upload/${channelId}/multipart/${videoId}/part`,
-        { partNumber },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      const response = await b2UploadClient.put(data.url, part, {
+      await b2UploadClient.put(data.url, part, {
         headers: { "Content-Type": "application/octet-stream" },
         onUploadProgress: (event) => onProgress(event.loaded),
       });
-      const etag = response.headers.etag || response.headers.ETag;
-      if (!etag) {
-        throw new Error(
-          "B2 did not expose the ETag response header. Enable ETag in the bucket CORS settings.",
-        );
-      }
       onProgress(part.size);
-      return etag;
+      return;
     } catch (error) {
       lastError = error;
       onProgress(0);
@@ -68,6 +78,11 @@ export async function uploadVideoMultipart({
   replaceVideoId,
   onProgress = () => {},
 }) {
+  const contentType = getContentType(file);
+  if (!contentType) {
+    throw new Error("Choose a supported MP4, MOV, M4V, or WebM video.");
+  }
+
   const headers = { Authorization: `Bearer ${token}` };
   const sessionKey = getUploadSessionKey(channelId, file, replaceVideoId);
   const legacySessionKey = getLegacyUploadSessionKey(file);
@@ -95,7 +110,9 @@ export async function uploadVideoMultipart({
           `${api}/uservideo/upload/${channelId}/multipart/${parsedSession.videoId}`,
           { headers },
         );
-        if (data.processingStatus === "uploading") {
+        if (data.found === false || data.processingStatus === "missing") {
+          localStorage.removeItem(savedSessionKey);
+        } else if (data.processingStatus === "uploading") {
           session = data;
           completedParts = data.parts || [];
         } else if (
@@ -123,7 +140,7 @@ export async function uploadVideoMultipart({
         ...metadata,
         ...(replaceVideoId ? { replaceVideoId } : {}),
         fileName: file.name,
-        contentType: getContentType(file),
+        contentType,
         fileSize: file.size,
         thumbnailName: thumbnail?.name,
         thumbnailContentType: thumbnail?.type,
@@ -157,19 +174,24 @@ export async function uploadVideoMultipart({
     throw new Error("The server returned an invalid multipart upload size.");
   }
   const partsCount = Math.ceil(file.size / partSize);
-  const uploadedParts = new Map(
-    completedParts.map((part) => [part.partNumber, part]),
-  );
+  const uploadedParts = new Set(completedParts.map((part) => part.partNumber));
   const uploadedBytes = new Map(
     completedParts.map((part) => [part.partNumber, part.size]),
   );
   const updateUploadProgress = (partNumber, bytes) => {
-    uploadedBytes.set(partNumber, bytes);
+    const partLength = Math.min(
+      partSize,
+      file.size - (partNumber - 1) * partSize,
+    );
+    uploadedBytes.set(
+      partNumber,
+      Math.max(0, Math.min(partLength, Number(bytes) || 0)),
+    );
     const completeBytes = [...uploadedBytes.values()].reduce(
       (sum, current) => sum + current,
       0,
     );
-    onProgress(Math.min(99, Math.round((completeBytes / file.size) * 99)));
+    onProgress(Math.min(99, Math.floor((completeBytes / file.size) * 100)));
   };
 
   let nextPartNumber = 1;
@@ -179,7 +201,7 @@ export async function uploadVideoMultipart({
       if (uploadedParts.has(partNumber)) continue;
       const start = (partNumber - 1) * partSize;
       const part = file.slice(start, Math.min(start + partSize, file.size));
-      const etag = await putPartWithRetry({
+      await putPartWithRetry({
         api,
         channelId,
         videoId: session.videoId,
@@ -188,11 +210,7 @@ export async function uploadVideoMultipart({
         token,
         onProgress: (bytes) => updateUploadProgress(partNumber, bytes),
       });
-      uploadedParts.set(partNumber, {
-        partNumber,
-        etag,
-        size: part.size,
-      });
+      uploadedParts.add(partNumber);
     }
   };
 

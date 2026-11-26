@@ -164,6 +164,121 @@ describe("secure B2 multipart video uploads", () => {
     expect(Video.create).not.toHaveBeenCalled();
   });
 
+  test("rejects Shorts longer than 60 seconds", async () => {
+    const req = {
+      params: { channelId },
+      user: { id: userId },
+      body: {
+        name: "Too long for a Short",
+        category: categoryId,
+        videoType: "short",
+        duration: 61,
+        fileName: "clip.mp4",
+        contentType: "video/mp4",
+        fileSize: 1024,
+      },
+    };
+    const res = createResponse();
+
+    await initiateMultipartUpload(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockSourceClient.send).not.toHaveBeenCalled();
+  });
+
+  test("allows Shorts at the 60-second limit", async () => {
+    const req = {
+      params: { channelId },
+      user: { id: userId },
+      body: {
+        name: "One-minute Short",
+        category: categoryId,
+        videoType: "short",
+        duration: 60,
+        fileName: "clip.mp4",
+        contentType: "video/mp4",
+        fileSize: 1024,
+      },
+    };
+    const res = createResponse();
+
+    await initiateMultipartUpload(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(Video.create).toHaveBeenCalledWith(
+      expect.objectContaining({ duration: 60, videoType: ["short"] }),
+    );
+  });
+
+  test("allows Long videos at the five-minute limit", async () => {
+    const req = {
+      params: { channelId },
+      user: { id: userId },
+      body: {
+        name: "Five-minute Long video",
+        category: categoryId,
+        videoType: "long",
+        duration: 300,
+        fileName: "clip.mp4",
+        contentType: "video/mp4",
+        fileSize: 1024,
+      },
+    };
+    const res = createResponse();
+
+    await initiateMultipartUpload(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(mockSourceClient.send).toHaveBeenCalled();
+    expect(Video.create).toHaveBeenCalledWith(
+      expect.objectContaining({ duration: 300, videoType: ["long"] }),
+    );
+  });
+
+  test("rejects Long videos longer than five minutes", async () => {
+    const req = {
+      params: { channelId },
+      user: { id: userId },
+      body: {
+        name: "Too long",
+        category: categoryId,
+        videoType: "long",
+        duration: 301,
+        fileName: "clip.mp4",
+        contentType: "video/mp4",
+        fileSize: 1024,
+      },
+    };
+    const res = createResponse();
+
+    await initiateMultipartUpload(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockSourceClient.send).not.toHaveBeenCalled();
+  });
+
+  test("rejects Long videos shorter than 60 seconds", async () => {
+    const req = {
+      params: { channelId },
+      user: { id: userId },
+      body: {
+        name: "Too short for a Long video",
+        category: categoryId,
+        videoType: "long",
+        duration: 59,
+        fileName: "clip.mp4",
+        contentType: "video/mp4",
+        fileSize: 1024,
+      },
+    };
+    const res = createResponse();
+
+    await initiateMultipartUpload(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockSourceClient.send).not.toHaveBeenCalled();
+  });
+
   test("creates a replacement upload session only for the owner's existing video", async () => {
     Video.findOne.mockResolvedValue({
       _id: replacementTargetId,
@@ -373,5 +488,33 @@ describe("secure B2 multipart video uploads", () => {
         parts: [],
       }),
     );
+  });
+
+  test("reports a missing upload session as a normal resume state", async () => {
+    Video.findOne
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue(null),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue(null),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue(null),
+      });
+    const req = {
+      params: { channelId, videoId },
+      user: { id: userId },
+    };
+    const res = createResponse();
+
+    await resumeMultipartUpload(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      found: false,
+      processingStatus: "missing",
+      parts: [],
+    });
   });
 });

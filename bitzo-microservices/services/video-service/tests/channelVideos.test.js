@@ -106,6 +106,66 @@ describe("channel video pagination", () => {
     );
   });
 
+  test("includes processing videos in the owner's channel list only", async () => {
+    const channelId = "64b000000000000000000001";
+    const creatorId = "64b000000000000000000002";
+    const publishedQuery = {
+      select: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue([{ _id: "published-video" }]),
+    };
+    const pendingQuery = {
+      select: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue([
+        { _id: "pending-video", processingStatus: "processing" },
+      ]),
+    };
+    Channel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue({
+        _id: channelId,
+        creator: creatorId,
+      }),
+    });
+    Video.find
+      .mockReturnValueOnce(publishedQuery)
+      .mockReturnValueOnce(pendingQuery);
+    Video.countDocuments.mockResolvedValue(1);
+    const response = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+
+    await getvideosByChannel(
+      {
+        params: { id: channelId },
+        query: {},
+        user: { id: creatorId },
+      },
+      response,
+    );
+
+    expect(Video.find).toHaveBeenNthCalledWith(2, {
+      channel: channelId,
+      uploadedBy: creatorId,
+      processingStatus: {
+        $in: ["uploading", "queued", "processing", "failed"],
+      },
+    });
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        videos: [
+          { _id: "pending-video", processingStatus: "processing" },
+          { _id: "published-video" },
+        ],
+        total: 2,
+      }),
+    );
+  });
+
   test("returns only active channels owned by the public channel's creator", async () => {
     const channelId = "64b000000000000000000001";
     const creatorId = "64b000000000000000000002";
