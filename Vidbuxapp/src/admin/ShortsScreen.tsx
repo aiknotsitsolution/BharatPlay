@@ -534,6 +534,7 @@ export default function ShortsScreen() {
   const [detailsItem, setDetailsItem] = useState<ShortItem | null>(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [openShortMenuId, setOpenShortMenuId] = useState<string | null>(null);
 
   const [liked, setLiked] = useState<Record<string, boolean>>({});
 
@@ -581,6 +582,10 @@ export default function ShortsScreen() {
   const hasMoreRef = useRef(hasMore);
   shortsPageRef.current = shortsPage;
   hasMoreRef.current = hasMore;
+
+  useEffect(() => {
+    setOpenShortMenuId(null);
+  }, [currentIndex]);
 
   useEffect(() => {
     if (!selectedVideo) return;
@@ -1060,6 +1065,7 @@ export default function ShortsScreen() {
   ======================================================= */
 
   const handleShare = async (item: ShortItem) => {
+    setOpenShortMenuId(null);
     try {
       const shareUrl = `vidbuxapp://shorts/${item.id}`;
 
@@ -1070,6 +1076,38 @@ export default function ShortsScreen() {
       });
     } catch (error) {
       console.warn("Share error:", error);
+    }
+  };
+
+  const handleContentReport = async (item: ShortItem) => {
+    setOpenShortMenuId(null);
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const response = await fetch(`${API_ORIGIN}/api/support/content-report`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          videoId: String(item.id),
+          reason: "Other",
+          details: "Reported from the Shorts menu.",
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.message || "Could not submit report.");
+      }
+
+      showToast(
+        "success",
+        "Report submitted",
+        data.message || "Thank you for helping keep VidBux safe.",
+      );
+    } catch (error) {
+      console.error("Could not submit short report:", error);
+      showToast("error", "Could not submit report", "Please try again.");
     }
   };
 
@@ -1424,11 +1462,58 @@ export default function ShortsScreen() {
 
             <TouchableOpacity
               style={styles.topIcon}
-              onPress={() => handleCopyright(item)}
+              onPress={() =>
+                setOpenShortMenuId((current) =>
+                  current === item.id ? null : item.id,
+                )
+              }
+              accessibilityRole="button"
+              accessibilityLabel="More options for this short"
             >
               <Ionicons name="ellipsis-vertical" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
+
+          {openShortMenuId === item.id && (
+            <View style={styles.shortsMenuDropdown}>
+              <TouchableOpacity
+                style={styles.shortsMenuItem}
+                onPress={() => handleShare(item)}
+              >
+                <Ionicons
+                  name="share-social-outline"
+                  size={19}
+                  color="#f4f4f5"
+                />
+                <Text style={styles.shortsMenuText}>Share</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.shortsMenuItem}
+                onPress={() => handleContentReport(item)}
+              >
+                <Ionicons
+                  name="flag-outline"
+                  size={19}
+                  color="#f87171"
+                />
+                <Text style={styles.shortsMenuText}>Report</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.shortsMenuItem}
+                onPress={() => {
+                  setOpenShortMenuId(null);
+                  handleCopyright(item);
+                }}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={19}
+                  color="#f4f4f5"
+                />
+                <Text style={styles.shortsMenuText}>Copyright claim</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* BOTTOM LEFT */}
 
@@ -1537,17 +1622,6 @@ export default function ShortsScreen() {
               <Text style={styles.iconText}>{formatCount(item.comments)}</Text>
             </TouchableOpacity>
 
-            {/* SHARE */}
-
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => handleShare(item)}
-            >
-              <Ionicons name="share-social-outline" size={32} color="#fff" />
-
-              <Text style={styles.iconText}>Share</Text>
-            </TouchableOpacity>
-
             {/* MUTE */}
 
             <TouchableOpacity
@@ -1561,14 +1635,6 @@ export default function ShortsScreen() {
               />
             </TouchableOpacity>
 
-            {/* MORE */}
-
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => handleCopyright(item)}
-            >
-              <Ionicons name="ellipsis-horizontal" size={30} color="#fff" />
-            </TouchableOpacity>
           </View>
 
           {/* PROGRESS */}
@@ -1582,7 +1648,9 @@ export default function ShortsScreen() {
       currentUserId,
       currentUserLoaded,
       handleCopyright,
+      handleContentReport,
       handleShare,
+      openShortMenuId,
       handleSubscribe,
       isFocused,
       liked,
@@ -2014,6 +2082,32 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  shortsMenuDropdown: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 100 : 70,
+    right: 16,
+    minWidth: 180,
+    paddingVertical: 5,
+    backgroundColor: "rgba(24,24,27,0.98)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+    zIndex: 30,
+    elevation: 18,
+  },
+  shortsMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+  },
+  shortsMenuText: {
+    color: "#f4f4f5",
+    fontSize: 14,
+    fontWeight: "600",
   },
 
   /* BOTTOM */

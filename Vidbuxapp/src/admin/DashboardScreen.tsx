@@ -16,10 +16,17 @@ import {
   StatusBar,
   RefreshControl,
   FlatList,
+  Share,
 } from "react-native";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { VideoView, useVideoPlayer } from "expo-video";
-import { BadgeCheck, ChevronRight } from "lucide-react-native";
+import {
+  BadgeCheck,
+  ChevronRight,
+  Flag,
+  MoreVertical,
+  Share2,
+} from "lucide-react-native";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Navbar from "./Navbar";
@@ -353,10 +360,18 @@ const VideoFeedRow = React.memo(function VideoFeedRow({
   item,
   isActive,
   onPress,
+  onMenuPress,
+  onSharePress,
+  onReportPress,
+  menuOpen,
 }: {
   item: any;
   isActive: boolean;
   onPress: (item: any) => void;
+  onMenuPress: (item: any) => void;
+  onSharePress: (item: any) => void;
+  onReportPress: (item: any) => void;
+  menuOpen: boolean;
 }) {
   const progress = Math.min(100, Math.max(0, item.watchedPercent || 0));
   const durationText = formatDuration(item.duration);
@@ -372,12 +387,12 @@ const VideoFeedRow = React.memo(function VideoFeedRow({
   const isVerified = Boolean(channel?.isVerified || channel?.verified);
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.95}
-      onPress={() => onPress(item)}
-      style={styles.card}
-    >
-      <View style={styles.thumbWrapper}>
+    <View style={[styles.card, menuOpen && styles.cardMenuOpen]}>
+      <TouchableOpacity
+        activeOpacity={0.95}
+        onPress={() => onPress(item)}
+        style={styles.thumbWrapper}
+      >
         {isActive ? (
           <AutoplayPreview uri={item.videoUrl} style={styles.thumb} />
         ) : (
@@ -405,43 +420,84 @@ const VideoFeedRow = React.memo(function VideoFeedRow({
             <Text style={styles.mutedText}>🔇</Text>
           </View>
         )}
-      </View>
+      </TouchableOpacity>
 
       <View style={styles.infoRow}>
-        <View style={styles.avatar}>
-          {avatarUrl ? (
-            <Image
-              source={{ uri: toMediaUrl(avatarUrl, "") }}
-              style={styles.avatarImg}
-            />
-          ) : (
-            <Text style={styles.avatarText}>
-              {channelName.charAt(0).toUpperCase()}
-            </Text>
-          )}
-        </View>
-
-        <View style={styles.textCol}>
-          <Text style={styles.title} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <View style={styles.channelRow}>
-            <Text style={styles.channelName} numberOfLines={1}>
-              {channelName}
-            </Text>
-            {isVerified && (
-              <BadgeCheck size={14} color="#aaa" style={{ marginLeft: 4 }} />
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => onPress(item)}
+          style={styles.videoInfo}
+        >
+          <View style={styles.avatar}>
+            {avatarUrl ? (
+              <Image
+                source={{ uri: toMediaUrl(avatarUrl, "") }}
+                style={styles.avatarImg}
+              />
+            ) : (
+              <Text style={styles.avatarText}>
+                {channelName.charAt(0).toUpperCase()}
+              </Text>
             )}
           </View>
-          <Text style={styles.meta} numberOfLines={1}>
-            {formatViews(item.views)}
-            {item.uploadDate || item.createdAt
-              ? ` • ${formatUploadTime(item.uploadDate || item.createdAt)}`
-              : ""}
-          </Text>
+
+          <View style={styles.textCol}>
+            <Text style={styles.title} numberOfLines={2}>
+              {item.title}
+            </Text>
+            <View style={styles.channelRow}>
+              <Text style={styles.channelName} numberOfLines={1}>
+                {channelName}
+              </Text>
+              {isVerified && (
+                <BadgeCheck size={14} color="#aaa" style={{ marginLeft: 4 }} />
+              )}
+            </View>
+            <Text style={styles.meta} numberOfLines={1}>
+              {formatViews(item.views)}
+              {item.uploadDate || item.createdAt
+                ? ` • ${formatUploadTime(item.uploadDate || item.createdAt)}`
+                : ""}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <View
+          style={[
+            styles.videoMenuAnchor,
+            menuOpen && styles.videoMenuAnchorOpen,
+          ]}
+        >
+          <TouchableOpacity
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`More options for ${item.title || "video"}`}
+            onPress={() => onMenuPress(item)}
+            style={styles.videoMenuButton}
+          >
+            <MoreVertical size={20} color="#aaa" />
+          </TouchableOpacity>
+          {menuOpen && (
+            <View style={styles.videoMenuDropdown}>
+              <TouchableOpacity
+                style={styles.videoMenuItem}
+                onPress={() => onSharePress(item)}
+              >
+                <Share2 size={17} color="#e4e4e7" />
+                <Text style={styles.videoMenuText}>Share</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.videoMenuItem}
+                onPress={() => onReportPress(item)}
+              >
+                <Flag size={17} color="#f87171" />
+                <Text style={styles.videoMenuText}>Report</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 });
 
@@ -502,6 +558,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+  const [openVideoMenuId, setOpenVideoMenuId] = useState<string | null>(null);
   const loadRequestIdRef = useRef(0);
   const dashboardCacheKey = `dashboard:${selectedCategoryId || "all"}`;
   const cachedDashboard = useAppSelector(
@@ -720,6 +777,70 @@ export default function DashboardScreen() {
     [navigation]
   );
 
+  const shareVideo = useCallback(async (item: any) => {
+    setOpenVideoMenuId(null);
+    if (!item?.id) {
+      Toast.show({ type: "error", text1: "Unable to share this video" });
+      return;
+    }
+
+    try {
+      const title = item.title || "Watch this video";
+      const url = `https://vidbuxapp.com/video/${encodeURIComponent(String(item.id))}`;
+      await Share.share({ title, message: `${title}\n\n${url}` });
+    } catch (error) {
+      console.error("Could not share video:", error);
+      Toast.show({
+        type: "error",
+        text1: "Could not share video",
+        text2: "Please try again.",
+      });
+    }
+  }, []);
+
+  const submitVideoReport = useCallback(async (item: any) => {
+    setOpenVideoMenuId(null);
+    if (!item?.id) {
+      Toast.show({ type: "error", text1: "Unable to report this video" });
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const response = await fetch(`${BACKEND_URL}/api/support/content-report`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ videoId: String(item.id), reason: "Other" }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.message || "Could not submit report.");
+      }
+
+      Toast.show({
+        type: "success",
+        text1: "Report submitted",
+        text2: result.message || "Thank you for helping keep VidBux safe.",
+      });
+    } catch (error) {
+      console.error("Could not submit video report:", error);
+      Toast.show({
+        type: "error",
+        text1: "Could not submit report",
+        text2: "Please try again.",
+      });
+    }
+  }, []);
+
+  const toggleVideoMenu = useCallback((item: any) => {
+    const videoId = String(item?.id || "");
+    if (!videoId) return;
+    setOpenVideoMenuId((current) => (current === videoId ? null : videoId));
+  }, []);
+
   const handleSectionPress = useCallback(
     (type: string) => {
       navigation.navigate("ViewAll", { type });
@@ -880,10 +1001,23 @@ export default function DashboardScreen() {
           item={item}
           isActive={isFocused && activeVideoId === item.id && !!item.videoUrl}
           onPress={handleItemClick}
+          onMenuPress={toggleVideoMenu}
+          onSharePress={shareVideo}
+          onReportPress={submitVideoReport}
+          menuOpen={openVideoMenuId === String(item.id)}
         />
       );
     },
-    [activeVideoId, handleItemClick, handleSectionPress, isFocused]
+    [
+      activeVideoId,
+      handleItemClick,
+      handleSectionPress,
+      isFocused,
+      openVideoMenuId,
+      shareVideo,
+      submitVideoReport,
+      toggleVideoMenu,
+    ]
   );
 
   return (
@@ -990,6 +1124,10 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 18,
   },
+  cardMenuOpen: {
+    zIndex: 10,
+    elevation: 10,
+  },
   thumbWrapper: {
     width: "100%",
     aspectRatio: 16 / 9,
@@ -1044,6 +1182,51 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 12,
     gap: 12,
+  },
+  videoInfo: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 12,
+  },
+  videoMenuButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
+    marginTop: -4,
+  },
+  videoMenuAnchor: {
+    position: "relative",
+    zIndex: 1,
+  },
+  videoMenuAnchorOpen: {
+    zIndex: 20,
+  },
+  videoMenuDropdown: {
+    position: "absolute",
+    top: 34,
+    right: 0,
+    minWidth: 150,
+    paddingVertical: 5,
+    backgroundColor: "#202024",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#3f3f46",
+    zIndex: 30,
+    elevation: 16,
+  },
+  videoMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  videoMenuText: {
+    color: "#f4f4f5",
+    fontSize: 14,
+    fontWeight: "600",
   },
   avatar: {
     width: 40,
