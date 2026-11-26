@@ -147,6 +147,7 @@ export default function AppRoutes() {
           <Route path="profile" element={<Profile />} />
           <Route path="subscribechannel/:id" element={<SubscribedChannels />} />
 
+
           <Route path="history" element={<WatchHistoryTab />} />
           <Route path="liked-videos" element={<LikedVideosTab />} />
           <Route path="watch-later" element={<WatchLaterTab />} />
