@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
+  Alert,
   Image,
   ActivityIndicator,
   StyleSheet,
@@ -22,6 +23,8 @@ import {
   Play,
   Users,
   Search,
+  MoreVertical,
+  Trash2,
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -70,6 +73,10 @@ export default function ChannelScreen({ navigation }) {
   const [loading, setLoading] = useState(!cachedChannels?.length);
   const [activeTab, setActiveTab] = useState("Videos");
   const [videoType, setVideoType] = useState("short"); // short or long
+  const [searchQuery, setSearchQuery] = useState("");
+  const [openVideoMenuId, setOpenVideoMenuId] = useState(null);
+  const [loadingEditVideoId, setLoadingEditVideoId] = useState(null);
+  const [editingVideo, setEditingVideo] = useState(null);
   // Create Channel Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newChannel, setNewChannel] = useState({
@@ -90,11 +97,13 @@ export default function ChannelScreen({ navigation }) {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedUploadChannelId, setSelectedUploadChannelId] = useState("");
   const [videoUri, setVideoUri] = useState(null);
+  const [videoAsset, setVideoAsset] = useState(null);
   const [videoName, setVideoName] = useState("");
   const [videoDescription, setVideoDescription] = useState("");
   const [videoCategory, setVideoCategory] = useState("");
   const [videoHashtags, setVideoHashtags] = useState("");
   const [thumbnailUri, setThumbnailUri] = useState(null);
+  const [thumbnailAsset, setThumbnailAsset] = useState(null);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -115,6 +124,33 @@ export default function ChannelScreen({ navigation }) {
   const shortVideos = videos.filter((video) =>
     getVideoType(video).includes("short"),
   );
+  const filterVideos = (items) => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return items;
+
+    return items.filter((video) => {
+      const hashtags = Array.isArray(video.hashtags)
+        ? video.hashtags
+        : [video.hashtags];
+      const category =
+        typeof video.category === "object"
+          ? video.category?.name || video.category?.slug
+          : video.category;
+      const searchableText = [
+        video.title,
+        video.name,
+        video.description,
+        category,
+        ...hashtags,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return searchableText.includes(query);
+    });
+  };
+  const filteredLongVideos = filterVideos(longVideos);
+  const filteredShortVideos = filterVideos(shortVideos);
 
   const getToken = async () => await AsyncStorage.getItem("token");
 
@@ -280,20 +316,38 @@ export default function ChannelScreen({ navigation }) {
         }));
       } else if (type === "thumbnail") {
         setThumbnailUri(asset.uri);
-        // thumbnail ke liye bhi asset rakh sakte ho agar chahiye
+        setThumbnailAsset(asset);
       }
     }
   };
 
   const pickVideo = async () => {
     const result = await DocumentPicker.getDocumentAsync({
-      type: "video/*",
+      type: "video/mp4",
       copyToCacheDirectory: true,
     });
 
     if (!result.canceled && result.assets?.[0]) {
       setVideoUri(result.assets[0].uri);
+      setVideoAsset(result.assets[0]);
     }
+  };
+
+  const openUploadModal = (channelId) => {
+    setEditingVideo(null);
+    setSelectedUploadChannelId(channelId || "");
+    setVideoUri(null);
+    setVideoAsset(null);
+    setVideoName("");
+    setVideoDescription("");
+    setVideoCategory("");
+    setVideoHashtags("");
+    setVideoType("short");
+    setThumbnailUri(null);
+    setThumbnailAsset(null);
+    setAgreeTerms(false);
+    setUploadError("");
+    setShowUploadModal(true);
   };
 
   // ================= CREATE CHANNEL =================
@@ -424,8 +478,7 @@ export default function ChannelScreen({ navigation }) {
       });
       setShowCreateModal(false);
 
-      setSelectedUploadChannelId(result.channel._id);
-      setShowUploadModal(true);
+      openUploadModal(result.channel._id);
 
       showToast("success", "Channel created successfully!");
     } catch (error) {
@@ -441,7 +494,209 @@ export default function ChannelScreen({ navigation }) {
   };
 
   // ================= UPLOAD VIDEO =================
+  const handleSaveVideoEdit = async () => {
+    if (!editingVideo) return;
+    if (!selectedUploadChannelId) {
+      setUploadError("Please select a channel");
+      return;
+    }
+    if (!videoName.trim()) {
+      setUploadError("Please enter a video title");
+      return;
+    }
+    if (!videoCategory) {
+      setUploadError("Please select a category");
+      return;
+    }
+
+    const selectedVideoCategory = categories.find(
+      (category) =>
+        String(category._id) === String(videoCategory) ||
+        category.slug === videoCategory,
+    );
+    const isCreativeCornerVideo =
+      selectedVideoCategory?.isCreativeCorner ||
+      selectedVideoCategory?.slug === "creative-corner" ||
+      selectedVideoCategory?.name?.toLowerCase() === "creative corner";
+    if (isCreativeCornerVideo && !videoHashtags.trim()) {
+      setUploadError("Add at least one hashtag for Creative Corner videos");
+      return;
+    }
+
+    try {
+      const token = await getToken();
+      if (!token) {
+        await handleSessionExpired();
+        return;
+      }
+
+      setUploading(true);
+      setUploadError("");
+      const videoId = editingVideo._id || editingVideo.id;
+      const thumbnailUpdates = {};
+
+      if (thumbnailAsset) {
+        const contentType = thumbnailAsset.mimeType || "image/jpeg";
+        const localImageResponse = await fetch(thumbnailAsset.uri);
+        const imageBlob = await localImageResponse.blob();
+        const fileSize = Number(thumbnailAsset.fileSize) || imageBlob.size;
+        if (!fileSize || fileSize > 10 * 1024 * 1024) {
+          throw new Error("Thumbnail must be smaller than 10 MB.");
+        }
+
+        const presignResponse = await fetch(
+          `${API_BASE}/adminvideo/thumbnail/${videoId}/presign`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ contentType, fileSize }),
+          },
+        );
+        const presignData = await presignResponse.json().catch(() => ({}));
+        if (!presignResponse.ok || !presignData.uploadUrl) {
+          throw new Error(
+            presignData.message || "Could not prepare the thumbnail upload.",
+          );
+        }
+
+        const imageUploadResponse = await fetch(presignData.uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": contentType },
+          body: imageBlob,
+        });
+        if (!imageUploadResponse.ok) {
+          throw new Error("Could not upload the new thumbnail.");
+        }
+        Object.assign(thumbnailUpdates, {
+          thumbnailKey: presignData.key,
+          thumbnailContentType: presignData.contentType || contentType,
+          thumbnailSize: presignData.fileSize || fileSize,
+        });
+      }
+
+      const metadata = {
+        title: videoName.trim(),
+        description: videoDescription.trim(),
+        category: videoCategory,
+        videoType,
+        hashtags: videoHashtags,
+        isCreativeCorner: isCreativeCornerVideo,
+        channelId: selectedUploadChannelId,
+        ...thumbnailUpdates,
+      };
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${token}`,
+      };
+      let requestBody;
+      if (videoAsset) {
+        const formData = new FormData();
+        Object.entries(metadata).forEach(([key, value]) => {
+          formData.append(key, String(value));
+        });
+        formData.append(
+          "video",
+          {
+            uri: videoAsset.uri,
+            type: videoAsset.mimeType || "video/mp4",
+            name: videoAsset.name || `video_${Date.now()}.mp4`,
+          } as any,
+        );
+        requestBody = formData;
+      } else {
+        headers["Content-Type"] = "application/json";
+        requestBody = JSON.stringify(metadata);
+      }
+
+      const response = await fetch(
+        `${API_BASE}/adminvideo/update/${videoId}`,
+        {
+          method: "PUT",
+          headers,
+          body: requestBody,
+        },
+      );
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        await handleSessionExpired();
+        return;
+      }
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Could not update this video.");
+      }
+
+      const updatedVideo = {
+        ...editingVideo,
+        ...data.video,
+        title: videoName.trim(),
+        name: videoName.trim(),
+        description: videoDescription.trim(),
+        category:
+          categories.find(
+            (category) =>
+              String(category._id) === String(videoCategory) ||
+              category.slug === videoCategory,
+          ) || data.video?.category,
+        videoType: [videoType],
+        hashtags: videoHashtags
+          .split(/[\s,]+/)
+          .map((hashtag) => hashtag.replace(/^#+/, "").trim())
+          .filter(Boolean),
+        isCreativeCorner: isCreativeCornerVideo,
+        channel: selectedUploadChannelId,
+      };
+      const originalChannelId = String(selectedChannelId || "");
+      const destinationChannelId = String(selectedUploadChannelId);
+      let updatedVideos;
+      if (originalChannelId !== destinationChannelId) {
+        updatedVideos = videos.filter(
+          (video) =>
+            String(video._id || video.id) !== String(videoId),
+        );
+        const destinationChannel = channels.find(
+          (item) => String(item._id) === destinationChannelId,
+        );
+        if (destinationChannel) {
+          setChannel(destinationChannel);
+          setVideos([]);
+          setSelectedChannelId(destinationChannelId);
+        }
+      } else {
+        updatedVideos = videos.map((video) =>
+          String(video._id || video.id) === String(videoId)
+            ? updatedVideo
+            : video,
+        );
+        setVideos(updatedVideos);
+      }
+      dispatch(
+        setCachedVideoData({
+          key: `creator:videos:${originalChannelId}`,
+          data: updatedVideos,
+        }),
+      );
+
+      setShowUploadModal(false);
+      setEditingVideo(null);
+      setVideoUri(null);
+      setVideoAsset(null);
+      setThumbnailAsset(null);
+      showToast("success", "Video updated successfully.");
+    } catch (error) {
+      setUploadError(error.message || "Could not update this video.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleUploadVideo = async () => {
+    if (editingVideo) {
+      await handleSaveVideoEdit();
+      return;
+    }
+
     const token = await getToken();
     if (!token) {
       setUploadError("Please login first");
@@ -557,12 +812,14 @@ export default function ChannelScreen({ navigation }) {
       // Reset form
       setShowUploadModal(false);
       setVideoUri(null);
+      setVideoAsset(null);
       setVideoName("");
       setVideoDescription("");
       setVideoCategory("");
       setVideoHashtags("");
       setVideoType("short");
       setThumbnailUri(null);
+      setThumbnailAsset(null);
       setAgreeTerms(false);
     } catch (error) {
       console.log("Upload error →", error);
@@ -642,33 +899,195 @@ export default function ChannelScreen({ navigation }) {
     });
   };
 
+  const openEditVideo = async (video) => {
+    const videoId = video?._id || video?.id;
+    if (!videoId) {
+      showToast("error", "Could not find this video.");
+      return;
+    }
+
+    setOpenVideoMenuId(null);
+    setLoadingEditVideoId(String(videoId));
+    try {
+      const token = await getToken();
+      if (!token) {
+        await handleSessionExpired();
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/uservideo/${videoId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        await handleSessionExpired();
+        return;
+      }
+      if (!response.ok || !data.video) {
+        throw new Error(data.message || "Could not load video details.");
+      }
+
+      const fullVideo = { ...video, ...data.video };
+      const category =
+        typeof fullVideo.category === "object"
+          ? fullVideo.category?._id || fullVideo.category?.slug
+          : fullVideo.category;
+      const hashtags = Array.isArray(fullVideo.hashtags)
+        ? fullVideo.hashtags
+            .map((hashtag) => `#${String(hashtag).replace(/^#+/, "")}`)
+            .join(", ")
+        : String(fullVideo.hashtags || "");
+
+      setEditingVideo(fullVideo);
+      setSelectedUploadChannelId(
+        String(fullVideo.channel?._id || fullVideo.channel || selectedChannelId || ""),
+      );
+      setVideoName(fullVideo.title || fullVideo.name || "");
+      setVideoDescription(fullVideo.description || "");
+      setVideoCategory(
+        fullVideo.isCreativeCorner ? "creative-corner" : String(category || ""),
+      );
+      setVideoType(getVideoType(fullVideo).includes("long") ? "long" : "short");
+      setVideoHashtags(hashtags);
+      setVideoUri(null);
+      setVideoAsset(null);
+      setThumbnailUri(getImageUrl(fullVideo.thumbnail || fullVideo.thumb));
+      setThumbnailAsset(null);
+      setUploadError("");
+      setShowUploadModal(true);
+    } catch (error) {
+      showToast("error", error.message || "Could not load video details.");
+    } finally {
+      setLoadingEditVideoId(null);
+    }
+  };
+
+  const deleteVideo = async (video) => {
+    const videoId = video?._id || video?.id;
+    try {
+      const token = await getToken();
+      if (!token) {
+        await handleSessionExpired();
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/adminvideo/my-video/${videoId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        await handleSessionExpired();
+        return;
+      }
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Could not delete this video.");
+      }
+
+      const updatedVideos = videos.filter(
+        (item) => String(item._id || item.id) !== String(videoId),
+      );
+      setVideos(updatedVideos);
+      dispatch(
+        setCachedVideoData({
+          key: `creator:videos:${selectedChannelId || ""}`,
+          data: updatedVideos,
+        }),
+      );
+      showToast("success", "Video deleted successfully.");
+    } catch (error) {
+      showToast("error", error.message || "Could not delete this video.");
+    }
+  };
+
+  const confirmDeleteVideo = (video) => {
+    setOpenVideoMenuId(null);
+    Alert.alert(
+      `Delete ${getVideoType(video).includes("short") ? "Short" : "video"}?`,
+      `"${video.title || video.name || "Untitled"}" will be permanently deleted.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void deleteVideo(video);
+          },
+        },
+      ],
+    );
+  };
+
   // ================= RENDER VIDEO ITEM =================
   const renderVideo = ({ item }) => {
     const thumb =
       getImageUrl(item.thumbnail) ||
       "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=800";
+    const videoId = String(item._id || item.id);
 
     return (
-      <TouchableOpacity
-        style={styles.videoCard}
-        activeOpacity={0.85}
-        onPress={() => handleVideoPress(item)}
-      >
-        <View style={styles.thumbnailWrapper}>
+      <View style={styles.videoCard}>
+        <TouchableOpacity
+          style={styles.thumbnailWrapper}
+          activeOpacity={0.85}
+          onPress={() => handleVideoPress(item)}
+        >
           <Image source={{ uri: thumb }} style={styles.thumbnail} />
           <View style={styles.playOverlay}>
             <View style={styles.playBtn}>
               <Play size={22} color="#fff" fill="#fff" />
             </View>
           </View>
+        </TouchableOpacity>
+        <View style={styles.videoActions}>
+          <TouchableOpacity
+            style={styles.videoMenuButton}
+            accessibilityRole="button"
+            accessibilityLabel="Video actions"
+            onPress={() =>
+              setOpenVideoMenuId((openId) =>
+                openId === videoId ? null : videoId,
+              )
+            }
+          >
+            <MoreVertical size={20} color="#fff" />
+          </TouchableOpacity>
+          {openVideoMenuId === videoId && (
+            <View style={styles.videoMenu}>
+              <TouchableOpacity
+                style={styles.videoMenuItem}
+                onPress={() => openEditVideo(item)}
+              >
+                <Edit size={16} color="#fff" />
+                <Text style={styles.videoMenuText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.videoMenuItem, styles.videoMenuDelete]}
+                onPress={() => confirmDeleteVideo(item)}
+              >
+                <Trash2 size={16} color="#f87171" />
+                <Text style={styles.videoMenuDeleteText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
-        <Text style={styles.videoTitle} numberOfLines={2}>
-          {item.title || item.name}
-        </Text>
-        <Text style={styles.videoMeta}>
-          {Number(item.views ?? item.viewCount ?? 0).toLocaleString()} views
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => handleVideoPress(item)}
+        >
+          <Text style={styles.videoTitle} numberOfLines={2}>
+            {item.title || item.name}
+          </Text>
+          <Text style={styles.videoMeta}>
+            {Number(item.views ?? item.viewCount ?? 0).toLocaleString()} views
+          </Text>
+        </TouchableOpacity>
+        {loadingEditVideoId === videoId && (
+          <View style={styles.editLoadingOverlay}>
+            <ActivityIndicator size="small" color="#fff" />
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -723,10 +1142,7 @@ export default function ChannelScreen({ navigation }) {
               <TouchableOpacity
                 style={[styles.actionBtn, styles.uploadActionBtn]}
                 onPress={() => {
-                  setSelectedUploadChannelId(
-                    selectedChannelId || channels[0]._id,
-                  );
-                  setShowUploadModal(true);
+                  openUploadModal(selectedChannelId || channels[0]._id);
                 }}
               >
                 <VideoIcon size={16} color="#fff" />
@@ -791,12 +1207,36 @@ export default function ChannelScreen({ navigation }) {
 
         {/* ========== TAB CONTENT ========== */}
         <View style={styles.tabContent}>
+          {(activeTab === "Videos" || activeTab === "Shorts") && (
+            <View style={styles.searchBox}>
+              <Search size={18} color="#a1a1aa" />
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search videos in this channel"
+                placeholderTextColor="#71717a"
+                style={styles.searchInput}
+                accessibilityLabel="Search videos in this channel"
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery("")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear video search"
+                  hitSlop={8}
+                >
+                  <X size={18} color="#a1a1aa" />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
           {activeTab === "Videos" && (
             <>
-              {longVideos.length > 0 ? (
+              {filteredLongVideos.length > 0 ? (
                 <FlatList
-                  data={longVideos}
-                  keyExtractor={(item) => item._id}
+                  data={filteredLongVideos}
+                  keyExtractor={(item) => String(item._id || item.id)}
                   renderItem={renderVideo}
                   numColumns={2}
                   scrollEnabled={false}
@@ -806,27 +1246,34 @@ export default function ChannelScreen({ navigation }) {
               ) : (
                 <View style={styles.emptyState}>
                   <VideoIcon size={48} color="#52525b" />
-                  <Text style={styles.emptyTitle}>No videos yet</Text>
-                  <Text style={styles.emptySubtitle}>
-                    Upload your first video to get started
+                  <Text style={styles.emptyTitle}>
+                    {searchQuery.trim()
+                      ? "No videos match your search"
+                      : "No videos yet"}
                   </Text>
-                  <TouchableOpacity
-                    style={styles.emptyBtn}
-                    onPress={() => {
-                      if (channels.length > 0) {
-                        setSelectedUploadChannelId(
-                          selectedChannelId || channels[0]._id,
-                        );
-                        setShowUploadModal(true);
-                      } else {
-                        setShowCreateModal(true);
-                      }
-                    }}
-                  >
-                    <Text style={styles.emptyBtnText}>
-                      {channels.length > 0 ? "Upload Video" : "Create Channel"}
-                    </Text>
-                  </TouchableOpacity>
+                  <Text style={styles.emptySubtitle}>
+                    {searchQuery.trim()
+                      ? `Try another search for "${searchQuery.trim()}".`
+                      : "Upload your first video to get started"}
+                  </Text>
+                  {!searchQuery.trim() && (
+                    <TouchableOpacity
+                      style={styles.emptyBtn}
+                      onPress={() => {
+                        if (channels.length > 0) {
+                          openUploadModal(
+                            selectedChannelId || channels[0]._id,
+                          );
+                        } else {
+                          setShowCreateModal(true);
+                        }
+                      }}
+                    >
+                      <Text style={styles.emptyBtnText}>
+                        {channels.length > 0 ? "Upload Video" : "Create Channel"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </>
@@ -834,10 +1281,10 @@ export default function ChannelScreen({ navigation }) {
 
           {activeTab === "Shorts" && (
             <>
-              {shortVideos.length > 0 ? (
+              {filteredShortVideos.length > 0 ? (
                 <FlatList
-                  data={shortVideos}
-                  keyExtractor={(item) => item._id}
+                  data={filteredShortVideos}
+                  keyExtractor={(item) => String(item._id || item.id)}
                   renderItem={renderVideo}
                   numColumns={2}
                   scrollEnabled={false}
@@ -846,7 +1293,11 @@ export default function ChannelScreen({ navigation }) {
                 />
               ) : (
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyTitle}>No Shorts yet</Text>
+                  <Text style={styles.emptyTitle}>
+                    {searchQuery.trim()
+                      ? "No Shorts match your search"
+                      : "No Shorts yet"}
+                  </Text>
                 </View>
               )}
             </>
@@ -1031,15 +1482,35 @@ export default function ChannelScreen({ navigation }) {
       </Modal>
 
       {/* ================= UPLOAD VIDEO MODAL ================= */}
-      <Modal visible={showUploadModal} animationType="slide" transparent>
+      <Modal
+        visible={showUploadModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => {
+          if (!uploading) {
+            setShowUploadModal(false);
+            setEditingVideo(null);
+          }
+        }}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.modalOverlay}
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Upload Video</Text>
-              <TouchableOpacity onPress={() => setShowUploadModal(false)}>
+              <Text style={styles.modalTitle}>
+                {editingVideo ? "Edit video" : "Upload Video"}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (!uploading) {
+                    setShowUploadModal(false);
+                    setEditingVideo(null);
+                  }
+                }}
+                disabled={uploading}
+              >
                 <X size={24} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -1051,7 +1522,9 @@ export default function ChannelScreen({ navigation }) {
                 </View>
               ) : null}
 
-              <Text style={styles.label}>Upload to channel *</Text>
+              <Text style={styles.label}>
+                {editingVideo ? "Channel *" : "Upload to channel *"}
+              </Text>
               <View style={styles.selectBox}>
                 {channels.map((ch) => (
                   <TouchableOpacity
@@ -1076,20 +1549,41 @@ export default function ChannelScreen({ navigation }) {
                 ))}
               </View>
 
-              <Text style={styles.label}>Video file *</Text>
+              <Text style={styles.label}>
+                {editingVideo
+                  ? "Replace video file (optional)"
+                  : "Video file *"}
+              </Text>
               <TouchableOpacity style={styles.pickBtn} onPress={pickVideo}>
                 <Text style={styles.pickBtnText}>
-                  {videoUri ? "Change Video" : "Select Video"}
+                  {videoAsset?.name
+                    ? `Selected: ${videoAsset.name}`
+                    : videoUri
+                      ? "Change Video"
+                      : editingVideo
+                        ? "Keep current video"
+                        : "Select Video"}
                 </Text>
               </TouchableOpacity>
+              {editingVideo && !videoAsset && (
+                <Text style={styles.helperText}>
+                  Leave this empty to keep the current video.
+                </Text>
+              )}
 
-              <Text style={styles.label}>Thumbnail (optional)</Text>
+              <Text style={styles.label}>
+                {editingVideo ? "Thumbnail" : "Thumbnail (optional)"}
+              </Text>
               <TouchableOpacity
                 style={styles.pickBtn}
                 onPress={() => pickImage("thumbnail")}
               >
                 <Text style={styles.pickBtnText}>
-                  {thumbnailUri ? "Change Thumbnail" : "Pick Thumbnail"}
+                  {thumbnailAsset
+                    ? "Change Thumbnail"
+                    : thumbnailUri
+                      ? "Keep or change thumbnail"
+                      : "Pick Thumbnail"}
                 </Text>
               </TouchableOpacity>
               {thumbnailUri && (
@@ -1146,6 +1640,7 @@ export default function ChannelScreen({ navigation }) {
                 placeholderTextColor="#71717a"
                 value={videoName}
                 onChangeText={setVideoName}
+                maxLength={150}
               />
 
               <Text style={styles.label}>Video Category *</Text>
@@ -1202,30 +1697,35 @@ export default function ChannelScreen({ navigation }) {
                 onChangeText={setVideoDescription}
               />
 
-              <TouchableOpacity
-                style={styles.checkboxRow}
-                onPress={() => setAgreeTerms(!agreeTerms)}
-              >
-                <View
-                  style={[
-                    styles.checkbox,
-                    agreeTerms && styles.checkboxChecked,
-                  ]}
+              {!editingVideo && (
+                <TouchableOpacity
+                  style={styles.checkboxRow}
+                  onPress={() => setAgreeTerms(!agreeTerms)}
                 >
-                  {agreeTerms && (
-                    <Text style={{ color: "#fff", fontSize: 12 }}>✓</Text>
-                  )}
-                </View>
-                <Text style={styles.checkboxLabel}>
-                  I agree to the Terms of Service and confirm I own/have rights
-                  to this content.
-                </Text>
-              </TouchableOpacity>
+                  <View
+                    style={[
+                      styles.checkbox,
+                      agreeTerms && styles.checkboxChecked,
+                    ]}
+                  >
+                    {agreeTerms && (
+                      <Text style={{ color: "#fff", fontSize: 12 }}>✓</Text>
+                    )}
+                  </View>
+                  <Text style={styles.checkboxLabel}>
+                    I agree to the Terms of Service and confirm I own/have
+                    rights to this content.
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={[styles.modalBtn, styles.cancelBtn]}
-                  onPress={() => setShowUploadModal(false)}
+                  onPress={() => {
+                    setShowUploadModal(false);
+                    setEditingVideo(null);
+                  }}
                   disabled={uploading}
                 >
                   <Text style={styles.btnText}>Cancel</Text>
@@ -1238,7 +1738,9 @@ export default function ChannelScreen({ navigation }) {
                   {uploading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.btnText}>Upload</Text>
+                    <Text style={styles.btnText}>
+                      {editingVideo ? "Save changes" : "Upload"}
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -1412,11 +1914,30 @@ const styles = StyleSheet.create({
     padding: 12,
     minHeight: 300,
   },
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minHeight: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#3f3f46",
+    backgroundColor: "#18181b",
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  searchInput: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 14,
+    paddingVertical: 8,
+  },
 
   // Video grid
   videoCard: {
     flex: 1,
     maxWidth: (width - 34) / 2,
+    position: "relative",
   },
   thumbnailWrapper: {
     width: "100%",
@@ -1428,6 +1949,59 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: "100%",
     height: "100%",
+  },
+  videoActions: {
+    position: "absolute",
+    right: 6,
+    top: 6,
+    zIndex: 5,
+    alignItems: "flex-end",
+  },
+  videoMenuButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.78)",
+  },
+  videoMenu: {
+    minWidth: 120,
+    marginTop: 4,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#3f3f46",
+    backgroundColor: "#18181b",
+    elevation: 8,
+  },
+  videoMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  videoMenuText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  videoMenuDelete: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#3f3f46",
+  },
+  videoMenuDeleteText: {
+    color: "#f87171",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  editLoadingOverlay: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 4,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   playOverlay: {
     ...StyleSheet.absoluteFill,
@@ -1526,6 +2100,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 6,
     marginTop: 12,
+  },
+  helperText: {
+    color: "#a1a1aa",
+    fontSize: 12,
+    marginTop: 6,
   },
   input: {
     backgroundColor: "#0f0f0f",
