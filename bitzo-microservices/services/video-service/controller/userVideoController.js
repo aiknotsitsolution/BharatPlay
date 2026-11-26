@@ -761,7 +761,7 @@ const getChannelVideoPage = async (channelId, page, limit) =>
       const skip = (page - 1) * limit;
       const [videos, total] = await Promise.all([
         Video.find(filter)
-          .select("_id title thumbnail views createdAt videoType duration")
+          .select("_id title thumbnail videoUrl views createdAt videoType duration")
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit)

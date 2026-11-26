@@ -28,11 +28,15 @@ import {
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
-import * as DocumentPicker from "expo-document-picker";
+import { File } from "expo-file-system";
 import { API_ORIGIN } from "../../config/api";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setCachedVideoData } from "../store/videosSlice";
 import { showToast } from "../utils/notifications";
+import {
+  readVideoDuration,
+  uploadVideoMultipart,
+} from "../utils/multipartVideoUpload";
 import Navbar from "./Navbar";
 import { useRoute } from "@react-navigation/native";
 import AdminBottomTabs from "./AdminBottomTabs";
@@ -72,7 +76,7 @@ export default function ChannelScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(!cachedChannels?.length);
   const [activeTab, setActiveTab] = useState("Videos");
-  const [videoType, setVideoType] = useState("short"); // short or long
+  const [videoType, setVideoType] = useState<"short" | "long">("short");
   const [searchQuery, setSearchQuery] = useState("");
   const [openVideoMenuId, setOpenVideoMenuId] = useState(null);
   const [loadingEditVideoId, setLoadingEditVideoId] = useState(null);
@@ -107,6 +111,7 @@ export default function ChannelScreen({ navigation }) {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const channelVideosKey = `creator:videos:${selectedChannelId || ""}`;
   const cachedVideos = useAppSelector(
     (state) => state.appVideos.cachedVideoData[channelVideosKey],
@@ -115,7 +120,10 @@ export default function ChannelScreen({ navigation }) {
   const getVideoType = (video) => {
     const rawType = video?.videoType;
     const types = Array.isArray(rawType) ? rawType : [rawType];
-    return types.map((type) => String(type).toLowerCase());
+    return types.map((type) => {
+      const normalizedType = String(type).toLowerCase();
+      return normalizedType === "shorts" ? "short" : normalizedType;
+    });
   };
 
   const longVideos = videos.filter((video) =>
@@ -293,6 +301,22 @@ export default function ChannelScreen({ navigation }) {
   // ================= IMAGE / VIDEO PICKER =================
   // ================= IMAGE / VIDEO PICKER =================
   const pickImage = async (type) => {
+    if (type === "thumbnail") {
+      const result = await File.pickFileAsync({ mimeTypes: ["image/*"] });
+      if (!result.canceled) {
+        const file = result.result;
+        const asset = {
+          uri: file.uri,
+          name: file.name,
+          mimeType: file.type,
+          size: file.size,
+        };
+        setThumbnailUri(file.uri);
+        setThumbnailAsset(asset);
+      }
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
@@ -322,14 +346,19 @@ export default function ChannelScreen({ navigation }) {
   };
 
   const pickVideo = async () => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: "video/mp4",
-      copyToCacheDirectory: true,
+    const result = await File.pickFileAsync({
+      mimeTypes: ["video/mp4", "video/quicktime", "video/x-m4v", "video/webm"],
     });
-
-    if (!result.canceled && result.assets?.[0]) {
-      setVideoUri(result.assets[0].uri);
-      setVideoAsset(result.assets[0]);
+    if (!result.canceled) {
+      const file = result.result;
+      const asset = {
+        uri: file.uri,
+        name: file.name,
+        mimeType: file.type,
+        size: file.size,
+      };
+      setVideoUri(file.uri);
+      setVideoAsset(asset);
     }
   };
 
@@ -347,6 +376,7 @@ export default function ChannelScreen({ navigation }) {
     setThumbnailAsset(null);
     setAgreeTerms(false);
     setUploadError("");
+    setUploadProgress(0);
     setShowUploadModal(true);
   };
 
@@ -535,96 +565,105 @@ export default function ChannelScreen({ navigation }) {
       const videoId = editingVideo._id || editingVideo.id;
       const thumbnailUpdates = {};
 
-      if (thumbnailAsset) {
-        const contentType = thumbnailAsset.mimeType || "image/jpeg";
-        const localImageResponse = await fetch(thumbnailAsset.uri);
-        const imageBlob = await localImageResponse.blob();
-        const fileSize = Number(thumbnailAsset.fileSize) || imageBlob.size;
-        if (!fileSize || fileSize > 10 * 1024 * 1024) {
-          throw new Error("Thumbnail must be smaller than 10 MB.");
-        }
-
-        const presignResponse = await fetch(
-          `${API_BASE}/adminvideo/thumbnail/${videoId}/presign`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ contentType, fileSize }),
-          },
-        );
-        const presignData = await presignResponse.json().catch(() => ({}));
-        if (!presignResponse.ok || !presignData.uploadUrl) {
-          throw new Error(
-            presignData.message || "Could not prepare the thumbnail upload.",
-          );
-        }
-
-        const imageUploadResponse = await fetch(presignData.uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": contentType },
-          body: imageBlob,
-        });
-        if (!imageUploadResponse.ok) {
-          throw new Error("Could not upload the new thumbnail.");
-        }
-        Object.assign(thumbnailUpdates, {
-          thumbnailKey: presignData.key,
-          thumbnailContentType: presignData.contentType || contentType,
-          thumbnailSize: presignData.fileSize || fileSize,
-        });
-      }
-
       const metadata = {
-        title: videoName.trim(),
+        name: videoName.trim(),
         description: videoDescription.trim(),
         category: videoCategory,
         videoType,
         hashtags: videoHashtags,
         isCreativeCorner: isCreativeCornerVideo,
-        channelId: selectedUploadChannelId,
-        ...thumbnailUpdates,
       };
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${token}`,
-      };
-      let requestBody;
+      let data;
       if (videoAsset) {
-        const formData = new FormData();
-        Object.entries(metadata).forEach(([key, value]) => {
-          formData.append(key, String(value));
-        });
-        formData.append(
-          "video",
-          {
-            uri: videoAsset.uri,
-            type: videoAsset.mimeType || "video/mp4",
-            name: videoAsset.name || `video_${Date.now()}.mp4`,
-          } as any,
-        );
-        requestBody = formData;
-      } else {
-        headers["Content-Type"] = "application/json";
-        requestBody = JSON.stringify(metadata);
-      }
+        const duration = await readVideoDuration(videoAsset.uri);
+        if (videoType === "short" && duration > 60) {
+          throw new Error("Shorts must be 60 seconds or shorter.");
+        }
+        if (videoType === "long" && (duration < 60 || duration > 300)) {
+          throw new Error("Long videos must be between 1 and 5 minutes.");
+        }
 
-      const response = await fetch(
-        `${API_BASE}/adminvideo/update/${videoId}`,
-        {
-          method: "PUT",
-          headers,
-          body: requestBody,
-        },
-      );
-      const data = await response.json().catch(() => ({}));
-      if (response.status === 401) {
-        await handleSessionExpired();
-        return;
-      }
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "Could not update this video.");
+        data = await uploadVideoMultipart({
+          api: API_BASE,
+          channelId: selectedUploadChannelId,
+          token,
+          file: videoAsset,
+          metadata: { ...metadata, duration },
+          thumbnail: thumbnailAsset,
+          replaceVideoId: String(videoId),
+          onProgress: setUploadProgress,
+        });
+      } else {
+        if (thumbnailAsset) {
+          const contentType = thumbnailAsset.mimeType || "image/jpeg";
+          const localImageResponse = await fetch(thumbnailAsset.uri);
+          const imageBlob = await localImageResponse.blob();
+          const fileSize = imageBlob.size || Number(thumbnailAsset.fileSize);
+          if (!fileSize || fileSize > 10 * 1024 * 1024) {
+            throw new Error("Thumbnail must be smaller than 10 MB.");
+          }
+
+          const presignResponse = await fetch(
+            `${API_BASE}/adminvideo/thumbnail/${videoId}/presign`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ contentType, fileSize }),
+            },
+          );
+          const presignData = await presignResponse.json().catch(() => ({}));
+          if (!presignResponse.ok || !presignData.uploadUrl) {
+            throw new Error(
+              presignData.message || "Could not prepare the thumbnail upload.",
+            );
+          }
+
+          const imageUploadResponse = await fetch(presignData.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": contentType },
+            body: imageBlob,
+          });
+          if (!imageUploadResponse.ok) {
+            throw new Error("Could not upload the new thumbnail.");
+          }
+          Object.assign(thumbnailUpdates, {
+            thumbnailKey: presignData.key,
+            thumbnailContentType: presignData.contentType || contentType,
+            thumbnailSize: presignData.fileSize || fileSize,
+          });
+        }
+
+        const response = await fetch(
+          `${API_BASE}/adminvideo/update/${videoId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              title: metadata.name,
+              description: metadata.description,
+              category: metadata.category,
+              videoType: metadata.videoType,
+              hashtags: metadata.hashtags,
+              isCreativeCorner: metadata.isCreativeCorner,
+              channelId: selectedUploadChannelId,
+              ...thumbnailUpdates,
+            }),
+          },
+        );
+        data = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          await handleSessionExpired();
+          return;
+        }
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || "Could not update this video.");
+        }
       }
 
       const updatedVideo = {
@@ -646,6 +685,9 @@ export default function ChannelScreen({ navigation }) {
           .filter(Boolean),
         isCreativeCorner: isCreativeCornerVideo,
         channel: selectedUploadChannelId,
+        ...(videoAsset && data.processingStatus
+          ? { processingStatus: data.processingStatus }
+          : {}),
       };
       const originalChannelId = String(selectedChannelId || "");
       const destinationChannelId = String(selectedUploadChannelId);
@@ -683,7 +725,13 @@ export default function ChannelScreen({ navigation }) {
       setVideoUri(null);
       setVideoAsset(null);
       setThumbnailAsset(null);
-      showToast("success", "Video updated successfully.");
+      setUploadProgress(0);
+      showToast(
+        "success",
+        videoAsset
+          ? "Replacement uploaded. Reprocessing has started."
+          : "Video details updated successfully.",
+      );
     } catch (error) {
       setUploadError(error.message || "Could not update this video.");
     } finally {
@@ -706,7 +754,7 @@ export default function ChannelScreen({ navigation }) {
       setUploadError("Please select a channel");
       return;
     }
-    if (!videoUri) {
+    if (!videoUri || !videoAsset) {
       setUploadError("Please select a video file");
       return;
     }
@@ -739,65 +787,42 @@ export default function ChannelScreen({ navigation }) {
     try {
       setUploading(true);
       setUploadError("");
-
-      const formData = new FormData();
-      formData.append("name", videoName.trim());
-      formData.append("description", videoDescription || "");
-      formData.append("category", videoCategory);
-      formData.append("videoType", videoType); // ← Web jaisa important field
-      formData.append("isCreativeCorner", String(isCreativeCornerVideo));
-      formData.append("hashtags", videoHashtags);
-
-      // Video file
-      formData.append("video", {
-        uri: videoUri,
-        type: "video/mp4",
-        name: `video_${Date.now()}.mp4`,
-      } as any);
-
-      // Thumbnail (optional)
-      if (thumbnailUri) {
-        formData.append("thumbnail", {
-          uri: thumbnailUri,
-          type: "image/jpeg",
-          name: `thumbnail_${Date.now()}.jpg`,
-        } as any);
+      setUploadProgress(0);
+      const duration = await readVideoDuration(videoUri);
+      if (videoType === "short" && duration > 60) {
+        throw new Error("Shorts must be 60 seconds or shorter.");
+      }
+      if (videoType === "long" && (duration < 60 || duration > 300)) {
+        throw new Error("Long videos must be between 1 and 5 minutes.");
       }
 
-      // ========== XMLHttpRequest (same as create channel) ==========
-      const result: any = await new Promise<any>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open(
-          "POST",
-          `${API_BASE}/uservideo/upload/${selectedUploadChannelId}`,
-        );
-        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-
-        xhr.onload = () => {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            if (xhr.status >= 200 && xhr.status < 300) {
-              resolve(response);
-            } else {
-              reject(new Error(response.message || `Error ${xhr.status}`));
-            }
-          } catch (e) {
-            reject(new Error("Invalid server response"));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error("Network error"));
-        xhr.send(formData);
+      await uploadVideoMultipart({
+        api: API_BASE,
+        channelId: selectedUploadChannelId,
+        token,
+        file: videoAsset,
+        metadata: {
+          name: videoName.trim(),
+          description: videoDescription.trim(),
+          category: videoCategory,
+          videoType,
+          duration,
+          isCreativeCorner: isCreativeCornerVideo,
+          hashtags: videoHashtags,
+        },
+        thumbnail: thumbnailAsset,
+        onProgress: setUploadProgress,
       });
 
-      showToast("success", "Video uploaded successfully!");
-
-      // Refresh videos
-      const videosRes = await fetch(
-        `${API_BASE}/uservideo/channel/${selectedChannelId}/videos`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (videosRes.ok) {
+      showToast("success", "Video uploaded. Processing has started.");
+      try {
+        const videosRes = await fetch(
+          `${API_BASE}/uservideo/channel/${selectedChannelId}/videos`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!videosRes.ok) {
+          throw new Error("Could not refresh the channel video list.");
+        }
         const data = await videosRes.json();
         const updatedVideos = data.videos || [];
         setVideos(updatedVideos);
@@ -806,6 +831,12 @@ export default function ChannelScreen({ navigation }) {
             key: `creator:videos:${selectedChannelId}`,
             data: updatedVideos,
           }),
+        );
+      } catch (refreshError) {
+        console.warn("Upload finished, but channel refresh failed:", refreshError);
+        showToast(
+          "error",
+          "Upload started, but the channel video list could not be refreshed.",
         );
       }
 
@@ -821,6 +852,7 @@ export default function ChannelScreen({ navigation }) {
       setThumbnailUri(null);
       setThumbnailAsset(null);
       setAgreeTerms(false);
+      setUploadProgress(0);
     } catch (error) {
       console.log("Upload error →", error);
       setUploadError(error.message || "Upload failed");
@@ -954,6 +986,7 @@ export default function ChannelScreen({ navigation }) {
       setThumbnailUri(getImageUrl(fullVideo.thumbnail || fullVideo.thumb));
       setThumbnailAsset(null);
       setUploadError("");
+      setUploadProgress(0);
       setShowUploadModal(true);
     } catch (error) {
       showToast("error", error.message || "Could not load video details.");
@@ -1736,7 +1769,14 @@ export default function ChannelScreen({ navigation }) {
                   disabled={uploading}
                 >
                   {uploading ? (
-                    <ActivityIndicator color="#fff" />
+                    <View style={styles.uploadProgressContent}>
+                      <ActivityIndicator color="#fff" size="small" />
+                      <Text style={styles.btnText}>
+                        {uploadProgress > 0
+                          ? `Uploading ${uploadProgress}%`
+                          : "Preparing upload..."}
+                      </Text>
+                    </View>
                   ) : (
                     <Text style={styles.btnText}>
                       {editingVideo ? "Save changes" : "Upload"}
@@ -2201,6 +2241,11 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 24,
     marginBottom: 10,
+  },
+  uploadProgressContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   modalBtn: {
     paddingVertical: 12,
