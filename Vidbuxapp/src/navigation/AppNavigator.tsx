@@ -5,7 +5,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import LoginScreen from "../screens/LoginScreen";
-import RegisterScreen from "../screens/RegisterScreen";
 import AdminTabNavigator from "./AdminTabNavigator";
 import VideoDetailScreen from "../admin/VideoDetailScreen";
 import CopyrightClaimPage from "../admin/CopyrightClaimPage";
@@ -125,7 +124,15 @@ export default function AppNavigator() {
             />
           )}
         </Stack.Screen>
-        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="Register">
+          {(props) => (
+            <LoginScreen
+              {...props}
+              initialIsLogin={false}
+              onAuthenticated={() => setHasSession(true)}
+            />
+          )}
+        </Stack.Screen>
         <Stack.Screen name="AdminPanel" component={AdminTabNavigator} />
         <Stack.Screen name="VideoDetail" component={VideoDetailScreen} />
 

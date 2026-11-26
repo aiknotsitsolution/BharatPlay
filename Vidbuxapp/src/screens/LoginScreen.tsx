@@ -22,6 +22,7 @@ import {
   Mail,
   Lock,
   User,
+  Check,
   ArrowRight,
   ChevronLeft,
   CheckCircle2,
@@ -63,13 +64,19 @@ const GOOGLE_CONFIGURED = Boolean(
 const getDeviceCookieHeader = (clientHardwareUuid) =>
   `device_id=${encodeURIComponent(clientHardwareUuid)}`;
 
-export default function LoginScreen({ navigation, onAuthenticated }) {
-  const [isLogin, setIsLogin] = useState(true);
+export default function LoginScreen({
+  navigation,
+  onAuthenticated,
+  initialIsLogin = true,
+}) {
+  const [isLogin, setIsLogin] = useState(initialIsLogin);
   const [authMethod, setAuthMethod] = useState("email");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // OTP states
   const [otpRequired, setOtpRequired] = useState(false);
@@ -102,6 +109,30 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
     useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [resetResending, setResetResending] = useState(false);
+
+  const validateConsent = () => {
+    if (ageConfirmed && termsAccepted) return true;
+
+    const message = !ageConfirmed
+      ? "Confirm that you are at least 18 years old to continue."
+      : "Accept the Terms of Service and Privacy Policy to continue.";
+    setError(message);
+    Toast.show({ type: "error", text1: "Consent required", text2: message });
+    return false;
+  };
+
+  const openLegalInfo = () => navigation.navigate("LegalSidebar");
+
+  const toggleAgeConfirmed = () => {
+    setAgeConfirmed((current) => !current);
+    setError("");
+  };
+
+  const toggleTermsAccepted = () => {
+    setTermsAccepted((current) => !current);
+    setError("");
+  };
+
   // ========== Animations ==========
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -265,6 +296,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
   const handleGoogleSuccess = async (authentication, authResponse) => {
     try {
+      if (!validateConsent()) return;
       setGoogleLoading(true);
       const idToken = authentication?.idToken || authResponse?.params?.id_token;
 
@@ -282,6 +314,9 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
           },
           body: JSON.stringify({
             credential: idToken,
+            intent: isLogin ? "login" : "signup",
+            ageConfirmed,
+            termsAccepted,
             clientHardwareUuid,
             ...integrityProof,
           }),
@@ -375,6 +410,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
   };
 
   const handleEmailSubmit = async () => {
+    if (!registrationPhoneRequired && !validateConsent()) return;
     setLoading(true);
     setError("");
 
@@ -399,7 +435,12 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
             Cookie: deviceCookie,
             ...API_PLATFORM_HEADER,
           },
-          body: JSON.stringify({ phone: `+91${phone}`, clientHardwareUuid }),
+          body: JSON.stringify({
+            phone: `+91${phone}`,
+            clientHardwareUuid,
+            ageConfirmed,
+            termsAccepted,
+          }),
         });
         const data = await response.json();
         if (!response.ok) {
@@ -446,6 +487,8 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
           ...(isLogin ? {} : { name: formData.name.trim() }),
           email,
           password: formData.password,
+          ageConfirmed,
+          termsAccepted,
           ...(otpRequired ? { otp } : {}),
           clientHardwareUuid,
           ...integrityProof,
@@ -634,6 +677,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!validateConsent()) return;
     if (!GOOGLE_CONFIGURED) {
       Toast.show({
         type: "info",
@@ -659,6 +703,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
   // ========== Indian mobile OTP authentication ==========
   const handleSubmit = async () => {
+    if (!registrationPhoneRequired && !validateConsent()) return;
     setLoading(true);
     setError("");
 
@@ -695,12 +740,16 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                     emailOtp: migrationEmailOtp,
                     phoneOtp: migrationPhoneOtp,
                     clientHardwareUuid,
+                    ageConfirmed,
+                    termsAccepted,
                   }
                 : {
                     email,
                     password: formData.password,
                     phone: phoneDigits,
                     clientHardwareUuid,
+                    ageConfirmed,
+                    termsAccepted,
                   },
             ),
           },
@@ -750,6 +799,8 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
           name: formData.name.trim(),
           otp,
           clientHardwareUuid,
+          ageConfirmed,
+          termsAccepted,
         ...(!isLogin ? await getSignupIntegrityProof() : {}),
         }),
       });
@@ -791,6 +842,7 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
 
   const handleResendOtp = async () => {
     if (otpCountdown > 0 || resendingOtp) return;
+    if (!registrationPhoneRequired && !validateConsent()) return;
 
     setResendingOtp(true);
     setError("");
@@ -814,6 +866,8 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
               ...(isLogin ? {} : { name: formData.name.trim() }),
               email: formData.email.trim().toLowerCase(),
               password: formData.password,
+              ageConfirmed,
+              termsAccepted,
               clientHardwareUuid,
               ...integrityProof,
             }),
@@ -843,12 +897,16 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
             password: formData.password,
             phone: formData.phone.replace(/\D/g, ""),
             clientHardwareUuid,
+            ageConfirmed,
+            termsAccepted,
           }
         : {
             phone: formData.phone.replace(/\D/g, ""),
             intent: isLogin ? "login" : "signup",
             name: formData.name.trim(),
             clientHardwareUuid,
+            ageConfirmed,
+            termsAccepted,
             ...(!isLogin ? await getSignupIntegrityProof() : {}),
           };
       const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -1059,11 +1117,20 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                     <>
                       <TouchableOpacity
                         onPress={handleGoogleSignIn}
-                        disabled={googleLoading || loading}
+                        disabled={
+                          googleLoading ||
+                          loading ||
+                          !ageConfirmed ||
+                          !termsAccepted
+                        }
                         activeOpacity={0.85}
                         style={[
                           styles.googleButton,
-                          (googleLoading || loading) && styles.buttonDisabled,
+                          (googleLoading ||
+                            loading ||
+                            !ageConfirmed ||
+                            !termsAccepted) &&
+                            styles.buttonDisabled,
                         ]}
                       >
                         {googleLoading ? (
@@ -1259,6 +1326,61 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                         </View>
                       )}
 
+                      {resetStep === 0 && !registrationPhoneRequired && (
+                        <View style={styles.consentContainer}>
+                          <TouchableOpacity
+                            style={styles.consentRow}
+                            onPress={toggleAgeConfirmed}
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: ageConfirmed }}
+                            accessibilityLabel="I confirm that I am at least 18 years old"
+                          >
+                            <View
+                              style={[
+                                styles.consentCheckbox,
+                                ageConfirmed && styles.consentCheckboxChecked,
+                              ]}
+                            >
+                              {ageConfirmed && <Check size={14} color="#fff" />}
+                            </View>
+                            <Text style={styles.consentText}>
+                              I confirm that I am at least 18 years old.
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={styles.consentRow}
+                            onPress={toggleTermsAccepted}
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: termsAccepted }}
+                            accessibilityLabel="I agree to the Terms of Service and Privacy Policy"
+                          >
+                            <View
+                              style={[
+                                styles.consentCheckbox,
+                                termsAccepted && styles.consentCheckboxChecked,
+                              ]}
+                            >
+                              {termsAccepted && <Check size={14} color="#fff" />}
+                            </View>
+                            <Text style={styles.consentText}>
+                              I agree to the Terms of Service and Privacy Policy.
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={openLegalInfo}
+                            activeOpacity={0.75}
+                            style={styles.consentLinks}
+                          >
+                            <Text style={styles.consentLink}>
+                              Read Terms & Privacy Policy
+                            </Text>
+                            <ArrowRight size={14} color="#fca5a5" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
                       {authMethod === "email" &&
                         !migrationMode &&
                         !registrationPhoneRequired &&
@@ -1401,11 +1523,20 @@ export default function LoginScreen({ navigation, onAuthenticated }) {
                           }
                           onPressIn={onPressIn}
                           onPressOut={onPressOut}
-                          disabled={loading || googleLoading}
+                          disabled={
+                            loading ||
+                            googleLoading ||
+                            (!registrationPhoneRequired &&
+                              (!ageConfirmed || !termsAccepted))
+                          }
                           activeOpacity={0.9}
                           style={[
                             styles.button,
-                            (loading || googleLoading) && styles.buttonDisabled,
+                            (loading ||
+                              googleLoading ||
+                              (!registrationPhoneRequired &&
+                                (!ageConfirmed || !termsAccepted))) &&
+                              styles.buttonDisabled,
                           ]}
                         >
                           {loading ? (
@@ -1962,6 +2093,52 @@ const styles = StyleSheet.create({
   formContainer: {
     padding: 20,
     paddingTop: 16,
+  },
+  consentContainer: {
+    backgroundColor: "rgba(255,255,255,0.045)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    gap: 12,
+  },
+  consentRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  consentCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: "#9ca3af",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  consentCheckboxChecked: {
+    backgroundColor: "#c81e27",
+    borderColor: "#ef4444",
+  },
+  consentText: {
+    flex: 1,
+    color: "#e5e7eb",
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  consentLinks: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    marginLeft: 30,
+  },
+  consentLink: {
+    color: "#fca5a5",
+    fontSize: 12,
+    fontWeight: "600",
   },
   errorBox: {
     backgroundColor: "rgba(127, 29, 29, 0.35)",

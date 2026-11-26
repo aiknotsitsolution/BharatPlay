@@ -689,6 +689,42 @@ export default function AuthPageV2() {
                   </div>
                 )}
 
+             
+
+              {migrationMode && !otpRequired && (
+                <>
+                  <div className="relative group">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                    <input
+                      type="email"
+                      name="email"
+                      placeholder="Existing account email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="loginv2-input w-full pl-10 pr-4 py-2.5"
+                    />
+                  </div>
+                  <div className="relative group">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      placeholder="Existing account password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="loginv2-input w-full pl-10 pr-11 py-2.5"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </>
+              )}
+
               {!registrationPhoneRequired && (
                 <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs leading-relaxed text-gray-300">
                   <label className="flex items-start gap-2.5">
@@ -728,40 +764,6 @@ export default function AuthPageV2() {
                     </span>
                   </label>
                 </div>
-              )}
-
-              {migrationMode && !otpRequired && (
-                <>
-                  <div className="relative group">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                    <input
-                      type="email"
-                      name="email"
-                      placeholder="Existing account email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="loginv2-input w-full pl-10 pr-4 py-2.5"
-                    />
-                  </div>
-                  <div className="relative group">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="Existing account password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      className="loginv2-input w-full pl-10 pr-11 py-2.5"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500"
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </>
               )}
 
               {registrationPhoneRequired && !migrationMode && (
