@@ -1,16 +1,68 @@
-# React + Vite
+# BharatPlay Admin Panel
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The admin panel is a React single-page application built with Vite. Its route
+screens are lazy-loaded, while shared UI, authentication, and API services live
+in dedicated source folders.
 
-Currently, two official plugins are available:
+## Source layout
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```text
+src/
+  admin/
+    category-management/
+    pages/
+      auth/
+      copyright/
+      long-video/
+      read-only-dashboard/
+      shorts-video/
+      support/
+    users/
+  api/                   Shared Axios client and admin API functions
+  app/                   Application router and Redux store
+  components/            Shared layout and reusable UI
+  config/                Role and route configuration
+  context/               Shared React providers
+  finance-admin/
+    api/
+    auth/
+    components/
+    context/
+    pages/
+  hooks/                 Shared data and notification hooks
+  redux/slices/          Redux feature reducers
+  utils/                 Session, formatting, and table helpers
+  assets/                Imported static assets
+  main.jsx               Browser entry point
+public/                  Public files copied as-is by Vite
+```
 
-## React Compiler
+Use the `@/` alias for imports from `src` and keep route screens lazy-loaded.
+Place code with a single domain in that domain's folder; keep `components/`,
+`hooks/`, and `utils/` for code that is genuinely shared.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Local development
 
-## Expanding the ESLint configuration
+```sh
+npm ci
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Copy `.env.example` to `.env` and set `VITE_API_BASE_URL` to the backend API
+origin, including `/api`. Vite embeds `VITE_` values into the client bundle;
+they are public configuration and must not contain secrets.
+
+## Checks and production
+
+```sh
+npm run lint
+npm run build
+```
+
+The production Docker image builds the SPA and serves it with Nginx, including
+history fallback for client-side routes and caching for hashed assets:
+
+```sh
+docker build --build-arg VITE_API_BASE_URL=https://your-api-host/api -t bharatplay-admin-panel .
+docker run --rm -p 8080:8080 bharatplay-admin-panel
+```

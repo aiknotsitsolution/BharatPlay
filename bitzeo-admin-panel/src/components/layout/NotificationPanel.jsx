@@ -9,7 +9,7 @@ import {
   Trash2,
   Undo2,
 } from "lucide-react";
-import useNotifications, { kindStyle, timeAgo, fullDate } from "../../hooks/useNotifications";
+import { kindStyle, timeAgo, fullDate } from "../../hooks/useNotifications";
 
 /**
  * Bell dropdown panel — everything the full /notifications page does,

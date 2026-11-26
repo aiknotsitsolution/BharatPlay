@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import {
   getAdminUploads,
   fetchCopyrightCases,
@@ -30,13 +30,17 @@ const writeDismissed = (ids) => {
   try {
     // keep the list bounded — only the newest 200 removals are remembered
     localStorage.setItem(DISMISS_KEY, JSON.stringify(ids.slice(-200)));
-  } catch (_) {}
+  } catch {
+    // Dismissal persistence is best-effort when browser storage is unavailable.
+  }
 };
 
 const fire = (name) => {
   try {
     window.dispatchEvent(new Event(name));
-  } catch (_) {}
+  } catch {
+    // Events are only used to synchronize mounted notification views.
+  }
 };
 
 export function timeAgo(dateStr) {
@@ -118,7 +122,9 @@ export default function useNotifications({ limit = 20, pollMs = 0 } = {}) {
     const syncSeen = () => {
       try {
         setSeenAt(Number(localStorage.getItem(SEEN_KEY) || 0));
-      } catch (_) {}
+      } catch {
+        // Keep the in-memory read state available if storage is unavailable.
+      }
     };
     const syncDismissed = () => setDismissed(readDismissed());
     window.addEventListener(SEEN_EVENT, syncSeen);
@@ -198,7 +204,9 @@ export default function useNotifications({ limit = 20, pollMs = 0 } = {}) {
   }, [limit]);
 
   useEffect(() => {
-    load();
+    startTransition(() => {
+      void load();
+    });
   }, [load]);
 
   // background polling — how new arrivals get detected for the push toasts
@@ -220,7 +228,9 @@ export default function useNotifications({ limit = 20, pollMs = 0 } = {}) {
     const now = Date.now();
     try {
       localStorage.setItem(SEEN_KEY, String(now));
-    } catch (_) {}
+    } catch {
+      // The in-memory read state remains authoritative for this view.
+    }
     setSeenAt(now);
     fire(SEEN_EVENT);
   };

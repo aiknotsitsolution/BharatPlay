@@ -53,7 +53,9 @@ export default function Header({ sidebarOpen, toggleSidebar }) {
     setShowUserMenu(false);
     try {
       await API.post("/admin/logout", {}).catch(() => {});
-    } catch (_) {}
+    } catch {
+      // Logging out locally must proceed even if the request fails.
+    }
     clearAdminState();
     navigate("/login");
   };

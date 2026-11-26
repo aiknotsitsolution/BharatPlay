@@ -17,7 +17,7 @@ export const clearAdminState = () => {
   localStorage.removeItem("adminUser");
   try {
     window.dispatchEvent(new Event("auth-change"));
-  } catch (_) {
+  } catch {
     // ignore
   }
 };
@@ -42,7 +42,7 @@ export const refreshAdminToken = async () => {
         return data.token;
       }
       return null;
-    } catch (_) {
+    } catch {
       return null;
     } finally {
       refreshPromise = null;

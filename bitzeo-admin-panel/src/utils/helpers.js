@@ -94,7 +94,7 @@ export function setAdminPhoto(base64) {
       localStorage.removeItem("bp-admin-photo");
     }
     window.dispatchEvent(new Event("auth-change"));
-  } catch (_) {
+  } catch {
     // ignore
   }
 }
@@ -104,7 +104,7 @@ export const LOGIN_CELEBRATION_KEY = "bp-login-celebration";
 export function isLoginCelebrationEnabled() {
   try {
     return localStorage.getItem(LOGIN_CELEBRATION_KEY) === "1";
-  } catch (_) {
+  } catch {
     return false;
   }
 }
@@ -116,5 +116,7 @@ export function setLoginCelebrationEnabled(enabled) {
     } else {
       localStorage.removeItem(LOGIN_CELEBRATION_KEY);
     }
-  } catch (_) {}
+  } catch {
+    // The preference remains usable in memory for the current session.
+  }
 }
