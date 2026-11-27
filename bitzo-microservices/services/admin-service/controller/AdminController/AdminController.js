@@ -810,7 +810,7 @@ exports.getDeletedUsers = async (req, res) => {
 };
 
 // ================== HARD DELETE USER (permanent) ==================
-exports.hardDeleteUser = async (req, res) => {
+const permanentlyDeleteUser = async (req, res, allowActiveUser = false) => {
   try {
     const { id } = req.params;
     const adminId = req.admin && req.admin._id;
@@ -828,11 +828,22 @@ exports.hardDeleteUser = async (req, res) => {
       });
     }
 
-    const user = await AllUser.findOne({ _id: id, status: "deleted" });
+    const user = allowActiveUser
+      ? await AllUser.findById(id)
+      : await AllUser.findOne({ _id: id, status: "deleted" });
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found or not soft-deleted",
+        message: allowActiveUser
+          ? "User not found"
+          : "User not found or not soft-deleted",
+      });
+    }
+
+    if (user.role === "admin") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot permanently delete admin accounts",
       });
     }
 
@@ -972,6 +983,15 @@ exports.hardDeleteUser = async (req, res) => {
       await Channel.deleteMany({ _id: { $in: channelIds } });
     }
 
+    await Promise.all([
+      invalidateVideoCatalogCache(),
+      invalidateCache("video:restricted-content-ids"),
+      ...channelIds.flatMap((channelId) => [
+        invalidateCache(`channel-page:${channelId}`),
+        invalidateCache(`channel-videos:${channelId}`),
+      ]),
+    ]);
+
     // Revoke all refresh tokens
     await RefreshToken.deleteMany({ userId: user._id });
 
@@ -1006,6 +1026,10 @@ exports.hardDeleteUser = async (req, res) => {
     });
   }
 };
+
+exports.hardDeleteUser = (req, res) => permanentlyDeleteUser(req, res);
+exports.deleteUserAndContent = (req, res) =>
+  permanentlyDeleteUser(req, res, true);
 
 exports.deleteEmployee = async (req, res) => {
   try {

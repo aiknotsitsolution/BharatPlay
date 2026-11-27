@@ -46,6 +46,7 @@ const {
   toggleUserStatus,
   getDeletedUsers,
   hardDeleteUser,
+  deleteUserAndContent,
   getAdminProfile,
   updateAdminProfile,
   adminForgotPassword,
@@ -270,6 +271,13 @@ router.put(
 );
 
 // ====================== PROTECTED: USER DELETE ======================
+router.delete(
+  "/users/:id",
+  requireAdmin,
+  requirePermission("users:delete"),
+  adminDestructiveLimiter,
+  deleteUserAndContent,
+);
 router.delete(
   "/users/:id/permanent",
   requireAdmin,
