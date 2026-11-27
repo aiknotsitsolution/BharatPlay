@@ -83,11 +83,11 @@ module.exports = {
     icon: "./assets/vidbux.png",
     android: {
       ...(appExpo.android || {}),
-      package: "com.vidbux.app",
+      package: "com.vidbuxapp.myapp",
     },
     ios: {
       ...(appExpo.ios || {}),
-      bundleIdentifier: "com.vidbux.app",
+      bundleIdentifier: "com.vidbux.myapp",
     },
     plugins: [
       ...(appExpo.plugins || []),

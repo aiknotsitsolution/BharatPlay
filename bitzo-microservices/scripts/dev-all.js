@@ -3,6 +3,7 @@ const http = require("http");
 const net = require("net");
 const fs = require("fs");
 const path = require("path");
+const { createServiceRestarter } = require("./serviceRestarts");
 
 const root = path.resolve(__dirname, "..");
 const rootEnvironment = require("dotenv").parse(
@@ -88,38 +89,59 @@ async function waitForServices() {
   }
 }
 
-let children = [];
+const children = new Set();
 let shuttingDown = false;
 
-async function startServices() {
-  for (const [name, directory, port] of services) {
-    if (await isPortOpen(port)) {
-      console.log(`[${name}] already running on port ${port}`);
-      continue;
-    }
-
-    // Keep the all-services runner stable while Morgan logs every API hit.
-    // Restart the affected service manually when code changes need loading.
-    const child = spawn(process.execPath, [npmCli, "run", "start"], {
+function launchService(service) {
+  if (shuttingDown) return;
+  const [name, directory, port] = service;
+  const prefix = `[${name}]`;
+  let child;
+  try {
+    child = spawn(process.execPath, [npmCli, "run", "start"], {
       cwd: path.join(root, directory),
       env: { ...sharedEnvironment, ...process.env, PORT: String(port) },
       stdio: ["inherit", "pipe", "pipe"],
       windowsHide: true,
     });
+  } catch (error) {
+    console.error(`${prefix} failed to start: ${error.message}`);
+    serviceRestarter.restartAfterExit(service);
+    return;
+  }
 
-    const prefix = `[${name}]`;
-    child.stdout.on("data", (data) =>
-      process.stdout.write(`${prefix} ${data}`),
+  const startedAt = Date.now();
+  children.add(child);
+  child.stdout.on("data", (data) =>
+    process.stdout.write(`${prefix} ${data}`),
+  );
+  child.stderr.on("data", (data) =>
+    process.stderr.write(`${prefix} ${data}`),
+  );
+  child.on("error", (error) => {
+    console.error(`${prefix} failed to start: ${error.message}`);
+  });
+  child.on("close", (code, signal) => {
+    children.delete(child);
+    if (shuttingDown) return;
+    console.error(
+      `${prefix} exited ${code === null ? `after signal ${signal}` : `with code ${code}`}`,
     );
-    child.stderr.on("data", (data) =>
-      process.stderr.write(`${prefix} ${data}`),
-    );
-    child.on("exit", (code) => {
-      if (code && !shuttingDown) {
-        console.error(`${prefix} exited with code ${code}`);
-      }
-    });
-    children.push(child);
+    serviceRestarter.restartAfterExit(service, Date.now() - startedAt);
+  });
+}
+
+const serviceRestarter = createServiceRestarter(launchService);
+
+async function startServices() {
+  for (const service of services) {
+    const [name, , port] = service;
+    if (await isPortOpen(port)) {
+      console.log(`[${name}] already running on port ${port}`);
+      continue;
+    }
+
+    launchService(service);
   }
 
   waitForServices().catch((error) =>
@@ -130,6 +152,7 @@ async function startServices() {
 function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
+  serviceRestarter.stop();
   children.forEach((child) => {
     if (process.platform === "win32" && child.pid) {
       spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"]);
@@ -137,6 +160,7 @@ function shutdown() {
       child.kill();
     }
   });
+  children.clear();
   setTimeout(() => process.exit(0), 500);
 }
 

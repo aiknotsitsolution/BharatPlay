@@ -1,0 +1,16 @@
+-- Merging decision tree log ---
+manifest
+ADDED from C:\Users\adity\OneDrive\Desktop\Video\New folder\VidBux app\BharatPlay\Vidbuxapp\modules\expo-play-integrity\android\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest446667666794960523.xml:2:13-83
+INJECTED from C:\Users\adity\OneDrive\Desktop\Video\New folder\VidBux app\BharatPlay\Vidbuxapp\modules\expo-play-integrity\android\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest446667666794960523.xml:2:13-83
+	package
+		INJECTED from C:\Users\adity\OneDrive\Desktop\Video\New folder\VidBux app\BharatPlay\Vidbuxapp\modules\expo-play-integrity\android\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest446667666794960523.xml
+	xmlns:android
+		ADDED from C:\Users\adity\OneDrive\Desktop\Video\New folder\VidBux app\BharatPlay\Vidbuxapp\modules\expo-play-integrity\android\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest446667666794960523.xml:2:23-81
+uses-sdk
+INJECTED from C:\Users\adity\OneDrive\Desktop\Video\New folder\VidBux app\BharatPlay\Vidbuxapp\modules\expo-play-integrity\android\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest446667666794960523.xml reason: use-sdk injection requested
+INJECTED from C:\Users\adity\OneDrive\Desktop\Video\New folder\VidBux app\BharatPlay\Vidbuxapp\modules\expo-play-integrity\android\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest446667666794960523.xml
+INJECTED from C:\Users\adity\OneDrive\Desktop\Video\New folder\VidBux app\BharatPlay\Vidbuxapp\modules\expo-play-integrity\android\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest446667666794960523.xml
+	android:targetSdkVersion
+		INJECTED from C:\Users\adity\OneDrive\Desktop\Video\New folder\VidBux app\BharatPlay\Vidbuxapp\modules\expo-play-integrity\android\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest446667666794960523.xml
+	android:minSdkVersion
+		INJECTED from C:\Users\adity\OneDrive\Desktop\Video\New folder\VidBux app\BharatPlay\Vidbuxapp\modules\expo-play-integrity\android\build\intermediates\tmp\ProcessLibraryManifest\debug\tempAndroidManifest446667666794960523.xml

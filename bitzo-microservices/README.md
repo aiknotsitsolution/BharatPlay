@@ -100,6 +100,10 @@ npm install
 npm run dev
 ```
 
+The all-services runner automatically restarts a service that exits unexpectedly,
+using an increasing delay capped at 30 seconds. Press `Ctrl+C` to stop the stack
+without restarting its services.
+
 Or start any single service on its own for development:
 
 ```bash
