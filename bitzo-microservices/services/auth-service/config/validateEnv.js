@@ -1,4 +1,5 @@
 const JWT_SECRET_MIN_LENGTH = 32;
+const { getPlayStoreReviewConfig } = require("../services/playStoreReviewConfig");
 
 const REQUIRED_VARS = ["MONGO_URI","JWT_SECRET","IMAGEKIT_PUBLIC_KEY","IMAGEKIT_PRIVATE_KEY","IMAGEKIT_URL_ENDPOINT"];
 
@@ -17,6 +18,13 @@ const validateEnv = () => {
   REQUIRED_VARS.forEach((name) => {
     if (!process.env[name]) missing.push(name);
   });
+
+  try {
+    getPlayStoreReviewConfig();
+  } catch (error) {
+    console.error(`[validateEnv] ${error.message}`);
+    process.exit(1);
+  }
 
   if (missing.length > 0) {
     console.error(`[validateEnv] Missing required environment variables: ${missing.join(", ")}`);

@@ -13,6 +13,7 @@ import {
   Copy,
   MessageSquare,
   MoreHorizontal,
+  Pencil,
   RotateCcw,
   Send,
   Shield,
@@ -20,6 +21,7 @@ import {
   SkipForward,
   ThumbsDown,
   ThumbsUp,
+  Trash2,
   X,
 } from "lucide-react";
 import { formatTimeAgo } from "../../utils/timeAgo";
@@ -29,6 +31,8 @@ import {
   fetchRelatedVideos,
   fetchVideoPage,
   postVideoComment,
+  updateVideoComment,
+  deleteVideoComment,
   registerVideoView,
   toggleWatchLater,
   updateSubscription,
@@ -146,9 +150,21 @@ function getCurrentUser(profileUser) {
     local?.image ||
     "";
   return {
+    id:
+      profileUser?._id ||
+      profileUser?.id ||
+      local?._id ||
+      local?.id ||
+      local?.userId ||
+      null,
     name: profileUser?.name || localName,
     avatar: profileUser?.avatar || localAvatar,
   };
+}
+
+function isCommentOwner(comment, userId) {
+  const ownerId = comment.user?._id || comment.user?.id || comment.user;
+  return Boolean(userId && ownerId && String(ownerId) === String(userId));
 }
 
 function formatDuration(seconds) {
@@ -202,6 +218,11 @@ export default function YouTubeLikeVideoPage() {
     0;
   const saved = Boolean(videoDetails?.isWatchLater);
   const [commentText, setCommentText] = useState("");
+  const [openCommentMenuId, setOpenCommentMenuId] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentText, setEditingCommentText] = useState("");
+  const [commentActionLoading, setCommentActionLoading] = useState(false);
+  const [commentActionError, setCommentActionError] = useState("");
   const [theaterMode, setTheaterMode] = useState(false);
   const [autoplay, setAutoplay] = useState(() => {
     try {
@@ -215,6 +236,7 @@ export default function YouTubeLikeVideoPage() {
   const [upNextVideos, setUpNextVideos] = useState(UP_NEXT_VIDEOS);
 
   const playerRef = useRef(null);
+  const commentMenuRef = useRef(null);
   const viewTracked = useRef(false);
   const viewCountedRef = useRef(false);
   const playbackVideoIdRef = useRef(null);
@@ -241,6 +263,24 @@ export default function YouTubeLikeVideoPage() {
       dispatch(fetchProfileData());
     }
   }, [dispatch, profileUser]);
+
+  useEffect(() => {
+    if (!openCommentMenuId) return undefined;
+    const closeMenu = (event) => {
+      if (!commentMenuRef.current?.contains(event.target)) {
+        setOpenCommentMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", closeMenu);
+    return () => document.removeEventListener("mousedown", closeMenu);
+  }, [openCommentMenuId]);
+
+  useEffect(() => {
+    setOpenCommentMenuId(null);
+    setEditingCommentId(null);
+    setEditingCommentText("");
+    setCommentActionError("");
+  }, [id]);
 
   // Clear the autoplay countdown from every exit path (Replay, Cancel,
   // manual navigation, unmount). Idempotent; safe to call repeatedly.
@@ -766,6 +806,55 @@ export default function YouTubeLikeVideoPage() {
   };
 
     */
+  };
+
+  const handleSaveComment = async (comment) => {
+    if (promptLogin(navigate, location)) return;
+    const trimmedComment = editingCommentText.trim();
+    if (!trimmedComment) {
+      setCommentActionError("Comment text required");
+      return;
+    }
+
+    setCommentActionLoading(true);
+    setCommentActionError("");
+    try {
+      await dispatch(
+        updateVideoComment({
+          id,
+          commentId: comment._id,
+          commentText: trimmedComment,
+        }),
+      ).unwrap();
+      setEditingCommentId(null);
+      setEditingCommentText("");
+    } catch (error) {
+      setCommentActionError(
+        typeof error === "string" ? error : "Failed to update comment",
+      );
+    } finally {
+      setCommentActionLoading(false);
+    }
+  };
+
+  const handleDeleteComment = async (comment) => {
+    if (promptLogin(navigate, location)) return;
+    if (!window.confirm("Delete this comment?")) return;
+
+    setCommentActionLoading(true);
+    setCommentActionError("");
+    try {
+      await dispatch(
+        deleteVideoComment({ id, commentId: comment._id }),
+      ).unwrap();
+      setOpenCommentMenuId(null);
+    } catch (error) {
+      setCommentActionError(
+        typeof error === "string" ? error : "Failed to delete comment",
+      );
+    } finally {
+      setCommentActionLoading(false);
+    }
   };
 
   const handleSaveClick = async () => {
@@ -1424,38 +1513,152 @@ export default function YouTubeLikeVideoPage() {
               </div>
             </form>
 
+            {commentActionError && (
+              <p role="alert" className="mt-4 text-sm text-red-400">
+                {commentActionError}
+              </p>
+            )}
+
             {comments.length > 0 ? (
               <div className="space-y-5 mt-6">
-                {comments.map((comment) => (
-                  <div key={comment._id} className="flex gap-3">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-800 flex items-center justify-center text-sm font-semibold text-white flex-shrink-0 overflow-hidden">
-                      {comment.userImage ? (
-                        <img
-                          src={resolveMediaUrl(comment.userImage)}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        (comment.userName || "You").charAt(0).toUpperCase()
+                {comments.map((comment) => {
+                  const ownsComment = isCommentOwner(
+                    comment,
+                    currentUser?.id,
+                  );
+                  const isEditing =
+                    String(editingCommentId) === String(comment._id);
+                  const isMenuOpen =
+                    String(openCommentMenuId) === String(comment._id);
+
+                  return (
+                    <div key={comment._id} className="flex gap-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-800 flex items-center justify-center text-sm font-semibold text-white flex-shrink-0 overflow-hidden">
+                        {comment.userImage ? (
+                          <img
+                            src={resolveMediaUrl(comment.userImage)}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          (comment.userName || "You").charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span className="font-medium text-white/80">
+                            {comment.userName || "You"}
+                          </span>
+                          <span>
+                            {comment.createdAt
+                              ? formatTimeAgo(comment.createdAt)
+                              : "Just now"}
+                          </span>
+                        </div>
+                        {isEditing ? (
+                          <div className="mt-2">
+                            <textarea
+                              autoFocus
+                              rows={3}
+                              value={editingCommentText}
+                              onChange={(event) =>
+                                setEditingCommentText(event.target.value)
+                              }
+                              aria-label="Edit comment"
+                              className="w-full resize-y rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+                            />
+                            <div className="mt-2 flex justify-end gap-2">
+                              <button
+                                type="button"
+                                disabled={commentActionLoading}
+                                onClick={() => {
+                                  setEditingCommentId(null);
+                                  setEditingCommentText("");
+                                  setCommentActionError("");
+                                }}
+                                className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-gray-300 hover:bg-white/10 disabled:opacity-50"
+                              >
+                                <X size={15} />
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                disabled={
+                                  commentActionLoading ||
+                                  !editingCommentText.trim()
+                                }
+                                onClick={() => handleSaveComment(comment)}
+                                className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <Check size={15} />
+                                {commentActionLoading ? "Saving..." : "Save"}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-sm text-gray-200 break-words">
+                            {comment.text}
+                          </p>
+                        )}
+                      </div>
+                      {ownsComment && !isEditing && (
+                        <div
+                          ref={isMenuOpen ? commentMenuRef : null}
+                          className="relative flex-shrink-0"
+                        >
+                          <button
+                            type="button"
+                            aria-label={`Actions for ${comment.userName || "comment"}`}
+                            aria-haspopup="menu"
+                            aria-expanded={isMenuOpen}
+                            disabled={commentActionLoading}
+                            onClick={() =>
+                              setOpenCommentMenuId((openId) =>
+                                String(openId) === String(comment._id)
+                                  ? null
+                                  : String(comment._id),
+                              )
+                            }
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-white/10 hover:text-white disabled:opacity-50"
+                          >
+                            <MoreHorizontal size={18} />
+                          </button>
+                          {isMenuOpen && (
+                            <div
+                              role="menu"
+                              className="absolute right-0 top-full z-30 mt-1 min-w-32 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+                            >
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                  setEditingCommentId(String(comment._id));
+                                  setEditingCommentText(comment.text || "");
+                                  setOpenCommentMenuId(null);
+                                  setCommentActionError("");
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-zinc-800"
+                              >
+                                <Pencil size={15} />
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                disabled={commentActionLoading}
+                                onClick={() => handleDeleteComment(comment)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 hover:bg-zinc-800 disabled:opacity-50"
+                              >
+                                <Trash2 size={15} />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span className="font-medium text-white/80">
-                          {comment.userName || "You"}
-                        </span>
-                        <span>
-                          {comment.createdAt
-                            ? formatTimeAgo(comment.createdAt)
-                            : "Just now"}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-gray-200 break-words">
-                        {comment.text}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-gray-500 text-center py-8">

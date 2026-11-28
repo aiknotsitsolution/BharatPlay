@@ -583,8 +583,9 @@ export default function LoginScreen({
       setResetOtpCountdown(60);
       Toast.show({
         type: "info",
-        text1: "Verification code sent",
-        text2: "If an account exists, check your email for the code.",
+        text1: "Check your email",
+        text2:
+          "If this email has an account, its code should arrive shortly. Check Spam or Promotions too.",
       });
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");

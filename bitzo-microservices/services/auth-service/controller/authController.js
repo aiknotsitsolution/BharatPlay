@@ -52,7 +52,12 @@ const transporter = require("../Email/nodemailer.js");
 const getRegisterMailOptions = require("../Email/register.js");
 const getLoginMailOptions = require("../Email/login.js");
 const getPasswordResetMailOptions = require("../Email/password.js");
+const {
+  classifySmtpError,
+  EMAIL_PROVIDER_LIMIT_CODE,
+} = require("../Email/classifySmtpError");
 const getPasswordChangeConfirmationMailOptions = require("../Email/passwordReset.js");
+const { getPlayStoreReviewConfig } = require("../services/playStoreReviewConfig");
 
 // Creates a refresh-token session for a user/admin and returns the raw token.
 // Only the hash is persisted. The caller sets the httpOnly cookie.
@@ -113,10 +118,20 @@ const sendMailSafely = async (mailOptions) => {
     if (result && result.accepted && result.accepted.length === 0) {
       return { sent: false, reason: "smtp-rejected" };
     }
-    return { sent: true };
+    return {
+      sent: true,
+      messageId: result?.messageId || null,
+      acceptedCount: Array.isArray(result?.accepted)
+        ? result.accepted.length
+        : null,
+    };
   } catch (error) {
     console.error("Email send failed:", error.message);
-    return { sent: false, reason: error.message };
+    return {
+      sent: false,
+      reason: error.message,
+      ...classifySmtpError(error),
+    };
   }
 };
 
@@ -126,6 +141,8 @@ const issueOtpToDevice = async ({
   purpose = "login",
   browserFingerprint = null,
   userId = null,
+  otpOverride = null,
+  skipEmailDelivery = false,
 }) => {
   if (!deviceId || !user?.email) return null;
 
@@ -177,7 +194,7 @@ const issueOtpToDevice = async ({
     throw error;
   }
 
-  const otp = generateOtp();
+  const otp = otpOverride || generateOtp();
   const expiresAt = new Date(now.getTime() + OTP_TTL_MS);
 
   try {
@@ -212,28 +229,36 @@ const issueOtpToDevice = async ({
     throw error;
   }
 
-  const mailResult = await sendMailSafely(
-    getLoginMailOptions(user.email, user.name, otp),
-  );
-  if (!mailResult.sent) {
-    await DeviceFingerprint.updateOne(
-      { deviceId },
-      {
-        $unset: {
-          pendingOtp: 1,
-          otpExpiresAt: 1,
-          otpPurpose: 1,
-          pendingOtpEmail: 1,
-          pendingOtpFingerprint: 1,
+  if (!skipEmailDelivery) {
+    const mailResult = await sendMailSafely(
+      getLoginMailOptions(user.email, user.name, otp),
+    );
+    if (!mailResult.sent) {
+      const deliveryError = mailResult.code
+        ? mailResult
+        : {
+            code: "OTP_EMAIL_SEND_FAILED",
+            message: "Verification email could not be sent. Please try again later.",
+          };
+      await DeviceFingerprint.updateOne(
+        { deviceId },
+        {
+          $unset: {
+            pendingOtp: 1,
+            otpExpiresAt: 1,
+            otpPurpose: 1,
+            pendingOtpEmail: 1,
+            pendingOtpFingerprint: 1,
+          },
         },
-      },
-    );
+      );
 
-    throw otpError(
-      "Verification email could not be sent. Please try again later.",
-      503,
-      "OTP_EMAIL_SEND_FAILED",
-    );
+      throw otpError(
+        deliveryError.message,
+        503,
+        deliveryError.code,
+      );
+    }
   }
 
   return otp;
@@ -792,7 +817,7 @@ exports.registerUser = async (req, res) => {
       message: error.statusCode === 429
         ? error.message
         : error.statusCode === 503
-          ? "Verification email could not be sent. Please try again later."
+          ? error.message
           : "Registration failed",
     });
   }
@@ -984,6 +1009,9 @@ exports.loginUser = async (req, res) => {
     const { email, password, otp } = req.body;
     const normalizedEmail =
       typeof email === "string" ? email.trim().toLowerCase() : "";
+    const playStoreReviewConfig = getPlayStoreReviewConfig();
+    const isPlayStoreReviewer =
+      playStoreReviewConfig?.email === normalizedEmail;
 
     if (!normalizedEmail) {
       return res.status(400).json({
@@ -1097,34 +1125,36 @@ exports.loginUser = async (req, res) => {
       // Keep device ownership unchanged until the login OTP is verified.
 
       // ---------- VPN / Proxy check ----------
-      const vpnInfo = await detectVPN(ip);
-      if (vpnInfo.isVPN || vpnInfo.isProxy) {
-        await logFraudEvent({
-          userId: user._id,
-          eventType: vpnInfo.isVPN ? "VPN_DETECTED" : "PROXY_DETECTED",
-          severity: "high",
-          ip,
-          deviceId,
-          userAgent: ua,
-          isVPN: vpnInfo.isVPN,
-          isProxy: vpnInfo.isProxy,
-          riskScoreImpact: 25,
-          metadata: {
-            country: vpnInfo.country,
-            action: "blocked_login",
-          },
-        });
+      if (!isPlayStoreReviewer) {
+        const vpnInfo = await detectVPN(ip);
+        if (vpnInfo.isVPN || vpnInfo.isProxy) {
+          await logFraudEvent({
+            userId: user._id,
+            eventType: vpnInfo.isVPN ? "VPN_DETECTED" : "PROXY_DETECTED",
+            severity: "high",
+            ip,
+            deviceId,
+            userAgent: ua,
+            isVPN: vpnInfo.isVPN,
+            isProxy: vpnInfo.isProxy,
+            riskScoreImpact: 25,
+            metadata: {
+              country: vpnInfo.country,
+              action: "blocked_login",
+            },
+          });
 
-        await applyRiskToUser(user._id, 25, [
-          vpnInfo.isVPN ? "VPN detected on login" : "Proxy detected on login",
-        ]);
+          await applyRiskToUser(user._id, 25, [
+            vpnInfo.isVPN ? "VPN detected on login" : "Proxy detected on login",
+          ]);
 
-        return res.status(403).json({
-          success: false,
-          code: "VPN_OR_PROXY_DETECTED",
-          message:
-            "Login is not allowed over VPN or proxy. Please disable it and try again.",
-        });
+          return res.status(403).json({
+            success: false,
+            code: "VPN_OR_PROXY_DETECTED",
+            message:
+              "Login is not allowed over VPN or proxy. Please disable it and try again.",
+          });
+        }
       }
 
       // Issue OTP
@@ -1133,14 +1163,24 @@ exports.loginUser = async (req, res) => {
         user,
         purpose: "login",
         browserFingerprint: browserBinding.fingerprint,
+        ...(isPlayStoreReviewer
+          ? {
+              otpOverride: playStoreReviewConfig.otp,
+              skipEmailDelivery: true,
+            }
+          : {}),
       });
 
       return res.status(200).json({
         success: true,
         requiresOtp: true,
-        message:
-          "OTP has been sent to your email. Verify it to complete login.",
-        otpCode: process.env.NODE_ENV !== "production" ? otpCode : undefined,
+        message: isPlayStoreReviewer
+          ? "Enter the reviewer verification code provided in the Play Store access instructions."
+          : "OTP has been sent to your email. Verify it to complete login.",
+        otpCode:
+          !isPlayStoreReviewer && process.env.NODE_ENV !== "production"
+            ? otpCode
+            : undefined,
       });
     }
 
@@ -1414,9 +1454,11 @@ exports.loginUser = async (req, res) => {
     console.error("Login error:", error.message);
     return res.status(error.statusCode || 500).json({
       success: false,
+      code: error.code,
+      retryAfterSeconds: error.retryAfterSeconds,
       message:
-        error.statusCode === 503
-          ? "OTP could not be sent. Please try again later."
+        error.statusCode === 429 || error.statusCode === 503
+          ? error.message
           : "Internal server error",
     });
   }
@@ -2766,6 +2808,9 @@ exports.forgotPassword = async (req, res) => {
         getPasswordResetMailOptions(user.email, user.name, otp),
       );
       if (!mailResult.sent) {
+        console.error("[password-reset] SMTP delivery failed", {
+          reason: mailResult.reason,
+        });
         await User.updateOne(
           { _id: user._id },
           {
@@ -2778,10 +2823,17 @@ exports.forgotPassword = async (req, res) => {
         );
         return res.status(503).json({
           success: false,
-          code: "OTP_EMAIL_SEND_FAILED",
-          message: "Verification email could not be sent. Please try again later.",
+          code: mailResult.code || "OTP_EMAIL_SEND_FAILED",
+          message:
+            mailResult.code === EMAIL_PROVIDER_LIMIT_CODE
+              ? mailResult.message
+              : "Verification email could not be sent. Please try again later.",
         });
       }
+      console.info("[password-reset] SMTP accepted reset email", {
+        messageId: mailResult.messageId,
+        acceptedCount: mailResult.acceptedCount,
+      });
     }
 
     // Generic response: never reveal whether the email exists.
@@ -2796,7 +2848,7 @@ exports.forgotPassword = async (req, res) => {
       success: false,
       code: error.code,
       message: error.statusCode === 503
-        ? "Verification email could not be sent. Please try again later."
+        ? error.message
         : "Server error",
     });
   }

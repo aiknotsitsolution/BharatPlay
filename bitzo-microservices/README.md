@@ -181,6 +181,32 @@ records. A display name or email-template change cannot override missing domain
 authentication or poor sender reputation. The auth service logs whether SMTP
 accepted the message; this does not guarantee inbox delivery, so monitor
 provider delivery/bounce records and spam placement.
+Personal Gmail and Google Workspace impose provider-side sending quotas. These
+quotas cannot be removed or bypassed by application code. For production OTP
+traffic, use a transactional email provider with a verified sender/domain and
+an appropriate sending plan; configure its SMTP host, port, account, and
+provider-issued password in the auth-service environment. App-side OTP throttles
+remain enabled to protect accounts and prevent email abuse.
+For local development, set SMTP credentials in the private
+`services/auth-service/.env` (or the private `bitzo-microservices/.env` used by
+`dev-all`). Do not put SMTP credentials in the mobile app's `Vidbuxapp/.env`:
+Expo app environment values can be bundled into the client. Password-reset
+requests intentionally return the same response whether an account exists or
+not; the recipient must use a registered account email and check Spam or
+Promotions. Reset codes expire after five minutes. On successful SMTP
+acceptance, auth-service logs a message ID; that confirms provider acceptance,
+not inbox delivery.
+Play Store reviewer access is optional and disabled by default. To enable it,
+set `PLAY_STORE_REVIEW_MODE=true`, `PLAY_STORE_REVIEW_EMAIL` to the one exact
+review-account email, and `PLAY_STORE_REVIEW_OTP` to the six-digit code in the
+private root `.env` for Docker Compose or `dev-all`, or in the auth-service
+deployment environment/secret manager when running it directly. `dev-all`
+forwards these settings only to auth-service. The reviewer must
+still use the account password, accept the required consent, and pass device
+checks; only login location/VPN blocking and email delivery of that login OTP
+are bypassed. The code is valid only for a rate-limited, unexpired OTP session.
+Normal accounts continue to use the standard location and email-OTP checks.
+Do not enable this for an account containing private user data.
 Google sign-in requires OAuth client IDs for the clients in use. Configure the
 website client as `GOOGLE_CLIENT_ID` (and `VITE_GOOGLE_CLIENT_ID` in the website
 build); configure the app's Android/iOS client IDs as

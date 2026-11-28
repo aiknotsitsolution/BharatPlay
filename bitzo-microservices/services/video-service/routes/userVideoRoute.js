@@ -10,6 +10,7 @@ const {
   dislikeVideo,
   getVideoInteraction,
   deleteComment,
+  editComment,
   addComment,
   getComments,
   deleteChannel,
@@ -167,6 +168,7 @@ router.post("/:videoId/view", viewLimiter, isAuthenticated, addView);
 router.post("/:videoId/like", isAuthenticated, likeVideo);
 router.post("/:videoId/dislike", isAuthenticated, dislikeVideo);
 router.get("/:videoId/interaction", getVideoInteraction);
+router.patch("/:videoId/comment/:commentId", isAuthenticated, editComment);
 router.delete("/:videoId/comment/:commentId", isAuthenticated, deleteComment);
 router.post("/:videoId/comment", isAuthenticated, addComment);
 router.get("/:videoId/comments", getComments);

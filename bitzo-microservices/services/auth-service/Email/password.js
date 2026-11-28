@@ -50,7 +50,7 @@ module.exports = function getPasswordResetMailOptions(email, name, otp) {
                 <p class="otp-label">Your verification code</p>
                 <p class="otp-value">${otp}</p>
               </div>
-              <p class="expiry">This code expires in <strong>10 minutes</strong>.</p>
+              <p class="expiry">This code expires in <strong>5 minutes</strong>.</p>
               <div class="warning">
                 <p>Do not share this code with anyone. VidBuxApp will never ask for your verification code over the phone or email.</p>
               </div>

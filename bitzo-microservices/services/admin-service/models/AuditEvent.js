@@ -59,6 +59,8 @@ const auditEventSchema = new mongoose.Schema(
         "ADMIN_SHORT_DISABLE",
         "ADMIN_SHORT_ENABLE",
         "ADMIN_SHORT_DELETE",
+        "ADMIN_COMMENT_EDIT",
+        "ADMIN_COMMENT_DELETE",
 
         // Copyright events
         "COPYRIGHT_CASE_CREATED",

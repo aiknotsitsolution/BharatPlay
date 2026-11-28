@@ -498,7 +498,10 @@ export default function AuthPageV2() {
           </div>
 
           {/* Tabs - compact */}
-          {!registrationPhoneRequired && !otpRequired && (
+          {!isLogin &&
+            !registrationPhoneRequired &&
+            !otpRequired &&
+            !migrationMode && (
           <div className="flex rounded-lg bg-white/[0.03] border border-white/[0.06] p-0.5 mb-5">
             <button
               onClick={() => {

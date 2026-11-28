@@ -13,6 +13,16 @@ const sharedEnvironment = {};
 for (const name of ["REDIS_URL", "REDIS_PASSWORD"]) {
   if (rootEnvironment[name]) sharedEnvironment[name] = rootEnvironment[name];
 }
+const authReviewEnvironment = {};
+for (const name of [
+  "PLAY_STORE_REVIEW_MODE",
+  "PLAY_STORE_REVIEW_EMAIL",
+  "PLAY_STORE_REVIEW_OTP",
+]) {
+  if (Object.prototype.hasOwnProperty.call(rootEnvironment, name)) {
+    authReviewEnvironment[name] = rootEnvironment[name];
+  }
+}
 const npmCli = process.env.npm_execpath?.endsWith(".js")
   ? process.env.npm_execpath
   : path.join(
@@ -100,7 +110,12 @@ function launchService(service) {
   try {
     child = spawn(process.execPath, [npmCli, "run", "start"], {
       cwd: path.join(root, directory),
-      env: { ...sharedEnvironment, ...process.env, PORT: String(port) },
+      env: {
+        ...sharedEnvironment,
+        ...(name === "auth-service" ? authReviewEnvironment : {}),
+        ...process.env,
+        PORT: String(port),
+      },
       stdio: ["inherit", "pipe", "pipe"],
       windowsHide: true,
     });

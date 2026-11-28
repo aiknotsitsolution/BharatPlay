@@ -129,9 +129,11 @@ export const postVideoComment = createAsyncThunk(
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Failed to post comment");
       }
+      if (!data.comment?._id) {
+        throw new Error("The saved comment is missing its ID. Please reload.");
+      }
       return {
-        _id: data.comment?._id || Date.now().toString(),
-        ...(data.comment || {}),
+        ...data.comment,
         text: data.comment?.text || commentText,
         createdAt: data.comment?.createdAt || new Date().toISOString(),
         userName: data.comment?.userName || userName,
@@ -139,6 +141,48 @@ export const postVideoComment = createAsyncThunk(
       };
     } catch (error) {
       return rejectWithValue(getError(error, "Failed to post comment"));
+    }
+  },
+);
+
+export const updateVideoComment = createAsyncThunk(
+  "videoPage/updateVideoComment",
+  async ({ id, commentId, commentText }, { rejectWithValue }) => {
+    try {
+      const response = await authFetch(
+        `${API_BASE}/${id}/comment/${commentId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ commentText }),
+        },
+      );
+      const data = await response.json();
+      if (!response.ok || !data.success || !data.comment) {
+        throw new Error(data.message || "Failed to update comment");
+      }
+      return data.comment;
+    } catch (error) {
+      return rejectWithValue(getError(error, "Failed to update comment"));
+    }
+  },
+);
+
+export const deleteVideoComment = createAsyncThunk(
+  "videoPage/deleteVideoComment",
+  async ({ id, commentId }, { rejectWithValue }) => {
+    try {
+      const response = await authFetch(
+        `${API_BASE}/${id}/comment/${commentId}`,
+        { method: "DELETE" },
+      );
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to delete comment");
+      }
+      return commentId;
+    } catch (error) {
+      return rejectWithValue(getError(error, "Failed to delete comment"));
     }
   },
 );
@@ -283,6 +327,17 @@ const videoPageSlice = createSlice({
       })
       .addCase(postVideoComment.rejected, (state) => {
         state.commentLoading = false;
+      })
+      .addCase(updateVideoComment.fulfilled, (state, action) => {
+        const index = state.comments.findIndex(
+          (comment) => comment._id === action.payload._id,
+        );
+        if (index >= 0) state.comments[index] = action.payload;
+      })
+      .addCase(deleteVideoComment.fulfilled, (state, action) => {
+        state.comments = state.comments.filter(
+          (comment) => comment._id !== action.payload,
+        );
       })
       .addCase(toggleWatchLater.pending, (state) => {
         state.saveLoading = true;

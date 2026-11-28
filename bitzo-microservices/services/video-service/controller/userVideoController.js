@@ -2551,6 +2551,7 @@ const addComment = async (req, res) => {
 
     video.comments.push(newComment);
     await video.save();
+    const savedComment = video.comments[video.comments.length - 1];
     await invalidateCache(`video-comments:${videoId}`);
     await invalidateVideoCatalogCache();
 
@@ -2574,7 +2575,10 @@ const addComment = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Comment added",
-      comment: newComment,
+      comment:
+        typeof savedComment.toObject === "function"
+          ? savedComment.toObject()
+          : savedComment,
     });
   } catch (error) {
     console.error("Error in addComment:", error);
@@ -2687,6 +2691,72 @@ const deleteComment = async (req, res) => {
     res.status(200).json({ success: true, message: "Comment deleted!" });
   } catch (error) {
     console.error("Error in deleteComment:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+const editComment = async (req, res) => {
+  try {
+    const { videoId, commentId } = req.params;
+    const userId = req.user.id;
+    const commentText =
+      typeof req.body?.commentText === "string"
+        ? req.body.commentText.trim()
+        : "";
+
+    if (!commentText) {
+      return res.status(400).json({
+        success: false,
+        message: "Comment text required",
+      });
+    }
+
+    const video = await Video.findOne(
+      await withVisibleVideoFilter({ _id: videoId }),
+    );
+    if (!video) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Video not found" });
+    }
+
+    const comment = video.comments.find(
+      (item) => item._id.toString() === commentId,
+    );
+    if (!comment) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Comment not found" });
+    }
+
+    if (!comment.user || comment.user.toString() !== String(userId)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to edit this comment",
+      });
+    }
+
+    comment.text = commentText;
+    await video.save();
+    await invalidateCache(`video-comments:${videoId}`);
+    await invalidateVideoCatalogCache();
+
+    await logAuditEvent({
+      userId,
+      eventType: "COMMENT_EDIT",
+      ip: req.ip,
+      userAgent: req.headers["user-agent"] || "unknown",
+      metadata: { videoId, commentId, commentLength: commentText.length },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Comment updated",
+      comment:
+        typeof comment.toObject === "function" ? comment.toObject() : comment,
+    });
+  } catch (error) {
+    console.error("Error in editComment:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -3450,6 +3520,7 @@ module.exports = {
   addComment,
   getComments,
   deleteComment,
+  editComment,
   getVideoInteraction,
   createChannel,
   updateChannel,

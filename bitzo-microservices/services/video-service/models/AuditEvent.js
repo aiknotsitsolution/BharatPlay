@@ -28,6 +28,7 @@ const auditEventSchema = new mongoose.Schema(
         "VIDEO_UPLOAD",
         "VIDEO_DELETE",
         "COMMENT_ADD",
+        "COMMENT_EDIT",
         "COMMENT_DELETE",
         "CHANNEL_CREATE",
         "CHANNEL_DELETE",

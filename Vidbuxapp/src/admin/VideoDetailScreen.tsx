@@ -192,6 +192,14 @@ export default function VideoDetailScreen() {
   const [commentText, setCommentText] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(!cachedComments);
+  const [openCommentMenuId, setOpenCommentMenuId] = useState<string | null>(
+    null,
+  );
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState("");
+  const [commentActionLoadingId, setCommentActionLoadingId] = useState<
+    string | null
+  >(null);
 
   const suggestedVideos = cachedSuggestedVideos || [];
   const [suggestedLoading, setSuggestedLoading] =
@@ -1102,25 +1110,142 @@ export default function VideoDetailScreen() {
       });
       const data = await res.json().catch(() => ({}));
       if (data?.success) {
+        if (!data.comment?._id) {
+          throw new Error("The saved comment is missing its ID. Please reload.");
+        }
         dispatch(
           setCachedVideoData({
             key: `comments:${routeId}`,
-            data: [
-              {
-                _id: Date.now().toString(),
-                text: commentText.trim(),
-                createdAt: new Date().toISOString(),
-              },
-              ...comments,
-            ],
+            data: [data.comment, ...comments],
           }),
         );
         setCommentText("");
+      } else {
+        throw new Error(data?.message || "Unable to post comment.");
       }
-    } catch (e) {
+    } catch (error) {
+      showToast(
+        "error",
+        "Unable to post comment",
+        error instanceof Error ? error.message : "Please try again.",
+      );
     } finally {
       setCommentLoading(false);
     }
+  };
+
+  const handleSaveComment = async (comment) => {
+    const commentId = String(comment._id || comment.id || "");
+    const nextText = editingCommentText.trim();
+    if (!nextText) {
+      showToast("error", "Invalid comment", "Comment text required.");
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Session expired", "Please sign in again to continue.");
+        return;
+      }
+
+      setCommentActionLoadingId(commentId);
+      const response = await fetch(
+        `${BACKEND_URL}/api/admin/videos/${routeId}/comments/${commentId}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ commentText: nextText }),
+        },
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.success || !data?.comment) {
+        throw new Error(data?.message || "Unable to update comment.");
+      }
+
+      dispatch(
+        setCachedVideoData({
+          key: `comments:${routeId}`,
+          data: comments.map((item) =>
+            String(item._id || item.id) === commentId ? data.comment : item,
+          ),
+        }),
+      );
+      setEditingCommentId(null);
+      setEditingCommentText("");
+      setOpenCommentMenuId(null);
+      showToast("success", "Comment updated", "The comment was updated.");
+    } catch (error) {
+      showToast(
+        "error",
+        "Unable to update comment",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setCommentActionLoadingId(null);
+    }
+  };
+
+  const deleteComment = async (comment) => {
+    const commentId = String(comment._id || comment.id || "");
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Session expired", "Please sign in again to continue.");
+        return;
+      }
+
+      setCommentActionLoadingId(commentId);
+      const response = await fetch(
+        `${BACKEND_URL}/api/admin/videos/${routeId}/comments/${commentId}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.message || "Unable to delete comment.");
+      }
+
+      dispatch(
+        setCachedVideoData({
+          key: `comments:${routeId}`,
+          data: comments.filter(
+            (item) => String(item._id || item.id) !== commentId,
+          ),
+        }),
+      );
+      setOpenCommentMenuId(null);
+      showToast("success", "Comment deleted", "The comment was deleted.");
+    } catch (error) {
+      showToast(
+        "error",
+        "Unable to delete comment",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setCommentActionLoadingId(null);
+    }
+  };
+
+  const confirmDeleteComment = (comment) => {
+    Alert.alert(
+      "Delete comment",
+      "Are you sure you want to delete this comment?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => void deleteComment(comment),
+        },
+      ],
+    );
   };
 
   const openSuggestedVideo = (item) => {
@@ -1647,18 +1772,145 @@ export default function VideoDetailScreen() {
                   style={{ marginVertical: 14 }}
                 />
               ) : comments.length > 0 ? (
-                comments.map((c) => (
-                  <View key={c._id || c.id} style={styles.commentItem}>
-                    <Text style={styles.commentText}>
-                      {c.text || c.comment}
-                    </Text>
-                    <Text style={styles.commentMeta}>
-                      {c.createdAt
-                        ? new Date(c.createdAt).toLocaleDateString()
-                        : "Just now"}
-                    </Text>
-                  </View>
-                ))
+                comments.map((c) => {
+                  const commentId = String(c._id || c.id || "");
+                  const isEditing = editingCommentId === commentId;
+                  const isMenuOpen = openCommentMenuId === commentId;
+
+                  return (
+                    <View
+                      key={commentId}
+                      style={[
+                        styles.commentItem,
+                        isMenuOpen && styles.commentItemMenuOpen,
+                      ]}
+                    >
+                      <View style={styles.commentContent}>
+                        {isEditing ? (
+                          <>
+                            <TextInput
+                              value={editingCommentText}
+                              onChangeText={setEditingCommentText}
+                              style={styles.commentEditInput}
+                              placeholder="Edit comment..."
+                              placeholderTextColor="#888"
+                              multiline
+                              editable={commentActionLoadingId !== commentId}
+                            />
+                            <View style={styles.commentEditActions}>
+                              <TouchableOpacity
+                                style={styles.commentActionButton}
+                                disabled={commentActionLoadingId === commentId}
+                                onPress={() => {
+                                  setEditingCommentId(null);
+                                  setEditingCommentText("");
+                                }}
+                              >
+                                <Ionicons name="close" size={16} color="#aaa" />
+                                <Text style={styles.commentActionText}>
+                                  Cancel
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[
+                                  styles.commentActionButton,
+                                  styles.commentSaveButton,
+                                ]}
+                                disabled={
+                                  commentActionLoadingId === commentId ||
+                                  !editingCommentText.trim()
+                                }
+                                onPress={() => void handleSaveComment(c)}
+                              >
+                                {commentActionLoadingId === commentId ? (
+                                  <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                  <Ionicons
+                                    name="checkmark"
+                                    size={16}
+                                    color="#fff"
+                                  />
+                                )}
+                                <Text style={styles.commentActionText}>
+                                  Save
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          </>
+                        ) : (
+                          <>
+                            <Text style={styles.commentText}>
+                              {c.text || c.comment}
+                            </Text>
+                            <Text style={styles.commentMeta}>
+                              {c.createdAt
+                                ? new Date(c.createdAt).toLocaleDateString()
+                                : "Just now"}
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                      {!isEditing && /^[a-f\d]{24}$/i.test(commentId) && (
+                        <View style={styles.commentActionsMenu}>
+                          <TouchableOpacity
+                            accessibilityRole="button"
+                            accessibilityLabel="Comment actions"
+                            disabled={commentActionLoadingId !== null}
+                            onPress={() =>
+                              setOpenCommentMenuId((openId) =>
+                                openId === commentId ? null : commentId,
+                              )
+                            }
+                            style={styles.commentMenuButton}
+                          >
+                            <Ionicons
+                              name="ellipsis-vertical"
+                              size={18}
+                              color="#aaa"
+                            />
+                          </TouchableOpacity>
+                          {isMenuOpen && (
+                            <View style={styles.commentMenuDropdown}>
+                              <TouchableOpacity
+                                style={styles.commentMenuItem}
+                                onPress={() => {
+                                  setEditingCommentId(commentId);
+                                  setEditingCommentText(c.text || c.comment || "");
+                                  setOpenCommentMenuId(null);
+                                }}
+                              >
+                                <Ionicons
+                                  name="create-outline"
+                                  size={16}
+                                  color="#fff"
+                                />
+                                <Text style={styles.commentActionText}>
+                                  Edit
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[
+                                  styles.commentMenuItem,
+                                  styles.commentDeleteMenuItem,
+                                ]}
+                                onPress={() => confirmDeleteComment(c)}
+                              >
+                                <Ionicons
+                                  name="trash-outline"
+                                  size={16}
+                                  color="#f87171"
+                                />
+                                <Text style={styles.commentDeleteText}>
+                                  Delete
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })
               ) : (
                 <Text style={styles.emptyText}>No comments yet.</Text>
               )}
@@ -2105,14 +2357,103 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   commentItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
     backgroundColor: "#0f0f0f",
     borderRadius: 10,
     padding: 12,
     marginTop: 10,
+    zIndex: 1,
+  },
+  commentItemMenuOpen: {
+    zIndex: 10,
+    elevation: 10,
+  },
+  commentContent: {
+    flex: 1,
+    minWidth: 0,
   },
   commentText: {
     color: "#fff",
     fontSize: 14,
+  },
+  commentEditInput: {
+    minHeight: 62,
+    maxHeight: 140,
+    backgroundColor: "#181818",
+    color: "#fff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#444",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    textAlignVertical: "top",
+  },
+  commentEditActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 8,
+  },
+  commentActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 7,
+    backgroundColor: "#27272a",
+  },
+  commentSaveButton: {
+    backgroundColor: "#2563eb",
+  },
+  commentActionText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  commentActionsMenu: {
+    position: "relative",
+    alignItems: "flex-end",
+    marginLeft: 8,
+    zIndex: 5,
+  },
+  commentMenuButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#181818",
+  },
+  commentMenuDropdown: {
+    position: "absolute",
+    right: 0,
+    top: 32,
+    minWidth: 120,
+    paddingVertical: 4,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: "#3f3f46",
+    backgroundColor: "#18181b",
+    elevation: 10,
+    zIndex: 10,
+  },
+  commentMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  commentDeleteMenuItem: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#3f3f46",
+  },
+  commentDeleteText: {
+    color: "#f87171",
+    fontSize: 12,
+    fontWeight: "500",
   },
   commentMeta: {
     color: "#aaa",

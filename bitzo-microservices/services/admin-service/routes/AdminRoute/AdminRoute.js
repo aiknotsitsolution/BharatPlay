@@ -77,6 +77,10 @@ const {
   getAdminUploads,
 } = require("../../controller/AdminController/adminUploadsController");
 const {
+  editVideoComment,
+  deleteVideoComment,
+} = require("../../controller/AdminController/adminCommentController");
+const {
   searchVideos,
   searchUsers,
 } = require("../../controller/AdminController/adminSearchController");
@@ -284,6 +288,20 @@ router.delete(
   requirePermission("users:delete"),
   adminDestructiveLimiter,
   hardDeleteUser,
+);
+router.patch(
+  "/videos/:videoId/comments/:commentId",
+  requireAdmin,
+  requirePermission("moderation:write"),
+  adminUserLimiter,
+  editVideoComment,
+);
+router.delete(
+  "/videos/:videoId/comments/:commentId",
+  requireAdmin,
+  requirePermission("moderation:delete"),
+  adminDestructiveLimiter,
+  deleteVideoComment,
 );
 router.delete(
   "/employee/:id",

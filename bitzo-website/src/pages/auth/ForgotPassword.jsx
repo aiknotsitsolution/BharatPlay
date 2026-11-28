@@ -67,7 +67,9 @@ export default function ForgotPassword() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to send verification code.");
 
-      toast.info("Verification code sent to your email.");
+      toast.info(
+        "If an account exists for this email, its code should arrive shortly. Check Spam or Promotions too.",
+      );
       setStep(2);
       startOtpCountdown(60);
     } catch (err) {
