@@ -599,7 +599,7 @@ export default function AuthPageV2() {
               )}
 
             <form onSubmit={handleEmailSubmit} className="space-y-3">
-              {!registrationPhoneRequired && !otpRequired && (
+              {!isLogin && !registrationPhoneRequired && !otpRequired && (
                 <div className="relative group">
                   <User
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-400 transition-colors duration-300"

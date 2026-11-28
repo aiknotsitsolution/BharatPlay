@@ -142,7 +142,7 @@ const Leaderboard = () => {
                         <img
                           src={resolveMediaUrl(creator.avatar)}
                           alt={creator.name}
-                                className="w-11 h-11 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-gray-700"
+                          className="w-11 h-11 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-gray-700"
                         />
                       ) : (
                         <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border-2 border-gray-700 bg-gray-800 flex items-center justify-center text-gray-400 text-lg font-semibold">
