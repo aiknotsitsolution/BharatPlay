@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   StatusBar,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { API_ORIGIN as BACKEND_URL } from "../../config/api";
 import Navbar from "./Navbar";
 import AdminBottomTabs from "./AdminBottomTabs";
@@ -27,12 +27,12 @@ interface Creator {
 }
 
 interface VideoItem {
-  viewCount: number;
   id: string | number;
   rank: number;
   title?: string;
   creatorName?: string;
   thumbnail?: string;
+  viewCount?: number;
   views?: number;
 }
 
@@ -62,61 +62,68 @@ const Leaderboard: React.FC = () => {
   const [videoType, setVideoType] = useState<"long" | "short">("long");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
-    let active = true;
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
 
-    const fetchLeaderboard = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token");
+      const fetchLeaderboard = async () => {
+        try {
+          const token = await AsyncStorage.getItem("token");
 
-        if (!token) {
-          if (active) {
-            setError("Please login to view the leaderboard.");
-            setLoading(false);
+          if (!token) {
+            if (active) {
+              setError("Please login to view the leaderboard.");
+              setLoading(false);
+            }
+            return;
           }
-          return;
+
+          setLoading(true);
+          setError(null);
+
+          const res = await fetch(
+            `${BACKEND_URL}/api/leaderboard?videoType=${videoType}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
+
+          if (!res.ok) {
+            throw new Error(`Failed to load leaderboard (${res.status})`);
+          }
+
+          const data = await res.json();
+
+          if (!active) return;
+
+          if (!data.success) {
+            throw new Error(data.message || "Failed to load leaderboard");
+          }
+
+          setTopCreators(
+            Array.isArray(data.data?.topCreators) ? data.data.topCreators : [],
+          );
+          setTopVideos(
+            Array.isArray(data.data?.topVideos) ? data.data.topVideos : [],
+          );
+        } catch (err: any) {
+          if (active) {
+            setError(err.message || "Failed to load leaderboard data.");
+          }
+        } finally {
+          if (active) setLoading(false);
         }
+      };
 
-        setLoading(true);
-        setError(null);
+      fetchLeaderboard();
 
-        const res = await fetch(
-          `${BACKEND_URL}/api/leaderboard?videoType=${videoType}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-
-        if (!res.ok) {
-          throw new Error(`Failed to load leaderboard (${res.status})`);
-        }
-
-        const data = await res.json();
-
-        if (!active) return;
-
-        if (!data.success) {
-          throw new Error(data.message || "Failed to load leaderboard");
-        }
-
-        setTopCreators(data.data?.topCreators || []);
-        setTopVideos(data.data?.topVideos || []);
-      } catch (err: any) {
-        if (active) {
-          setError(err.message || "Failed to load leaderboard data.");
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    fetchLeaderboard();
-
-    return () => {
-      active = false;
-    };
-  }, [videoType]);
+      return () => {
+        active = false;
+      };
+    }, [videoType, reloadKey]),
+  );
 
   // ---------- Rank badge style helper ----------
   const getRankStyle = (rank: number) => {
@@ -143,7 +150,7 @@ const Leaderboard: React.FC = () => {
         <View style={styles.header}>
           <Text style={styles.title}>LEADERBOARD</Text>
           <Text style={styles.subtitle}>
-            Top Creators & Most Viewed Content • February 2026
+            Top creators and most-viewed videos
           </Text>
         </View>
 
@@ -155,6 +162,17 @@ const Leaderboard: React.FC = () => {
         ) : error ? (
           <View style={styles.centerBox}>
             <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setLoading(true);
+                setError(null);
+                setReloadKey((key) => key + 1);
+              }}
+              style={styles.retryButton}
+              accessibilityRole="button"
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.grid}>
@@ -224,10 +242,10 @@ const Leaderboard: React.FC = () => {
             <View style={styles.card}>
               <View style={styles.videoHeader}>
                 <View style={styles.videoHeadingBlock}>
-                  <Text style={styles.cardKicker}>TRENDING NOW</Text>
+                  <Text style={styles.cardKicker}>MOST VIEWED</Text>
                   <Text style={styles.cardTitle}>Top views</Text>
                   <Text style={styles.cardSubtitle}>
-                    The content your audience is watching most
+                    Ranked by total video views
                   </Text>
                 </View>
                 <View style={styles.typeToggle}>
@@ -378,6 +396,18 @@ const styles = StyleSheet.create({
     color: "#f87171",
     fontSize: 16,
     textAlign: "center",
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "#dc2626",
+  },
+  retryButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
   },
   grid: {
     gap: 24,

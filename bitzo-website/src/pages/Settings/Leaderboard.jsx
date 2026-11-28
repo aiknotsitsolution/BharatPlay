@@ -25,18 +25,22 @@ const Leaderboard = () => {
   const [topCreators, setTopCreators] = useState([]);
   const [topVideos, setTopVideos] = useState([]);
   const [videoType, setVideoType] = useState("long");
-  const [loading, setLoading] = useState(() => !localStorage.getItem("token"));
-  const [error, setError] = useState(() =>
-    localStorage.getItem("token")
-      ? null
-      : "Please login to view the leaderboard.",
-  );
+  const [reloadKey, setReloadKey] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
     let active = true;
+    const token = localStorage.getItem("token");
+    setLoading(true);
+    setError(null);
+    if (!token) {
+      setError("Please login to view the leaderboard.");
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
 
     fetch(`${BACKEND_URL}/api/leaderboard?videoType=${videoType}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -65,7 +69,7 @@ const Leaderboard = () => {
     return () => {
       active = false;
     };
-  }, [videoType]);
+  }, [videoType, reloadKey]);
 
   return (
     <div className="min-h-screen bg-black text-white py-10 px-4 sm:px-6 lg:px-8">
@@ -76,7 +80,7 @@ const Leaderboard = () => {
             LEADERBOARD
           </h1>
           <p className="mt-3 text-gray-400 text-lg">
-            Top Creators & Most Viewed Content • February 2026
+            Top creators and most-viewed videos
           </p>
         </div>
 
@@ -85,7 +89,20 @@ const Leaderboard = () => {
             Loading leaderboard...
           </div>
         ) : error ? (
-          <div className="text-center text-red-400 py-20">{error}</div>
+          <div className="text-center text-red-400 py-20">
+            <p>{error}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                setError(null);
+                setReloadKey((key) => key + 1);
+              }}
+              className="mt-4 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600"
+            >
+              Retry
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 xl:gap-12">
             {/* TOP CREATORS */}
@@ -167,11 +184,11 @@ const Leaderboard = () => {
             <div className="bg-gray-950 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl shadow-red-950/30">
               <div className="bg-red-950/60 px-6 py-5 border-b border-red-900/50 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-2xl font-bold text-red-500 flex items-center gap-3">
-                  <span className="text-3xl">🔥</span> TOP VIEWS
+                  <span className="text-3xl">🔥</span> MOST VIEWED
                 </h2>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400">
-                    Select Video Type
+                    Content type
                   </span>
                   <select
                     value={videoType}

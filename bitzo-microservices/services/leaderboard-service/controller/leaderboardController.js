@@ -21,7 +21,7 @@ exports.getLeaderboard = async (req, res) => {
       videoType === "short" || videoType === "long" ? videoType : "all";
     const payload = await cached(
       `leaderboard:${normalizedVideoType}`,
-      300,
+      60,
       async () => {
         const videoMatch =
           normalizedVideoType === "all"
