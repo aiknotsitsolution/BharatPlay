@@ -218,20 +218,22 @@ const Leaderboard: React.FC = () => {
                       </Text>
                     </View>
 
-                    {/* Followers */}
-                    <View style={styles.statBox}>
-                      <Text style={styles.statValue}>
-                        {Number(creator.totalSubscribers || 0).toLocaleString()}
-                      </Text>
-                      <Text style={styles.statLabel}>followers</Text>
-                    </View>
+                    <View style={styles.creatorStats}>
+                      <View style={styles.statBox}>
+                        <Text style={styles.statValue}>
+                          {Number(
+                            creator.totalSubscribers || 0,
+                          ).toLocaleString()}
+                        </Text>
+                        <Text style={styles.statLabel}>followers</Text>
+                      </View>
 
-                    {/* Points */}
-                    <View style={[styles.statBox, { minWidth: 70 }]}>
-                      <Text style={[styles.statValue, { color: "#f87171" }]}>
-                        {Number(creator.rewardPoints || 0).toLocaleString()}
-                      </Text>
-                      <Text style={styles.statLabel}>points</Text>
+                      <View style={[styles.statBox, { minWidth: 70 }]}>
+                        <Text style={[styles.statValue, { color: "#f87171" }]}>
+                          {Number(creator.rewardPoints || 0).toLocaleString()}
+                        </Text>
+                        <Text style={styles.statLabel}>points</Text>
+                      </View>
                     </View>
                   </View>
                 ))
@@ -489,12 +491,19 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     paddingHorizontal: 14,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: "#1f1f1f",
     gap: 12,
+  },
+  creatorStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginLeft: "auto",
   },
   videoRow: {
     flexDirection: "row",
@@ -588,7 +597,7 @@ const styles = StyleSheet.create({
   },
   info: {
     flex: 1,
-    minWidth: 0,
+    minWidth: 100,
   },
   name: {
     color: "#fff",

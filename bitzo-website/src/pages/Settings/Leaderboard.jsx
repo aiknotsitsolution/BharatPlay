@@ -122,10 +122,10 @@ const Leaderboard = () => {
                   topCreators.map((creator) => (
                     <div
                       key={creator.id}
-                      className="px-6 py-5 flex items-center gap-5 hover:bg-gray-900 transition-colors"
+                      className="px-4 py-5 flex flex-wrap items-center gap-3 sm:px-6 sm:gap-5 hover:bg-gray-900 transition-colors"
                     >
                       <div
-                        className={`w-12 h-12 flex items-center justify-center text-xl font-bold rounded-full min-w-[48px] ${
+                        className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-xl font-bold rounded-full min-w-[40px] sm:min-w-[48px] ${
                           creator.rank === 1
                             ? "bg-yellow-600 text-white border-2 border-yellow-500"
                             : creator.rank === 2
@@ -142,15 +142,15 @@ const Leaderboard = () => {
                         <img
                           src={resolveMediaUrl(creator.avatar)}
                           alt={creator.name}
-                          className="w-14 h-14 rounded-full object-cover border-2 border-gray-700"
+                                className="w-11 h-11 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-gray-700"
                         />
                       ) : (
-                        <div className="w-14 h-14 rounded-full border-2 border-gray-700 bg-gray-800 flex items-center justify-center text-gray-400 text-lg font-semibold">
+                        <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border-2 border-gray-700 bg-gray-800 flex items-center justify-center text-gray-400 text-lg font-semibold">
                           {(creator.name || "?").charAt(0).toUpperCase()}
                         </div>
                       )}
 
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-[100px]">
                         <p className="font-semibold text-lg text-white truncate">
                           {creator.name || "Unknown"}
                         </p>
@@ -159,20 +159,22 @@ const Leaderboard = () => {
                         </p>
                       </div>
 
-                      <div className="text-right">
-                        <p className="text-white font-bold">
-                          {Number(
-                            creator.totalSubscribers || 0,
-                          ).toLocaleString()}
-                        </p>
-                        <p className="text-xs text-gray-500">followers</p>
-                      </div>
+                      <div className="ml-auto flex w-full items-center justify-end gap-5 sm:w-auto">
+                        <div className="text-right">
+                          <p className="text-white font-bold">
+                            {Number(
+                              creator.totalSubscribers || 0,
+                            ).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-500">followers</p>
+                        </div>
 
-                      <div className="text-right min-w-[80px]">
-                        <p className="text-red-400 font-bold">
-                          {Number(creator.rewardPoints || 0).toLocaleString()}
-                        </p>
-                        <p className="text-xs text-gray-500">points</p>
+                        <div className="text-right min-w-[80px]">
+                          <p className="text-red-400 font-bold">
+                            {Number(creator.rewardPoints || 0).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-500">points</p>
+                        </div>
                       </div>
                     </div>
                   ))
@@ -214,10 +216,10 @@ const Leaderboard = () => {
                   topVideos.map((item) => (
                     <div
                       key={item.id}
-                      className="px-6 py-5 flex items-center gap-5 hover:bg-gray-900 transition-colors"
+                      className="px-4 py-5 flex items-center gap-3 sm:px-6 sm:gap-5 hover:bg-gray-900 transition-colors"
                     >
                       <div
-                        className={`w-12 h-12 flex items-center justify-center text-xl font-bold rounded-full min-w-[48px] ${
+                        className={`w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center text-lg sm:text-xl font-bold rounded-full min-w-[36px] sm:min-w-[48px] ${
                           item.rank === 1
                             ? "bg-yellow-600 text-white border-2 border-yellow-500"
                             : item.rank === 2
@@ -234,10 +236,10 @@ const Leaderboard = () => {
                         <img
                           src={resolveMediaUrl(item.thumbnail)}
                           alt={item.title}
-                          className="w-20 h-12 object-cover rounded-md border border-gray-700"
+                          className="w-16 h-10 sm:w-20 sm:h-12 object-cover rounded-md border border-gray-700"
                         />
                       ) : (
-                        <div className="w-20 h-12 rounded-md border border-gray-700 bg-gray-800 flex items-center justify-center text-gray-500">
+                        <div className="w-16 h-10 sm:w-20 sm:h-12 rounded-md border border-gray-700 bg-gray-800 flex items-center justify-center text-gray-500">
                           No thumb
                         </div>
                       )}
